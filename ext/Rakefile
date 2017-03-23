@@ -1,0 +1,9 @@
+require File.expand_path('../../lib/rdkafka/version', __FILE__)
+require "mini_portile2"
+
+task :compile do
+  recipe = MiniPortile.new("librdkafka", Rdkafka::LIBRDKAFKA_VERSION)
+  recipe.files = ["https://github.com/edenhill/librdkafka/archive/v#{Rdkafka::LIBRDKAFKA_VERSION}.tar.gz"]
+  recipe.configure_options = ["--host=#{recipe.host}"]
+  recipe.cook
+end

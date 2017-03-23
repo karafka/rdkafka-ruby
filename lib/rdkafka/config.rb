@@ -28,7 +28,7 @@ module Rdkafka
       config = ::FFI::AutoPointer.new(
         Rdkafka::FFI.rd_kafka_conf_new,
         Rdkafka::FFI.method(:rd_kafka_conf_destroy)
-     )
+      )
 
       @config_hash.each do |key, value|
         error_buffer = ::FFI::MemoryPointer.from_string(" " * 100)

@@ -1,7 +1,11 @@
 module Rdkafka
   class Config
+    DEFAULT_CONFIG = {
+      "api.version.request" => "true"
+    }
+
     def initialize(config_hash = {})
-      @config_hash = config_hash
+      @config_hash = DEFAULT_CONFIG.merge(config_hash)
     end
 
     def []=(key, value)

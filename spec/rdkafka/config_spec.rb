@@ -7,9 +7,13 @@ describe Rdkafka::Config do
     expect(config['key']).to eq 'value'
   end
 
+  it "should use default configuration" do
+    config = Rdkafka::Config.new
+    expect(config['api.version.request']).to eq 'true'
+  end
+
   it "should create a consumer with valid config" do
-    config = Rdkafka::Config.new('metadata.broker.list' => 'localhost')
-    expect(config.consumer).to be_a Rdkafka::Consumer
+    expect(rdkafka_config.consumer).to be_a Rdkafka::Consumer
   end
 
   it "should raise an error when creating a consumer with invalid config" do
@@ -20,8 +24,7 @@ describe Rdkafka::Config do
   end
 
   it "should create a producer with valid config" do
-    config = Rdkafka::Config.new('metadata.broker.list' => 'localhost')
-    expect(config.producer).to be_a Rdkafka::Producer
+    expect(rdkafka_config.producer).to be_a Rdkafka::Producer
   end
 
   it "should raise an error when creating a producer with invalid config" do

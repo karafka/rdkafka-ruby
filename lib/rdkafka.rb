@@ -1,3 +1,5 @@
 require "rdkafka/config"
+require "rdkafka/consumer"
 require "rdkafka/ffi"
+require "rdkafka/producer"
 require "rdkafka/version"

@@ -9,8 +9,7 @@ describe Rdkafka::Config do
 
   it "should create a consumer with valid config" do
     config = Rdkafka::Config.new('metadata.broker.list' => 'localhost')
-    config.consumer
-    # TODO test consumer
+    expect(config.consumer).to be_a Rdkafka::Consumer
   end
 
   it "should raise an error when creating a consumer with invalid config" do
@@ -22,8 +21,7 @@ describe Rdkafka::Config do
 
   it "should create a producer with valid config" do
     config = Rdkafka::Config.new('metadata.broker.list' => 'localhost')
-    config.producer
-    # TODO test producer
+    expect(config.producer).to be_a Rdkafka::Producer
   end
 
   it "should raise an error when creating a producer with invalid config" do

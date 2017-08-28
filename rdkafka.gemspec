@@ -4,7 +4,7 @@ Gem::Specification.new do |gem|
   gem.authors = ['Thijs Cadier']
   gem.email = ["thijs@appsignal.com"]
   gem.description = "Modern Kafka client library for Ruby based on librdkafka"
-  gem.summary = "Kafka client library wrapping librdkafka using the ffi gem and futures from concurrent-ruby"
+  gem.summary = "Kafka client library wrapping librdkafka using the ffi gem and futures from concurrent-ruby for Kafka 0.10+"
   gem.license = 'MIT'
 
   gem.files = `git ls-files`.split($\)
@@ -20,6 +20,7 @@ Gem::Specification.new do |gem|
   gem.add_dependency 'ffi'
   gem.add_dependency 'mini_portile2'
 
-  gem.add_development_dependency 'rspec', '~> 3.5'
   gem.add_development_dependency 'pry'
+  gem.add_development_dependency 'rspec', '~> 3.5'
+  gem.add_development_dependency 'rake'
 end

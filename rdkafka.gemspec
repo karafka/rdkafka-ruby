@@ -6,6 +6,7 @@ Gem::Specification.new do |gem|
   gem.description = "Modern Kafka client library for Ruby based on librdkafka"
   gem.summary = "Kafka client library wrapping librdkafka using the ffi gem and futures from concurrent-ruby for Kafka 0.10+"
   gem.license = 'MIT'
+  gem.homepage = 'https://github.com/thijsc/rdkafka-ruby'
 
   gem.files = `git ls-files`.split($\)
   gem.executables = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
@@ -16,10 +17,10 @@ Gem::Specification.new do |gem|
   gem.required_ruby_version = '>= 2.0'
   gem.extensions = %w(ext/Rakefile)
 
-  gem.add_dependency 'ffi'
-  gem.add_dependency 'mini_portile2'
+  gem.add_dependency 'ffi', '~> 1.9'
+  gem.add_dependency 'mini_portile2', '~> 2.2'
 
-  gem.add_development_dependency 'pry'
+  gem.add_development_dependency 'pry', '~> 0.10'
   gem.add_development_dependency 'rspec', '~> 3.5'
-  gem.add_development_dependency 'rake'
+  gem.add_development_dependency 'rake', '~> 12.0'
 end

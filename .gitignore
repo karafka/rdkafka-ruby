@@ -1,3 +1,4 @@
 Gemfile.lock
 ext/ports
 ext/tmp
+*.gem

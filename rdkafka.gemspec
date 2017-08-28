@@ -16,7 +16,6 @@ Gem::Specification.new do |gem|
   gem.required_ruby_version = '>= 2.0'
   gem.extensions = %w(ext/Rakefile)
 
-  gem.add_dependency 'concurrent-ruby'
   gem.add_dependency 'ffi'
   gem.add_dependency 'mini_portile2'
 

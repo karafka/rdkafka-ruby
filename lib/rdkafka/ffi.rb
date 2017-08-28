@@ -6,6 +6,23 @@ module Rdkafka
     extend ::FFI::Library
     ffi_lib "ext/ports/#{MiniPortile.new("librdkafka", Rdkafka::LIBRDKAFKA_VERSION).host}/librdkafka/#{Rdkafka::LIBRDKAFKA_VERSION}/lib/librdkafka.dylib"
 
+    # Polling
+    attach_function :rd_kafka_poll, [:pointer, :int], :void
+
+    # Message struct
+
+    class Message < ::FFI::Struct
+      layout :err, :int,
+             :rkt, :pointer,
+             :partition, :int32,
+             :payload, :pointer,
+             :len, :size_t,
+             :key, :pointer,
+             :key_len, :size_t,
+             :offset, :int64,
+             :_private, :pointer
+    end
+
     # Errors
 
     attach_function :rd_kafka_err2name, [:int], :string
@@ -47,5 +64,16 @@ module Rdkafka
     RD_KAFKA_MSG_F_COPY = 0x2
 
     attach_function :rd_kafka_producev, [:pointer, :varargs], :int
+    callback :delivery_cb, [:pointer, :pointer, :pointer], :void
+    attach_function :rd_kafka_conf_set_dr_msg_cb, [:pointer, :delivery_cb], :void
+
+    DeliveryCallback = Proc.new do |client_ptr, message_ptr, opaque_ptr|
+      message = Message.new(message_ptr)
+      delivery_handle = Rdkafka::DeliveryHandle.new(message[:_private])
+      delivery_handle[:pending] = false
+      delivery_handle[:response] = message[:err]
+      delivery_handle[:partition] = message[:partition]
+      delivery_handle[:offset] = message[:offset]
+    end
   end
 end

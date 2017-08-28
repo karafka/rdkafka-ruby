@@ -2,6 +2,12 @@ module Rdkafka
   class Producer
     def initialize(native_kafka)
       @native_kafka = native_kafka
+      # Start thread to poll client for delivery callbacks
+      @thread = Thread.new do
+        loop do
+          Rdkafka::FFI.rd_kafka_poll(@native_kafka, 100)
+        end
+      end.abort_on_exception = true
     end
 
     def produce(topic:, payload: nil, key: nil, partition: nil, timestamp: nil)
@@ -28,6 +34,12 @@ module Rdkafka
       # If timestamp is nil use 0 and let Kafka set one
       timestamp = 0 if timestamp.nil?
 
+      delivery_handle = DeliveryHandle.new
+      delivery_handle[:pending] = true
+      delivery_handle[:response] = 0
+      delivery_handle[:partition] = 0
+      delivery_handle[:offset] = 0
+
       # Produce the message
       response = Rdkafka::FFI.rd_kafka_producev(
         @native_kafka,
@@ -35,9 +47,9 @@ module Rdkafka
         :int, Rdkafka::FFI::RD_KAFKA_VTYPE_MSGFLAGS, :int, Rdkafka::FFI::RD_KAFKA_MSG_F_COPY,
         :int, Rdkafka::FFI::RD_KAFKA_VTYPE_VALUE, :buffer_in, payload, :size_t, payload_size,
         :int, Rdkafka::FFI::RD_KAFKA_VTYPE_KEY, :buffer_in, key, :size_t, key_size,
-        :int, Rdkafka::FFI::RD_KAFKA_VTYPE_PARTITION, :int, partition,
-        #Rdkafka::FFI::RD_KAFKA_VTYPE_OPAQUE, delivery_context_ptr,
-        :int, Rdkafka::FFI::RD_KAFKA_VTYPE_TIMESTAMP, :int, timestamp,
+        :int, Rdkafka::FFI::RD_KAFKA_VTYPE_PARTITION, :int32, partition,
+        :int, Rdkafka::FFI::RD_KAFKA_VTYPE_TIMESTAMP, :int64, timestamp,
+        :int, Rdkafka::FFI::RD_KAFKA_VTYPE_OPAQUE, :pointer, delivery_handle,
         :int, Rdkafka::FFI::RD_KAFKA_VTYPE_END
       )
 
@@ -46,7 +58,41 @@ module Rdkafka
         raise RdkafkaError.new(response)
       end
 
-      # NEXT: Return delivery future
+      delivery_handle
+    end
+  end
+
+  class DeliveryHandle < ::FFI::Struct
+    layout :pending, :bool,
+           :response, :int,
+           :partition, :int,
+           :offset, :int64
+
+    def pending?
+      self[:pending]
+    end
+
+    # Wait for the delivery report
+    def wait
+      loop do
+        if pending?
+          sleep 0.05
+          next
+        elsif self[:response] != 0
+          raise RdkafkaError.new(self[:response])
+        else
+          return DeliveryReport.new(self[:partition], self[:offset])
+        end
+      end
+    end
+  end
+
+  class DeliveryReport
+    attr_reader :partition, :offset
+
+    def initialize(partition, offset)
+      @partition = partition
+      @offset = offset
     end
   end
 end

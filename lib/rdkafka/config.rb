@@ -17,11 +17,16 @@ module Rdkafka
     end
 
     def consumer
-      Rdkafka::Consumer.new(native_kafka(:rd_kafka_consumer))
+      Rdkafka::Consumer.new(native_kafka(native_config, :rd_kafka_consumer))
     end
 
     def producer
-      Rdkafka::Producer.new(native_kafka(:rd_kafka_producer))
+      # Create Kafka config
+      config = native_config
+      # Set callback to receive delivery reports on config
+      Rdkafka::FFI.rd_kafka_conf_set_dr_msg_cb(config, Rdkafka::FFI::DeliveryCallback)
+      # Return producer with Kafka client
+      Rdkafka::Producer.new(native_kafka(config, :rd_kafka_producer))
     end
 
     class ConfigError < RuntimeError; end
@@ -51,11 +56,11 @@ module Rdkafka
       config
     end
 
-    def native_kafka(type)
+    def native_kafka(config, type)
       error_buffer = ::FFI::MemoryPointer.from_string(" " * 256)
       handle = Rdkafka::FFI.rd_kafka_new(
         type,
-        native_config,
+        config,
         error_buffer,
         256
       )

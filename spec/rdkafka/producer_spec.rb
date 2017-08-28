@@ -8,18 +8,17 @@ describe Rdkafka::Producer do
   it "should require a topic" do
     expect {
       producer.produce(
-        nil,
-        "payload",
-        "key"
+        payload: "payload",
+        key: "key"
      )
-    }.to raise_error ArgumentError, "Topic cannot be nil"
+    }.to raise_error ArgumentError, "missing keyword: topic"
   end
 
   it "should produce messages" do
     producer.produce(
-      "produce_test_topic",
-      "payload 1",
-      "key 1"
+      topic: "produce_test_topic",
+      payload: "payload 1",
+      key: "key 1"
     )
   end
 end

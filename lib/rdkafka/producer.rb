@@ -4,11 +4,8 @@ module Rdkafka
       @native_kafka = native_kafka
     end
 
-    def produce(topic, payload, key, partition=nil, timestamp=nil)
+    def produce(topic:, payload: nil, key: nil, partition: nil, timestamp: nil)
       # Start by checking and converting the input
-
-      # Topic is required
-      raise ArgumentError.new("Topic cannot be nil") if topic.nil?
 
       # Get payload length
       payload_size = if payload.nil?

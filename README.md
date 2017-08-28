@@ -1,7 +1,7 @@
 # Modern Kafka client library for Ruby based on librdkafka
 
 Kafka client library wrapping librdkafka using the ffi gem and futures
-from concurrent-ruby for Kafka 0.10+".
+from concurrent-ruby for Kafka 0.10+ and Ruby 2.1+".
 
 ## Development
 

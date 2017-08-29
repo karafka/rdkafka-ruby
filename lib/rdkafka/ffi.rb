@@ -7,6 +7,7 @@ module Rdkafka
     ffi_lib "ext/ports/#{MiniPortile.new("librdkafka", Rdkafka::LIBRDKAFKA_VERSION).host}/librdkafka/#{Rdkafka::LIBRDKAFKA_VERSION}/lib/librdkafka.dylib"
 
     # Polling
+
     attach_function :rd_kafka_poll, [:pointer, :int], :void
 
     # Message struct
@@ -21,7 +22,34 @@ module Rdkafka
              :key_len, :size_t,
              :offset, :int64,
              :_private, :pointer
+
+      def partition
+        self[:partition]
+      end
     end
+
+    # TopicPartition ad TopicPartitionList structs
+
+    class TopicPartition < ::FFI::Struct
+      layout :topic, :string,
+             :partition, :int32,
+             :offset, :int64,
+             :metadata, :pointer,
+             :metadata_size, :size_t,
+             :opaque, :pointer,
+             :err, :int,
+             :_private, :pointer
+    end
+
+    class TopicPartitionList < ::FFI::Struct
+      layout :cnt, :int,
+             :size, :int,
+             :elems, TopicPartition
+    end
+
+    attach_function :rd_kafka_topic_partition_list_new, [:int32], :pointer
+    attach_function :rd_kafka_topic_partition_list_add, [:pointer, :string, :int32], :void
+    attach_function :rd_kafka_topic_partition_list_destroy, [:pointer], :void
 
     # Errors
 
@@ -49,7 +77,12 @@ module Rdkafka
     attach_function :rd_kafka_new, [:kafka_type, :pointer, :pointer, :int], :pointer
     attach_function :rd_kafka_destroy, [:pointer], :void
 
-    # Producing
+    # Consumer
+
+    attach_function :rd_kafka_subscribe, [:pointer, :pointer], :int
+    attach_function :rd_kafka_consumer_poll, [:pointer, :int], :pointer
+
+    # Producer
 
     RD_KAFKA_VTYPE_END = 0
     RD_KAFKA_VTYPE_TOPIC = 1

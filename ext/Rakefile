@@ -9,13 +9,15 @@ task :default => :clean do
   recipe.configure_options = ["--host=#{recipe.host}"]
   recipe.cook
   # Move dynamic library we're interested in
-  extension = if recipe.host.include?('darwin')
-                'dylib'
-              else
-                'so'
-              end
-  lib_path = File.join(File.dirname(__FILE__), "ports/#{recipe.host}/librdkafka/#{Rdkafka::LIBRDKAFKA_VERSION}/lib/librdkafka.1.#{extension}")
-  FileUtils.mv(lib_path, File.join(File.dirname(__FILE__), "librdkafka.#{extension}"))
+  if recipe.host.include?('darwin')
+    from_extension = '1.dylib'
+    to_extension   = 'dylib'
+  else
+    from_extension = 'so.1'
+    to_extension = 'so1'
+  end
+  lib_path = File.join(File.dirname(__FILE__), "ports/#{recipe.host}/librdkafka/#{Rdkafka::LIBRDKAFKA_VERSION}/lib/librdkafka.#{from_extension}")
+  FileUtils.mv(lib_path, File.join(File.dirname(__FILE__), "librdkafka.#{to_extension}"))
   # Cleanup files created miniportile we don't need in the gem
   FileUtils.rm_rf File.join(File.dirname(__FILE__), "tmp")
   FileUtils.rm_rf File.join(File.dirname(__FILE__), "ports")

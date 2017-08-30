@@ -4,7 +4,7 @@ Kafka client library wrapping `librdkafka` using the FFI gem for Kafka 0.10+
 and Ruby 2.1+.
 
 This gem only provides a high-level Kafka consumer. If you are running
-and older version of Kafka and/or need the legacy simple consumer we
+an older version of Kafka and/or need the legacy simple consumer we
 suggest using the [Hermann](https://github.com/reiseburo/hermann) gem.
 
 ## Development

@@ -1,7 +1,7 @@
 module Rdkafka
   class Config
     DEFAULT_CONFIG = {
-      "api.version.request" => "true"
+      :"api.version.request" => true
     }
 
     def initialize(config_hash = {})
@@ -17,7 +17,9 @@ module Rdkafka
     end
 
     def consumer
-      Rdkafka::Consumer.new(native_kafka(native_config, :rd_kafka_consumer))
+      kafka = native_kafka(native_config, :rd_kafka_consumer)
+      Rdkafka::FFI.rd_kafka_poll_set_consumer(kafka)
+      Rdkafka::Consumer.new(kafka)
     end
 
     def producer
@@ -43,8 +45,8 @@ module Rdkafka
         error_buffer = ::FFI::MemoryPointer.from_string(" " * 256)
         result = Rdkafka::FFI.rd_kafka_conf_set(
           config,
-          key,
-          value,
+          key.to_s,
+          value.to_s,
           error_buffer,
           256
         )

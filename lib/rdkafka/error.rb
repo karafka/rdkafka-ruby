@@ -3,23 +3,25 @@ module Rdkafka
     attr_reader :rdkafka_response
 
     def initialize(response)
+      raise TypeError.new("Response has to be an integer") unless response.is_a? Integer
       @rdkafka_response = response
     end
 
     def code
-      if @rdkafka_response.nil?
-        :unknown_error
+      code = Rdkafka::FFI.rd_kafka_err2name(@rdkafka_response).downcase
+      if code[0] == "_"
+        code[1..-1].to_sym
       else
-        Rdkafka::FFI.rd_kafka_err2name(@rdkafka_response).downcase.to_sym
+        code.to_sym
       end
     end
 
     def to_s
-      if @rdkafka_response.nil?
-        "Unknown error: Response code is nil"
-      else
-        Rdkafka::FFI.rd_kafka_err2str(@rdkafka_response)
-      end
+      "#{Rdkafka::FFI.rd_kafka_err2str(@rdkafka_response)} (#{code})"
+    end
+
+    def is_partition_eof?
+      code == :partition_eof
     end
   end
 end

@@ -14,3 +14,10 @@ debug output:
 DEBUG_PRODUCER=true bundle exec rspec
 DEBUG_CONSUMER=true bundle exec rspec
 ```
+
+To see everything working run these in separate tabs:
+
+```
+bundle exec rake consume_messages
+bundle exec rake produce_messages
+```

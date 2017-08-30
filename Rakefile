@@ -5,15 +5,17 @@ task :create_topics do
   `kafka-topics --create --topic=rake_test_topic --zookeeper=127.0.0.1:2181 --partitions=1 --replication-factor=1`
 end
 
-task :produce_message do
+task :produce_messages do
   producer = Rdkafka::Config.new(
     :"bootstrap.servers" => "localhost:9092"
   ).producer
-  producer.produce(
-      topic:   "rake_test_topic",
-      payload: "payload from Rake",
-      key:     "key from Rake"
-  ).wait
+  100.times do |i|
+    producer.produce(
+        topic:   "rake_test_topic",
+        payload: "Payload #{i} from Rake",
+        key:     "Key #{i} from Rake"
+    ).wait
+  end
 end
 
 task :consume_messages do

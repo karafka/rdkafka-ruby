@@ -14,7 +14,7 @@ task :default => :clean do
     to_extension   = 'dylib'
   else
     from_extension = 'so.1'
-    to_extension = 'so1'
+    to_extension = 'so'
   end
   lib_path = File.join(File.dirname(__FILE__), "ports/#{recipe.host}/librdkafka/#{Rdkafka::LIBRDKAFKA_VERSION}/lib/librdkafka.#{from_extension}")
   FileUtils.mv(lib_path, File.join(File.dirname(__FILE__), "librdkafka.#{to_extension}"))

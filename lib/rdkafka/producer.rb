@@ -36,9 +36,9 @@ module Rdkafka
 
       delivery_handle = DeliveryHandle.new
       delivery_handle[:pending] = true
-      delivery_handle[:response] = 0
-      delivery_handle[:partition] = 0
-      delivery_handle[:offset] = 0
+      delivery_handle[:response] = -1
+      delivery_handle[:partition] = -1
+      delivery_handle[:offset] = -1
 
       # Produce the message
       response = Rdkafka::FFI.rd_kafka_producev(

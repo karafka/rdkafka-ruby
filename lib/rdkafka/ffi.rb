@@ -1,22 +1,18 @@
 require "ffi"
-require "mini_portile2"
 
 module Rdkafka
   module FFI
     extend ::FFI::Library
 
-    def self.library_path
-      mini_portile = MiniPortile.new("librdkafka", Rdkafka::LIBRDKAFKA_VERSION)
-      extension = if mini_portile.host.include?('darwin')
-                    'dylib'
-                  else
-                    'so'
-                  end
-      path = "ext/ports/#{mini_portile.host}/librdkafka/#{Rdkafka::LIBRDKAFKA_VERSION}/lib/librdkafka.#{extension}"
-      File.join(File.dirname(__FILE__), "../../", path)
+    def self.lib_extension
+      if Gem::Platform.local.os.include?("darwin")
+        'dylib'
+      else
+        'so'
+      end
     end
 
-    ffi_lib library_path
+    ffi_lib File.join(File.dirname(__FILE__), "../../ext/librdkafka.#{lib_extension}")
 
     # Polling
 

@@ -1,4 +1,5 @@
 Gemfile.lock
 ext/ports
 ext/tmp
+ext/librdkafka.*
 *.gem

@@ -4,7 +4,18 @@ require "mini_portile2"
 module Rdkafka
   module FFI
     extend ::FFI::Library
-    ffi_lib File.join(File.dirname(__FILE__), "../../ext/ports/#{MiniPortile.new("librdkafka", Rdkafka::LIBRDKAFKA_VERSION).host}/librdkafka/#{Rdkafka::LIBRDKAFKA_VERSION}/lib/librdkafka.dylib")
+
+    def self.library_path
+      mini_portile = MiniPortile.new("librdkafka", Rdkafka::LIBRDKAFKA_VERSION)
+      extension = if mini_portile.host.include?('darwin')
+                    'dylib'
+                  else
+                    'so'
+                  end
+      "../../ext/ports/#{mini_portile.host}/librdkafka/#{Rdkafka::LIBRDKAFKA_VERSION}/lib/librdkafka.#{extension}"
+    end
+
+    ffi_lib File.join(File.dirname(__FILE__), library_path)
 
     # Polling
 

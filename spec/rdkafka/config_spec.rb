@@ -3,13 +3,13 @@ require "spec_helper"
 describe Rdkafka::Config do
   it "should store configuration" do
     config = Rdkafka::Config.new
-    config['key'] = 'value'
-    expect(config['key']).to eq 'value'
+    config[:"key"] = 'value'
+    expect(config[:"key"]).to eq 'value'
   end
 
   it "should use default configuration" do
     config = Rdkafka::Config.new
-    expect(config['api.version.request']).to eq 'true'
+    expect(config[:"api.version.request"]).to eq true
   end
 
   it "should create a consumer with valid config" do

@@ -12,10 +12,11 @@ module Rdkafka
                   else
                     'so'
                   end
-      "../../ext/ports/#{mini_portile.host}/librdkafka/#{Rdkafka::LIBRDKAFKA_VERSION}/lib/librdkafka.#{extension}"
+      path = "ext/ports/#{mini_portile.host}/librdkafka/#{Rdkafka::LIBRDKAFKA_VERSION}/lib/librdkafka.#{extension}"
+      File.join(File.dirname(__FILE__), "../../", path)
     end
 
-    ffi_lib File.join(File.dirname(__FILE__), library_path)
+    ffi_lib library_path
 
     # Polling
 

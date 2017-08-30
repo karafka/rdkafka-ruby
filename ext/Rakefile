@@ -18,7 +18,7 @@ task :default => :clean do
   end
   lib_path = File.join(File.dirname(__FILE__), "ports/#{recipe.host}/librdkafka/#{Rdkafka::LIBRDKAFKA_VERSION}/lib/librdkafka.#{from_extension}")
   FileUtils.mv(lib_path, File.join(File.dirname(__FILE__), "librdkafka.#{to_extension}"))
-  # Cleanup files created miniportile we don't need in the gem
+  # Cleanup files created by miniportile we don't need in the gem
   FileUtils.rm_rf File.join(File.dirname(__FILE__), "tmp")
   FileUtils.rm_rf File.join(File.dirname(__FILE__), "ports")
 end

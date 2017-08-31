@@ -1,4 +1,5 @@
 require "ffi"
+require "logger"
 
 module Rdkafka
   module FFI
@@ -113,6 +114,26 @@ module Rdkafka
 
     attach_function :rd_kafka_conf_new, [], :pointer
     attach_function :rd_kafka_conf_set, [:pointer, :string, :string, :pointer, :int], :kafka_config_response
+    callback :log_cb, [:pointer, :int, :string, :string], :void
+    attach_function :rd_kafka_conf_set_log_cb, [:pointer, :log_cb], :void
+
+    LogCallback = Proc.new do |client_ptr, level, level_string, line|
+      severity = case level
+                 when 0 || 1 || 2
+                   Logger::FATAL
+                 when 3
+                   Logger::ERROR
+                 when 4
+                   Logger::WARN
+                 when 5 || 6
+                   Logger::INFO
+                 when 7
+                   Logger::DEBUG
+                 else
+                   Logger::UNKNOWN
+                 end
+      Rdkafka::Config.logger.add(severity) { line }
+    end
 
     # Handle
 

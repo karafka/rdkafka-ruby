@@ -1,5 +1,17 @@
+require "logger"
+
 module Rdkafka
   class Config
+    @@logger = Logger.new(STDOUT)
+
+    def self.logger
+      @@logger
+    end
+
+    def self.logger=(logger)
+      @@logger=logger
+    end
+
     DEFAULT_CONFIG = {
       :"api.version.request" => true
     }
@@ -39,23 +51,22 @@ module Rdkafka
     # This method is only intented to be used to create a client,
     # using it in another way will leak memory.
     def native_config
-      config = Rdkafka::FFI.rd_kafka_conf_new
-
-      @config_hash.each do |key, value|
-        error_buffer = ::FFI::MemoryPointer.from_string(" " * 256)
-        result = Rdkafka::FFI.rd_kafka_conf_set(
-          config,
-          key.to_s,
-          value.to_s,
-          error_buffer,
-          256
-        )
-        unless result == :config_ok
-          raise ConfigError.new(error_buffer.read_string)
+      Rdkafka::FFI.rd_kafka_conf_new.tap do |config|
+        @config_hash.each do |key, value|
+          error_buffer = ::FFI::MemoryPointer.from_string(" " * 256)
+          result = Rdkafka::FFI.rd_kafka_conf_set(
+            config,
+            key.to_s,
+            value.to_s,
+            error_buffer,
+            256
+          )
+          unless result == :config_ok
+            raise ConfigError.new(error_buffer.read_string)
+          end
         end
+        Rdkafka::FFI.rd_kafka_conf_set_log_cb(config, Rdkafka::FFI::LogCallback)
       end
-
-      config
     end
 
     def native_kafka(config, type)

@@ -132,7 +132,7 @@ module Rdkafka
                  else
                    Logger::UNKNOWN
                  end
-      Rdkafka::Config.logger.add(severity) { line }
+      Rdkafka::Config.logger.add(severity) { "rdkafka: #{line}" }
     end
 
     # Handle

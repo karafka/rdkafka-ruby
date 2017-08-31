@@ -35,6 +35,10 @@ module Rdkafka
         self[:err]
       end
 
+      def topic
+        FFI.rd_kafka_topic_name(self[:rkt])
+      end
+
       def partition
         self[:partition]
       end
@@ -60,7 +64,7 @@ module Rdkafka
       end
 
       def to_s
-        "Message with key '#{key}', payload '#{payload}', partition '#{partition}', offset '#{offset}'"
+        "Message in '#{topic}' with key '#{key}', payload '#{payload}', partition '#{partition}', offset '#{offset}'"
       end
 
       def self.release(ptr)
@@ -69,6 +73,7 @@ module Rdkafka
     end
 
     attach_function :rd_kafka_message_destroy, [:pointer], :void
+    attach_function :rd_kafka_topic_name, [:pointer], :string
 
     # TopicPartition ad TopicPartitionList structs
 

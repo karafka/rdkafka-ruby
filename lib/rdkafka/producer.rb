@@ -75,7 +75,7 @@ module Rdkafka
     end
 
     # Wait for the delivery report
-    def wait(timeout_in_seconds=10)
+    def wait(timeout_in_seconds=60)
       timeout = if timeout_in_seconds
                   Time.now.to_i + timeout_in_seconds
                 else

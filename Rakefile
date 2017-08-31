@@ -10,6 +10,7 @@ task :produce_messages do
     :"bootstrap.servers" => "localhost:9092"
   ).producer
   100.times do |i|
+    puts "Producing message #{i}"
     producer.produce(
         topic:   "rake_test_topic",
         payload: "Payload #{i} from Rake",

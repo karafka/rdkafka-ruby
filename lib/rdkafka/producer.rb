@@ -62,6 +62,8 @@ module Rdkafka
     end
   end
 
+  class WaitTimeoutError < RuntimeError; end
+
   class DeliveryHandle < ::FFI::Struct
     layout :pending, :bool,
            :response, :int,
@@ -73,10 +75,18 @@ module Rdkafka
     end
 
     # Wait for the delivery report
-    def wait
+    def wait(timeout_in_seconds=10)
+      timeout = if timeout_in_seconds
+                  Time.now.to_i + timeout_in_seconds
+                else
+                  nil
+                end
       loop do
         if pending?
-          sleep 0.05
+          if timeout && timeout <= Time.now.to_i
+            raise WaitTimeoutError.new("Waiting for delivery timed out after #{timeout_in_seconds} seconds")
+          end
+          sleep 0.1
           next
         elsif self[:response] != 0
           raise RdkafkaError.new(self[:response])

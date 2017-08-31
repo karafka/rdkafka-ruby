@@ -1,6 +1,7 @@
 require "./lib/rdkafka"
 
 task :create_topics do
+  puts "Creating test topics"
   `kafka-topics --create --topic=produce_test_topic --zookeeper=127.0.0.1:2181 --partitions=1 --replication-factor=1`
   `kafka-topics --create --topic=rake_test_topic --zookeeper=127.0.0.1:2181 --partitions=1 --replication-factor=1`
 end

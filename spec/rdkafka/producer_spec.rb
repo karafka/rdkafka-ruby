@@ -15,10 +15,7 @@ describe Rdkafka::Producer do
 
   it "should produce a message" do
     consumer.subscribe("produce_test_topic")
-    # Make sure the consumer is running before we produce
-    5.times do
-      consumer.poll
-    end
+    consumer.poll(200)
 
     handle = producer.produce(
       topic:   "produce_test_topic",
@@ -28,20 +25,18 @@ describe Rdkafka::Producer do
     expect(handle.pending?).to be true
 
     # Check delivery handle and report
-    report = handle.wait
+    report = handle.wait(5)
     expect(handle.pending?).to be false
     expect(report).not_to be_nil
     expect(report.partition).to eq 0
     expect(report.offset).to be > 0
 
     # Consume message and verify it's content
-    message = consumer.first
+    message = consumer.poll(5000)
     expect(message).not_to be_nil
     expect(message.partition).to eq 0
     expect(message.offset).to eq report.offset
     expect(message.payload).to eq "payload 1"
     expect(message.key).to eq "key 1"
-
-    consumer.commit
   end
 end

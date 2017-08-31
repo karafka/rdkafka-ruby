@@ -33,7 +33,7 @@ module Rdkafka
       end
     end
 
-    def poll(timeout_ms=100)
+    def poll(timeout_ms)
       message_ptr = Rdkafka::FFI.rd_kafka_consumer_poll(@native_kafka, timeout_ms)
       if message_ptr.null?
         nil
@@ -48,13 +48,10 @@ module Rdkafka
 
     def each(&block)
       loop do
-        message = poll(10)
+        message = poll(1000)
         if message
           block.call(message)
         else
-          # Sleep here instead of using a longer poll timeout so interrupting the
-          # program works properly, MRI has a hard time interrupting FFI calls.
-          sleep 0.1
           next
         end
       end

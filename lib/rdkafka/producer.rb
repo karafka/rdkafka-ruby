@@ -5,7 +5,7 @@ module Rdkafka
       # Start thread to poll client for delivery callbacks
       @thread = Thread.new do
         loop do
-          Rdkafka::FFI.rd_kafka_poll(@native_kafka, 100)
+          Rdkafka::FFI.rd_kafka_poll(@native_kafka, 1000)
         end
       end.abort_on_exception = true
     end

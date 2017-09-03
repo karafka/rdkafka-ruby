@@ -117,6 +117,10 @@ module Rdkafka
     callback :log_cb, [:pointer, :int, :string, :string], :void
     attach_function :rd_kafka_conf_set_log_cb, [:pointer, :log_cb], :void
 
+    # Log queue
+    attach_function :rd_kafka_set_log_queue, [:pointer, :pointer], :void
+    attach_function :rd_kafka_queue_get_main, [:pointer], :pointer
+
     LogCallback = ::FFI::Function.new(
       :void, [:pointer, :int, :string, :string]
     ) do |_client_ptr, level, _level_string, line|

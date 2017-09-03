@@ -35,6 +35,6 @@ task :consume_messages do
   consumer = Rdkafka::Config.new(config).consumer
   consumer.subscribe("rake_test_topic")
   consumer.each do |message|
-    puts message
+    puts "Message received: #{message}"
   end
 end

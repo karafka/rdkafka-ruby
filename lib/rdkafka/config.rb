@@ -13,7 +13,10 @@ module Rdkafka
     end
 
     DEFAULT_CONFIG = {
-      :"api.version.request" => true
+      # Request api version so advanced features work
+      :"api.version.request" => true,
+      # Enable log queues so we get callbacks in our own threads
+      :"log.queue" => true
     }
 
     def initialize(config_hash = {})
@@ -65,6 +68,7 @@ module Rdkafka
             raise ConfigError.new(error_buffer.read_string)
           end
         end
+        # Set log callback
         Rdkafka::FFI.rd_kafka_conf_set_log_cb(config, Rdkafka::FFI::LogCallback)
       end
     end
@@ -81,6 +85,12 @@ module Rdkafka
       if handle.nil?
         raise ClientCreationError.new(error_buffer.read_string)
       end
+
+      # Redirect log to handle's queue
+      Rdkafka::FFI.rd_kafka_set_log_queue(
+        handle,
+        Rdkafka::FFI.rd_kafka_queue_get_main(handle)
+      )
 
       ::FFI::AutoPointer.new(
         handle,

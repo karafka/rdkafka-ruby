@@ -10,6 +10,7 @@ describe Rdkafka::Config do
   it "should use default configuration" do
     config = Rdkafka::Config.new
     expect(config[:"api.version.request"]).to eq true
+    expect(config[:"log.queue"]).to eq true
   end
 
   it "should create a consumer with valid config" do

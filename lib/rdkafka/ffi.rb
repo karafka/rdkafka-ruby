@@ -18,6 +18,7 @@ module Rdkafka
     # Polling
 
     attach_function :rd_kafka_poll, [:pointer, :int], :void, blocking: true
+    attach_function :rd_kafka_outq_len, [:pointer], :int, blocking: true
 
     # Message struct
 
@@ -154,9 +155,10 @@ module Rdkafka
     # Consumer
 
     attach_function :rd_kafka_subscribe, [:pointer, :pointer], :int
-    attach_function :rd_kafka_commit, [:pointer, :pointer, :bool], :int
+    attach_function :rd_kafka_commit, [:pointer, :pointer, :bool], :int, blocking: true
     attach_function :rd_kafka_poll_set_consumer, [:pointer], :void
     attach_function :rd_kafka_consumer_poll, [:pointer, :int], :pointer, blocking: true
+    attach_function :rd_kafka_consumer_close, [:pointer], :void, blocking: true
 
     # Producer
 

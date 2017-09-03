@@ -1,13 +1,26 @@
 module Rdkafka
   class Producer
     def initialize(native_kafka)
+      @closing = false
       @native_kafka = native_kafka
       # Start thread to poll client for delivery callbacks
-      @thread = Thread.new do
+      @polling_thread = Thread.new do
         loop do
-          Rdkafka::FFI.rd_kafka_poll(@native_kafka, 1000)
+          Rdkafka::FFI.rd_kafka_poll(@native_kafka, 250)
+          # Exit thread if closing and the poll queue is empty
+          if @closing && Rdkafka::FFI.rd_kafka_outq_len(@native_kafka) == 0
+            break
+          end
         end
-      end.abort_on_exception = true
+      end
+      @polling_thread.abort_on_exception = true
+    end
+
+    def close
+      # Indicate to polling thread that we're closing
+      @closing = true
+      # Wait for the polling thread to finish up
+      @polling_thread.join
     end
 
     def produce(topic:, payload: nil, key: nil, partition: nil, timestamp: nil)

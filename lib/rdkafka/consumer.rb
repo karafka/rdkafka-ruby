@@ -6,6 +6,10 @@ module Rdkafka
       @native_kafka = native_kafka
     end
 
+    def close
+      Rdkafka::FFI.rd_kafka_consumer_close(@native_kafka)
+    end
+
     def subscribe(*topics)
       # Create topic partition list with topics and no partition set
       tpl = Rdkafka::FFI.rd_kafka_topic_partition_list_new(topics.length)
@@ -48,7 +52,7 @@ module Rdkafka
 
     def each(&block)
       loop do
-        message = poll(1000)
+        message = poll(250)
         if message
           block.call(message)
         else

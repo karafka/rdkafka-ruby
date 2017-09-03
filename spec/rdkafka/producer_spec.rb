@@ -2,7 +2,6 @@ require "spec_helper"
 
 describe Rdkafka::Producer do
   let(:producer) { rdkafka_config.producer }
-  let(:consumer) { rdkafka_config.consumer }
 
   it "should require a topic" do
     expect {
@@ -28,18 +27,17 @@ describe Rdkafka::Producer do
     expect(report.partition).to eq 0
     expect(report.offset).to be > 0
 
-    consumer.subscribe("produce_test_topic")
+    # Close producer
+    producer.close
 
     # Consume message and verify it's content
-    message = consumer.first
-    expect(message).not_to be_nil
+    message = wait_for_message(
+      topic: "produce_test_topic",
+      delivery_report: report
+    )
     expect(message.partition).to eq 0
-    expect(message.offset).to eq report.offset
     expect(message.payload).to eq "payload 1"
     expect(message.key).to eq "key 1"
-
-    # Commit consumer so we will get a new message next time
-    consumer.commit
   end
 
   it "should raise a timeout error when waiting too long" do

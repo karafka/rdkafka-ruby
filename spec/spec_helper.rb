@@ -25,14 +25,13 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30)
   timeout = Time.now.to_i + timeout_in_seconds
   loop do
     if timeout <= Time.now.to_i
-      raise "Timeout reached in wait_for_message"
+      raise "Timeout of #{timeout_in_seconds} seconds reached in wait_for_message"
     end
-    message = consumer.poll(1000)
+    message = consumer.poll(100)
     if message && message.offset == offset
       return message
     end
   end
 ensure
-  consumer.commit
   consumer.close
 end

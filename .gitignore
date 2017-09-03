@@ -3,3 +3,4 @@ ext/ports
 ext/tmp
 ext/librdkafka.*
 *.gem
+.yardoc

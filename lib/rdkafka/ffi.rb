@@ -117,7 +117,9 @@ module Rdkafka
     callback :log_cb, [:pointer, :int, :string, :string], :void
     attach_function :rd_kafka_conf_set_log_cb, [:pointer, :log_cb], :void
 
-    LogCallback = Proc.new do |client_ptr, level, level_string, line|
+    LogCallback = ::FFI::Function.new(
+      :void, [:pointer, :int, :string, :string]
+    ) do |_client_ptr, level, _level_string, line|
       severity = case level
                  when 0 || 1 || 2
                    Logger::FATAL
@@ -170,7 +172,9 @@ module Rdkafka
     callback :delivery_cb, [:pointer, :pointer, :pointer], :void
     attach_function :rd_kafka_conf_set_dr_msg_cb, [:pointer, :delivery_cb], :void
 
-    DeliveryCallback = Proc.new do |client_ptr, message_ptr, opaque_ptr|
+    DeliveryCallback = ::FFI::Function.new(
+      :void, [:pointer, :pointer, :pointer]
+    ) do |client_ptr, message_ptr, opaque_ptr|
       message = Message.new(message_ptr)
       delivery_handle = Rdkafka::DeliveryHandle.new(message[:_private])
       delivery_handle[:pending] = false

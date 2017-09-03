@@ -15,7 +15,7 @@ describe Rdkafka::Producer do
 
   it "should produce a message" do
     consumer.subscribe("produce_test_topic")
-    consumer.poll(200)
+    consumer.poll(100)
 
     handle = producer.produce(
       topic:   "produce_test_topic",
@@ -38,5 +38,16 @@ describe Rdkafka::Producer do
     expect(message.offset).to eq report.offset
     expect(message.payload).to eq "payload 1"
     expect(message.key).to eq "key 1"
+  end
+
+  it "should raise a timeout error when waiting too long" do
+    handle = producer.produce(
+      topic:   "produce_test_topic",
+      payload: "payload 1",
+      key:     "key 1"
+    )
+    expect {
+      handle.wait(0)
+    }.to raise_error Rdkafka::WaitTimeoutError
   end
 end

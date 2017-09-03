@@ -6,6 +6,7 @@ def rdkafka_config
   config = {
     :"bootstrap.servers" => "localhost:9092",
     :"group.id" => "ruby_test",
+    :"client.id" => "test",
     :"enable.partition.eof" => false
   }
   if ENV["DEBUG_PRODUCER"]

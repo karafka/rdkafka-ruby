@@ -14,10 +14,13 @@ module Rdkafka
 
     DEFAULT_CONFIG = {
       # Request api version so advanced features work
-      :"api.version.request" => true,
+      :"api.version.request" => true
+    }.freeze
+
+    REQUIRED_CONFIG = {
       # Enable log queues so we get callbacks in our own threads
       :"log.queue" => true
-    }
+    }.freeze
 
     def initialize(config_hash = {})
       @config_hash = DEFAULT_CONFIG.merge(config_hash)
@@ -55,7 +58,7 @@ module Rdkafka
     # using it in another way will leak memory.
     def native_config
       Rdkafka::FFI.rd_kafka_conf_new.tap do |config|
-        @config_hash.each do |key, value|
+        @config_hash.merge(REQUIRED_CONFIG).each do |key, value|
           error_buffer = ::FFI::MemoryPointer.from_string(" " * 256)
           result = Rdkafka::FFI.rd_kafka_conf_set(
             config,

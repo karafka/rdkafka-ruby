@@ -36,7 +36,9 @@ module Rdkafka
 
     def consumer
       kafka = native_kafka(native_config, :rd_kafka_consumer)
+      # Redirect the main queue to the consumer
       Rdkafka::FFI.rd_kafka_poll_set_consumer(kafka)
+      # Return consumer with Kafka client
       Rdkafka::Consumer.new(kafka)
     end
 

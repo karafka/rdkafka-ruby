@@ -42,11 +42,19 @@ module Rdkafka
       if message_ptr.null?
         nil
       else
-        message = Rdkafka::FFI::Message.new(message_ptr)
-        if message.err != 0
-          raise Rdkafka::RdkafkaError.new(message.err)
+        # Create struct wrapper
+        native_message = Rdkafka::FFI::Message.new(message_ptr)
+        # Raise error if needed
+        if native_message[:err] != 0
+          raise Rdkafka::RdkafkaError.new(native_message[:err])
         end
-        message
+        # Create a message to pass out
+        Rdkafka::Message.new(native_message)
+      end
+    ensure
+      # Clean up rdkafka message if there is one
+      unless message_ptr.null?
+        Rdkafka::FFI.rd_kafka_message_destroy(message_ptr)
       end
     end
 

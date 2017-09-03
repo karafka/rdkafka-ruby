@@ -18,6 +18,11 @@ def rdkafka_config
   Rdkafka::Config.new(config)
 end
 
+def native_client
+  config = rdkafka_config
+  config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer)
+end
+
 def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30)
   offset = delivery_report.offset - 1
   consumer = rdkafka_config.consumer

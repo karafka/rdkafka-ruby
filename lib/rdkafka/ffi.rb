@@ -22,7 +22,7 @@ module Rdkafka
 
     # Message struct
 
-    class Message < ::FFI::ManagedStruct
+    class Message < ::FFI::Struct
       layout :err, :int,
              :rkt, :pointer,
              :partition, :int32,
@@ -32,49 +32,10 @@ module Rdkafka
              :key_len, :size_t,
              :offset, :int64,
              :_private, :pointer
-
-      def err
-        self[:err]
-      end
-
-      def topic
-        FFI.rd_kafka_topic_name(self[:rkt])
-      end
-
-      def partition
-        self[:partition]
-      end
-
-      def payload
-        if self[:payload].null?
-          nil
-        else
-          self[:payload].read_string(self[:len])
-        end
-      end
-
-      def key
-        if self[:key].null?
-          nil
-        else
-          self[:key].read_string(self[:key_len])
-        end
-      end
-
-      def offset
-        self[:offset]
-      end
-
-      def to_s
-        "Message in '#{topic}' with key '#{key}', payload '#{payload}', partition '#{partition}', offset '#{offset}'"
-      end
-
-      def self.release(ptr)
-        rd_kafka_message_destroy(ptr)
-      end
     end
 
     attach_function :rd_kafka_message_destroy, [:pointer], :void
+    attach_function :rd_kafka_topic_new, [:pointer, :string, :pointer], :pointer
     attach_function :rd_kafka_topic_name, [:pointer], :string
 
     # TopicPartition ad TopicPartitionList structs

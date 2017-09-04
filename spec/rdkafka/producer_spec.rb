@@ -40,6 +40,30 @@ describe Rdkafka::Producer do
     expect(message.key).to eq "key 1"
   end
 
+  it "should produce a message with utf-8 encoding" do
+    handle = producer.produce(
+      topic:   "produce_test_topic",
+      payload: "Τη γλώσσα μου έδωσαν ελληνική",
+      key:     "key 1"
+    )
+    expect(handle.pending?).to be true
+
+    # Check delivery handle and report
+    report = handle.wait(5)
+
+    # Close producer
+    producer.close
+
+    # Consume message and verify it's content
+    message = wait_for_message(
+      topic: "produce_test_topic",
+      delivery_report: report
+    )
+    expect(message.partition).to eq 0
+    expect(message.payload.force_encoding("utf-8")).to eq "Τη γλώσσα μου έδωσαν ελληνική"
+    expect(message.key).to eq "key 1"
+  end
+
   it "should raise a timeout error when waiting too long" do
     handle = producer.produce(
       topic:   "produce_test_topic",

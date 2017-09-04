@@ -1,6 +1,6 @@
 module Rdkafka
   class Message
-    attr_accessor :topic, :partition, :payload, :key, :offset
+    attr_reader :topic, :partition, :payload, :key, :offset
 
     def initialize(native_message)
       unless native_message[:rkt].null?

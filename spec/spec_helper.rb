@@ -5,8 +5,7 @@ require "rdkafka"
 def rdkafka_config
   config = {
     :"bootstrap.servers" => "localhost:9092",
-    :"group.id" => "ruby_test",
-    :"client.id" => "test",
+    :"group.id" => "ruby-test-#{Random.new.rand(0..10_000)}",
     :"auto.offset.reset" => "earliest",
     :"enable.partition.eof" => false
   }

@@ -38,13 +38,16 @@ describe Rdkafka::Producer do
     expect(message.partition).to eq 0
     expect(message.payload).to eq "payload 1"
     expect(message.key).to eq "key 1"
+    # Since api.version.request is on by default we will get
+    # the message creation timestamp if it's not set.
+    expect(message.timestamp).to be > 1505069891557
   end
 
   it "should produce a message with utf-8 encoding" do
     handle = producer.produce(
       topic:   "produce_test_topic",
       payload: "Τη γλώσσα μου έδωσαν ελληνική",
-      key:     "key 1"
+      key:     "key utf8"
     )
     expect(handle.pending?).to be true
 
@@ -59,9 +62,34 @@ describe Rdkafka::Producer do
       topic: "produce_test_topic",
       delivery_report: report
     )
-    expect(message.partition).to eq 0
+
     expect(message.payload.force_encoding("utf-8")).to eq "Τη γλώσσα μου έδωσαν ελληνική"
-    expect(message.key).to eq "key 1"
+    expect(message.key).to eq "key utf8"
+  end
+
+  it "should produce a message with a timestamp" do
+    handle = producer.produce(
+      topic:     "produce_test_topic",
+      payload:   "Payload 1",
+      key:       "key timestamp",
+      timestamp: 1505069646000
+    )
+    expect(handle.pending?).to be true
+
+    # Check delivery handle and report
+    report = handle.wait(5)
+
+    # Close producer
+    producer.close
+
+    # Consume message and verify it's content
+    message = wait_for_message(
+      topic: "produce_test_topic",
+      delivery_report: report
+    )
+
+    expect(message.key).to eq "key timestamp"
+    expect(message.timestamp).to eq 1505069646000
   end
 
   it "should raise a timeout error when waiting too long" do

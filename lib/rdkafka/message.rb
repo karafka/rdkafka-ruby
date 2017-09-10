@@ -1,6 +1,6 @@
 module Rdkafka
   class Message
-    attr_reader :topic, :partition, :payload, :key, :offset
+    attr_reader :topic, :partition, :payload, :key, :offset, :timestamp
 
     def initialize(native_message)
       unless native_message[:rkt].null?
@@ -14,6 +14,7 @@ module Rdkafka
         @key = native_message[:key].read_string(native_message[:key_len])
       end
       @offset = native_message[:offset]
+      @timestamp = FFI.rd_kafka_message_timestamp(native_message, nil)
     end
 
     def to_s

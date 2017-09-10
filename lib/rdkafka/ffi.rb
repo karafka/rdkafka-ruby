@@ -35,6 +35,7 @@ module Rdkafka
     end
 
     attach_function :rd_kafka_message_destroy, [:pointer], :void
+    attach_function :rd_kafka_message_timestamp, [:pointer, :pointer], :int64
     attach_function :rd_kafka_topic_new, [:pointer, :string, :pointer], :pointer
     attach_function :rd_kafka_topic_name, [:pointer], :string
 

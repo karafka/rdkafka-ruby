@@ -70,4 +70,8 @@ describe Rdkafka::Message do
   it "should have an offset" do
     expect(subject.offset).to eq 100
   end
+
+  it "should have a timestamp" do
+    expect(subject.timestamp).to be > 0
+  end
 end

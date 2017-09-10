@@ -18,7 +18,7 @@ module Rdkafka
     end
 
     def to_s
-      "Message in '#{topic}' with key '#{key}', payload '#{payload}', partition '#{partition}', offset '#{offset}'"
+      "Message in '#{topic}' with key '#{key}', payload '#{payload}', partition #{partition}, offset #{offset}, timestamp #{timestamp}"
     end
   end
 end

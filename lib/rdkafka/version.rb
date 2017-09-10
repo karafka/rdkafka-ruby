@@ -1,4 +1,4 @@
 module Rdkafka
-  VERSION = "0.1.10"
+  VERSION = "0.1.11"
   LIBRDKAFKA_VERSION = "0.11.0"
 end

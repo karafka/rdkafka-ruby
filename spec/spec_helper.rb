@@ -5,7 +5,7 @@ require "rdkafka"
 def rdkafka_config
   config = {
     :"bootstrap.servers" => "localhost:9092",
-    :"group.id" => "ruby-test-#{Random.new.rand(0..10_000)}",
+    :"group.id" => "ruby-test-#{Random.new.rand(0..1_000_000)}",
     :"auto.offset.reset" => "earliest",
     :"enable.partition.eof" => false
   }
@@ -23,7 +23,6 @@ def native_client
 end
 
 def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30)
-  offset = delivery_report.offset - 1
   consumer = rdkafka_config.consumer
   consumer.subscribe(topic)
   timeout = Time.now.to_i + timeout_in_seconds
@@ -32,7 +31,9 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30)
       raise "Timeout of #{timeout_in_seconds} seconds reached in wait_for_message"
     end
     message = consumer.poll(100)
-    if message && message.offset == offset
+    if message &&
+        message.partition == delivery_report.partition &&
+        message.offset == delivery_report.offset - 1
       return message
     end
   end

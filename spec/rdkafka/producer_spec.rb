@@ -63,6 +63,7 @@ describe Rdkafka::Producer do
       delivery_report: report
     )
 
+    expect(message.partition).to eq 1
     expect(message.payload.force_encoding("utf-8")).to eq "Τη γλώσσα μου έδωσαν ελληνική"
     expect(message.key).to eq "key utf8"
   end
@@ -70,7 +71,7 @@ describe Rdkafka::Producer do
   it "should produce a message with a timestamp" do
     handle = producer.produce(
       topic:     "produce_test_topic",
-      payload:   "Payload 1",
+      payload:   "Payload timestamp",
       key:       "key timestamp",
       timestamp: 1505069646000
     )
@@ -88,6 +89,7 @@ describe Rdkafka::Producer do
       delivery_report: report
     )
 
+    expect(message.partition).to eq 2
     expect(message.key).to eq "key timestamp"
     expect(message.timestamp).to eq 1505069646000
   end

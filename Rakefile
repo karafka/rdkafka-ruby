@@ -2,8 +2,13 @@ require "./lib/rdkafka"
 
 task :create_topics do
   puts "Creating test topics"
-  `kafka-topics --create --topic=produce_test_topic --zookeeper=127.0.0.1:2181 --partitions=3 --replication-factor=1`
-  `kafka-topics --create --topic=rake_test_topic --zookeeper=127.0.0.1:2181 --partitions=3 --replication-factor=1`
+  kafka_topics = if ENV['TRAVIS']
+                   'kafka/bin/kafka-topics.sh'
+                 else
+                   'kafka-topics'
+                 end
+  `#{kafka_topics} --create --topic=produce_test_topic --zookeeper=127.0.0.1:2181 --partitions=3 --replication-factor=1`
+  `#{kafka_topics} --create --topic=rake_test_topic --zookeeper=127.0.0.1:2181 --partitions=3 --replication-factor=1`
 end
 
 task :produce_messages do

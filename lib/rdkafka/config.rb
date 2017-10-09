@@ -5,9 +5,11 @@ module Rdkafka
   # the consumer and producer methods to create a client. Documentation of the available
   # configuration options is available on https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md.
   class Config
+    # @private
     @@logger = Logger.new(STDOUT)
 
-    # Returns the current logger
+    # Returns the current logger, by default this is a logger to stdout.
+    #
     # @return [Logger]
     def self.logger
       @@logger
@@ -22,13 +24,15 @@ module Rdkafka
       @@logger=logger
     end
 
+    # Default config that can be overwritten.
     DEFAULT_CONFIG = {
       # Request api version so advanced features work
       :"api.version.request" => true
     }.freeze
 
+    # Required config that cannot be overwritten.
     REQUIRED_CONFIG = {
-      # Enable log queues so we get callbacks in our own threads
+      # Enable log queues so we get callbacks in our own Ruby threads
       :"log.queue" => true
     }.freeze
 

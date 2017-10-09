@@ -4,3 +4,4 @@ ext/tmp
 ext/librdkafka.*
 *.gem
 .yardoc
+doc

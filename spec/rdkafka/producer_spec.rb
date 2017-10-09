@@ -102,6 +102,6 @@ describe Rdkafka::Producer do
     )
     expect {
       handle.wait(0)
-    }.to raise_error Rdkafka::WaitTimeoutError
+    }.to raise_error Rdkafka::Producer::WaitTimeoutError
   end
 end

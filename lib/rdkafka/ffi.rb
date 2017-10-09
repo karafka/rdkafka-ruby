@@ -2,6 +2,7 @@ require "ffi"
 require "logger"
 
 module Rdkafka
+  # @private
   module FFI
     extend ::FFI::Library
 
@@ -144,7 +145,7 @@ module Rdkafka
       :void, [:pointer, :pointer, :pointer]
     ) do |client_ptr, message_ptr, opaque_ptr|
       message = Message.new(message_ptr)
-      delivery_handle = Rdkafka::DeliveryHandle.new(message[:_private])
+      delivery_handle = Rdkafka::Producer::DeliveryHandle.new(message[:_private])
       delivery_handle[:pending] = false
       delivery_handle[:response] = message[:err]
       delivery_handle[:partition] = message[:partition]

@@ -7,10 +7,17 @@ module Rdkafka
   class Config
     @@logger = Logger.new(STDOUT)
 
+    # Returns the current logger
+    # @return [Logger]
     def self.logger
       @@logger
     end
 
+    # Set the logger that will be used for all logging output by this library.
+    #
+    # @param logger [Logger] The logger to be used
+    #
+    # @return [nil]
     def self.logger=(logger)
       @@logger=logger
     end
@@ -25,18 +32,40 @@ module Rdkafka
       :"log.queue" => true
     }.freeze
 
+    # Returns a new config with the provided options which are merged with `DEFAULT_CONFIG`.
+    #
+    # @param config_hash [Hash] The config options for rdkafka
+    #
+    # @return [Config]
     def initialize(config_hash = {})
       @config_hash = DEFAULT_CONFIG.merge(config_hash)
     end
 
+    # Set a config option.
+    #
+    # @param key [String] The config option's key
+    # @param value [String] The config option's value
+    #
+    # @return [nil]
     def []=(key, value)
       @config_hash[key] = value
     end
 
+    # Get a config option with the specified key
+    #
+    # @param key [String] The config option's key
+    #
+    # @return [String, nil] The config option or `nil` if it is not present
     def [](key)
       @config_hash[key]
     end
 
+    # Create a consumer with this configuration.
+    #
+    # @raise [ConfigError] When the configuration contains invalid options
+    # @raise [ClientCreationError] When the native client cannot be created
+    #
+    # @return [Consumer] The created consumer
     def consumer
       kafka = native_kafka(native_config, :rd_kafka_consumer)
       # Redirect the main queue to the consumer
@@ -45,6 +74,12 @@ module Rdkafka
       Rdkafka::Consumer.new(kafka)
     end
 
+    # Create a producer with this configuration.
+    #
+    # @raise [ConfigError] When the configuration contains invalid options
+    # @raise [ClientCreationError] When the native client cannot be created
+    #
+    # @return [Producer] The created producer
     def producer
       # Create Kafka config
       config = native_config
@@ -54,7 +89,10 @@ module Rdkafka
       Rdkafka::Producer.new(native_kafka(config, :rd_kafka_producer))
     end
 
+    # Error that is returned by the underlying rdkafka error if an invalid configuration option is present.
     class ConfigError < RuntimeError; end
+
+    # Error that is returned by the underlying rdkafka library if the client cannot be created.
     class ClientCreationError < RuntimeError; end
 
     private

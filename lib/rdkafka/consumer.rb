@@ -79,7 +79,7 @@ module Rdkafka
           raise Rdkafka::RdkafkaError.new(native_message[:err])
         end
         # Create a message to pass out
-        Rdkafka::Message.new(native_message)
+        Rdkafka::Consumer::Message.new(native_message)
       end
     ensure
       # Clean up rdkafka message if there is one

@@ -1,6 +1,6 @@
 require "spec_helper"
 
-describe Rdkafka::Message do
+describe Rdkafka::Consumer::Message do
   let(:native_topic) do
     Rdkafka::FFI.rd_kafka_topic_new(
       native_client,
@@ -29,7 +29,7 @@ describe Rdkafka::Message do
       end
     end
   end
-  subject { Rdkafka::Message.new(native_message) }
+  subject { Rdkafka::Consumer::Message.new(native_message) }
 
   it "should have a topic" do
     expect(subject.topic).to eq "topic_name"

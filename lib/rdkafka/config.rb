@@ -21,6 +21,7 @@ module Rdkafka
     #
     # @return [nil]
     def self.logger=(logger)
+      raise NoLoggerError if logger.nil?
       @@logger=logger
     end
 
@@ -36,9 +37,9 @@ module Rdkafka
       :"log.queue" => true
     }.freeze
 
-    # Returns a new config with the provided options which are merged with `DEFAULT_CONFIG`.
+    # Returns a new config with the provided options which are merged with {DEFAULT_CONFIG}.
     #
-    # @param config_hash [Hash] The config options for rdkafka
+    # @param config_hash [Hash<String,Symbol => String>] The config options for rdkafka
     #
     # @return [Config]
     def initialize(config_hash = {})
@@ -98,6 +99,9 @@ module Rdkafka
 
     # Error that is returned by the underlying rdkafka library if the client cannot be created.
     class ClientCreationError < RuntimeError; end
+
+    # Error that is raised when trying to set a nil logger
+    class NoLoggerError < RuntimeError; end
 
     private
 

@@ -114,7 +114,7 @@ module Rdkafka
       # If there is a timeout this does not mean the message is not delivered, rdkafka might still be working on delivering the message.
       # In this case it is possible to call wait again.
       #
-      # @param timeout_in_seconds [Integer] Number of seconds to wait before timing out. If this is nil it does not time out.
+      # @param timeout_in_seconds [Integer, nil] Number of seconds to wait before timing out. If this is nil it does not time out.
       #
       # @raise [RdkafkaError] When delivering the message failed
       # @raise [WaitTimeoutError] When the timeout has been reached and the handle is still pending

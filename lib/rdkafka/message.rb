@@ -1,7 +1,31 @@
 module Rdkafka
+  # A message that was consumed from a topic.
   class Message
-    attr_reader :topic, :partition, :payload, :key, :offset, :timestamp
+    # The topic this message was consumed from
+    # @return [String]
+    attr_reader :topic
 
+    # The partition this message was consumed from
+    # @return [Integer]
+    attr_reader :partition
+
+    # This message's payload
+    # @return [String, nil]
+    attr_reader :payload
+
+    # This message's key
+    # @return [String, nil]
+    attr_reader :key
+
+    # This message's offset in it's partition
+    # @return [Integer]
+    attr_reader :offset
+
+    # This message's timestamp, if provided by the broker
+    # @return [Integer, nil]
+    attr_reader :timestamp
+
+    # @private
     def initialize(native_message)
       unless native_message[:rkt].null?
         @topic = FFI.rd_kafka_topic_name(native_message[:rkt])
@@ -17,6 +41,7 @@ module Rdkafka
       @timestamp = FFI.rd_kafka_message_timestamp(native_message, nil)
     end
 
+    # @return [String]
     def to_s
       "Message in '#{topic}' with key '#{key}', payload '#{payload}', partition #{partition}, offset #{offset}, timestamp #{timestamp}"
     end

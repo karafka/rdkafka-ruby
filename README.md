@@ -12,7 +12,45 @@ This gem only provides a high-level Kafka consumer. If you are running
 an older version of Kafka and/or need the legacy simple consumer we
 suggest using the [Hermann](https://github.com/reiseburo/hermann) gem.
 
-Documentation is available on [RubyDoc](http://www.rubydoc.info/github/thijsc/rdkafka-ruby/master).
+## Installation
+
+This gem downloads and compiles librdkafka when it is installed. If you
+have any problems installing the gem please open an issue.
+
+## Usage
+
+See the [documentation](http://www.rubydoc.info/github/thijsc/rdkafka-ruby/master) for full details on how to use this gem. Two quick examples:
+
+### Consuming messages
+
+```ruby
+config = {
+  :"bootstrap.servers" => "localhost:9092",
+  :"group.id" => "ruby-test"
+}
+consumer = Rdkafka::Config.new(config).consumer
+consumer.subscribe("ruby-test-topic")
+
+consumer.each do |message|
+  puts "Message received: #{message}"
+end
+```
+
+### Producing messages
+
+```ruby
+config = {:"bootstrap.servers" => "localhost:9092"}
+producer = Rdkafka::Config.new(config).producer
+
+100.times do |i|
+  puts "Producing message #{i}"
+  producer.produce(
+      topic:   "ruby-test-topic",
+      payload: "Payload #{i}",
+      key:     "Key #{i}"
+  ).wait
+end
+```
 
 ## Development
 

@@ -2,7 +2,7 @@ require "spec_helper"
 
 describe Rdkafka::Consumer::Message do
   let(:native_topic) do
-    Rdkafka::FFI.rd_kafka_topic_new(
+    Rdkafka::Bindings.rd_kafka_topic_new(
       native_client,
       "topic_name",
       nil
@@ -11,18 +11,18 @@ describe Rdkafka::Consumer::Message do
   let(:payload) { nil }
   let(:key) { nil }
   let(:native_message) do
-    Rdkafka::FFI::Message.new.tap do |message|
+    Rdkafka::Bindings::Message.new.tap do |message|
       message[:rkt] = native_topic
       message[:partition] = 3
       message[:offset] = 100
       if payload
-        ptr = ::FFI::MemoryPointer.new(:char, payload.bytesize)
+        ptr = FFI::MemoryPointer.new(:char, payload.bytesize)
         ptr.put_bytes(0, payload)
         message[:payload] = ptr
         message[:len] = payload.bytesize
       end
       if key
-        ptr = ::FFI::MemoryPointer.new(:char, key.bytesize)
+        ptr = FFI::MemoryPointer.new(:char, key.bytesize)
         ptr.put_bytes(0, key)
         message[:key] = ptr
         message[:key_len] = key.bytesize

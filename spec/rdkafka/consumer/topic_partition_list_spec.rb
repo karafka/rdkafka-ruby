@@ -2,8 +2,8 @@ require "spec_helper"
 
 describe Rdkafka::Consumer::TopicPartitionList do
   it "should create a list from an existing native list" do
-    pointer = Rdkafka::FFI.rd_kafka_topic_partition_list_new(5)
-    Rdkafka::FFI.rd_kafka_topic_partition_list_add(
+    pointer = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(5)
+    Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
       pointer,
       "topic",
       -1

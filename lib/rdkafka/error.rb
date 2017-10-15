@@ -14,7 +14,7 @@ module Rdkafka
     # This error's code, for example `:partition_eof`, `:msg_size_too_large`.
     # @return [Symbol]
     def code
-      code = Rdkafka::FFI.rd_kafka_err2name(@rdkafka_response).downcase
+      code = Rdkafka::Bindings.rd_kafka_err2name(@rdkafka_response).downcase
       if code[0] == "_"
         code[1..-1].to_sym
       else
@@ -25,7 +25,7 @@ module Rdkafka
     # Human readable representation of this error.
     # @return [String]
     def to_s
-      "#{Rdkafka::FFI.rd_kafka_err2str(@rdkafka_response)} (#{code})"
+      "#{Rdkafka::Bindings.rd_kafka_err2str(@rdkafka_response)} (#{code})"
     end
 
     # Whether this error indicates the partition is EOF.

@@ -16,7 +16,7 @@ module Rdkafka
     # Close this consumer
     # @return [nil]
     def close
-      Rdkafka::FFI.rd_kafka_consumer_close(@native_kafka)
+      Rdkafka::Bindings.rd_kafka_consumer_close(@native_kafka)
     end
 
     # Subscribe to one or more topics letting Kafka handle partition assignments.
@@ -28,22 +28,22 @@ module Rdkafka
     # @return [nil]
     def subscribe(*topics)
       # Create topic partition list with topics and no partition set
-      tpl = Rdkafka::FFI.rd_kafka_topic_partition_list_new(topics.length)
+      tpl = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(topics.length)
       topics.each do |topic|
-        Rdkafka::FFI.rd_kafka_topic_partition_list_add(
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
           tpl,
           topic,
           -1
         )
       end
       # Subscribe to topic partition list and check this was successful
-      response = Rdkafka::FFI.rd_kafka_subscribe(@native_kafka, tpl)
+      response = Rdkafka::Bindings.rd_kafka_subscribe(@native_kafka, tpl)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
     ensure
       # Clean up the topic partition list
-      Rdkafka::FFI.rd_kafka_topic_partition_list_destroy(tpl)
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl)
     end
 
     # Unsubscribe from all subscribed topics.
@@ -52,7 +52,7 @@ module Rdkafka
     #
     # @return [nil]
     def unsubscribe
-      response = Rdkafka::FFI.rd_kafka_unsubscribe(@native_kafka)
+      response = Rdkafka::Bindings.rd_kafka_unsubscribe(@native_kafka)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
@@ -64,8 +64,8 @@ module Rdkafka
     #
     # @return [TopicPartitionList]
     def subscription
-      tpl = ::FFI::MemoryPointer.new(:pointer)
-      response = Rdkafka::FFI.rd_kafka_subscription(@native_kafka, tpl)
+      tpl = FFI::MemoryPointer.new(:pointer)
+      response = Rdkafka::Bindings.rd_kafka_subscription(@native_kafka, tpl)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
@@ -80,7 +80,7 @@ module Rdkafka
     #
     # @return [nil]
     def commit(async=false)
-      response = Rdkafka::FFI.rd_kafka_commit(@native_kafka, nil, async)
+      response = Rdkafka::Bindings.rd_kafka_commit(@native_kafka, nil, async)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
@@ -94,12 +94,12 @@ module Rdkafka
     #
     # @return [Message, nil] A message or nil if there was no new message within the timeout
     def poll(timeout_ms)
-      message_ptr = Rdkafka::FFI.rd_kafka_consumer_poll(@native_kafka, timeout_ms)
+      message_ptr = Rdkafka::Bindings.rd_kafka_consumer_poll(@native_kafka, timeout_ms)
       if message_ptr.null?
         nil
       else
         # Create struct wrapper
-        native_message = Rdkafka::FFI::Message.new(message_ptr)
+        native_message = Rdkafka::Bindings::Message.new(message_ptr)
         # Raise error if needed
         if native_message[:err] != 0
           raise Rdkafka::RdkafkaError.new(native_message[:err])
@@ -110,7 +110,7 @@ module Rdkafka
     ensure
       # Clean up rdkafka message if there is one
       unless message_ptr.null?
-        Rdkafka::FFI.rd_kafka_message_destroy(message_ptr)
+        Rdkafka::Bindings.rd_kafka_message_destroy(message_ptr)
       end
     end
 

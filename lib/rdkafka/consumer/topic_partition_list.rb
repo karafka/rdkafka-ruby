@@ -4,15 +4,15 @@ module Rdkafka
     class TopicPartitionList
       # Create a new topic partition list.
       #
-      # @param pointer [::FFI::Pointer, nil] Optional pointer to an existing native list
+      # @param pointer [FFI::Pointer, nil] Optional pointer to an existing native list
       #
       # @return [TopicPartitionList]
       def initialize(pointer=nil)
         @tpl =
-          Rdkafka::FFI::TopicPartitionList.new(
-            ::FFI::AutoPointer.new(
-              pointer || Rdkafka::FFI.rd_kafka_topic_partition_list_new(5),
-              Rdkafka::FFI.method(:rd_kafka_topic_partition_list_destroy)
+          Rdkafka::Bindings::TopicPartitionList.new(
+            FFI::AutoPointer.new(
+              pointer || Rdkafka::Bindings.rd_kafka_topic_partition_list_new(5),
+              Rdkafka::Bindings.method(:rd_kafka_topic_partition_list_destroy)
             )
         )
       end
@@ -45,7 +45,7 @@ module Rdkafka
       #
       # @return [nil]
       def add_topic_partition(topic, partition)
-        Rdkafka::FFI.rd_kafka_topic_partition_list_add(
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
           @tpl,
           topic,
           partition
@@ -58,8 +58,8 @@ module Rdkafka
       def to_h
         {}.tap do |out|
           count.times do |i|
-            ptr = @tpl[:elems] + (i * Rdkafka::FFI::TopicPartition.size)
-            elem = Rdkafka::FFI::TopicPartition.new(ptr)
+            ptr = @tpl[:elems] + (i * Rdkafka::Bindings::TopicPartition.size)
+            elem = Rdkafka::Bindings::TopicPartition.new(ptr)
             if elem[:partition] == -1
               out[elem[:topic]] = nil
             else

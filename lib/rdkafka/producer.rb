@@ -8,9 +8,9 @@ module Rdkafka
       # Start thread to poll client for delivery callbacks
       @polling_thread = Thread.new do
         loop do
-          Rdkafka::FFI.rd_kafka_poll(@native_kafka, 250)
+          Rdkafka::Bindings.rd_kafka_poll(@native_kafka, 250)
           # Exit thread if closing and the poll queue is empty
-          if @closing && Rdkafka::FFI.rd_kafka_outq_len(@native_kafka) == 0
+          if @closing && Rdkafka::Bindings.rd_kafka_outq_len(@native_kafka) == 0
             break
           end
         end
@@ -71,16 +71,16 @@ module Rdkafka
       delivery_handle[:offset] = -1
 
       # Produce the message
-      response = Rdkafka::FFI.rd_kafka_producev(
+      response = Rdkafka::Bindings.rd_kafka_producev(
         @native_kafka,
-        :int, Rdkafka::FFI::RD_KAFKA_VTYPE_TOPIC, :string, topic,
-        :int, Rdkafka::FFI::RD_KAFKA_VTYPE_MSGFLAGS, :int, Rdkafka::FFI::RD_KAFKA_MSG_F_COPY,
-        :int, Rdkafka::FFI::RD_KAFKA_VTYPE_VALUE, :buffer_in, payload, :size_t, payload_size,
-        :int, Rdkafka::FFI::RD_KAFKA_VTYPE_KEY, :buffer_in, key, :size_t, key_size,
-        :int, Rdkafka::FFI::RD_KAFKA_VTYPE_PARTITION, :int32, partition,
-        :int, Rdkafka::FFI::RD_KAFKA_VTYPE_TIMESTAMP, :int64, timestamp,
-        :int, Rdkafka::FFI::RD_KAFKA_VTYPE_OPAQUE, :pointer, delivery_handle,
-        :int, Rdkafka::FFI::RD_KAFKA_VTYPE_END
+        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_TOPIC, :string, topic,
+        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_MSGFLAGS, :int, Rdkafka::Bindings::RD_KAFKA_MSG_F_COPY,
+        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_VALUE, :buffer_in, payload, :size_t, payload_size,
+        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_KEY, :buffer_in, key, :size_t, key_size,
+        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_PARTITION, :int32, partition,
+        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_TIMESTAMP, :int64, timestamp,
+        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_OPAQUE, :pointer, delivery_handle,
+        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_END
       )
 
       # Raise error if the produce call was not successfull

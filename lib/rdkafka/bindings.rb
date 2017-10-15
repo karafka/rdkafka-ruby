@@ -3,8 +3,8 @@ require "logger"
 
 module Rdkafka
   # @private
-  module FFI
-    extend ::FFI::Library
+  module Bindings
+    extend FFI::Library
 
     def self.lib_extension
       if Gem::Platform.local.os.include?("darwin")
@@ -23,7 +23,7 @@ module Rdkafka
 
     # Message struct
 
-    class Message < ::FFI::Struct
+    class Message < FFI::Struct
       layout :err, :int,
              :rkt, :pointer,
              :partition, :int32,
@@ -42,7 +42,7 @@ module Rdkafka
 
     # TopicPartition ad TopicPartitionList structs
 
-    class TopicPartition < ::FFI::Struct
+    class TopicPartition < FFI::Struct
      layout :topic, :string,
              :partition, :int32,
              :offset, :int64,
@@ -53,7 +53,7 @@ module Rdkafka
              :_private, :pointer
     end
 
-    class TopicPartitionList < ::FFI::Struct
+    class TopicPartitionList < FFI::Struct
       layout :cnt, :int,
              :size, :int,
              :elems, :pointer
@@ -85,7 +85,7 @@ module Rdkafka
     attach_function :rd_kafka_set_log_queue, [:pointer, :pointer], :void
     attach_function :rd_kafka_queue_get_main, [:pointer], :pointer
 
-    LogCallback = ::FFI::Function.new(
+    LogCallback = FFI::Function.new(
       :void, [:pointer, :int, :string, :string]
     ) do |_client_ptr, level, _level_string, line|
       severity = case level
@@ -143,7 +143,7 @@ module Rdkafka
     callback :delivery_cb, [:pointer, :pointer, :pointer], :void
     attach_function :rd_kafka_conf_set_dr_msg_cb, [:pointer, :delivery_cb], :void
 
-    DeliveryCallback = ::FFI::Function.new(
+    DeliveryCallback = FFI::Function.new(
       :void, [:pointer, :pointer, :pointer]
     ) do |client_ptr, message_ptr, opaque_ptr|
       message = Message.new(message_ptr)

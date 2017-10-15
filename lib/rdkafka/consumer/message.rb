@@ -29,7 +29,7 @@ module Rdkafka
       # @private
       def initialize(native_message)
         unless native_message[:rkt].null?
-          @topic = FFI.rd_kafka_topic_name(native_message[:rkt])
+          @topic = Rdkafka::Bindings.rd_kafka_topic_name(native_message[:rkt])
         end
         @partition = native_message[:partition]
         unless native_message[:payload].null?
@@ -39,7 +39,7 @@ module Rdkafka
           @key = native_message[:key].read_string(native_message[:key_len])
         end
         @offset = native_message[:offset]
-        @timestamp = FFI.rd_kafka_message_timestamp(native_message, nil)
+        @timestamp = Rdkafka::Bindings.rd_kafka_message_timestamp(native_message, nil)
       end
 
       # @return [String]

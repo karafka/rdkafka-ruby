@@ -78,4 +78,32 @@ describe Rdkafka::Consumer::Message do
       subject.timestamp
     }.not_to raise_error
   end
+
+  describe "#to_s" do
+    before do
+      allow(subject).to receive(:timestamp).and_return(1000)
+    end
+
+    it "should have a human readable representation" do
+      expect(subject.to_s).to eq "<Message in 'topic_name' with key '', payload '', partition 3, offset 100, timestamp 1000>"
+    end
+
+    context "with key and payload" do
+      let(:key) { "key" }
+      let(:payload) { "payload" }
+
+      it "should have a human readable representation" do
+        expect(subject.to_s).to eq "<Message in 'topic_name' with key 'key', payload 'payload', partition 3, offset 100, timestamp 1000>"
+      end
+    end
+
+    context "with a very long key and payload" do
+      let(:key) { "k" * 100_000 }
+      let(:payload) { "p" * 100_000 }
+
+      it "should have a human readable representation" do
+        expect(subject.to_s).to eq "<Message in 'topic_name' with key 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk...', payload 'pppppppppppppppppppppppppppppppppppppppp...', partition 3, offset 100, timestamp 1000>"
+      end
+    end
+  end
 end

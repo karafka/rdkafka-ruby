@@ -42,9 +42,18 @@ module Rdkafka
         @timestamp = Rdkafka::Bindings.rd_kafka_message_timestamp(native_message, nil)
       end
 
+      # Human readable representation of this message.
       # @return [String]
       def to_s
-        "Message in '#{topic}' with key '#{key}', payload '#{payload}', partition #{partition}, offset #{offset}, timestamp #{timestamp}"
+        "<Message in '#{topic}' with key '#{truncate(key)}', payload '#{truncate(payload)}', partition #{partition}, offset #{offset}, timestamp #{timestamp}>"
+      end
+
+      def truncate(string)
+        if string && string.length > 40
+          "#{string[0..39]}..."
+        else
+          string
+        end
       end
     end
   end

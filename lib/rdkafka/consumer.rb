@@ -19,7 +19,7 @@ module Rdkafka
       Rdkafka::FFI.rd_kafka_consumer_close(@native_kafka)
     end
 
-    # Subscribe to one or more topics
+    # Subscribe to one or more topics letting Kafka handle partition assignments.
     #
     # @param topics [Array<String>] One or more topic names
     #
@@ -44,6 +44,32 @@ module Rdkafka
     ensure
       # Clean up the topic partition list
       Rdkafka::FFI.rd_kafka_topic_partition_list_destroy(tpl)
+    end
+
+    # Unsubscribe from all subscribed topics.
+    #
+    # @raise [RdkafkaError] When unsubscribing fails
+    #
+    # @return [nil]
+    def unsubscribe
+      response = Rdkafka::FFI.rd_kafka_unsubscribe(@native_kafka)
+      if response != 0
+        raise Rdkafka::RdkafkaError.new(response)
+      end
+    end
+
+    # Return the current subscription to topics and partitions
+    #
+    # @raise [RdkafkaError] When getting the subscription fails.
+    #
+    # @return [TopicPartitionList]
+    def subscription
+      tpl = ::FFI::MemoryPointer.new(:pointer)
+      response = Rdkafka::FFI.rd_kafka_subscription(@native_kafka, tpl)
+      if response != 0
+        raise Rdkafka::RdkafkaError.new(response)
+      end
+      Rdkafka::Consumer::TopicPartitionList.new(tpl.get_pointer(0))
     end
 
     # Commit the current offsets of this consumer

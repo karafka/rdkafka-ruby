@@ -43,7 +43,7 @@ module Rdkafka
     # TopicPartition ad TopicPartitionList structs
 
     class TopicPartition < ::FFI::Struct
-      layout :topic, :string,
+     layout :topic, :string,
              :partition, :int32,
              :offset, :int64,
              :metadata, :pointer,
@@ -56,7 +56,7 @@ module Rdkafka
     class TopicPartitionList < ::FFI::Struct
       layout :cnt, :int,
              :size, :int,
-             :elems, TopicPartition.ptr
+             :elems, :pointer
     end
 
     attach_function :rd_kafka_topic_partition_list_new, [:int32], :pointer
@@ -118,6 +118,8 @@ module Rdkafka
     # Consumer
 
     attach_function :rd_kafka_subscribe, [:pointer, :pointer], :int
+    attach_function :rd_kafka_unsubscribe, [:pointer], :int
+    attach_function :rd_kafka_subscription, [:pointer, :pointer], :int
     attach_function :rd_kafka_commit, [:pointer, :pointer, :bool], :int, blocking: true
     attach_function :rd_kafka_poll_set_consumer, [:pointer], :void
     attach_function :rd_kafka_consumer_poll, [:pointer, :int], :pointer, blocking: true

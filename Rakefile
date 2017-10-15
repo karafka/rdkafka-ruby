@@ -7,6 +7,7 @@ task :create_topics do
                  else
                    'kafka-topics'
                  end
+  `#{kafka_topics} --create --topic=consume_test_topic --zookeeper=127.0.0.1:2181 --partitions=3 --replication-factor=1`
   `#{kafka_topics} --create --topic=produce_test_topic --zookeeper=127.0.0.1:2181 --partitions=3 --replication-factor=1`
   `#{kafka_topics} --create --topic=rake_test_topic --zookeeper=127.0.0.1:2181 --partitions=3 --replication-factor=1`
 end

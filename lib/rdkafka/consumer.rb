@@ -93,6 +93,34 @@ module Rdkafka
       Rdkafka::Consumer::TopicPartitionList.new(tpl)
     end
 
+    # Query broker for low (oldest/beginning) and high (newest/end) offsets for a partition.
+    #
+    # @param topic [String] The topic to query
+    # @param partition [Integer] The partition to query
+    # @param timeout_ms [Integer] The timeout for querying the broker
+    #
+    # @raise [RdkafkaError] When querying the broker fails.
+    #
+    # @return [Integer] The low and high watermark
+    def query_watermark_offsets(topic, partition, timeout_ms=200)
+      low = FFI::MemoryPointer.new(:int64, 1)
+      high = FFI::MemoryPointer.new(:int64, 1)
+
+      response = Rdkafka::Bindings.rd_kafka_query_watermark_offsets(
+        @native_kafka,
+        topic,
+        partition,
+        low,
+        high,
+        timeout_ms
+      )
+      if response != 0
+        raise Rdkafka::RdkafkaError.new(response)
+      end
+
+      return low.read_int, high.read_int
+    end
+
     # Commit the current offsets of this consumer
     #
     # @param async [Boolean] Whether to commit async or wait for the commit to finish

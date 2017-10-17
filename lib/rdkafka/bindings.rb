@@ -128,6 +128,10 @@ module Rdkafka
     attach_function :rd_kafka_consumer_poll, [:pointer, :int], :pointer, blocking: true
     attach_function :rd_kafka_consumer_close, [:pointer], :void, blocking: true
 
+    # Stats
+
+    attach_function :rd_kafka_query_watermark_offsets, [:pointer, :string, :int, :pointer, :pointer, :int], :int
+
     # Producer
 
     RD_KAFKA_VTYPE_END = 0

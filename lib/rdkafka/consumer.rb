@@ -72,6 +72,27 @@ module Rdkafka
       Rdkafka::Consumer::TopicPartitionList.new(tpl.get_pointer(0))
     end
 
+    # Return the current committed offset per partition for this consumer group.
+    # The offset field of each requested partition will either be set to stored offset or to -1001 in case there was no stored offset for that partition.
+    #
+    # @param list [TopicPartitionList] The topic with partitions to get the offsets for.
+    # @param timeout_ms [Integer] The timeout for fetching this information.
+    #
+    # @raise [RdkafkaError] When getting the committed positions fails.
+    #
+    # @return [TopicPartitionList]
+    def committed(list, timeout_ms=200)
+      unless list.is_a?(TopicPartitionList)
+        raise TypeError.new("list has to be a TopicPartitionList")
+      end
+      tpl = list.copy_tpl
+      response = Rdkafka::Bindings.rd_kafka_committed(@native_kafka, tpl, timeout_ms)
+      if response != 0
+        raise Rdkafka::RdkafkaError.new(response)
+      end
+      Rdkafka::Consumer::TopicPartitionList.new(tpl)
+    end
+
     # Commit the current offsets of this consumer
     #
     # @param async [Boolean] Whether to commit async or wait for the commit to finish

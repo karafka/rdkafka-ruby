@@ -22,8 +22,9 @@ def native_client
   config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer)
 end
 
-def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30)
-  consumer = rdkafka_config.consumer
+def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, config: nil)
+  config = rdkafka_config if config.nil?
+  consumer = config.consumer
   consumer.subscribe(topic)
   timeout = Time.now.to_i + timeout_in_seconds
   loop do
@@ -38,5 +39,6 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30)
     end
   end
 ensure
+  consumer.commit
   consumer.close
 end

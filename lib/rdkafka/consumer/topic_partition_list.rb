@@ -29,27 +29,28 @@ module Rdkafka
         count == 0
       end
 
-      # Adds a topic with unassigned partitions to the list.
+      # Add a topic with optionally partitions to the list.
       #
       # @param topic [String] The topic's name
+      # @param partition [Array<Integer>] The topic's partition's
       #
       # @return [nil]
-      def add_unassigned_topic(topic)
-        add_topic_partition(topic, -1)
-      end
-
-      # Adds a topic with a partition to the list.
-      #
-      # @param topic [String] The topic's name
-      # @param partition [Integer] The topic's partition
-      #
-      # @return [nil]
-      def add_topic_partition(topic, partition)
-        Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
-          @tpl,
-          topic,
-          partition
-        )
+      def add_topic(topic, partitions=nil)
+        if partitions.nil?
+          Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
+            @tpl,
+            topic,
+            -1
+          )
+        else
+          partitions.each do |partition|
+            Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
+              @tpl,
+              topic,
+              partition
+            )
+          end
+        end
       end
 
       # Return a `Hash` with the topics as keys and and an array of partition information as the value if present.

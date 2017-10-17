@@ -11,7 +11,7 @@ describe Rdkafka::Consumer::TopicPartitionList do
     list = Rdkafka::Consumer::TopicPartitionList.new(pointer)
 
     other = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-      list.add_unassigned_topic("topic")
+      list.add_topic("topic")
     end
 
     expect(list).to eq other
@@ -23,8 +23,8 @@ describe Rdkafka::Consumer::TopicPartitionList do
     expect(list.count).to eq 0
     expect(list.empty?).to be true
 
-    list.add_unassigned_topic("topic1")
-    list.add_unassigned_topic("topic2")
+    list.add_topic("topic1")
+    list.add_topic("topic2")
 
     expect(list.count).to eq 2
     expect(list.empty?).to be false
@@ -43,11 +43,8 @@ describe Rdkafka::Consumer::TopicPartitionList do
     expect(list.count).to eq 0
     expect(list.empty?).to be true
 
-    list.add_topic_partition("topic1", 0)
-    list.add_topic_partition("topic1", 1)
-    list.add_topic_partition("topic1", 2)
-    list.add_topic_partition("topic2", 0)
-    list.add_topic_partition("topic2", 1)
+    list.add_topic("topic1", [0, 1, 2])
+    list.add_topic("topic2", [0, 1])
 
     expect(list.count).to eq 5
     expect(list.empty?).to be false
@@ -68,8 +65,7 @@ describe Rdkafka::Consumer::TopicPartitionList do
   describe "#to_s" do
     it "should return a human readable representation" do
       list = Rdkafka::Consumer::TopicPartitionList.new
-      list.add_topic_partition("topic1", 0)
-      list.add_topic_partition("topic1", 1)
+      list.add_topic("topic1", [0, 1])
 
       expected = "<TopicPartitionList: {\"topic1\"=>[<Partition 0 with offset -1001>, <Partition 1 with offset -1001>]}>"
 
@@ -80,13 +76,13 @@ describe Rdkafka::Consumer::TopicPartitionList do
   describe "#==" do
     subject do
       Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-        list.add_topic_partition("topic1", 0)
+        list.add_topic("topic1", [0])
       end
     end
 
     it "should equal another partition with the same content" do
       other = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-        list.add_topic_partition("topic1", 0)
+        list.add_topic("topic1", [0])
       end
       expect(subject).to eq other
     end

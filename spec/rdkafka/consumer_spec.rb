@@ -11,7 +11,7 @@ describe Rdkafka::Consumer do
 
       expect(consumer.subscription).not_to be_empty
       expected_subscription = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-        list.add_unassigned_topic("consume_test_topic")
+        list.add_topic("consume_test_topic")
       end
       expect(consumer.subscription).to eq expected_subscription
 

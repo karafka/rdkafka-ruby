@@ -82,6 +82,12 @@ module Rdkafka
       def ==(other)
         self.to_h == other.to_h
       end
+
+      # Return a copy of the internal native list
+      # @private
+      def copy_tpl
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_copy(@tpl)
+      end
     end
   end
 end

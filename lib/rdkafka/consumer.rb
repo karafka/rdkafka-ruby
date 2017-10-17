@@ -72,6 +72,55 @@ module Rdkafka
       Rdkafka::Consumer::TopicPartitionList.new(tpl.get_pointer(0))
     end
 
+    # Return the current committed offset per partition for this consumer group.
+    # The offset field of each requested partition will either be set to stored offset or to -1001 in case there was no stored offset for that partition.
+    #
+    # @param list [TopicPartitionList] The topic with partitions to get the offsets for.
+    # @param timeout_ms [Integer] The timeout for fetching this information.
+    #
+    # @raise [RdkafkaError] When getting the committed positions fails.
+    #
+    # @return [TopicPartitionList]
+    def committed(list, timeout_ms=200)
+      unless list.is_a?(TopicPartitionList)
+        raise TypeError.new("list has to be a TopicPartitionList")
+      end
+      tpl = list.copy_tpl
+      response = Rdkafka::Bindings.rd_kafka_committed(@native_kafka, tpl, timeout_ms)
+      if response != 0
+        raise Rdkafka::RdkafkaError.new(response)
+      end
+      Rdkafka::Consumer::TopicPartitionList.new(tpl)
+    end
+
+    # Query broker for low (oldest/beginning) and high (newest/end) offsets for a partition.
+    #
+    # @param topic [String] The topic to query
+    # @param partition [Integer] The partition to query
+    # @param timeout_ms [Integer] The timeout for querying the broker
+    #
+    # @raise [RdkafkaError] When querying the broker fails.
+    #
+    # @return [Integer] The low and high watermark
+    def query_watermark_offsets(topic, partition, timeout_ms=200)
+      low = FFI::MemoryPointer.new(:int64, 1)
+      high = FFI::MemoryPointer.new(:int64, 1)
+
+      response = Rdkafka::Bindings.rd_kafka_query_watermark_offsets(
+        @native_kafka,
+        topic,
+        partition,
+        low,
+        high,
+        timeout_ms
+      )
+      if response != 0
+        raise Rdkafka::RdkafkaError.new(response)
+      end
+
+      return low.read_int, high.read_int
+    end
+
     # Commit the current offsets of this consumer
     #
     # @param async [Boolean] Whether to commit async or wait for the commit to finish

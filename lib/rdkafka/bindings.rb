@@ -62,6 +62,7 @@ module Rdkafka
     attach_function :rd_kafka_topic_partition_list_new, [:int32], :pointer
     attach_function :rd_kafka_topic_partition_list_add, [:pointer, :string, :int32], :void
     attach_function :rd_kafka_topic_partition_list_destroy, [:pointer], :void
+    attach_function :rd_kafka_topic_partition_list_copy, [:pointer], :pointer
 
     # Errors
 
@@ -120,10 +121,16 @@ module Rdkafka
     attach_function :rd_kafka_subscribe, [:pointer, :pointer], :int
     attach_function :rd_kafka_unsubscribe, [:pointer], :int
     attach_function :rd_kafka_subscription, [:pointer, :pointer], :int
+    attach_function :rd_kafka_assignment, [:pointer, :pointer], :int
+    attach_function :rd_kafka_committed, [:pointer, :pointer, :int], :int
     attach_function :rd_kafka_commit, [:pointer, :pointer, :bool], :int, blocking: true
     attach_function :rd_kafka_poll_set_consumer, [:pointer], :void
     attach_function :rd_kafka_consumer_poll, [:pointer, :int], :pointer, blocking: true
     attach_function :rd_kafka_consumer_close, [:pointer], :void, blocking: true
+
+    # Stats
+
+    attach_function :rd_kafka_query_watermark_offsets, [:pointer, :string, :int, :pointer, :pointer, :int], :int
 
     # Producer
 

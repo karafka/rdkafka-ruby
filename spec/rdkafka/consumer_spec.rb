@@ -23,7 +23,7 @@ describe Rdkafka::Consumer do
     end
   end
 
-  context "close" do
+  context "#close" do
     it "should close a consumer" do
       consumer.subscribe("consume_test_topic")
       consumer.close
@@ -31,7 +31,7 @@ describe Rdkafka::Consumer do
     end
   end
 
-  describe "committed" do
+  describe "#committed" do
     before do
       # Make sure there's a stored offset
       report = producer.produce(
@@ -58,7 +58,7 @@ describe Rdkafka::Consumer do
     end
   end
 
-  describe "watermark offsets" do
+  describe "#query_watermark_offsets" do
     it "should return the watermark offsets" do
       # Make sure there's a message
       producer.produce(
@@ -74,7 +74,7 @@ describe Rdkafka::Consumer do
     end
   end
 
-  describe "poll" do
+  describe "#poll" do
     it "should return nil if there is no subscription" do
       expect(consumer.poll(1000)).to be_nil
     end
@@ -99,7 +99,7 @@ describe Rdkafka::Consumer do
     end
   end
 
-  describe "each" do
+  describe "#each" do
     it "should yield messages" do
       10.times do
         producer.produce(

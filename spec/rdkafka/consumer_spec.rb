@@ -98,4 +98,26 @@ describe Rdkafka::Consumer do
       # Message content is tested in producer spec
     end
   end
+
+  describe "each" do
+    it "should yield messages" do
+      10.times do
+        producer.produce(
+          topic:     "consume_test_topic",
+          payload:   "payload 1",
+          key:       "key 1",
+          partition: 0
+        ).wait
+      end
+
+      consumer.subscribe("consume_test_topic")
+      count = 0
+      # Check the first 10 messages
+      consumer.each do |message|
+        expect(message).to be_a Rdkafka::Consumer::Message
+        count += 1
+        break if count == 10
+      end
+    end
+  end
 end

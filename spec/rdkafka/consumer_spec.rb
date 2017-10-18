@@ -23,6 +23,14 @@ describe Rdkafka::Consumer do
     end
   end
 
+  context "close" do
+    it "should close a consumer" do
+      consumer.subscribe("consume_test_topic")
+      consumer.close
+      expect(consumer.poll(100)).to be_nil
+    end
+  end
+
   describe "committed" do
     before do
       # Make sure there's a stored offset

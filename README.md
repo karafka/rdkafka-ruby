@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.org/thijsc/rdkafka-ruby.svg?branch=master)](https://travis-ci.org/thijsc/rdkafka-ruby)
 [![Gem Version](https://badge.fury.io/rb/rdkafka.svg)](https://badge.fury.io/rb/rdkafka)
+[![Maintainability](https://api.codeclimate.com/v1/badges/362d93880c1b6b6f48c6/maintainability)](https://codeclimate.com/github/thijsc/rdkafka-ruby/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/362d93880c1b6b6f48c6/test_coverage)](https://codeclimate.com/github/thijsc/rdkafka-ruby/test_coverage)
 
 The `rdkafka` gem is a modern Kafka client library for Ruby based on
 [librdkafka](https://github.com/edenhill/librdkafka/).

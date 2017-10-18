@@ -73,4 +73,29 @@ describe Rdkafka::Consumer do
       expect(high).to be > 0
     end
   end
+
+  describe "poll" do
+    it "should return nil if there is no subscription" do
+      expect(consumer.poll(1000)).to be_nil
+    end
+
+    it "should return nil if there are no messages" do
+      consumer.subscribe("empty_test_topic")
+      expect(consumer.poll(1000)).to be_nil
+    end
+
+    it "should return a message if there is one" do
+      producer.produce(
+        topic:     "consume_test_topic",
+        payload:   "payload 1",
+        key:       "key 1"
+      ).wait
+
+      consumer.subscribe("consume_test_topic")
+      message = consumer.poll(5000)
+      expect(message).to be_a Rdkafka::Consumer::Message
+
+      # Message content is tested in producer spec
+    end
+  end
 end

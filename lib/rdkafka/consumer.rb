@@ -118,7 +118,7 @@ module Rdkafka
         raise Rdkafka::RdkafkaError.new(response)
       end
 
-      return low.read_int, high.read_int
+      return low.read_int64, high.read_int64
     end
 
     # Commit the current offsets of this consumer

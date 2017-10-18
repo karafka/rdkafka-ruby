@@ -5,3 +5,4 @@ ext/librdkafka.*
 *.gem
 .yardoc
 doc
+coverage

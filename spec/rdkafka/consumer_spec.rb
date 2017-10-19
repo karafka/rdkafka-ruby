@@ -47,6 +47,12 @@ describe Rdkafka::Consumer do
       )
     end
 
+    it "should only accept a topic partition list" do
+      expect {
+        consumer.committed("list")
+      }.to raise_error TypeError
+    end
+
     it "should fetch the committed offsets for a specified topic partition list" do
       list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
         list.add_topic("consume_test_topic", [0, 1, 2])

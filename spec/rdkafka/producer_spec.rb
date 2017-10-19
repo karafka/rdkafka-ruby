@@ -140,6 +140,17 @@ describe Rdkafka::Producer do
     expect(message.payload).to be_nil
   end
 
+  it "should raise an error when producing fails" do
+    expect(Rdkafka::Bindings).to receive(:rd_kafka_producev).and_return(20)
+
+    expect {
+      producer.produce(
+        topic:   "produce_test_topic",
+        key:     "key 1"
+      )
+    }.to raise_error Rdkafka::RdkafkaError
+  end
+
   it "should raise a timeout error when waiting too long" do
     handle = producer.produce(
       topic:   "produce_test_topic",

@@ -53,5 +53,25 @@ describe Rdkafka::Config do
         config.producer
       }.to raise_error(Rdkafka::Config::ConfigError, "No such configuration property: \"invalid.key\"")
     end
+
+    it "should raise an error when client creation fails for a consumer" do
+      config = Rdkafka::Config.new(
+        "security.protocol" => "SSL",
+        "ssl.ca.location" => "/nonsense"
+      )
+      expect {
+        config.consumer
+      }.to raise_error(Rdkafka::Config::ClientCreationError, /ssl.ca.location failed(.*)/)
+    end
+
+    it "should raise an error when client creation fails for a producer" do
+      config = Rdkafka::Config.new(
+        "security.protocol" => "SSL",
+        "ssl.ca.location" => "/nonsense"
+      )
+      expect {
+        config.producer
+      }.to raise_error(Rdkafka::Config::ClientCreationError, /ssl.ca.location failed(.*)/)
+    end
   end
 end

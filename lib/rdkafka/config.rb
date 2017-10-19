@@ -136,7 +136,7 @@ module Rdkafka
         256
       )
 
-      if handle.nil?
+      if handle.null?
         raise ClientCreationError.new(error_buffer.read_string)
       end
 

@@ -1,13 +1,7 @@
 require "spec_helper"
 
 describe Rdkafka::Consumer::Message do
-  let(:native_topic) do
-    Rdkafka::Bindings.rd_kafka_topic_new(
-      native_client,
-      "topic_name",
-      nil
-    )
-  end
+  let(:native_topic) { new_native_topic }
   let(:payload) { nil }
   let(:key) { nil }
   let(:native_message) do

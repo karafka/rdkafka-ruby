@@ -1,5 +1,7 @@
 require "simplecov"
-SimpleCov.start
+SimpleCov.start do
+  add_filter "/spec/"
+end
 
 require "pry"
 require "rspec"
@@ -23,6 +25,14 @@ end
 def native_client
   config = rdkafka_config
   config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer)
+end
+
+def new_native_topic(topic_name="topic_name")
+  Rdkafka::Bindings.rd_kafka_topic_new(
+    native_client,
+    topic_name,
+    nil
+  )
 end
 
 def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, config: nil)

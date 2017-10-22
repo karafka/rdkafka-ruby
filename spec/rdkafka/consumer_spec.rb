@@ -5,8 +5,8 @@ describe Rdkafka::Consumer do
   let(:consumer) { config.consumer }
   let(:producer) { config.producer }
 
-  context "subscription" do
-    it "should subscribe" do
+  describe "#subscripe, #unsubscribe and #subscription" do
+    it "should subscribe, unsubscribe and return the subscription" do
       expect(consumer.subscription).to be_empty
 
       consumer.subscribe("consume_test_topic")
@@ -20,6 +20,30 @@ describe Rdkafka::Consumer do
       consumer.unsubscribe
 
       expect(consumer.subscription).to be_empty
+    end
+
+    it "should raise an error when subscribing fails" do
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_subscribe).and_return(20)
+
+      expect {
+        consumer.subscribe("consume_test_topic")
+      }.to raise_error(Rdkafka::RdkafkaError)
+    end
+
+    it "should raise an error when unsubscribing fails" do
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_unsubscribe).and_return(20)
+
+      expect {
+        consumer.unsubscribe
+      }.to raise_error(Rdkafka::RdkafkaError)
+    end
+
+    it "should raise an error when fetching the subscription fails" do
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_subscription).and_return(20)
+
+      expect {
+        consumer.subscription
+      }.to raise_error(Rdkafka::RdkafkaError)
     end
   end
 

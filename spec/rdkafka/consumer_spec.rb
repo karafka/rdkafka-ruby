@@ -79,6 +79,14 @@ describe Rdkafka::Consumer do
       }.to raise_error TypeError
     end
 
+    it "should raise an error when committing fails" do
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_commit).and_return(20)
+
+      expect {
+        consumer.commit
+      }.to raise_error(Rdkafka::RdkafkaError)
+    end
+
     it "should fetch the committed offsets for a specified topic partition list" do
       list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
         list.add_topic("consume_test_topic", [0, 1, 2])

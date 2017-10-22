@@ -149,10 +149,11 @@ describe Rdkafka::Consumer do
 
     it "should raise an error when polling fails" do
       message = Rdkafka::Bindings::Message.new.tap do |message|
-        message[:rkt] = new_native_topic
         message[:err] = 20
       end
-      expect(Rdkafka::Bindings).to receive(:rd_kafka_consumer_poll).and_return(message.to_ptr)
+      message_pointer = message.to_ptr
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_consumer_poll).and_return(message_pointer)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(message_pointer)
       expect {
         consumer.poll(100)
       }.to raise_error Rdkafka::RdkafkaError

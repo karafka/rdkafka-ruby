@@ -47,7 +47,7 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, config: n
     message = consumer.poll(100)
     if message &&
         message.partition == delivery_report.partition &&
-        message.offset == delivery_report.offset - 1
+        message.offset == delivery_report.offset
       return message
     end
   end

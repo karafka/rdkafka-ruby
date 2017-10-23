@@ -13,18 +13,21 @@ describe Rdkafka::Producer do
   end
 
   it "should produce a message" do
+    # Produce a message
     handle = producer.produce(
       topic:   "produce_test_topic",
-      payload: "payload 1",
-      key:     "key 1"
+      payload: "payload",
+      key:     "key"
     )
+
+    # Should be pending at first
     expect(handle.pending?).to be true
 
     # Check delivery handle and report
     report = handle.wait(5)
     expect(handle.pending?).to be false
     expect(report).not_to be_nil
-    expect(report.partition).to eq 0
+    expect(report.partition).to eq 1
     expect(report.offset).to be > 0
 
     # Close producer
@@ -35,12 +38,31 @@ describe Rdkafka::Producer do
       topic: "produce_test_topic",
       delivery_report: report
     )
-    expect(message.partition).to eq 0
-    expect(message.payload).to eq "payload 1"
-    expect(message.key).to eq "key 1"
+    expect(message.partition).to eq 1
+    expect(message.payload).to eq "payload"
+    expect(message.key).to eq "key"
     # Since api.version.request is on by default we will get
     # the message creation timestamp if it's not set.
     expect(message.timestamp).to be > 1505069891557
+  end
+
+  it "should produce a message with a specified partition" do
+    # Produce a message
+    handle = producer.produce(
+      topic:     "produce_test_topic",
+      payload:   "payload partition",
+      key:       "key partition",
+      partition: 1
+    )
+    report = handle.wait(5)
+
+    # Consume message and verify it's content
+    message = wait_for_message(
+      topic: "produce_test_topic",
+      delivery_report: report
+    )
+    expect(message.partition).to eq 1
+    expect(message.key).to eq "key partition"
   end
 
   it "should produce a message with utf-8 encoding" do
@@ -49,13 +71,7 @@ describe Rdkafka::Producer do
       payload: "Τη γλώσσα μου έδωσαν ελληνική",
       key:     "key utf8"
     )
-    expect(handle.pending?).to be true
-
-    # Check delivery handle and report
     report = handle.wait(5)
-
-    # Close producer
-    producer.close
 
     # Consume message and verify it's content
     message = wait_for_message(
@@ -71,17 +87,11 @@ describe Rdkafka::Producer do
   it "should produce a message with a timestamp" do
     handle = producer.produce(
       topic:     "produce_test_topic",
-      payload:   "Payload timestamp",
+      payload:   "payload timestamp",
       key:       "key timestamp",
       timestamp: 1505069646000
     )
-    expect(handle.pending?).to be true
-
-    # Check delivery handle and report
     report = handle.wait(5)
-
-    # Close producer
-    producer.close
 
     # Consume message and verify it's content
     message = wait_for_message(
@@ -97,15 +107,9 @@ describe Rdkafka::Producer do
   it "should produce a message with nil key" do
     handle = producer.produce(
       topic:   "produce_test_topic",
-      payload: "payload 1"
+      payload: "payload no key"
     )
-    expect(handle.pending?).to be true
-
-    # Check delivery handle and report
     report = handle.wait(5)
-
-    # Close producer
-    producer.close
 
     # Consume message and verify it's content
     message = wait_for_message(
@@ -113,22 +117,16 @@ describe Rdkafka::Producer do
       delivery_report: report
     )
 
-    expect(message.payload).to eq "payload 1"
     expect(message.key).to be_nil
+    expect(message.payload).to eq "payload no key"
   end
 
   it "should produce a message with nil payload" do
     handle = producer.produce(
       topic: "produce_test_topic",
-      key:   "key 1"
+      key:   "key no payload"
     )
-    expect(handle.pending?).to be true
-
-    # Check delivery handle and report
     report = handle.wait(5)
-
-    # Close producer
-    producer.close
 
     # Consume message and verify it's content
     message = wait_for_message(
@@ -136,7 +134,7 @@ describe Rdkafka::Producer do
       delivery_report: report
     )
 
-    expect(message.key).to eq "key 1"
+    expect(message.key).to eq "key no payload"
     expect(message.payload).to be_nil
   end
 
@@ -146,7 +144,7 @@ describe Rdkafka::Producer do
     expect {
       producer.produce(
         topic:   "produce_test_topic",
-        key:     "key 1"
+        key:     "key error"
       )
     }.to raise_error Rdkafka::RdkafkaError
   end
@@ -154,8 +152,8 @@ describe Rdkafka::Producer do
   it "should raise a timeout error when waiting too long" do
     handle = producer.produce(
       topic:   "produce_test_topic",
-      payload: "payload 1",
-      key:     "key 1"
+      payload: "payload timeout",
+      key:     "key timeout"
     )
     expect {
       handle.wait(0)

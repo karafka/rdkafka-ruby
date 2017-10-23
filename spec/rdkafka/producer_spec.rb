@@ -28,7 +28,7 @@ describe Rdkafka::Producer do
     expect(handle.pending?).to be false
     expect(report).not_to be_nil
     expect(report.partition).to eq 1
-    expect(report.offset).to be > 0
+    expect(report.offset).to be >= 0
 
     # Close producer
     producer.close

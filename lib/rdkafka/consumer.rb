@@ -75,6 +75,8 @@ module Rdkafka
     # Return the current committed offset per partition for this consumer group.
     # The offset field of each requested partition will either be set to stored offset or to -1001 in case there was no stored offset for that partition.
     #
+    # TODO: This should use the subscription or assignment by default.
+    #
     # @param list [TopicPartitionList] The topic with partitions to get the offsets for.
     # @param timeout_ms [Integer] The timeout for fetching this information.
     #
@@ -119,6 +121,36 @@ module Rdkafka
       end
 
       return low.read_int64, high.read_int64
+    end
+
+    # Calculate the consumer lag per partition for the provided topic partition list.
+    # You can get a suitable list by calling {committed} or {position} (TODO). It is also
+    # possible to create one yourself, in this case you have to provide a list that
+    # already contains all the partitions you need the lag for.
+    #
+    # @param topic_partition_list [TopicPartitionList] The list to calculate lag for.
+    # @param watermark_timeout_ms [Integer] The timeout for each query watermark call.
+    #
+    # @raise [RdkafkaError] When querying the broker fails.
+    #
+    # @return [Hash<String, Hash<Integer, Integer>>] A hash containing all topics with the lag per partition
+    def lag(topic_partition_list, watermark_timeout_ms=100)
+      out = {}
+      topic_partition_list.to_h.each do |topic, partitions|
+        # Query high watermarks for this topic's partitions
+        # and compare to the offset in the list.
+        topic_out = {}
+        partitions.each do |p|
+          low, high = query_watermark_offsets(
+            topic,
+            p.partition,
+            watermark_timeout_ms
+          )
+          topic_out[p.partition] = high - p.offset
+        end
+        out[topic] = topic_out
+      end
+      out
     end
 
     # Commit the current offsets of this consumer

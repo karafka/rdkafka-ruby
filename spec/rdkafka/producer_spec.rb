@@ -94,6 +94,63 @@ describe Rdkafka::Producer do
     expect(message.timestamp).to eq 1505069646000
   end
 
+  it "should produce a message with nil key" do
+    handle = producer.produce(
+      topic:   "produce_test_topic",
+      payload: "payload 1"
+    )
+    expect(handle.pending?).to be true
+
+    # Check delivery handle and report
+    report = handle.wait(5)
+
+    # Close producer
+    producer.close
+
+    # Consume message and verify it's content
+    message = wait_for_message(
+      topic: "produce_test_topic",
+      delivery_report: report
+    )
+
+    expect(message.payload).to eq "payload 1"
+    expect(message.key).to be_nil
+  end
+
+  it "should produce a message with nil payload" do
+    handle = producer.produce(
+      topic: "produce_test_topic",
+      key:   "key 1"
+    )
+    expect(handle.pending?).to be true
+
+    # Check delivery handle and report
+    report = handle.wait(5)
+
+    # Close producer
+    producer.close
+
+    # Consume message and verify it's content
+    message = wait_for_message(
+      topic: "produce_test_topic",
+      delivery_report: report
+    )
+
+    expect(message.key).to eq "key 1"
+    expect(message.payload).to be_nil
+  end
+
+  it "should raise an error when producing fails" do
+    expect(Rdkafka::Bindings).to receive(:rd_kafka_producev).and_return(20)
+
+    expect {
+      producer.produce(
+        topic:   "produce_test_topic",
+        key:     "key 1"
+      )
+    }.to raise_error Rdkafka::RdkafkaError
+  end
+
   it "should raise a timeout error when waiting too long" do
     handle = producer.produce(
       topic:   "produce_test_topic",

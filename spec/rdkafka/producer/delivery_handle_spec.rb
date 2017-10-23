@@ -47,6 +47,13 @@ describe Rdkafka::Producer::DeliveryHandle do
         expect(report.partition).to eq(2)
         expect(report.offset).to eq(100)
       end
+
+      it "should wait without a timeout" do
+        report = subject.wait(nil)
+
+        expect(report.partition).to eq(2)
+        expect(report.offset).to eq(100)
+      end
     end
 
     context "when not pending anymore and there was an error" do

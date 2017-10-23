@@ -5,8 +5,8 @@ describe Rdkafka::Consumer do
   let(:consumer) { config.consumer }
   let(:producer) { config.producer }
 
-  context "subscription" do
-    it "should subscribe" do
+  describe "#subscripe, #unsubscribe and #subscription" do
+    it "should subscribe, unsubscribe and return the subscription" do
       expect(consumer.subscription).to be_empty
 
       consumer.subscribe("consume_test_topic")
@@ -21,6 +21,30 @@ describe Rdkafka::Consumer do
 
       expect(consumer.subscription).to be_empty
     end
+
+    it "should raise an error when subscribing fails" do
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_subscribe).and_return(20)
+
+      expect {
+        consumer.subscribe("consume_test_topic")
+      }.to raise_error(Rdkafka::RdkafkaError)
+    end
+
+    it "should raise an error when unsubscribing fails" do
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_unsubscribe).and_return(20)
+
+      expect {
+        consumer.unsubscribe
+      }.to raise_error(Rdkafka::RdkafkaError)
+    end
+
+    it "should raise an error when fetching the subscription fails" do
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_subscription).and_return(20)
+
+      expect {
+        consumer.subscription
+      }.to raise_error(Rdkafka::RdkafkaError)
+    end
   end
 
   context "#close" do
@@ -31,7 +55,7 @@ describe Rdkafka::Consumer do
     end
   end
 
-  describe "#committed" do
+  describe "#commit and #committed" do
     before do
       # Make sure there's a stored offset
       report = producer.produce(
@@ -40,11 +64,27 @@ describe Rdkafka::Consumer do
         key:       "key 1",
         partition: 0
       ).wait
+      # Wait for message commits the current state,
+      # commit is therefore tested here.
       message = wait_for_message(
         topic: "consume_test_topic",
         delivery_report: report,
         config: config
       )
+    end
+
+    it "should only accept a topic partition list" do
+      expect {
+        consumer.committed("list")
+      }.to raise_error TypeError
+    end
+
+    it "should raise an error when committing fails" do
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_commit).and_return(20)
+
+      expect {
+        consumer.commit
+      }.to raise_error(Rdkafka::RdkafkaError)
     end
 
     it "should fetch the committed offsets for a specified topic partition list" do
@@ -55,6 +95,16 @@ describe Rdkafka::Consumer do
       expect(partitions[0].offset).to be > 0
       expect(partitions[1].offset).to eq -1001
       expect(partitions[2].offset).to eq -1001
+    end
+
+    it "should raise an error when getting committed fails" do
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_committed).and_return(20)
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+        list.add_topic("consume_test_topic", [0, 1, 2])
+      end
+      expect {
+        consumer.committed(list)
+      }.to raise_error Rdkafka::RdkafkaError
     end
   end
 
@@ -71,6 +121,13 @@ describe Rdkafka::Consumer do
       low, high = consumer.query_watermark_offsets("consume_test_topic", 0, 5000)
       expect(low).to eq 0
       expect(high).to be > 0
+    end
+
+    it "should raise an error when querying offsets fails" do
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_query_watermark_offsets).and_return(20)
+      expect {
+        consumer.query_watermark_offsets("consume_test_topic", 0, 5000)
+      }.to raise_error Rdkafka::RdkafkaError
     end
   end
 
@@ -96,6 +153,18 @@ describe Rdkafka::Consumer do
       expect(message).to be_a Rdkafka::Consumer::Message
 
       # Message content is tested in producer spec
+    end
+
+    it "should raise an error when polling fails" do
+      message = Rdkafka::Bindings::Message.new.tap do |message|
+        message[:err] = 20
+      end
+      message_pointer = message.to_ptr
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_consumer_poll).and_return(message_pointer)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(message_pointer)
+      expect {
+        consumer.poll(100)
+      }.to raise_error Rdkafka::RdkafkaError
     end
   end
 

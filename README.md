@@ -56,7 +56,8 @@ end
 
 ## Development
 
-Run `bundle` and `cd ext && bundle exec rake && cd ..`. Then
+For development we expect a local zookeeper and kafka instance to be
+running. Run `bundle` and `cd ext && bundle exec rake && cd ..`. Then
 create the topics as expected in the specs: `bundle exec rake create_topics`.
 
 You can then run `bundle exec rspec` to run the tests. To see rdkafka

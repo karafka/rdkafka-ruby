@@ -7,7 +7,7 @@ require "pry"
 require "rspec"
 require "rdkafka"
 
-def rdkafka_config
+def rdkafka_config(config_overrides={})
   config = {
     :"bootstrap.servers" => "localhost:9092",
     :"group.id" => "ruby-test-#{Random.new.rand(0..1_000_000)}",
@@ -19,6 +19,7 @@ def rdkafka_config
   elsif ENV["DEBUG_CONSUMER"]
     config[:debug] = "cgrp,topic,fetch"
   end
+  config.merge!(config_overrides)
   Rdkafka::Config.new(config)
 end
 

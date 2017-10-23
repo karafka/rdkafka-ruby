@@ -131,6 +131,76 @@ describe Rdkafka::Consumer do
     end
   end
 
+  describe "#lag" do
+    let(:config) { rdkafka_config(:"enable.partition.eof" => true) }
+
+    it "should calculate the consumer lag" do
+      # Make sure there's a message in every partition and
+      # wait for the message to make sure everything is committed.
+      (0..2).each do |i|
+        report = producer.produce(
+          topic:     "consume_test_topic",
+          key:       "key lag #{i}",
+          partition: i
+        ).wait
+      end
+
+      # Consume to the end
+      consumer.subscribe("consume_test_topic")
+      eof_count = 0
+      loop do
+        begin
+          consumer.poll(100)
+        rescue Rdkafka::RdkafkaError => error
+          if error.is_partition_eof?
+            eof_count += 1
+          end
+          break if eof_count == 3
+        end
+      end
+
+      # Commit
+      consumer.commit
+
+      # Create list to fetch lag for. TODO creating the list will not be necessary
+      # after committed uses the subscription.
+      list = consumer.committed(Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
+        l.add_topic("consume_test_topic", (0..2))
+      end)
+
+      # Lag should be 0 now
+      lag = consumer.lag(list)
+      expected_lag = {
+        "consume_test_topic" => {
+          0 => 0,
+          1 => 0,
+          2 => 0
+        }
+      }
+      expect(lag).to eq(expected_lag)
+
+      # Produce message on every topic again
+      (0..2).each do |i|
+        report = producer.produce(
+          topic:     "consume_test_topic",
+          key:       "key lag #{i}",
+          partition: i
+        ).wait
+      end
+
+      # Lag should be 1 now
+      lag = consumer.lag(list)
+      expected_lag = {
+        "consume_test_topic" => {
+          0 => 1,
+          1 => 1,
+          2 => 1
+        }
+      }
+      expect(lag).to eq(expected_lag)
+    end
+  end
+
   describe "#poll" do
     it "should return nil if there is no subscription" do
       expect(consumer.poll(1000)).to be_nil

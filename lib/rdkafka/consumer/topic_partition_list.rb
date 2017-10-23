@@ -31,8 +31,14 @@ module Rdkafka
 
       # Add a topic with optionally partitions to the list.
       #
+      # @example Add a topic with unassigned partitions
+      #   tpl.add_topic("topic")
+      #
+      # @example Add a topic with assigned partitions
+      #   tpl.add_topic("topic", (0..8))
+      #
       # @param topic [String] The topic's name
-      # @param partition [Array<Integer>] The topic's partition's
+      # @param partition [Array<Integer>, Range<Integer>] The topic's partition's
       #
       # @return [nil]
       def add_topic(topic, partitions=nil)

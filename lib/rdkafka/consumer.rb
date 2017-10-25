@@ -39,7 +39,7 @@ module Rdkafka
       # Subscribe to topic partition list and check this was successful
       response = Rdkafka::Bindings.rd_kafka_subscribe(@native_kafka, tpl)
       if response != 0
-        raise Rdkafka::RdkafkaError.new(response)
+        raise Rdkafka::RdkafkaError.new(response, "Error subscribing to '#{topics.join(', ')}'")
       end
     ensure
       # Clean up the topic partition list
@@ -117,7 +117,7 @@ module Rdkafka
         timeout_ms
       )
       if response != 0
-        raise Rdkafka::RdkafkaError.new(response)
+        raise Rdkafka::RdkafkaError.new(response, "Error querying watermark offsets for partition #{partition} of #{topic}")
       end
 
       return low.read_int64, high.read_int64

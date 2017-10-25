@@ -7,6 +7,10 @@ describe Rdkafka::RdkafkaError do
     }.to raise_error TypeError
   end
 
+  it "should create an error with a message" do
+    expect(Rdkafka::RdkafkaError.new(10, "message").message).to eq "message"
+  end
+
   describe "#code" do
     it "should handle an invalid response" do
       expect(Rdkafka::RdkafkaError.new(933975).code).to eq :err_933975?
@@ -29,6 +33,10 @@ describe Rdkafka::RdkafkaError do
     it "should return error messages from rdkafka" do
       expect(Rdkafka::RdkafkaError.new(10).to_s).to eq "Broker: Message size too large (msg_size_too_large)"
     end
+
+    it "should show the message if present" do
+      expect(Rdkafka::RdkafkaError.new(10, "Error explanation").to_s).to eq "Error explanation - Broker: Message size too large (msg_size_too_large)"
+    end
   end
 
   describe "#is_partition_eof?" do
@@ -38,6 +46,26 @@ describe Rdkafka::RdkafkaError do
 
     it "should be true when partition eof" do
       expect(Rdkafka::RdkafkaError.new(-191).is_partition_eof?).to be true
+    end
+  end
+
+  describe "#==" do
+    subject { Rdkafka::RdkafkaError.new(10, "Error explanation") }
+
+    it "should equal another error with the same content" do
+      expect(subject).to eq Rdkafka::RdkafkaError.new(10, "Error explanation")
+    end
+
+    it "should not equal another error with a different error code" do
+      expect(subject).to eq Rdkafka::RdkafkaError.new(20, "Error explanation")
+    end
+
+    it "should not equal another error with a different message" do
+      expect(subject).to eq Rdkafka::RdkafkaError.new(10, "Different error explanation")
+    end
+
+    it "should not equal another error with no message" do
+      expect(subject).to eq Rdkafka::RdkafkaError.new(10)
     end
   end
 end

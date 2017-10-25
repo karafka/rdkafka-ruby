@@ -37,11 +37,17 @@ module Rdkafka
       # @example Add a topic with assigned partitions
       #   tpl.add_topic("topic", (0..8))
       #
+      # @example Add a topic with all topics up to a count
+      #   tpl.add_topic("topic", 9)
+      #
       # @param topic [String] The topic's name
-      # @param partition [Array<Integer>, Range<Integer>] The topic's partition's
+      # @param partition [Array<Integer>, Range<Integer>, Integer] The topic's partitions or partition count
       #
       # @return [nil]
       def add_topic(topic, partitions=nil)
+        if partitions.is_a? Integer
+          partitions = (0..partitions - 1)
+        end
         if partitions.nil?
           Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
             @tpl,

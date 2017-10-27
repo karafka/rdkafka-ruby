@@ -1,3 +1,6 @@
+# 0.3.3
+* Fix bug that prevent display of `RdkafkaError` message
+
 # 0.3.2
 * `add_topic` now supports using a partition count
 * Add way to make errors clearer with an extra message

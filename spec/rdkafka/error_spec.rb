@@ -7,8 +7,8 @@ describe Rdkafka::RdkafkaError do
     }.to raise_error TypeError
   end
 
-  it "should create an error with a message" do
-    expect(Rdkafka::RdkafkaError.new(10, "message").message).to eq "message"
+  it "should create an error with a message prefix" do
+    expect(Rdkafka::RdkafkaError.new(10, "message prefix").message_prefix).to eq "message prefix"
   end
 
   describe "#code" do
@@ -34,8 +34,22 @@ describe Rdkafka::RdkafkaError do
       expect(Rdkafka::RdkafkaError.new(10).to_s).to eq "Broker: Message size too large (msg_size_too_large)"
     end
 
-    it "should show the message if present" do
+    it "should add the message prefix if present" do
       expect(Rdkafka::RdkafkaError.new(10, "Error explanation").to_s).to eq "Error explanation - Broker: Message size too large (msg_size_too_large)"
+    end
+  end
+
+  describe "#message" do
+    it "should handle an invalid response" do
+      expect(Rdkafka::RdkafkaError.new(933975).message).to eq "Err-933975? (err_933975?)"
+    end
+
+    it "should return error messages from rdkafka" do
+      expect(Rdkafka::RdkafkaError.new(10).message).to eq "Broker: Message size too large (msg_size_too_large)"
+    end
+
+    it "should add the message prefix if present" do
+      expect(Rdkafka::RdkafkaError.new(10, "Error explanation").message).to eq "Error explanation - Broker: Message size too large (msg_size_too_large)"
     end
   end
 

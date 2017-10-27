@@ -3,13 +3,13 @@ module Rdkafka
   class RdkafkaError < RuntimeError
     # The underlying raw error response
     # @return [Integer]
-    attr_reader :rdkafka_response, :message
+    attr_reader :rdkafka_response, :message_prefix
 
     # @private
-    def initialize(response, message=nil)
+    def initialize(response, message_prefix=nil)
       raise TypeError.new("Response has to be an integer") unless response.is_a? Integer
       @rdkafka_response = response
-      @message = message
+      @message_prefix = message_prefix
     end
 
     # This error's code, for example `:partition_eof`, `:msg_size_too_large`.
@@ -26,12 +26,12 @@ module Rdkafka
     # Human readable representation of this error.
     # @return [String]
     def to_s
-      message_part = if message
-                       "#{message} - "
+      message_prefix_part = if message_prefix
+                       "#{message_prefix} - "
                      else
                        ''
                      end
-      "#{message_part}#{Rdkafka::Bindings.rd_kafka_err2str(@rdkafka_response)} (#{code})"
+      "#{message_prefix_part}#{Rdkafka::Bindings.rd_kafka_err2str(@rdkafka_response)} (#{code})"
     end
 
     # Whether this error indicates the partition is EOF.

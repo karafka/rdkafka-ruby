@@ -190,7 +190,7 @@ module Rdkafka
       end
     ensure
       # Clean up rdkafka message if there is one
-      unless message_ptr.null?
+      if !message_ptr.nil? && !message_ptr.null?
         Rdkafka::Bindings.rd_kafka_message_destroy(message_ptr)
       end
     end

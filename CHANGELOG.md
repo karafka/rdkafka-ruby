@@ -1,3 +1,6 @@
+# 0.3.4
+* Bump librdkafka to 0.11.3
+
 # 0.3.3
 * Fix bug that prevent display of `RdkafkaError` message
 

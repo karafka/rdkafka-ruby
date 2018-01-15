@@ -10,12 +10,12 @@ module Rdkafka
 
       REGISTRY = {}
 
-      def self.register(handle)
-        REGISTRY[handle.to_ptr.address] = handle
+      def self.register(address, handle)
+        REGISTRY[address] = handle
       end
 
-      def self.remove(addr)
-        REGISTRY.delete(addr)
+      def self.remove(address)
+        REGISTRY.delete(address)
       end
 
       # Whether the delivery handle is still pending.

@@ -69,7 +69,7 @@ module Rdkafka
       delivery_handle[:response] = -1
       delivery_handle[:partition] = -1
       delivery_handle[:offset] = -1
-      DeliveryHandle.register(delivery_handle)
+      DeliveryHandle.register(delivery_handle.to_ptr.address, delivery_handle)
 
       # Produce the message
       response = Rdkafka::Bindings.rd_kafka_producev(

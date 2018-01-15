@@ -3,6 +3,11 @@ require "spec_helper"
 describe Rdkafka::Producer do
   let(:producer) { rdkafka_config.producer }
 
+  after do
+    # Registry should always end up being empty
+    expect(Rdkafka::Producer::DeliveryHandle::REGISTRY).to be_empty
+  end
+
   it "should require a topic" do
     expect {
       producer.produce(
@@ -138,6 +143,27 @@ describe Rdkafka::Producer do
     expect(message.payload).to be_nil
   end
 
+  it "should produce message that aren't waited for and not crash" do
+    5.times do
+      200.times do
+        producer.produce(
+          topic:   "produce_test_topic",
+          payload: "payload not waiting",
+          key:     "key not waiting"
+        )
+      end
+
+      # Allow some time for a GC run
+      sleep 1
+    end
+
+    # Wait for the delivery notifications
+    10.times do
+      break if Rdkafka::Producer::DeliveryHandle::REGISTRY.empty?
+      sleep 1
+    end
+  end
+
   it "should raise an error when producing fails" do
     expect(Rdkafka::Bindings).to receive(:rd_kafka_producev).and_return(20)
 
@@ -158,5 +184,8 @@ describe Rdkafka::Producer do
     expect {
       handle.wait(0)
     }.to raise_error Rdkafka::Producer::DeliveryHandle::WaitTimeoutError
+
+    # Waiting a second time should work
+    handle.wait(5)
   end
 end

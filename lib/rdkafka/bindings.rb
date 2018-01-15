@@ -154,7 +154,8 @@ module Rdkafka
       :void, [:pointer, :pointer, :pointer]
     ) do |client_ptr, message_ptr, opaque_ptr|
       message = Message.new(message_ptr)
-      if delivery_handle = Rdkafka::Producer::DeliveryHandle.remove(message[:_private])
+      delivery_handle_ptr_address = message[:_private].address
+      if delivery_handle = Rdkafka::Producer::DeliveryHandle.remove(delivery_handle_ptr_address)
         delivery_handle[:pending] = false
         delivery_handle[:response] = message[:err]
         delivery_handle[:partition] = message[:partition]

@@ -69,6 +69,7 @@ module Rdkafka
       delivery_handle[:response] = -1
       delivery_handle[:partition] = -1
       delivery_handle[:offset] = -1
+      DeliveryHandle.register(delivery_handle.to_ptr.address, delivery_handle)
 
       # Produce the message
       response = Rdkafka::Bindings.rd_kafka_producev(
@@ -85,6 +86,7 @@ module Rdkafka
 
       # Raise error if the produce call was not successfull
       if response != 0
+        DeliveryHandle.remove(delivery_handle.to_ptr.address)
         raise RdkafkaError.new(response)
       end
 

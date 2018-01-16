@@ -8,6 +8,16 @@ module Rdkafka
              :partition, :int,
              :offset, :int64
 
+      REGISTRY = {}
+
+      def self.register(address, handle)
+        REGISTRY[address] = handle
+      end
+
+      def self.remove(address)
+        REGISTRY.delete(address)
+      end
+
       # Whether the delivery handle is still pending.
       #
       # @return [Boolean]

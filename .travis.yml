@@ -4,7 +4,7 @@ sudo: false
 
 env:
   global:
-    - CC_TEST_REPORTER_ID=0af2487f1cc190d4a5e23cd76182514e5b62aac5d59b6208a02fd518487b9ed8
+    - CC_TEST_REPORTER_ID=9f7f740ac1b6e264e1189fa07a6687a87bcdb9f3c0f4199d4344ab3b538e187e
 
 rvm:
   - 2.1

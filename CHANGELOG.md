@@ -1,3 +1,7 @@
+# 0.3.5
+* Fix crash when not waiting for delivery handles
+* Run specs on Ruby 2.5
+
 # 0.3.4
 * Bump librdkafka to 0.11.3
 

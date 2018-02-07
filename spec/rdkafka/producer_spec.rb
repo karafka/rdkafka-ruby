@@ -170,6 +170,13 @@ describe Rdkafka::Producer do
 
     reader, writer = IO.pipe
 
+    # TODO this spec crashes if you create and use the producer before
+    # forking like so:
+    #
+    # @producer = producer
+    #
+    # This will be added as part of https://github.com/appsignal/rdkafka-ruby/issues/19
+
     fork do
       reader.close
 

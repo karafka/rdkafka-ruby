@@ -54,6 +54,13 @@ producer = Rdkafka::Config.new(config).producer
 end
 ```
 
+## Known issues
+
+When using forked process such as when using Unicorn you currently need
+to make sure that you create rdkafka instances after forking. Otherwise
+they will not work and crash your Ruby process when they are garbage
+collected. See https://github.com/appsignal/rdkafka-ruby/issues/19
+
 ## Development
 
 For development we expect a local zookeeper and kafka instance to be

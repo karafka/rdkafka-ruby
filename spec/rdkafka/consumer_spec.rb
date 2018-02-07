@@ -47,7 +47,7 @@ describe Rdkafka::Consumer do
     end
   end
 
-  context "#close" do
+  describe "#close" do
     it "should close a consumer" do
       consumer.subscribe("consume_test_topic")
       consumer.close

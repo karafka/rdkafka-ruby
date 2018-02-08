@@ -121,6 +121,7 @@ module Rdkafka
     attach_function :rd_kafka_subscribe, [:pointer, :pointer], :int
     attach_function :rd_kafka_unsubscribe, [:pointer], :int
     attach_function :rd_kafka_subscription, [:pointer, :pointer], :int
+    attach_function :rd_kafka_assign, [:pointer, :pointer], :int
     attach_function :rd_kafka_assignment, [:pointer, :pointer], :int
     attach_function :rd_kafka_committed, [:pointer, :pointer, :int], :int
     attach_function :rd_kafka_commit, [:pointer, :pointer, :bool], :int, blocking: true

@@ -47,12 +47,35 @@ describe Rdkafka::Consumer do
     end
   end
 
-  describe "#assignment" do
+  describe "#assign and #assignment" do
     it "should return an empty assignment if nothing is assigned" do
       expect(consumer.assignment).to be_empty
     end
 
-    it "should return the assignment" do
+    it "should only accept a topic partition list in assign" do
+      expect {
+        consumer.assign("list")
+      }.to raise_error TypeError
+    end
+
+    it "should raise an error when assigning fails" do
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_assign).and_return(20)
+      expect {
+        consumer.assign(Rdkafka::Consumer::TopicPartitionList.new)
+      }.to raise_error Rdkafka::RdkafkaError
+    end
+
+    it "should assign specific topic/partitions and return that assignment" do
+      tpl = Rdkafka::Consumer::TopicPartitionList.new
+      tpl.add_topic("consume_test_topic", (0..2))
+      consumer.assign(tpl)
+
+      assignment = consumer.assignment
+      expect(assignment).not_to be_empty
+      expect(assignment.to_h["consume_test_topic"].length).to eq 3
+    end
+
+    it "should return the assignment when subscribed" do
       # Make sure there's a message
       report = producer.produce(
         topic:     "consume_test_topic",
@@ -107,7 +130,7 @@ describe Rdkafka::Consumer do
       )
     end
 
-    it "should only accept a topic partition list" do
+    it "should only accept a topic partition list in committed" do
       expect {
         consumer.committed("list")
       }.to raise_error TypeError

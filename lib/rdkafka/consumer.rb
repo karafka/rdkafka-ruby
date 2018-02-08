@@ -72,6 +72,22 @@ module Rdkafka
       Rdkafka::Consumer::TopicPartitionList.new(tpl.get_pointer(0))
     end
 
+    # Atomic assignment of partitions to consume
+    #
+    # @param list [TopicPartitionList] The topic with partitions to assign
+    #
+    # @raise [RdkafkaError] When assigning fails
+    def assign(list)
+      unless list.is_a?(TopicPartitionList)
+        raise TypeError.new("list has to be a TopicPartitionList")
+      end
+      tpl = list.copy_tpl
+      response = Rdkafka::Bindings.rd_kafka_assign(@native_kafka, tpl)
+      if response != 0
+        raise Rdkafka::RdkafkaError.new(response, "Error assigning '#{list.to_h}'")
+      end
+    end
+
     # Returns the current partition assignment.
     #
     # @raise [RdkafkaError] When getting the assignment fails.

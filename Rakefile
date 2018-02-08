@@ -20,14 +20,19 @@ task :produce_messages do
     config[:debug] = "broker,topic,msg"
   end
   producer = Rdkafka::Config.new(config).producer
+
+  delivery_handles = []
   100.times do |i|
     puts "Producing message #{i}"
-    producer.produce(
+    delivery_handles << producer.produce(
         topic:   "rake_test_topic",
         payload: "Payload #{i} from Rake",
         key:     "Key #{i} from Rake"
-    ).wait
+    )
   end
+  puts 'Waiting for delivery'
+  delivery_handles.each(&:wait)
+  puts 'Done'
 end
 
 task :consume_messages do

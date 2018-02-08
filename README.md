@@ -29,6 +29,9 @@ See the [documentation](http://www.rubydoc.info/github/thijsc/rdkafka-ruby/maste
 
 ### Consuming messages
 
+Subscribe to a topic and get messages. Kafka will automatically spread
+the available partitions over consumers with the same group id.
+
 ```ruby
 config = {
   :"bootstrap.servers" => "localhost:9092",
@@ -44,18 +47,25 @@ end
 
 ### Producing messages
 
+Produce a number of messages, put the delivery handles in an array and
+wait for them before exiting. This way the messages will be batched and
+sent to Kafka in an efficient way.
+
 ```ruby
 config = {:"bootstrap.servers" => "localhost:9092"}
 producer = Rdkafka::Config.new(config).producer
+delivery_handles = []
 
 100.times do |i|
   puts "Producing message #{i}"
-  producer.produce(
+  delivery_handles << producer.produce(
       topic:   "ruby-test-topic",
       payload: "Payload #{i}",
       key:     "Key #{i}"
-  ).wait
+  )
 end
+
+delivery_handles.each(&:wait)
 ```
 
 ## Known issues

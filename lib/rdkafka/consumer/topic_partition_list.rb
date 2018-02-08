@@ -65,6 +65,28 @@ module Rdkafka
         end
       end
 
+      # Add a topic with partitions and offsets set to the list
+      #
+      # @param topic [String] The topic's name
+      # @param partition [Hash<Integer, Integer>] The topic's partitions and offsets
+      #
+      # @return [nil]
+      def add_topic_and_partitions_with_offsets(topic, partitions_with_offsets)
+          partitions_with_offsets.each do |partition, offset|
+            Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
+              @tpl,
+              topic,
+              partition
+            )
+            Rdkafka::Bindings.rd_kafka_topic_partition_list_set_offset(
+              @tpl,
+              topic,
+              partition,
+              offset
+            )
+          end
+      end
+
       # Return a `Hash` with the topics as keys and and an array of partition information as the value if present.
       #
       # @return [Hash<String, [Array<Partition>, nil]>]

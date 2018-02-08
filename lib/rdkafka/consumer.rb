@@ -190,8 +190,16 @@ module Rdkafka
     # @raise [RdkafkaError] When comitting fails
     #
     # @return [nil]
-    def commit(async=false)
-      response = Rdkafka::Bindings.rd_kafka_commit(@native_kafka, nil, async)
+    def commit(list=nil, async=false)
+      if !list.nil? && !list.is_a?(TopicPartitionList)
+        raise TypeError.new("list has to be nil or a TopicPartitionList")
+      end
+      tpl = if list
+              list.copy_tpl
+            else
+              nil
+            end
+      response = Rdkafka::Bindings.rd_kafka_commit(@native_kafka, tpl, async)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end

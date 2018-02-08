@@ -112,6 +112,23 @@ describe Rdkafka::Consumer::TopicPartitionList do
     ])
   end
 
+  it "should create a new list and add topics and partitions with an offset" do
+    list = Rdkafka::Consumer::TopicPartitionList.new
+
+    expect(list.count).to eq 0
+    expect(list.empty?).to be true
+
+    list.add_topic_and_partitions_with_offsets("topic1", {0 => 5, 1 => 6, 2 => 7})
+
+    hash = list.to_h
+    expect(hash.count).to eq 1
+    expect(hash["topic1"]).to eq([
+      Rdkafka::Consumer::Partition.new(0, 5),
+      Rdkafka::Consumer::Partition.new(1, 6),
+      Rdkafka::Consumer::Partition.new(2, 7)
+    ])
+  end
+
   describe "#to_s" do
     it "should return a human readable representation" do
       list = Rdkafka::Consumer::TopicPartitionList.new

@@ -72,6 +72,20 @@ module Rdkafka
       Rdkafka::Consumer::TopicPartitionList.new(tpl.get_pointer(0))
     end
 
+    # Returns the current partition assignment.
+    #
+    # @raise [RdkafkaError] When getting the assignment fails.
+    #
+    # @return [TopicPartitionList]
+    def assignment
+      tpl = FFI::MemoryPointer.new(:pointer)
+      response = Rdkafka::Bindings.rd_kafka_assignment(@native_kafka, tpl)
+      if response != 0
+        raise Rdkafka::RdkafkaError.new(response)
+      end
+      Rdkafka::Consumer::TopicPartitionList.new(tpl.get_pointer(0))
+    end
+
     # Return the current committed offset per partition for this consumer group.
     # The offset field of each requested partition will either be set to stored offset or to -1001 in case there was no stored offset for that partition.
     #

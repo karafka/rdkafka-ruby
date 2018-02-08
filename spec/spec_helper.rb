@@ -9,6 +9,8 @@ require "rdkafka"
 
 def rdkafka_config(config_overrides={})
   config = {
+    :"api.version.request" => false,
+    :"broker.version.fallback" => "1.0",
     :"bootstrap.servers" => "localhost:9092",
     :"group.id" => "ruby-test-#{Random.new.rand(0..1_000_000)}",
     :"auto.offset.reset" => "earliest",
@@ -52,7 +54,11 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, config: n
       return message
     end
   end
-ensure
-  consumer.commit
-  consumer.close
+end
+
+def wait_for_assignment(consumer)
+  10.times do
+    break if !consumer.assignment.empty?
+    sleep 1
+  end
 end

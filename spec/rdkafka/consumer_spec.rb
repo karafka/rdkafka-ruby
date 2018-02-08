@@ -47,6 +47,40 @@ describe Rdkafka::Consumer do
     end
   end
 
+  describe "#assignment" do
+    it "should return an empty assignment if nothing is assigned" do
+      expect(consumer.assignment).to be_empty
+    end
+
+    it "should return the assignment" do
+      # Make sure there's a message
+      report = producer.produce(
+        topic:     "consume_test_topic",
+        payload:   "payload 1",
+        key:       "key 1",
+        partition: 0
+      ).wait
+
+      # Subscribe and poll until partitions are assigned
+      consumer.subscribe("consume_test_topic")
+      100.times do
+        consumer.poll(100)
+        break unless consumer.assignment.empty?
+      end
+
+      assignment = consumer.assignment
+      expect(assignment).not_to be_empty
+      expect(assignment.to_h["consume_test_topic"].length).to eq 3
+    end
+
+    it "should raise an error when getting assignment fails" do
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_assignment).and_return(20)
+      expect {
+        consumer.assignment
+      }.to raise_error Rdkafka::RdkafkaError
+    end
+  end
+
   describe "#close" do
     it "should close a consumer" do
       consumer.subscribe("consume_test_topic")

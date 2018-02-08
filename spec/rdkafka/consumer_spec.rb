@@ -144,11 +144,27 @@ describe Rdkafka::Consumer do
       }.to raise_error(Rdkafka::RdkafkaError)
     end
 
+    it "should fetch the committed offsets for the current assignment" do
+      consumer.subscribe("consume_test_topic")
+      # Wait for the assignment to be made
+      10.times do
+        break if !consumer.assignment.empty?
+        sleep 1
+      end
+
+      partitions = consumer.committed.to_h["consume_test_topic"]
+      expect(partitions).not_to be_nil
+      expect(partitions[0].offset).to be > 0
+      expect(partitions[1].offset).to eq -1001
+      expect(partitions[2].offset).to eq -1001
+    end
+
     it "should fetch the committed offsets for a specified topic partition list" do
       list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
         list.add_topic("consume_test_topic", [0, 1, 2])
       end
       partitions = consumer.committed(list).to_h["consume_test_topic"]
+      expect(partitions).not_to be_nil
       expect(partitions[0].offset).to be > 0
       expect(partitions[1].offset).to eq -1001
       expect(partitions[2].offset).to eq -1001

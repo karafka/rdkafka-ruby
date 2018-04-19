@@ -136,6 +136,40 @@ describe Rdkafka::Consumer do
       }.to raise_error TypeError
     end
 
+    it "should commit in sync mode" do
+      expect {
+        consumer.commit(nil, true)
+      }.not_to raise_error
+    end
+
+    it "should only accept a topic partition list in commit if not nil" do
+      expect {
+        consumer.commit("list")
+      }.to raise_error TypeError
+    end
+
+    it "should commit a specific topic partion list" do
+      # Make sure there are some message
+      3.times do |i|
+        producer.produce(
+          topic:     "consume_test_topic",
+          payload:   "payload 1",
+          key:       "key 1",
+          partition: i
+        ).wait
+      end
+
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+        list.add_topic_and_partitions_with_offsets("consume_test_topic", {0 => 1, 1 => 1, 2 => 1})
+      end
+      consumer.commit(list)
+
+      partitions = consumer.committed(list).to_h["consume_test_topic"]
+      expect(partitions[0].offset).to eq 1
+      expect(partitions[1].offset).to eq 1
+      expect(partitions[2].offset).to eq 1
+    end
+
     it "should raise an error when committing fails" do
       expect(Rdkafka::Bindings).to receive(:rd_kafka_commit).and_return(20)
 
@@ -144,11 +178,27 @@ describe Rdkafka::Consumer do
       }.to raise_error(Rdkafka::RdkafkaError)
     end
 
+    it "should fetch the committed offsets for the current assignment" do
+      consumer.subscribe("consume_test_topic")
+      # Wait for the assignment to be made
+      10.times do
+        break if !consumer.assignment.empty?
+        sleep 1
+      end
+
+      partitions = consumer.committed.to_h["consume_test_topic"]
+      expect(partitions).not_to be_nil
+      expect(partitions[0].offset).to be > 0
+      expect(partitions[1].offset).to eq -1001
+      expect(partitions[2].offset).to eq -1001
+    end
+
     it "should fetch the committed offsets for a specified topic partition list" do
       list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
         list.add_topic("consume_test_topic", [0, 1, 2])
       end
       partitions = consumer.committed(list).to_h["consume_test_topic"]
+      expect(partitions).not_to be_nil
       expect(partitions[0].offset).to be > 0
       expect(partitions[1].offset).to eq -1001
       expect(partitions[2].offset).to eq -1001

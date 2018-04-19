@@ -105,17 +105,17 @@ module Rdkafka
     # Return the current committed offset per partition for this consumer group.
     # The offset field of each requested partition will either be set to stored offset or to -1001 in case there was no stored offset for that partition.
     #
-    # TODO: This should use the subscription or assignment by default.
-    #
-    # @param list [TopicPartitionList] The topic with partitions to get the offsets for.
+    # @param list [TopicPartitionList, nil] The topic with partitions to get the offsets for or nil to use the current subscription.
     # @param timeout_ms [Integer] The timeout for fetching this information.
     #
     # @raise [RdkafkaError] When getting the committed positions fails.
     #
     # @return [TopicPartitionList]
-    def committed(list, timeout_ms=200)
-      unless list.is_a?(TopicPartitionList)
-        raise TypeError.new("list has to be a TopicPartitionList")
+    def committed(list=nil, timeout_ms=200)
+      if list.nil?
+        list = assignment
+      elsif !list.is_a?(TopicPartitionList)
+        raise TypeError.new("list has to be nil or a TopicPartitionList")
       end
       tpl = list.copy_tpl
       response = Rdkafka::Bindings.rd_kafka_committed(@native_kafka, tpl, timeout_ms)
@@ -190,8 +190,16 @@ module Rdkafka
     # @raise [RdkafkaError] When comitting fails
     #
     # @return [nil]
-    def commit(async=false)
-      response = Rdkafka::Bindings.rd_kafka_commit(@native_kafka, nil, async)
+    def commit(list=nil, async=false)
+      if !list.nil? && !list.is_a?(TopicPartitionList)
+        raise TypeError.new("list has to be nil or a TopicPartitionList")
+      end
+      tpl = if list
+              list.copy_tpl
+            else
+              nil
+            end
+      response = Rdkafka::Bindings.rd_kafka_commit(@native_kafka, tpl, async)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end

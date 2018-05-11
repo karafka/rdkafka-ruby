@@ -43,7 +43,7 @@ module Rdkafka
     # TopicPartition ad TopicPartitionList structs
 
     class TopicPartition < FFI::Struct
-     layout :topic, :string,
+      layout :topic, :string,
              :partition, :int32,
              :offset, :int64,
              :metadata, :pointer,

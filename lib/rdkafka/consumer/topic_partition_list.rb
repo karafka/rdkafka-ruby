@@ -7,14 +7,15 @@ module Rdkafka
       # @param pointer [FFI::Pointer, nil] Optional pointer to an existing native list
       #
       # @return [TopicPartitionList]
-      def initialize(pointer=nil)
-        @tpl =
-          Rdkafka::Bindings::TopicPartitionList.new(
-            FFI::AutoPointer.new(
-              pointer || Rdkafka::Bindings.rd_kafka_topic_partition_list_new(5),
-              Rdkafka::Bindings.method(:rd_kafka_topic_partition_list_destroy)
-            )
-        )
+      def initialize(tpl=nil)
+        # Store pointer to underlying topic partition list so we can clean it later
+        @native_tpl = tpl || Rdkafka::Bindings.rd_kafka_topic_partition_list_new(5)
+        # Set up a finalizer so we can clean the tpl when this object is GCed
+        ObjectSpace.define_finalizer(self, proc {
+          Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(@native_tpl)
+        })
+        # Create a struct out of the pointer so we can access it's data
+        @tpl = Rdkafka::Bindings::TopicPartitionList.new(@native_tpl)
       end
 
       # Number of items in the list

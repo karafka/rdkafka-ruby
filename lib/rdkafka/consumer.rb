@@ -65,6 +65,7 @@ module Rdkafka
     # @return [TopicPartitionList]
     def subscription
       tpl = FFI::MemoryPointer.new(:pointer)
+      tpl.autorelease = false
       response = Rdkafka::Bindings.rd_kafka_subscription(@native_kafka, tpl)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
@@ -95,6 +96,7 @@ module Rdkafka
     # @return [TopicPartitionList]
     def assignment
       tpl = FFI::MemoryPointer.new(:pointer)
+      tpl.autorelease = false
       response = Rdkafka::Bindings.rd_kafka_assignment(@native_kafka, tpl)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)

@@ -32,5 +32,7 @@ script:
   - bundle exec rspec
 
 after_script:
+  - echo "Posting coverage to codeclimate"
   - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
+  - echo "Killing all java processes"
   - killall -9 java

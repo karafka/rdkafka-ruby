@@ -82,8 +82,7 @@ module Rdkafka
       unless list.is_a?(TopicPartitionList)
         raise TypeError.new("list has to be a TopicPartitionList")
       end
-      tpl = list.copy_tpl
-      response = Rdkafka::Bindings.rd_kafka_assign(@native_kafka, tpl)
+      response = Rdkafka::Bindings.rd_kafka_assign(@native_kafka, list.tpl)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response, "Error assigning '#{list.to_h}'")
       end
@@ -119,12 +118,11 @@ module Rdkafka
       elsif !list.is_a?(TopicPartitionList)
         raise TypeError.new("list has to be nil or a TopicPartitionList")
       end
-      tpl = list.copy_tpl
-      response = Rdkafka::Bindings.rd_kafka_committed(@native_kafka, tpl, timeout_ms)
+      response = Rdkafka::Bindings.rd_kafka_committed(@native_kafka, list.tpl, timeout_ms)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
-      Rdkafka::Consumer::TopicPartitionList.new(tpl)
+      list
     end
 
     # Query broker for low (oldest/beginning) and high (newest/end) offsets for a partition.
@@ -197,7 +195,7 @@ module Rdkafka
         raise TypeError.new("list has to be nil or a TopicPartitionList")
       end
       tpl = if list
-              list.copy_tpl
+              list.tpl
             else
               nil
             end

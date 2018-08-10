@@ -1,7 +1,8 @@
 require "spec_helper"
 
 describe Rdkafka::Consumer::Partition do
-  subject { Rdkafka::Consumer::Partition.new(1, 100) }
+  let(:offset) { 100 }
+  subject { Rdkafka::Consumer::Partition.new(1, offset) }
 
   it "should have a partition" do
     expect(subject.partition).to eq 1
@@ -20,6 +21,14 @@ describe Rdkafka::Consumer::Partition do
   describe "#inspect" do
     it "should return a human readable representation" do
       expect(subject.to_s).to eq "<Partition 1 with offset 100>"
+    end
+
+    context "without offset" do
+      let(:offset) { nil }
+
+      it "should return a human readable representation" do
+        expect(subject.to_s).to eq "<Partition 1 without offset>"
+      end
     end
   end
 

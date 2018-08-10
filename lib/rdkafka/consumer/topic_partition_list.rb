@@ -2,35 +2,37 @@ module Rdkafka
   class Consumer
     # A list of topics with their partition information
     class TopicPartitionList
-      # Create a new topic partition list.
+      # Create a topic partition list.
       #
-      # @param pointer [FFI::Pointer, nil] Optional pointer to an existing native list
+      # @param data [Hash<String => [nil,Partition]>] The topic and partion data or nil to create an empty list
       #
       # @return [TopicPartitionList]
-      def initialize(tpl=nil)
-        # Store pointer to underlying topic partition list so we can clean it later
-        @native_tpl = tpl || Rdkafka::Bindings.rd_kafka_topic_partition_list_new(5)
-        # Set up a finalizer so we can clean the tpl when this object is GCed
-        ObjectSpace.define_finalizer(self, proc {
-          Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(@native_tpl)
-        })
-        # Create a struct out of the pointer so we can access it's data
-        @tpl = Rdkafka::Bindings::TopicPartitionList.new(@native_tpl)
+      def initialize(data=nil)
+        @data = data || {}
       end
 
       # Number of items in the list
       # @return [Integer]
       def count
-        @tpl[:cnt]
+        i = 0
+        @data.each do |_topic, partitions|
+          if partitions
+            i += partitions.count
+          else
+            i+= 1
+          end
+        end
+        i
       end
 
       # Whether this list is empty
       # @return [Boolean]
       def empty?
-        count == 0
+        @data.empty?
       end
 
       # Add a topic with optionally partitions to the list.
+      # Calling this method multiple times for the same topic will overwrite the previous configuraton.
       #
       # @example Add a topic with unassigned partitions
       #   tpl.add_topic("topic")
@@ -42,70 +44,36 @@ module Rdkafka
       #   tpl.add_topic("topic", 9)
       #
       # @param topic [String] The topic's name
-      # @param partition [Array<Integer>, Range<Integer>, Integer] The topic's partitions or partition count
+      # @param partitions [Array<Integer>, Range<Integer>, Integer] The topic's partitions or partition count
       #
       # @return [nil]
       def add_topic(topic, partitions=nil)
-        if partitions.is_a? Integer
-          partitions = (0..partitions - 1)
-        end
         if partitions.nil?
-          Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
-            @tpl,
-            topic,
-            -1
-          )
+          @data[topic.to_s] = nil
         else
-          partitions.each do |partition|
-            Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
-              @tpl,
-              topic,
-              partition
-            )
+          if partitions.is_a? Integer
+            partitions = (0..partitions - 1)
           end
+          @data[topic.to_s] = partitions.map { |p| Partition.new(p, nil) }
         end
       end
 
       # Add a topic with partitions and offsets set to the list
+      # Calling this method multiple times for the same topic will overwrite the previous configuraton.
       #
       # @param topic [String] The topic's name
-      # @param partition [Hash<Integer, Integer>] The topic's partitions and offsets
+      # @param partitions_with_offsets [Hash<Integer, Integer>] The topic's partitions and offsets
       #
       # @return [nil]
       def add_topic_and_partitions_with_offsets(topic, partitions_with_offsets)
-          partitions_with_offsets.each do |partition, offset|
-            Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
-              @tpl,
-              topic,
-              partition
-            )
-            Rdkafka::Bindings.rd_kafka_topic_partition_list_set_offset(
-              @tpl,
-              topic,
-              partition,
-              offset
-            )
-          end
+        @data[topic.to_s] = partitions_with_offsets.map { |p, o| Partition.new(p, o) }
       end
 
       # Return a `Hash` with the topics as keys and and an array of partition information as the value if present.
       #
       # @return [Hash<String, [Array<Partition>, nil]>]
       def to_h
-        {}.tap do |out|
-          count.times do |i|
-            ptr = @tpl[:elems] + (i * Rdkafka::Bindings::TopicPartition.size)
-            elem = Rdkafka::Bindings::TopicPartition.new(ptr)
-            if elem[:partition] == -1
-              out[elem[:topic]] = nil
-            else
-              partitions = out[elem[:topic]] || []
-              partition = Partition.new(elem[:partition], elem[:offset])
-              partitions.push(partition)
-              out[elem[:topic]] = partitions
-            end
-          end
-        end
+        @data
       end
 
       # Human readable representation of this list.
@@ -118,10 +86,75 @@ module Rdkafka
         self.to_h == other.to_h
       end
 
-      # Return the internal native list
+      # Create a new topic partition list based of a native one.
+      #
+      # @param pointer [FFI::Pointer] Optional pointer to an existing native list. Its contents will be copied and afterwards it will be destroyed.
+      #
+      # @return [TopicPartitionList]
+      #
       # @private
-      def tpl
-        @tpl
+      def self.from_native_tpl(pointer)
+        # Data to be moved into the tpl
+        data = {}
+
+        # Create struct and copy its contents
+        native_tpl = Rdkafka::Bindings::TopicPartitionList.new(pointer)
+        native_tpl[:cnt].times do |i|
+          ptr = native_tpl[:elems] + (i * Rdkafka::Bindings::TopicPartition.size)
+          elem = Rdkafka::Bindings::TopicPartition.new(ptr)
+          if elem[:partition] == -1
+            data[elem[:topic]] = nil
+          else
+            partitions = data[elem[:topic]] || []
+            offset = if elem[:offset] == -1001
+                       nil
+                     else
+                       elem[:offset]
+                     end
+            partition = Partition.new(elem[:partition], offset)
+            partitions.push(partition)
+            data[elem[:topic]] = partitions
+          end
+        end
+
+        # Return the created object
+        TopicPartitionList.new(data)
+      ensure
+        # Destroy the tpl
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(pointer)
+      end
+
+      # Create a native tpl with the contents of this object added
+      #
+      # @private
+      def to_native_tpl
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_new(count).tap do |tpl|
+          @data.each do |topic, partitions|
+            if partitions
+              partitions.each do |p|
+                Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
+                  tpl,
+                  topic,
+                  p.partition
+                )
+                if p.offset
+                  Rdkafka::Bindings.rd_kafka_topic_partition_list_set_offset(
+                    tpl,
+                    topic,
+                    p.partition,
+                    p.offset
+                  )
+                end
+              end
+            else
+              Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
+                tpl,
+                topic,
+                -1
+              )
+            end
+          end
+        end
       end
     end
   end

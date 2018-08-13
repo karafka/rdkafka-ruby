@@ -77,9 +77,15 @@ collected. See https://github.com/appsignal/rdkafka-ruby/issues/19
 
 ## Development
 
-For development we expect a local zookeeper and kafka instance to be
-running. Run `bundle` and `cd ext && bundle exec rake && cd ..`. Then
-create the topics as expected in the specs: `bundle exec rake create_topics`.
+A Docker Compose file is included to run Kafka and Zookeeper. To run
+that:
+
+```
+docker-compose up
+```
+
+Run `bundle` and `cd ext && bundle exec rake && cd ..` to download and
+compile `librdkafka`.
 
 You can then run `bundle exec rspec` to run the tests. To see rdkafka
 debug output:
@@ -88,6 +94,15 @@ debug output:
 DEBUG_PRODUCER=true bundle exec rspec
 DEBUG_CONSUMER=true bundle exec rspec
 ```
+
+After running the tests you can bring the cluster down to start with a
+clean slate:
+
+```
+docker-compose down
+```
+
+## Example
 
 To see everything working run these in separate tabs:
 

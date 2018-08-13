@@ -2,6 +2,9 @@ language: ruby
 
 sudo: false
 
+services:
+  - docker
+
 env:
   global:
     - CC_TEST_REPORTER_ID=9f7f740ac1b6e264e1189fa07a6687a87bcdb9f3c0f4199d4344ab3b538e187e
@@ -16,14 +19,10 @@ rvm:
 
 before_install:
   - gem update --system
-  - wget http://www.us.apache.org/dist/kafka/1.0.0/kafka_2.12-1.0.0.tgz -O kafka.tgz
-  - mkdir -p kafka && tar xzf kafka.tgz -C kafka --strip-components 1
-  - nohup bash -c "cd kafka && bin/zookeeper-server-start.sh config/zookeeper.properties &"
-  - nohup bash -c "cd kafka && bin/kafka-server-start.sh config/server.properties &"
 
 before_script:
+  - docker-compose up -d
   - cd ext && bundle exec rake && cd ..
-  - bundle exec rake create_topics
   - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
   - chmod +x ./cc-test-reporter
   - ./cc-test-reporter before-build
@@ -32,7 +31,5 @@ script:
   - bundle exec rspec
 
 after_script:
-  - echo "Posting coverage to codeclimate"
+  - docker-compose stop
   - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
-  - echo "Killing all java processes"
-  - killall -9 java

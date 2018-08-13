@@ -7,7 +7,7 @@ module Rdkafka
       attr_reader :partition
 
       # Partition's offset
-      # @return [Integer]
+      # @return [Integer, nil]
       attr_reader :offset
 
       # @private
@@ -19,7 +19,11 @@ module Rdkafka
       # Human readable representation of this partition.
       # @return [String]
       def to_s
-        "<Partition #{partition} with offset #{offset}>"
+        if offset.nil?
+          "<Partition #{partition} without offset>"
+        else
+          "<Partition #{partition} with offset #{offset}>"
+        end
       end
 
       # Human readable representation of this partition.

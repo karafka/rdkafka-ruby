@@ -189,8 +189,8 @@ describe Rdkafka::Consumer do
       partitions = consumer.committed.to_h["consume_test_topic"]
       expect(partitions).not_to be_nil
       expect(partitions[0].offset).to be > 0
-      expect(partitions[1].offset).to eq -1001
-      expect(partitions[2].offset).to eq -1001
+      expect(partitions[1].offset).to be nil
+      expect(partitions[2].offset).to be nil
     end
 
     it "should fetch the committed offsets for a specified topic partition list" do
@@ -200,8 +200,8 @@ describe Rdkafka::Consumer do
       partitions = consumer.committed(list).to_h["consume_test_topic"]
       expect(partitions).not_to be_nil
       expect(partitions[0].offset).to be > 0
-      expect(partitions[1].offset).to eq -1001
-      expect(partitions[2].offset).to eq -1001
+      expect(partitions[1].offset).to be nil
+      expect(partitions[2].offset).to be nil
     end
 
     it "should raise an error when getting committed fails" do

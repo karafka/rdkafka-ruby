@@ -70,7 +70,7 @@ module Rdkafka
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
-      Rdkafka::Consumer::TopicPartitionList.new(tpl.get_pointer(0))
+      Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl.get_pointer(0))
     end
 
     # Atomic assignment of partitions to consume
@@ -82,10 +82,13 @@ module Rdkafka
       unless list.is_a?(TopicPartitionList)
         raise TypeError.new("list has to be a TopicPartitionList")
       end
-      response = Rdkafka::Bindings.rd_kafka_assign(@native_kafka, list.tpl)
+      tpl = list.to_native_tpl
+      response = Rdkafka::Bindings.rd_kafka_assign(@native_kafka, tpl)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response, "Error assigning '#{list.to_h}'")
       end
+    ensure
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl) if tpl
     end
 
     # Returns the current partition assignment.
@@ -100,7 +103,7 @@ module Rdkafka
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
-      Rdkafka::Consumer::TopicPartitionList.new(tpl.get_pointer(0))
+      Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl.get_pointer(0))
     end
 
     # Return the current committed offset per partition for this consumer group.
@@ -118,11 +121,12 @@ module Rdkafka
       elsif !list.is_a?(TopicPartitionList)
         raise TypeError.new("list has to be nil or a TopicPartitionList")
       end
-      response = Rdkafka::Bindings.rd_kafka_committed(@native_kafka, list.tpl, timeout_ms)
+      tpl = list.to_native_tpl
+      response = Rdkafka::Bindings.rd_kafka_committed(@native_kafka, tpl, timeout_ms)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
-      list
+      TopicPartitionList.from_native_tpl(tpl)
     end
 
     # Query broker for low (oldest/beginning) and high (newest/end) offsets for a partition.
@@ -195,7 +199,7 @@ module Rdkafka
         raise TypeError.new("list has to be nil or a TopicPartitionList")
       end
       tpl = if list
-              list.tpl
+              list.to_native_tpl
             else
               nil
             end
@@ -203,6 +207,8 @@ module Rdkafka
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
+    ensure
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl) if tpl
     end
 
     # Poll for the next message on one of the subscribed topics

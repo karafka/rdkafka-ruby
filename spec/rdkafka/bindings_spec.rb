@@ -59,4 +59,27 @@ describe Rdkafka::Bindings do
       expect(log.string).to include "ANY -- : rdkafka: log line"
     end
   end
+
+  describe "stats callback" do
+    context "without a stats callback" do
+      it "should do nothing" do
+        expect {
+          Rdkafka::Bindings::StatsCallback.call(nil, "{}", 2, nil)
+        }.not_to raise_error
+      end
+    end
+
+    context "with a stats callback" do
+      before do
+        Rdkafka::Config.statistics_callback = lambda do |stats|
+          $received_stats = stats
+        end
+      end
+
+      it "should call the stats callback with a stats hash" do
+        Rdkafka::Bindings::StatsCallback.call(nil, "{\"received\":1}", 13, nil)
+        expect($received_stats).to eq({'received' => 1})
+      end
+    end
+  end
 end

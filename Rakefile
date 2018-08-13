@@ -26,11 +26,16 @@ task :consume_messages do
     :"bootstrap.servers" => "localhost:9092",
     :"group.id" => "rake_test",
     :"enable.partition.eof" => false,
-    :"auto.offset.reset" => "earliest"
+    :"auto.offset.reset" => "earliest",
+    :"statistics.interval.ms" => 10_000
   }
   if ENV["DEBUG"]
     config[:debug] = "cgrp,topic,fetch"
   end
+  Rdkafka::Config.statistics_callback = lambda do |stats|
+    puts stats
+  end
+  consumer = Rdkafka::Config.new(config).consumer
   consumer = Rdkafka::Config.new(config).consumer
   consumer.subscribe("rake_test_topic")
   consumer.each do |message|

@@ -1,4 +1,5 @@
 require "ffi"
+require "json"
 require "logger"
 
 module Rdkafka
@@ -82,6 +83,8 @@ module Rdkafka
     attach_function :rd_kafka_conf_set, [:pointer, :string, :string, :pointer, :int], :kafka_config_response
     callback :log_cb, [:pointer, :int, :string, :string], :void
     attach_function :rd_kafka_conf_set_log_cb, [:pointer, :log_cb], :void
+    callback :stats_cb, [:pointer, :string, :int, :pointer], :int
+    attach_function :rd_kafka_conf_set_stats_cb, [:pointer, :stats_cb], :void
 
     # Log queue
     attach_function :rd_kafka_set_log_queue, [:pointer, :pointer], :void
@@ -105,6 +108,19 @@ module Rdkafka
                    Logger::UNKNOWN
                  end
       Rdkafka::Config.logger.add(severity) { "rdkafka: #{line}" }
+    end
+
+    StatsCallback = FFI::Function.new(
+      :int, [:pointer, :string, :int, :pointer]
+    ) do |_client_ptr, json, _json_len, _opaque|
+      # Pass the stats hash to callback in config
+      if Rdkafka::Config.statistics_callback
+        stats = JSON.parse(json)
+        Rdkafka::Config.statistics_callback.call(stats)
+      end
+
+      # Return 0 so librdkafka frees the json string
+      0
     end
 
     # Handle

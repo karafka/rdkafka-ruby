@@ -48,7 +48,7 @@ describe Rdkafka::Producer do
     expect(message.key).to eq "key"
     # Since api.version.request is on by default we will get
     # the message creation timestamp if it's not set.
-    expect(message.timestamp).to be > 1505069891557
+    expect(message.timestamp).to be_within(5).of(Time.now)
   end
 
   it "should produce a message with a specified partition" do
@@ -89,24 +89,57 @@ describe Rdkafka::Producer do
     expect(message.key).to eq "key utf8"
   end
 
-  it "should produce a message with a timestamp" do
-    handle = producer.produce(
-      topic:     "produce_test_topic",
-      payload:   "payload timestamp",
-      key:       "key timestamp",
-      timestamp: 1505069646000
-    )
-    report = handle.wait(5)
+  context "timestamp" do
+    it "should raise a type error if not nil, integer or time" do
+      expect {
+        producer.produce(
+          topic:     "produce_test_topic",
+          payload:   "payload timestamp",
+          key:       "key timestamp",
+          timestamp: "10101010"
+        )
+      }.to raise_error TypeError
+    end
 
-    # Consume message and verify it's content
-    message = wait_for_message(
-      topic: "produce_test_topic",
-      delivery_report: report
-    )
+    it "should produce a message with an integer timestamp" do
+      handle = producer.produce(
+        topic:     "produce_test_topic",
+        payload:   "payload timestamp",
+        key:       "key timestamp",
+        timestamp: 1505069646252
+      )
+      report = handle.wait(5)
 
-    expect(message.partition).to eq 2
-    expect(message.key).to eq "key timestamp"
-    expect(message.timestamp).to eq 1505069646000
+      # Consume message and verify it's content
+      message = wait_for_message(
+        topic: "produce_test_topic",
+        delivery_report: report
+      )
+
+      expect(message.partition).to eq 2
+      expect(message.key).to eq "key timestamp"
+      expect(message.timestamp).to eq Time.at(1505069646, 252_000)
+    end
+
+    it "should produce a message with a time timestamp" do
+      handle = producer.produce(
+        topic:     "produce_test_topic",
+        payload:   "payload timestamp",
+        key:       "key timestamp",
+        timestamp: Time.at(1505069646, 353_000)
+      )
+      report = handle.wait(5)
+
+      # Consume message and verify it's content
+      message = wait_for_message(
+        topic: "produce_test_topic",
+        delivery_report: report
+      )
+
+      expect(message.partition).to eq 2
+      expect(message.key).to eq "key timestamp"
+      expect(message.timestamp).to eq Time.at(1505069646, 353_000)
+    end
   end
 
   it "should produce a message with nil key" do

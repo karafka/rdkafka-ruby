@@ -65,12 +65,26 @@ describe Rdkafka::Consumer::Message do
     expect(subject.offset).to eq 100
   end
 
-  it "should have a timestamp" do
-    # There is no effective way to mock this this, just
-    # make sure it doesn't crash.
-    expect {
-      subject.timestamp
-    }.not_to raise_error
+  describe "#timestamp" do
+    context "without a timestamp" do
+      before do
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_message_timestamp).and_return(-1)
+      end
+
+      it "should have a nil timestamp if not present" do
+        expect(subject.timestamp).to be_nil
+      end
+    end
+
+    context "with a timestamp" do
+      before do
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_message_timestamp).and_return(1505069646250)
+      end
+
+      it "should have timestamp if present" do
+        expect(subject.timestamp).to eq Time.at(1505069646, 250_000)
+      end
+    end
   end
 
   describe "#to_s" do

@@ -20,6 +20,22 @@ describe Rdkafka::Config do
     end
   end
 
+  context "statistics callback" do
+    it "should set the callback" do
+      expect {
+        Rdkafka::Config.statistics_callback = lambda do |stats|
+          puts stats
+        end
+      }.not_to raise_error
+    end
+
+    it "should not accept a callback that's not a proc" do
+      expect {
+        Rdkafka::Config.statistics_callback = 'a string'
+      }.to raise_error(TypeError)
+    end
+  end
+
   context "configuration" do
     it "should store configuration" do
       config = Rdkafka::Config.new

@@ -1,3 +1,15 @@
+# 0.4.0
+* Improvements in librdkafka archive download
+* Add global statistics callback
+* Use Time for timestamps, potentially breaking change if you
+  rely on the previous behavior where it returns an integer with
+  the number of milliseconds.
+* Bump librdkafka to 0.11.5
+* Implement TopicPartitionList in Ruby so we don't have to keep
+  track of native objects.
+* Support committing a topic partition list
+* Add consumer assignment method
+
 # 0.3.5
 * Fix crash when not waiting for delivery handles
 * Run specs on Ruby 2.5

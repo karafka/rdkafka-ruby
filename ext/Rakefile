@@ -3,9 +3,25 @@ require "mini_portile2"
 require "fileutils"
 
 task :default => :clean do
+  # MiniPortile#download_file_http is a monkey patch that removes the download
+  # progress indicator. This indicator relies on the 'Content Length' response
+  # headers, which is not set by GitHub
+  class MiniPortile
+    def download_file_http(url, full_path, _count)
+      filename = File.basename(full_path)
+      with_tempfile(filename, full_path) do |temp_file|
+        params = { 'Accept-Encoding' => 'identity' }
+        OpenURI.open_uri(url, 'rb', params) do |io|
+          temp_file.write(io.read)
+        end
+        output
+      end
+    end
+  end
+
   # Download and compile librdkafka
   recipe = MiniPortile.new("librdkafka", Rdkafka::LIBRDKAFKA_VERSION)
-  recipe.files = ["https://github.com/edenhill/librdkafka/archive/v#{Rdkafka::LIBRDKAFKA_VERSION}.tar.gz"]
+  recipe.files = ["https://codeload.github.com/edenhill/librdkafka/tar.gz/v#{Rdkafka::LIBRDKAFKA_VERSION}"]
   recipe.configure_options = ["--host=#{recipe.host}"]
   recipe.cook
   # Move dynamic library we're interested in

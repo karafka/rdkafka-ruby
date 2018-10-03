@@ -1,5 +1,9 @@
+# Rakefile
+
+require 'bundler/gem_tasks'
 require "./lib/rdkafka"
 
+desc 'Generate some message traffic'
 task :produce_messages do
   config = {:"bootstrap.servers" => "localhost:9092"}
   if ENV["DEBUG"]
@@ -21,6 +25,7 @@ task :produce_messages do
   puts 'Done'
 end
 
+desc 'Consume some messages'
 task :consume_messages do
   config = {
     :"bootstrap.servers" => "localhost:9092",
@@ -43,6 +48,7 @@ task :consume_messages do
   end
 end
 
+desc 'Hammer down'
 task :load_test do
   puts "Starting load test"
 

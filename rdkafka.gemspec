@@ -1,4 +1,4 @@
-require File.expand_path('../lib/rdkafka/version', __FILE__)
+require File.expand_path('lib/rdkafka/version', __dir__)
 
 Gem::Specification.new do |gem|
   gem.authors = ['Thijs Cadier']

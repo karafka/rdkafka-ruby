@@ -1,3 +1,6 @@
+# 0.4.1
+* Bump librdkafka to 0.11.6
+
 # 0.4.0
 * Improvements in librdkafka archive download
 * Add global statistics callback

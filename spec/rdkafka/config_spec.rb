@@ -59,6 +59,21 @@ describe Rdkafka::Config do
       }.to raise_error(Rdkafka::Config::ConfigError, "No such configuration property: \"invalid.key\"")
     end
 
+    it "should raise an error when creating a consumer with a nil key in the config" do
+      config = Rdkafka::Config.new(nil => 'value')
+      expect {
+        config.consumer
+      }.to raise_error(Rdkafka::Config::ConfigError, "No such configuration property: \"\"")
+    end
+
+    it "should treat a nil value as blank" do
+      config = Rdkafka::Config.new('security.protocol' => nil)
+      expect {
+        config.consumer
+        config.producer
+      }.to raise_error(Rdkafka::Config::ConfigError, "Configuration property \"security.protocol\" cannot be set to empty value")
+    end
+
     it "should create a producer with valid config" do
       expect(rdkafka_config.producer).to be_a Rdkafka::Producer
     end

@@ -123,13 +123,11 @@ describe Rdkafka::Consumer do
       ).wait
     end
 
-    # Wait for message commits the current state,
-    # commit is therefore tested here.
-    let!(:message) do
+    let(:message) do
       wait_for_message(
         topic: "consume_test_topic",
         delivery_report: report,
-        config: config
+        consumer: consumer
       )
     end
 
@@ -234,11 +232,6 @@ describe Rdkafka::Consumer do
         end
 
         it "should store the offset for a message" do
-          message = double(
-            :topic => 'consume_test_topic',
-            :partition => 1,
-            :offset => 5
-          )
           consumer.store_offset(message)
           consumer.commit
 
@@ -247,7 +240,7 @@ describe Rdkafka::Consumer do
           end
           partitions = consumer.committed(list).to_h["consume_test_topic"]
           expect(partitions).not_to be_nil
-          expect(partitions[1].offset).to eq 6
+          expect(partitions[message.partition].offset).to eq(message.offset + 1)
         end
 
         it "should raise an error with invalid input" do

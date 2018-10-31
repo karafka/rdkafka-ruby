@@ -38,9 +38,8 @@ def new_native_topic(topic_name="topic_name")
   )
 end
 
-def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, config: nil)
-  config = rdkafka_config if config.nil?
-  consumer = config.consumer
+def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, consumer: nil)
+  consumer = rdkafka_config.consumer if consumer.nil?
   consumer.subscribe(topic)
   timeout = Time.now.to_i + timeout_in_seconds
   loop do

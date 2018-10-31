@@ -39,6 +39,7 @@ module Rdkafka
     attach_function :rd_kafka_message_destroy, [:pointer], :void
     attach_function :rd_kafka_message_timestamp, [:pointer, :pointer], :int64
     attach_function :rd_kafka_topic_new, [:pointer, :string, :pointer], :pointer
+    attach_function :rd_kafka_topic_destroy, [:pointer], :pointer
     attach_function :rd_kafka_topic_name, [:pointer], :string
 
     # TopicPartition ad TopicPartitionList structs
@@ -145,6 +146,7 @@ module Rdkafka
     attach_function :rd_kafka_poll_set_consumer, [:pointer], :void
     attach_function :rd_kafka_consumer_poll, [:pointer, :int], :pointer, blocking: true
     attach_function :rd_kafka_consumer_close, [:pointer], :void, blocking: true
+    attach_function :rd_kafka_offset_store, [:pointer, :int32, :int64], :int
 
     # Stats
 

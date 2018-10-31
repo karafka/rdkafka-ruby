@@ -112,21 +112,22 @@ describe Rdkafka::Consumer do
     end
   end
 
-  describe "#commit and #committed" do
-    before do
-      # Make sure there's a stored offset
+  describe "#commit, #committed and #store_offset" do
+    # Make sure there's a stored offset
+    let!(:report) do
       report = producer.produce(
         topic:     "consume_test_topic",
         payload:   "payload 1",
         key:       "key 1",
         partition: 0
       ).wait
-      # Wait for message commits the current state,
-      # commit is therefore tested here.
-      message = wait_for_message(
+    end
+
+    let(:message) do
+      wait_for_message(
         topic: "consume_test_topic",
         delivery_report: report,
-        config: config
+        consumer: consumer
       )
     end
 
@@ -148,70 +149,107 @@ describe Rdkafka::Consumer do
       }.to raise_error TypeError
     end
 
-    it "should commit a specific topic partion list" do
-      # Make sure there are some message
-      3.times do |i|
-        producer.produce(
-          topic:     "consume_test_topic",
-          payload:   "payload 1",
-          key:       "key 1",
-          partition: i
-        ).wait
+    context "with a commited consumer" do
+      before :all do
+        # Make sure there are some message
+        producer = rdkafka_config.producer
+        handles = []
+        10.times do
+          (0..2).each do |i|
+            handles << producer.produce(
+              topic:     "consume_test_topic",
+              payload:   "payload 1",
+              key:       "key 1",
+              partition: i
+            )
+          end
+        end
+        handles.each(&:wait)
       end
 
-      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-        list.add_topic_and_partitions_with_offsets("consume_test_topic", {0 => 1, 1 => 1, 2 => 1})
-      end
-      consumer.commit(list)
-
-      partitions = consumer.committed(list).to_h["consume_test_topic"]
-      expect(partitions[0].offset).to eq 1
-      expect(partitions[1].offset).to eq 1
-      expect(partitions[2].offset).to eq 1
-    end
-
-    it "should raise an error when committing fails" do
-      expect(Rdkafka::Bindings).to receive(:rd_kafka_commit).and_return(20)
-
-      expect {
-        consumer.commit
-      }.to raise_error(Rdkafka::RdkafkaError)
-    end
-
-    it "should fetch the committed offsets for the current assignment" do
-      consumer.subscribe("consume_test_topic")
-      # Wait for the assignment to be made
-      10.times do
-        break if !consumer.assignment.empty?
-        sleep 1
+      before do
+        consumer.subscribe("consume_test_topic")
+        wait_for_assignment(consumer)
+        list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic_and_partitions_with_offsets("consume_test_topic", 0 => 1, 1 => 1, 2 => 1)
+        end
+        consumer.commit(list)
       end
 
-      partitions = consumer.committed.to_h["consume_test_topic"]
-      expect(partitions).not_to be_nil
-      expect(partitions[0].offset).to be > 0
-      expect(partitions[1].offset).to be nil
-      expect(partitions[2].offset).to be nil
-    end
+      it "should commit a specific topic partion list" do
+        list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic_and_partitions_with_offsets("consume_test_topic", 0 => 1, 1 => 2, 2 => 3)
+        end
+        consumer.commit(list)
 
-    it "should fetch the committed offsets for a specified topic partition list" do
-      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-        list.add_topic("consume_test_topic", [0, 1, 2])
+        partitions = consumer.committed(list).to_h["consume_test_topic"]
+        expect(partitions[0].offset).to eq 1
+        expect(partitions[1].offset).to eq 2
+        expect(partitions[2].offset).to eq 3
       end
-      partitions = consumer.committed(list).to_h["consume_test_topic"]
-      expect(partitions).not_to be_nil
-      expect(partitions[0].offset).to be > 0
-      expect(partitions[1].offset).to be nil
-      expect(partitions[2].offset).to be nil
-    end
 
-    it "should raise an error when getting committed fails" do
-      expect(Rdkafka::Bindings).to receive(:rd_kafka_committed).and_return(20)
-      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-        list.add_topic("consume_test_topic", [0, 1, 2])
+      it "should raise an error when committing fails" do
+        expect(Rdkafka::Bindings).to receive(:rd_kafka_commit).and_return(20)
+
+        expect {
+          consumer.commit
+        }.to raise_error(Rdkafka::RdkafkaError)
       end
-      expect {
-        consumer.committed(list)
-      }.to raise_error Rdkafka::RdkafkaError
+
+      it "should fetch the committed offsets for the current assignment" do
+        partitions = consumer.committed.to_h["consume_test_topic"]
+        expect(partitions).not_to be_nil
+        expect(partitions[0].offset).to eq 1
+      end
+
+      it "should fetch the committed offsets for a specified topic partition list" do
+        list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic("consume_test_topic", [0, 1, 2])
+        end
+        partitions = consumer.committed(list).to_h["consume_test_topic"]
+        expect(partitions).not_to be_nil
+        expect(partitions[0].offset).to eq 1
+        expect(partitions[1].offset).to eq 1
+        expect(partitions[2].offset).to eq 1
+      end
+
+      it "should raise an error when getting committed fails" do
+        expect(Rdkafka::Bindings).to receive(:rd_kafka_committed).and_return(20)
+        list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic("consume_test_topic", [0, 1, 2])
+        end
+        expect {
+          consumer.committed(list)
+        }.to raise_error Rdkafka::RdkafkaError
+      end
+
+      describe "#store_offset" do
+        before do
+          config[:'enable.auto.offset.store'] = false
+          config[:'enable.auto.commit'] = false
+          consumer.subscribe("consume_test_topic")
+          wait_for_assignment(consumer)
+        end
+
+        it "should store the offset for a message" do
+          consumer.store_offset(message)
+          consumer.commit
+
+          list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+            list.add_topic("consume_test_topic", [0, 1, 2])
+          end
+          partitions = consumer.committed(list).to_h["consume_test_topic"]
+          expect(partitions).not_to be_nil
+          expect(partitions[message.partition].offset).to eq(message.offset + 1)
+        end
+
+        it "should raise an error with invalid input" do
+          allow(message).to receive(:partition).and_return(9999)
+          expect {
+            consumer.store_offset(message)
+          }.to raise_error Rdkafka::RdkafkaError
+        end
+      end
     end
   end
 

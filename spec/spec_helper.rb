@@ -9,6 +9,8 @@ require "rdkafka"
 
 def rdkafka_config(config_overrides={})
   config = {
+    :"api.version.request" => false,
+    :"broker.version.fallback" => "1.0",
     :"bootstrap.servers" => "localhost:9092",
     :"group.id" => "ruby-test-#{Random.new.rand(0..1_000_000)}",
     :"auto.offset.reset" => "earliest",
@@ -36,9 +38,8 @@ def new_native_topic(topic_name="topic_name")
   )
 end
 
-def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, config: nil)
-  config = rdkafka_config if config.nil?
-  consumer = config.consumer
+def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, consumer: nil)
+  consumer = rdkafka_config.consumer if consumer.nil?
   consumer.subscribe(topic)
   timeout = Time.now.to_i + timeout_in_seconds
   loop do
@@ -52,7 +53,11 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, config: n
       return message
     end
   end
-ensure
-  consumer.commit
-  consumer.close
+end
+
+def wait_for_assignment(consumer)
+  10.times do
+    break if !consumer.assignment.empty?
+    sleep 1
+  end
 end

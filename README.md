@@ -25,7 +25,7 @@ have any problems installing the gem please open an issue.
 
 ## Usage
 
-See the [documentation](http://www.rubydoc.info/github/thijsc/rdkafka-ruby/master) for full details on how to use this gem. Two quick examples:
+See the [documentation](https://www.rubydoc.info/github/appsignal/rdkafka-ruby) for full details on how to use this gem. Two quick examples:
 
 ### Consuming messages
 

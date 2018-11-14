@@ -177,6 +177,7 @@ module Rdkafka
         # and compare to the offset in the list.
         topic_out = {}
         partitions.each do |p|
+          next if p.offset.nil?
           low, high = query_watermark_offsets(
             topic,
             p.partition,

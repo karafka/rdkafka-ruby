@@ -385,22 +385,23 @@ describe Rdkafka::Consumer do
 
   describe "#each" do
     it "should yield messages" do
+      handles = []
       10.times do
-        producer.produce(
+        handles << producer.produce(
           topic:     "consume_test_topic",
           payload:   "payload 1",
           key:       "key 1",
           partition: 0
-        ).wait
+        )
       end
+      handles.each(&:wait)
 
       consumer.subscribe("consume_test_topic")
-      count = 0
-      # Check the first 10 messages
-      consumer.each do |message|
+      # Check the first 10 messages. Then close the consumer, which
+      # should break the each loop.
+      consumer.each_with_index do |message, i|
         expect(message).to be_a Rdkafka::Consumer::Message
-        count += 1
-        break if count == 10
+        consumer.close if i == 10
       end
     end
   end

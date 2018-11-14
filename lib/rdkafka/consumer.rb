@@ -11,11 +11,13 @@ module Rdkafka
     # @private
     def initialize(native_kafka)
       @native_kafka = native_kafka
+      @closing = false
     end
 
     # Close this consumer
     # @return [nil]
     def close
+      @closing = true
       Rdkafka::Bindings.rd_kafka_consumer_close(@native_kafka)
     end
 
@@ -270,7 +272,8 @@ module Rdkafka
       end
     end
 
-    # Poll for new messages and yield for each received one
+    # Poll for new messages and yield for each received one. Iteration
+    # will end when the consumer is closed.
     #
     # @raise [RdkafkaError] When polling fails
     #
@@ -283,7 +286,11 @@ module Rdkafka
         if message
           block.call(message)
         else
-          next
+          if @closing
+            break
+          else
+            next
+          end
         end
       end
     end

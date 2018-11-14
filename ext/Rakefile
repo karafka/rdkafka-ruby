@@ -21,6 +21,13 @@ task :default => :clean do
 
   # Download and compile librdkafka
   recipe = MiniPortile.new("librdkafka", Rdkafka::LIBRDKAFKA_VERSION)
+
+  # Use default homebrew openssl if we're on mac and the directory exists
+  if recipe.host.include?("darwin") && Dir.exists?("/usr/local/opt/openssl")
+    ENV["CPPFLAGS"] = "-I/usr/local/opt/openssl/include"
+    ENV["LDFLAGS"] = "-L/usr/local/opt/openssl/lib"
+  end
+
   recipe.files << {
     :url => "https://codeload.github.com/edenhill/librdkafka/tar.gz/v#{Rdkafka::LIBRDKAFKA_VERSION}",
     :sha256 => Rdkafka::LIBRDKAFKA_SOURCE_SHA256

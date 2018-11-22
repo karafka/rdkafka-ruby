@@ -223,6 +223,7 @@ module Rdkafka
 
     # Commit the current offsets of this consumer
     #
+    # @param list [TopicPartitionList] The topic with partitions to commit
     # @param async [Boolean] Whether to commit async or wait for the commit to finish
     #
     # @raise [RdkafkaError] When comitting fails

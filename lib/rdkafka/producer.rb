@@ -2,6 +2,9 @@ module Rdkafka
   # A producer for Kafka messages. To create a producer set up a {Config} and call {Config#producer producer} on that.
   class Producer
     # @private
+    @delivery_callback = nil
+
+    # @private
     def initialize(native_kafka)
       @closing = false
       @native_kafka = native_kafka
@@ -16,6 +19,24 @@ module Rdkafka
         end
       end
       @polling_thread.abort_on_exception = true
+    end
+
+    # Set a callback that will be called every time a message is successfully produced.
+    # The callback is called with a {DeliveryReport}
+    #
+    # @param callback [Proc] The callback
+    #
+    # @return [nil]
+    def delivery_callback=(callback)
+      raise TypeError.new("Callback has to be a proc or lambda") unless callback.is_a? Proc
+      @delivery_callback = callback
+    end
+
+    # Returns the current delivery callback, by default this is nil.
+    #
+    # @return [Proc, nil]
+    def delivery_callback
+      @delivery_callback
     end
 
     # Close this producer and wait for the internal poll queue to empty.
@@ -100,6 +121,11 @@ module Rdkafka
       end
 
       delivery_handle
+    end
+
+    # @private
+    def call_delivery_callback(delivery_handle)
+      @delivery_callback.call(delivery_handle) if @delivery_callback
     end
   end
 end

@@ -27,6 +27,7 @@ describe Rdkafka::Config do
           puts stats
         end
       }.not_to raise_error
+      expect(Rdkafka::Config.statistics_callback).to be_a Proc
     end
 
     it "should not accept a callback that's not a proc" do

@@ -8,6 +8,47 @@ describe Rdkafka::Producer do
     expect(Rdkafka::Producer::DeliveryHandle::REGISTRY).to be_empty
   end
 
+  context "delivery callback" do
+    it "should set the callback" do
+      expect {
+        producer.delivery_callback = lambda do |delivery_handle|
+          puts stats
+        end
+      }.not_to raise_error
+      expect(producer.delivery_callback).to be_a Proc
+    end
+
+    it "should not accept a callback that's not a proc" do
+      expect {
+        producer.delivery_callback = 'a string'
+      }.to raise_error(TypeError)
+    end
+
+    it "should call the callback when a message is delivered" do
+      @callback_called = false
+
+      producer.delivery_callback = lambda do |report|
+        expect(report).not_to be_nil
+        expect(report.partition).to eq 1
+        expect(report.offset).to be >= 0
+        @callback_called = true
+      end
+
+      # Produce a message
+      handle = producer.produce(
+        topic:   "produce_test_topic",
+        payload: "payload",
+        key:     "key"
+      )
+
+      # Wait for it to be delivered
+      handle.wait(5)
+
+      # Callback should have been called
+      expect(@callback_called).to be true
+    end
+  end
+
   it "should require a topic" do
     expect {
       producer.produce(

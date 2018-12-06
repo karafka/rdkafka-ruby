@@ -84,6 +84,7 @@ module Rdkafka
     attach_function :rd_kafka_conf_set, [:pointer, :string, :string, :pointer, :int], :kafka_config_response
     callback :log_cb, [:pointer, :int, :string, :string], :void
     attach_function :rd_kafka_conf_set_log_cb, [:pointer, :log_cb], :void
+    attach_function :rd_kafka_conf_set_opaque, [:pointer, :pointer], :void
     callback :stats_cb, [:pointer, :string, :int, :pointer], :int
     attach_function :rd_kafka_conf_set_stats_cb, [:pointer, :stats_cb], :void
 
@@ -176,10 +177,15 @@ module Rdkafka
       message = Message.new(message_ptr)
       delivery_handle_ptr_address = message[:_private].address
       if delivery_handle = Rdkafka::Producer::DeliveryHandle.remove(delivery_handle_ptr_address)
+        # Update delivery handle
         delivery_handle[:pending] = false
         delivery_handle[:response] = message[:err]
         delivery_handle[:partition] = message[:partition]
         delivery_handle[:offset] = message[:offset]
+        # Call delivery callback on opaque
+        if opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
+          opaque.call_delivery_callback(Rdkafka::Producer::DeliveryReport.new(message[:partition], message[:offset]))
+        end
       end
     end
   end

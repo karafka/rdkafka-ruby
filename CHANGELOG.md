@@ -1,3 +1,12 @@
+# 0.4.2
+* Delivery callback for producer
+* Document list param of commit method
+* Use default Homebrew openssl location if present
+* Consumer lag handles empty topics
+* End iteration in consumer when it is closed
+* Add suport for storing message offsets
+* Add missing runtime dependency to rake
+
 # 0.4.1
 * Bump librdkafka to 0.11.6
 

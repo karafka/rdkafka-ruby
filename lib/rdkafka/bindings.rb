@@ -61,6 +61,28 @@ module Rdkafka
              :elems, :pointer
     end
 
+    # rd_kafka_metadata_t
+    class KafkaMetadata < FFI::Struct
+      layout :broker_cnt, :int,
+             :brokers, :pointer,
+             :topic_cnt, :int,
+             :topics, :pointer,
+             :orig_broker_id, :int32_t,
+             :orig_broker_name, :string
+    end
+
+    class KafkaMetadataPtr < FFI::Struct
+      layout :value, KafkaMetadata.ptr
+    end
+
+    # rd_kafka_metadata_topic_t
+    class KafkaMetadataTopic < FFI::Struct
+      layout :topic, :string,
+             :partition_cnt, :int,
+             :partitions, :pointer,
+             :err, :int
+    end
+
     attach_function :rd_kafka_topic_partition_list_new, [:int32], :pointer
     attach_function :rd_kafka_topic_partition_list_add, [:pointer, :string, :int32], :void
     attach_function :rd_kafka_topic_partition_list_set_offset, [:pointer, :string, :int32, :int64], :void
@@ -71,6 +93,7 @@ module Rdkafka
 
     attach_function :rd_kafka_err2name, [:int], :string
     attach_function :rd_kafka_err2str, [:int], :string
+    attach_function :rd_kafka_last_error, [], :int
 
     # Configuration
 
@@ -148,10 +171,24 @@ module Rdkafka
     attach_function :rd_kafka_consumer_poll, [:pointer, :int], :pointer, blocking: true
     attach_function :rd_kafka_consumer_close, [:pointer], :void, blocking: true
     attach_function :rd_kafka_offset_store, [:pointer, :int32, :int64], :int
+    attach_function :rd_kafka_consume_batch, [:pointer, :int32, :int, :pointer, :size_t], :int
+    attach_function :rd_kafka_consume_start, [:pointer, :int32_t, :int64_t], :int
+    attach_function :rd_kafka_consume_stop, [:pointer, :int32], :int
+    attach_function :rd_kafka_consume_callback, [:pointer, :int32_t], :int
+    attach_function :rd_kafka_queue_new, [:pointer], :pointer
+    attach_function :rd_kafka_queue_destroy, [:pointer], :void
+    attach_function :rd_kafka_consume_start_queue, [:pointer, :int32_t, :int64_t, :pointer], :int
+    attach_function :rd_kafka_consume_batch_queue, [:pointer, :int, :pointer, :size_t], :int
+    attach_function :rd_kafka_consume_queue, [:pointer, :int], Message.ptr
+
+    #Callback = FFI::Function.new(:void, [:pointer, :long, :uint8]) do |buf_ptr, count, code|
+    #    # finish up
+    #end
 
     # Stats
 
     attach_function :rd_kafka_query_watermark_offsets, [:pointer, :string, :int, :pointer, :pointer, :int], :int
+    attach_function :rd_kafka_metadata, [:pointer, :int, :pointer, KafkaMetadataPtr, :int64], :int
 
     # Producer
 

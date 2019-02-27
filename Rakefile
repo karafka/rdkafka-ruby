@@ -1,7 +1,7 @@
 # Rakefile
 
 require 'bundler/gem_tasks'
-require "./lib/rdkafka"
+require_relative "./lib/rdkafka"
 
 desc 'Generate some message traffic'
 task :produce_messages do
@@ -40,7 +40,6 @@ task :consume_messages do
   Rdkafka::Config.statistics_callback = lambda do |stats|
     puts stats
   end
-  consumer = Rdkafka::Config.new(config).consumer
   consumer = Rdkafka::Config.new(config).consumer
   consumer.subscribe("rake_test_topic")
   consumer.each do |message|

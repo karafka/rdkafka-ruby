@@ -212,6 +212,7 @@ module Rdkafka
         message.partition,
         message.offset
       )
+
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
@@ -295,6 +296,95 @@ module Rdkafka
           end
         end
       end
+    end
+
+    def fetch_partitions_count(native_topic)
+      metadata_wraper = Rdkafka::Bindings::KafkaMetadataPtr.new
+      response = Rdkafka::Bindings.rd_kafka_metadata(@native_kafka, 0, native_topic, metadata_wraper, 5000)
+
+      if response != 0
+        last_error = Rdkafka::Bindings.rd_kafka_last_error
+        raise Rdkafka::RdkafkaError.new(response)
+      end
+
+      metadata = metadata_wraper[:value]
+
+      metadata[:topic_cnt].times do |i|
+        topic = Rdkafka::Bindings::KafkaMetadataTopic.new(metadata[:topics] + i * Rdkafka::Bindings::KafkaMetadataTopic.size)
+        return topic[:partition_cnt]
+      end
+
+      return 0
+    end
+
+    def consume_with_queue(topic, batch_size: 100, timeout_ms: 1000, partitions: :all, offset: -1000)
+      native_topic = Rdkafka::Bindings.rd_kafka_topic_new(
+        @native_kafka,
+        topic,
+        nil
+      )
+
+      if partitions == -1 || partitions == :all
+        partitions = (0...fetch_partitions_count(native_topic)).to_a
+      end
+
+      kafka_queue = Rdkafka::Bindings.rd_kafka_queue_new(@native_kafka)
+      partitions.each do |partition_num|
+        Rdkafka::Bindings.rd_kafka_consume_start_queue(native_topic, partition_num, offset, kafka_queue)
+      end
+
+      while native_message = Rdkafka::Bindings.rd_kafka_consume_queue(kafka_queue, timeout_ms)
+        unless native_message.null?
+          if native_message[:err] != 0
+            raise Rdkafka::RdkafkaError.new(native_message[:err])
+          end
+          message = Rdkafka::Consumer::Message.new(native_message)
+          Rdkafka::Bindings.rd_kafka_message_destroy(native_message)
+          yield(message)
+        end
+      end
+    ensure
+      if native_topic && !native_topic.null?
+        partitions.each do |partition_num|
+          Rdkafka::Bindings.rd_kafka_consume_stop(native_topic, partition_num)
+        end
+
+        if kafka_queue && !kafka_queue.null?
+          Rdkafka::Bindings.rd_kafka_queue_destroy(kafka_queue)
+        end
+
+        Rdkafka::Bindings.rd_kafka_topic_destroy(native_topic)
+      end
+    end
+
+    # offsets can be a number (to update all partitions) or array or hash {partition_num => offset}
+    def reset_offsets(topic, offsets: 0)
+      native_topic = Rdkafka::Bindings.rd_kafka_topic_new(
+        @native_kafka,
+        topic,
+        nil
+      )
+
+      if offsets.is_a?(Numeric)
+        offsets = (0...fetch_partitions_count(native_topic)).to_a.map { offsets }
+      end
+
+      offsets_hash = {}
+      if offsets.is_a?(Array)
+        offsets.each_with_index do |offset, partition|
+          offsets_hash[partition] = offset
+        end
+      else
+        offsets_hash = offsets
+      end
+
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+        list.add_topic_and_partitions_with_offsets(topic, offsets_hash)
+      end
+
+      puts "Setting offsets for topic: #{topic} -> #{offsets_hash}"
+
+      commit(list)
     end
   end
 end

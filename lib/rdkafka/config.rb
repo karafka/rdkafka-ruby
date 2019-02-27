@@ -209,4 +209,23 @@ module Rdkafka
       producer.call_delivery_callback(delivery_handle) if producer
     end
   end
+
+  def self.print_ffi_obj(value)
+    puts "#{value.class}"
+    value.members.each do |key|
+      field_val = if value[key].is_a?(FFI::Pointer) && value[key].null? || value[key].nil?
+        "nil"
+      elsif value[key].is_a?(FFI::StructLayout::CharArray)
+        value[key].to_str.inspect
+      elsif value[key].is_a?(String)
+        value[key].inspect
+      elsif value[key].is_a?(Symbol)
+        value[key].inspect
+      else
+        value[key]
+      end
+      puts "* #{key}: #{field_val}"
+    end
+    nil
+  end
 end

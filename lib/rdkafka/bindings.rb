@@ -181,10 +181,6 @@ module Rdkafka
     attach_function :rd_kafka_consume_batch_queue, [:pointer, :int, :pointer, :size_t], :int
     attach_function :rd_kafka_consume_queue, [:pointer, :int], Message.ptr
 
-    #Callback = FFI::Function.new(:void, [:pointer, :long, :uint8]) do |buf_ptr, count, code|
-    #    # finish up
-    #end
-
     # Stats
 
     attach_function :rd_kafka_query_watermark_offsets, [:pointer, :string, :int, :pointer, :pointer, :int], :int

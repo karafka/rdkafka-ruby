@@ -10,14 +10,12 @@ $kafka_config = {
 
 if ENV["DEBUG"]
   $kafka_config[:debug] = "cgrp,topic,fetch"
+
+  Rdkafka::Config.statistics_callback = lambda do |stats|
+    puts stats
+  end
 end
 
-#Rdkafka::Config.statistics_callback = lambda do |stats|
-#  puts stats
-#end
-
-#consumer = Rdkafka::Config.new(config).consumer
-#consumer = Rdkafka::Config.new(config)
 
 def prepare
   producer = Rdkafka::Config.new($kafka_config).producer

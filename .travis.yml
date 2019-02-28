@@ -11,11 +11,10 @@ env:
     - KAFKA_HEAP_OPTS="-Xmx512m -Xms512m"
 
 rvm:
-  - 2.1
-  - 2.2
   - 2.3
   - 2.4
   - 2.5
+  - 2.6
 
 before_install:
   - gem update --system

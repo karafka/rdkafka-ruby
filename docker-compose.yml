@@ -13,6 +13,6 @@ services:
       KAFKA_ADVERTISED_PORT: 9092
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
-      KAFKA_CREATE_TOPICS: "consume_test_topic:3:1,empty_test_topic:3:1,load_test_topic:3:1,produce_test_topic:3:1,rake_test_topic:3:1,empty_test_topic:3:1"
+      KAFKA_CREATE_TOPICS: "consume_test_topic:3:1,empty_test_topic:3:1,load_test_topic:3:1,produce_test_topic:3:1,rake_test_topic:3:1,watermarks_test_topic:3:1"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

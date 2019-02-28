@@ -257,13 +257,13 @@ describe Rdkafka::Consumer do
     it "should return the watermark offsets" do
       # Make sure there's a message
       producer.produce(
-        topic:     "consume_test_topic",
+        topic:     "watermarks_test_topic",
         payload:   "payload 1",
         key:       "key 1",
         partition: 0
       ).wait
 
-      low, high = consumer.query_watermark_offsets("consume_test_topic", 0, 5000)
+      low, high = consumer.query_watermark_offsets("watermarks_test_topic", 0, 5000)
       expect(low).to eq 0
       expect(high).to be > 0
     end

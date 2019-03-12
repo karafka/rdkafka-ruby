@@ -61,3 +61,10 @@ def wait_for_assignment(consumer)
     sleep 1
   end
 end
+
+def wait_for_unassignment(consumer)
+  10.times do
+    break if consumer.assignment.empty?
+    sleep 1
+  end
+end

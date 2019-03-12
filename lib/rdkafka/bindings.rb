@@ -164,6 +164,7 @@ module Rdkafka
     attach_function :rd_kafka_offset_store, [:pointer, :int32, :int64], :int
     attach_function :rd_kafka_pause_partitions, [:pointer, :pointer], :int
     attach_function :rd_kafka_resume_partitions, [:pointer, :pointer], :int
+    attach_function :rd_kafka_seek, [:pointer, :int32, :int64, :int], :int
 
     # Headers
     attach_function :rd_kafka_header_get_all, [:pointer, :size_t, :pointer, :pointer, SizePtr], :int

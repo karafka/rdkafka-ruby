@@ -17,6 +17,17 @@ module Rdkafka
 
     ffi_lib File.join(File.dirname(__FILE__), "../../ext/librdkafka.#{lib_extension}")
 
+    RD_KAFKA_RESP_ERR__NOENT = -156
+    RD_KAFKA_RESP_ERR_NO_ERROR = 0
+
+    class PointerPtr < FFI::Struct
+      layout :value, :pointer
+    end
+
+    class SizePtr < FFI::Struct
+      layout :value, :size_t
+    end
+
     # Polling
 
     attach_function :rd_kafka_poll, [:pointer, :int], :void, blocking: true
@@ -149,6 +160,11 @@ module Rdkafka
     attach_function :rd_kafka_consumer_close, [:pointer], :void, blocking: true
     attach_function :rd_kafka_offset_store, [:pointer, :int32, :int64], :int
 
+    # Headers
+    attach_function :rd_kafka_message_detach_headers, [:pointer, :pointer], :int
+    attach_function :rd_kafka_header_get_last, [:pointer, :string, PointerPtr.ptr, SizePtr.ptr], :int
+    attach_function :rd_kafka_headers_destroy, [:pointer], :void
+
     # Stats
 
     attach_function :rd_kafka_query_watermark_offsets, [:pointer, :string, :int, :pointer, :pointer, :int], :int
@@ -164,6 +180,8 @@ module Rdkafka
     RD_KAFKA_VTYPE_OPAQUE = 6
     RD_KAFKA_VTYPE_MSGFLAGS = 7
     RD_KAFKA_VTYPE_TIMESTAMP = 8
+    RD_KAFKA_VTYPE_HEADER = 9
+    RD_KAFKA_VTYPE_HEADERS = 10
 
     RD_KAFKA_MSG_F_COPY = 0x2
 

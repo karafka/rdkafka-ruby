@@ -26,6 +26,9 @@ module Rdkafka
       # @return [Time, nil]
       attr_reader :timestamp
 
+      # @return [Headers] a message headers
+      attr_reader :headers
+
       # @private
       def initialize(native_message)
         # Set topic
@@ -54,12 +57,14 @@ module Rdkafka
                      else
                        nil
                      end
+
+        @headers = Headers.new(native_message)
       end
 
       # Human readable representation of this message.
       # @return [String]
       def to_s
-        "<Message in '#{topic}' with key '#{truncate(key)}', payload '#{truncate(payload)}', partition #{partition}, offset #{offset}, timestamp #{timestamp}>"
+        "<Message in '#{topic}' with key '#{truncate(key)}', payload '#{truncate(payload)}', partition #{partition}, offset #{offset}, timestamp #{timestamp}, headers #{headers}>"
       end
 
       def truncate(string)
@@ -69,6 +74,9 @@ module Rdkafka
           string
         end
       end
+
+      private
+
     end
   end
 end

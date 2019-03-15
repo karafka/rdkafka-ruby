@@ -358,6 +358,22 @@ describe Rdkafka::Consumer do
     end
   end
 
+  describe "#cluster_id" do
+    it 'should return the current ClusterId' do
+      consumer.subscribe("consume_test_topic")
+      wait_for_assignment(consumer)
+      expect(consumer.cluster_id).not_to be_empty
+    end
+  end
+
+  describe "#member_id" do
+    it 'should return the current MemberId' do
+      consumer.subscribe("consume_test_topic")
+      wait_for_assignment(consumer)
+      expect(consumer.member_id).to start_with('rdkafka-')
+    end
+  end
+
   describe "#poll" do
     it "should return nil if there is no subscription" do
       expect(consumer.poll(1000)).to be_nil

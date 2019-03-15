@@ -151,6 +151,11 @@ module Rdkafka
 
     # Consumer
 
+    RD_KAFKA_OFFSET_BEGINNING = -2
+    RD_KAFKA_OFFSET_END = -1
+    RD_KAFKA_OFFSET_STORED = -1000
+    RD_KAFKA_OFFSET_INVALID = -1001
+
     attach_function :rd_kafka_subscribe, [:pointer, :pointer], :int
     attach_function :rd_kafka_unsubscribe, [:pointer], :int
     attach_function :rd_kafka_subscription, [:pointer, :pointer], :int

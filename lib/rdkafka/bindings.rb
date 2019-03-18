@@ -22,6 +22,11 @@ module Rdkafka
     attach_function :rd_kafka_poll, [:pointer, :int], :void, blocking: true
     attach_function :rd_kafka_outq_len, [:pointer], :int, blocking: true
 
+    # Metadata
+
+    attach_function :rd_kafka_memberid, [:pointer], :string
+    attach_function :rd_kafka_clusterid, [:pointer], :string
+
     # Message struct
 
     class Message < FFI::Struct

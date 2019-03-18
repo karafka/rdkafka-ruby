@@ -462,7 +462,7 @@ describe Rdkafka::Consumer do
     end
 
     def notify_listener(listener)
-      # 1. sibscribe and poll
+      # 1. subscribe and poll
       config.consumer_rebalance_listener = listener
       consumer.subscribe("consume_test_topic")
       wait_for_assignment(consumer)

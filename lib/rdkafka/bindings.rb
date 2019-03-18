@@ -20,10 +20,6 @@ module Rdkafka
     RD_KAFKA_RESP_ERR__NOENT = -156
     RD_KAFKA_RESP_ERR_NO_ERROR = 0
 
-    class PointerPtr < FFI::Struct
-      layout :value, :pointer
-    end
-
     class SizePtr < FFI::Struct
       layout :value, :size_t
     end
@@ -162,8 +158,8 @@ module Rdkafka
 
     # Headers
     attach_function :rd_kafka_message_detach_headers, [:pointer, :pointer], :int
-    attach_function :rd_kafka_header_get_last, [:pointer, :string, PointerPtr.ptr, SizePtr.ptr], :int
-    attach_function :rd_kafka_headers_destroy, [:pointer], :void
+    attach_function :rd_kafka_header_get_last, [:pointer, :string, :pointer, SizePtr], :int
+    attach_function :rd_kafka_headers_destroy, [:size_t], :void
 
     # Stats
 

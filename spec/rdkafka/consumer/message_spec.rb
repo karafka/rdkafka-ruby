@@ -93,7 +93,7 @@ describe Rdkafka::Consumer::Message do
     end
 
     it "should have a human readable representation" do
-      expect(subject.to_s).to eq "<Message in 'topic_name' with key '', payload '', partition 3, offset 100, timestamp 1000>"
+      expect(subject.to_s).to eq "<Message in 'topic_name' with key '', payload '', partition 3, offset 100, timestamp 1000, headers empty>"
     end
 
     context "with key and payload" do
@@ -101,7 +101,7 @@ describe Rdkafka::Consumer::Message do
       let(:payload) { "payload" }
 
       it "should have a human readable representation" do
-        expect(subject.to_s).to eq "<Message in 'topic_name' with key 'key', payload 'payload', partition 3, offset 100, timestamp 1000>"
+        expect(subject.to_s).to eq "<Message in 'topic_name' with key 'key', payload 'payload', partition 3, offset 100, timestamp 1000, headers empty>"
       end
     end
 
@@ -110,7 +110,7 @@ describe Rdkafka::Consumer::Message do
       let(:payload) { "p" * 100_000 }
 
       it "should have a human readable representation" do
-        expect(subject.to_s).to eq "<Message in 'topic_name' with key 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk...', payload 'pppppppppppppppppppppppppppppppppppppppp...', partition 3, offset 100, timestamp 1000>"
+        expect(subject.to_s).to eq "<Message in 'topic_name' with key 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk...', payload 'pppppppppppppppppppppppppppppppppppppppp...', partition 3, offset 100, timestamp 1000, headers empty>"
       end
     end
   end

@@ -468,7 +468,7 @@ describe Rdkafka::Consumer do
       wait_for_assignment(consumer)
       consumer.poll(100)
 
-      # 2. unsibscribe
+      # 2. unsubscribe
       consumer.unsubscribe
       wait_for_unassignment(consumer)
       consumer.close

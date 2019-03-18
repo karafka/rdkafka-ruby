@@ -64,7 +64,7 @@ module Rdkafka
     #
     # @param list [TopicPartitionList] The topic with partitions to pause
     #
-    # @raise [RdkafkaError] When pausing subscription fails.
+    # @raise [RdkafkaTopicPartitionListError] When pausing subscription fails.
     #
     # @return [nil]
     def pause(list)
@@ -74,7 +74,8 @@ module Rdkafka
       tpl = list.to_native_tpl
       response = Rdkafka::Bindings.rd_kafka_pause_partitions(@native_kafka, tpl)
       if response != 0
-        raise Rdkafka::RdkafkaError.new(response, "Error pausing '#{list.to_h}'")
+        list = TopicPartitionList.from_native_tpl(tpl)
+        raise Rdkafka::RdkafkaTopicPartitionListError.new(response, list, "Error pausing '#{list.to_h}'")
       end
     end
 

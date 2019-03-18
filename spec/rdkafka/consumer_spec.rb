@@ -97,10 +97,15 @@ describe Rdkafka::Consumer do
     end
 
     it "should raise an error when pausing fails" do
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap { |tpl| tpl.add_topic('topic', (0..1)) }
+
       expect(Rdkafka::Bindings).to receive(:rd_kafka_pause_partitions).and_return(20)
       expect {
-        consumer.pause(Rdkafka::Consumer::TopicPartitionList.new)
-      }.to raise_error Rdkafka::RdkafkaError
+        consumer.pause(list)
+      }.to raise_error do |err|
+        expect(err).to be_instance_of(Rdkafka::RdkafkaTopicPartitionListError)
+        expect(err.topic_partition_list).to be
+      end
     end
 
     it "should raise an error when resume fails" do

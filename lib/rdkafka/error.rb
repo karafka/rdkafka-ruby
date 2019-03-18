@@ -40,4 +40,16 @@ module Rdkafka
       code == :partition_eof
     end
   end
+
+  # Error with potic partition list returned by the underlying rdkafka library.
+  class RdkafkaTopicPartitionListError < RdkafkaError
+    # @return [TopicPartitionList]
+    attr_reader :topic_partition_list
+
+    # @private
+    def initialize(response, topic_partition_list, message_prefix=nil)
+      super(response, message_prefix)
+      @topic_partition_list = topic_partition_list
+    end
+  end
 end

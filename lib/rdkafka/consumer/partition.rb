@@ -10,19 +10,24 @@ module Rdkafka
       # @return [Integer, nil]
       attr_reader :offset
 
+      # Partition's error code
+      # @retuen [Integer]
+      attr_reader :err
+
       # @private
-      def initialize(partition, offset)
+      def initialize(partition, offset, err)
         @partition = partition
         @offset = offset
+        @err = err
       end
 
       # Human readable representation of this partition.
       # @return [String]
       def to_s
         if offset.nil?
-          "<Partition #{partition} without offset>"
+          "<Partition #{partition} err=#{err}>"
         else
-          "<Partition #{partition} with offset #{offset}>"
+          "<Partition #{partition} err=#{err} offset=#{offset}>"
         end
       end
 

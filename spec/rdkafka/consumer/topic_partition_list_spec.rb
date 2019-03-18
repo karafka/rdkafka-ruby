@@ -118,7 +118,7 @@ describe Rdkafka::Consumer::TopicPartitionList do
       list = Rdkafka::Consumer::TopicPartitionList.new
       list.add_topic("topic1", [0, 1])
 
-      expected = "<TopicPartitionList: {\"topic1\"=>[<Partition 0 without offset>, <Partition 1 without offset>]}>"
+      expected = "<TopicPartitionList: {\"topic1\"=>[<Partition 0>, <Partition 1>]}>"
 
       expect(list.to_s).to eq expected
     end

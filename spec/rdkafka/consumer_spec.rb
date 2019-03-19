@@ -411,6 +411,68 @@ describe Rdkafka::Consumer do
     end
   end
 
+  describe "#poll with headers" do
+    it "should return message with headers" do
+      report = producer.produce(
+        topic:     "consume_test_topic",
+        key:       "key headers",
+        headers:   { foo: 'bar' }
+      ).wait
+
+      message = wait_for_message(topic: "consume_test_topic", consumer: consumer, delivery_report: report)
+      expect(message).to be
+      expect(message.key).to eq('key headers')
+      expect(message.headers).to include(foo: 'bar')
+    end
+
+    it "should return message with no headers" do
+      report = producer.produce(
+        topic:     "consume_test_topic",
+        key:       "key no headers",
+        headers:   nil
+      ).wait
+
+      message = wait_for_message(topic: "consume_test_topic", consumer: consumer, delivery_report: report)
+      expect(message).to be
+      expect(message.key).to eq('key no headers')
+      expect(message.headers).to be_empty
+    end
+
+    it "should raise an error when message headers aren't readable" do
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_headers).with(any_args) { 1 }
+
+      report = producer.produce(
+        topic:     "consume_test_topic",
+        key:       "key err headers",
+        headers:   nil
+      ).wait
+
+      expect {
+        wait_for_message(topic: "consume_test_topic", consumer: consumer, delivery_report: report)
+      }.to raise_error do |err|
+        expect(err).to be_instance_of(Rdkafka::RdkafkaError)
+        expect(err.message).to start_with("Error reading message headers")
+      end
+    end
+
+    it "should raise an error when the first message header aren't readable" do
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_header_get_all).with(any_args) { 1 }
+
+      report = producer.produce(
+        topic:     "consume_test_topic",
+        key:       "key err headers",
+        headers:   { foo: 'bar' }
+      ).wait
+
+      expect {
+        wait_for_message(topic: "consume_test_topic", consumer: consumer, delivery_report: report)
+      }.to raise_error do |err|
+        expect(err).to be_instance_of(Rdkafka::RdkafkaError)
+        expect(err.message).to start_with("Error reading a message header at index 0")
+      end
+    end
+  end
+
   describe "#each" do
     it "should yield messages" do
       handles = []

@@ -67,12 +67,12 @@ module Rdkafka
     # @return [TopicPartitionList]
     def subscription
       tpl = FFI::MemoryPointer.new(:pointer)
-      tpl.autorelease = false
       response = Rdkafka::Bindings.rd_kafka_subscription(@native_kafka, tpl)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
-      Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl.get_pointer(0))
+      tpl = tpl.read(:pointer).tap { |it| it.autorelease = false }
+      Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
     end
 
     # Atomic assignment of partitions to consume
@@ -100,12 +100,13 @@ module Rdkafka
     # @return [TopicPartitionList]
     def assignment
       tpl = FFI::MemoryPointer.new(:pointer)
-      tpl.autorelease = false
       response = Rdkafka::Bindings.rd_kafka_assignment(@native_kafka, tpl)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
-      Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl.get_pointer(0))
+
+      tpl = tpl.read(:pointer).tap { |it| it.autorelease = false  }
+      Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
     end
 
     # Return the current committed offset per partition for this consumer group.

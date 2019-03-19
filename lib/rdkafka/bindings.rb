@@ -154,6 +154,42 @@ module Rdkafka
     attach_function :rd_kafka_consumer_close, [:pointer], :void, blocking: true
     attach_function :rd_kafka_offset_store, [:pointer, :int32, :int64], :int
 
+    # Rebalance
+
+    RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS = -175
+    RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS = -174
+
+    callback :rebalance_cb_function, [:pointer, :int, :pointer, :pointer], :void
+    attach_function :rd_kafka_conf_set_rebalance_cb, [:pointer, :rebalance_cb_function], :void
+
+    RebalanceCallback = FFI::Function.new(
+      :void, [:pointer, :int, :pointer, :pointer]
+    ) do |client_ptr, code, partitions_ptr, opaque_ptr|
+      case code
+      when RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS
+        Rdkafka::Bindings.rd_kafka_assign(client_ptr, partitions_ptr)
+      else # RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS or errors
+        Rdkafka::Bindings.rd_kafka_assign(client_ptr, FFI::Pointer::NULL)
+      end
+
+      opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
+      return unless opaque
+
+      tpl = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(partitions_ptr, false).freeze
+      consumer = Rdkafka::Consumer.new(client_ptr)
+
+      begin
+        case code
+        when RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS
+          opaque.call_on_partitions_assigned(consumer, tpl)
+        when RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS
+          opaque.call_on_partitions_revoked(consumer, tpl)
+        end
+      rescue Exception => err
+        Rdkafka::Config.logger.error("Unhandled exception: #{err.class} - #{err.message}")
+      end
+    end
+
     # Stats
 
     attach_function :rd_kafka_query_watermark_offsets, [:pointer, :string, :int, :pointer, :pointer, :int], :int

@@ -157,9 +157,8 @@ module Rdkafka
     attach_function :rd_kafka_offset_store, [:pointer, :int32, :int64], :int
 
     # Headers
-    attach_function :rd_kafka_message_detach_headers, [:pointer, :pointer], :int
-    attach_function :rd_kafka_header_get_last, [:pointer, :string, :pointer, SizePtr], :int
-    attach_function :rd_kafka_headers_destroy, [:size_t], :void
+    attach_function :rd_kafka_header_get_all, [:pointer, :size_t, :pointer, :pointer, SizePtr], :int
+    attach_function :rd_kafka_message_headers, [:pointer, :pointer], :int
 
     # Stats
 

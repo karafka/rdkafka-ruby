@@ -2,50 +2,59 @@ module Rdkafka
   class Consumer
     # A message headers
     class Headers
+      # Reads a native kafka's message header into ruby's hash
+      #
+      # @return [Hash<String, String>] a message headers
+      #
+      # @raise [Rdkafka::RdkafkaError] when fail to read headers
+      #
       # @private
-      def initialize(native_message)
-        @headers_ptr = nil
-
+      def self.from_native(native_message)
         headers_ptrptr = FFI::MemoryPointer.new(:pointer)
+        err = Rdkafka::Bindings.rd_kafka_message_headers(native_message, headers_ptrptr)
 
-        err = Rdkafka::Bindings.rd_kafka_message_detach_headers(native_message, headers_ptrptr)
-
-        if err == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-          ptr = headers_ptrptr.read(:pointer)
-          ptr.autorelease = false
-          @headers_ptr = FFI::AutoPointer.new(ptr, Rdkafka::Bindings.method(:rd_kafka_headers_destroy))
+        if err == Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT
+          return {}
+        elsif err != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+          raise Rdkafka::RdkafkaError.new(err, "Error reading message headers")
         end
-      end
 
-      # Find last header by name.
-      #
-      # @param name [String] a header name
-      #
-      # @return [String, nil] a found header value
-      def [](name)
-        return unless @headers_ptr
+        headers_ptr = headers_ptrptr.read(:pointer).tap { |it| it.autorelease = false }
 
+        name_ptrptr = FFI::MemoryPointer.new(:pointer)
         value_ptrptr = FFI::MemoryPointer.new(:pointer)
         size_ptr = Rdkafka::Bindings::SizePtr.new
+        headers = {}
 
-        err = Rdkafka::Bindings.rd_kafka_header_get_last(
-          @headers_ptr,
-          name.to_s,
-          value_ptrptr,
-          size_ptr
-        )
+        idx = 0
+        loop do
+          err = Rdkafka::Bindings.rd_kafka_header_get_all(
+            headers_ptr,
+            idx,
+            name_ptrptr,
+            value_ptrptr,
+            size_ptr
+          )
 
-        return unless err == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-        ptr = value_ptrptr.read(:pointer)
-        ptr.autorelease = false
+          if err == Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT
+            break
+          elsif err != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+            raise Rdkafka::RdkafkaError.new(err, "Error reading a message header at index #{idx}")
+          end
 
-        "" # ptr.read_string_length(size_ptr[:value])
-      end
+          name = name_ptrptr.read(:pointer).tap { |it| it.autorelease = false }
+          name = name.read_string_to_null
 
-      # Human readable representation of this headers.
-      # @return [String]
-      def to_s
-        @headers_ptr ? "present" : "empty"
+          size = size_ptr[:value]
+          value = value_ptrptr.read(:pointer).tap { |it| it.autorelease = false }
+          value = value.read_string(size)
+
+          headers[name.to_sym] = value
+
+          idx += 1
+        end
+
+        headers
       end
     end
   end

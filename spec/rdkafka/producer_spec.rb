@@ -239,6 +239,25 @@ describe Rdkafka::Producer do
     expect(message.headers[:foobar]).to be_nil
   end
 
+  it "should produce a message with empty headers" do
+    handle = producer.produce(
+      topic:     "produce_test_topic",
+      payload:   "payload headers",
+      key:       "key headers",
+      headers:   {}
+    )
+    report = handle.wait(5)
+
+    # Consume message and verify it's content
+    message = wait_for_message(
+      topic: "produce_test_topic",
+      delivery_report: report
+    )
+
+    expect(message.payload).to eq "payload headers"
+    expect(message.key).to eq "key headers"
+    expect(message.headers).to be_empty
+  end
 
   it "should produce message that aren't waited for and not crash" do
     5.times do

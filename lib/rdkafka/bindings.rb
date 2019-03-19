@@ -17,6 +17,8 @@ module Rdkafka
 
     ffi_lib File.join(File.dirname(__FILE__), "../../ext/librdkafka.#{lib_extension}")
 
+    RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS = -175
+    RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS = -174
     RD_KAFKA_RESP_ERR__NOENT = -156
     RD_KAFKA_RESP_ERR_NO_ERROR = 0
 
@@ -28,6 +30,11 @@ module Rdkafka
 
     attach_function :rd_kafka_poll, [:pointer, :int], :void, blocking: true
     attach_function :rd_kafka_outq_len, [:pointer], :int, blocking: true
+
+    # Metadata
+
+    attach_function :rd_kafka_memberid, [:pointer], :string
+    attach_function :rd_kafka_clusterid, [:pointer], :string
 
     # Message struct
 
@@ -159,6 +166,39 @@ module Rdkafka
     # Headers
     attach_function :rd_kafka_header_get_all, [:pointer, :size_t, :pointer, :pointer, SizePtr], :int
     attach_function :rd_kafka_message_headers, [:pointer, :pointer], :int
+
+    # Rebalance
+
+    callback :rebalance_cb_function, [:pointer, :int, :pointer, :pointer], :void
+    attach_function :rd_kafka_conf_set_rebalance_cb, [:pointer, :rebalance_cb_function], :void
+
+    RebalanceCallback = FFI::Function.new(
+      :void, [:pointer, :int, :pointer, :pointer]
+    ) do |client_ptr, code, partitions_ptr, opaque_ptr|
+      case code
+      when RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS
+        Rdkafka::Bindings.rd_kafka_assign(client_ptr, partitions_ptr)
+      else # RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS or errors
+        Rdkafka::Bindings.rd_kafka_assign(client_ptr, FFI::Pointer::NULL)
+      end
+
+      opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
+      return unless opaque
+
+      tpl = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(partitions_ptr, false).freeze
+      consumer = Rdkafka::Consumer.new(client_ptr)
+
+      begin
+        case code
+        when RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS
+          opaque.call_on_partitions_assigned(consumer, tpl)
+        when RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS
+          opaque.call_on_partitions_revoked(consumer, tpl)
+        end
+      rescue Exception => err
+        Rdkafka::Config.logger.error("Unhandled exception: #{err.class} - #{err.message}")
+      end
+    end
 
     # Stats
 

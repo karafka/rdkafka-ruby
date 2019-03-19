@@ -190,6 +190,22 @@ module Rdkafka
       out
     end
 
+    # Returns the ClusterId as reported in broker metadata.
+    #
+    # @return [String, nil]
+    def cluster_id
+      Rdkafka::Bindings.rd_kafka_clusterid(@native_kafka)
+    end
+
+    # Returns this client's broker-assigned group member id
+    #
+    # This currently requires the high-level KafkaConsumer
+    #
+    # @return [String, nil]
+    def member_id
+      Rdkafka::Bindings.rd_kafka_memberid(@native_kafka)
+    end
+
     # Store offset of a message to be used in the next commit of this consumer
     #
     # When using this `enable.auto.offset.store` should be set to `false` in the config.

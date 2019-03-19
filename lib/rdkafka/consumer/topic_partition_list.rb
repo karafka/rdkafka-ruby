@@ -93,7 +93,7 @@ module Rdkafka
       # @return [TopicPartitionList]
       #
       # @private
-      def self.from_native_tpl(pointer)
+      def self.from_native_tpl(pointer, destroy = true)
         # Data to be moved into the tpl
         data = {}
 
@@ -121,7 +121,9 @@ module Rdkafka
         TopicPartitionList.new(data)
       ensure
         # Destroy the tpl
-        Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(pointer)
+        if destroy
+          Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(pointer)
+        end
       end
 
       # Create a native tpl with the contents of this object added

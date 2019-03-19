@@ -358,6 +358,22 @@ describe Rdkafka::Consumer do
     end
   end
 
+  describe "#cluster_id" do
+    it 'should return the current ClusterId' do
+      consumer.subscribe("consume_test_topic")
+      wait_for_assignment(consumer)
+      expect(consumer.cluster_id).not_to be_empty
+    end
+  end
+
+  describe "#member_id" do
+    it 'should return the current MemberId' do
+      consumer.subscribe("consume_test_topic")
+      wait_for_assignment(consumer)
+      expect(consumer.member_id).to start_with('rdkafka-')
+    end
+  end
+
   describe "#poll" do
     it "should return nil if there is no subscription" do
       expect(consumer.poll(1000)).to be_nil
@@ -415,6 +431,63 @@ describe Rdkafka::Consumer do
         expect(message).to be_a Rdkafka::Consumer::Message
         consumer.close if i == 10
       end
+    end
+  end
+
+  describe "a rebalance listener" do
+    it "should get notifications" do
+      listener = Struct.new(:queue) do
+        def on_partitions_assigned(consumer, list)
+          collect(:assign, list)
+        end
+
+        def on_partitions_revoked(consumer, list)
+          collect(:revoke, list)
+        end
+
+        def collect(name, list)
+          partitions = list.to_h.map { |key, values| [key, values.map(&:partition)] }.flatten
+          queue << ([name] + partitions)
+        end
+      end.new([])
+
+      notify_listener(listener)
+
+      expect(listener.queue).to eq([
+        [:assign, "consume_test_topic", 0, 1, 2],
+        [:revoke, "consume_test_topic", 0, 1, 2]
+      ])
+    end
+
+    it 'should handle callback exceptions' do
+      listener = Struct.new(:queue) do
+        def on_partitions_assigned(consumer, list)
+          queue << :assigned
+          raise 'boom'
+        end
+
+        def on_partitions_revoked(consumer, list)
+          queue << :revoked
+          raise 'boom'
+        end
+      end.new([])
+
+      notify_listener(listener)
+
+      expect(listener.queue).to eq([:assigned, :revoked])
+    end
+
+    def notify_listener(listener)
+      # 1. subscribe and poll
+      config.consumer_rebalance_listener = listener
+      consumer.subscribe("consume_test_topic")
+      wait_for_assignment(consumer)
+      consumer.poll(100)
+
+      # 2. unsubscribe
+      consumer.unsubscribe
+      wait_for_unassignment(consumer)
+      consumer.close
     end
   end
 end

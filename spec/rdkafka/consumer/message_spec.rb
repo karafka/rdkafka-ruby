@@ -23,7 +23,24 @@ describe Rdkafka::Consumer::Message do
       end
     end
   end
+
   subject { Rdkafka::Consumer::Message.new(native_message) }
+
+  before do
+    # mock headers, because it produces 'segmentation fault' while settings or reading headers for
+    # a message which is created from scratch
+    #
+    # Code dump example:
+    #
+    # ```
+    # frame #7: 0x000000010dacf5ab librdkafka.dylib`rd_list_destroy + 11
+    # frame #8: 0x000000010dae5a7e librdkafka.dylib`rd_kafka_headers_destroy + 14
+    # frame #9: 0x000000010da9ab40 librdkafka.dylib`rd_kafka_message_set_headers + 32
+    # ```
+    expect( Rdkafka::Bindings).to receive(:rd_kafka_message_headers).with(any_args) do
+      Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT
+    end
+  end
 
   it "should have a topic" do
     expect(subject.topic).to eq "topic_name"

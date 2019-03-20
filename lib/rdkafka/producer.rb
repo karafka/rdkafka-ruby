@@ -57,11 +57,12 @@ module Rdkafka
     # @param key [String] The message's key
     # @param partition [Integer,nil] Optional partition to produce to
     # @param timestamp [Time,Integer,nil] Optional timestamp of this message. Integer timestamp is in milliseconds since Jan 1 1970.
+    # @param headers [Hash<String,String>] Optional message headers
     #
     # @raise [RdkafkaError] When adding the message to rdkafka's queue failed
     #
     # @return [DeliveryHandle] Delivery handle that can be used to wait for the result of producing this message
-    def produce(topic:, payload: nil, key: nil, partition: nil, timestamp: nil)
+    def produce(topic:, payload: nil, key: nil, partition: nil, timestamp: nil, headers: nil)
       # Start by checking and converting the input
 
       # Get payload length
@@ -101,9 +102,7 @@ module Rdkafka
       delivery_handle[:offset] = -1
       DeliveryHandle.register(delivery_handle.to_ptr.address, delivery_handle)
 
-      # Produce the message
-      response = Rdkafka::Bindings.rd_kafka_producev(
-        @native_kafka,
+      args = [
         :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_TOPIC, :string, topic,
         :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_MSGFLAGS, :int, Rdkafka::Bindings::RD_KAFKA_MSG_F_COPY,
         :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_VALUE, :buffer_in, payload, :size_t, payload_size,
@@ -111,7 +110,27 @@ module Rdkafka
         :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_PARTITION, :int32, partition,
         :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_TIMESTAMP, :int64, raw_timestamp,
         :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_OPAQUE, :pointer, delivery_handle,
-        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_END
+      ]
+
+      if headers
+        headers.each do |key0, value0|
+          key = key0.to_s
+          value = value0.to_s
+          args += [
+            :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER,
+            :string, key,
+            :pointer, value,
+            :size_t, value.bytes.size
+          ]
+        end
+      end
+
+      args += [:int, Rdkafka::Bindings::RD_KAFKA_VTYPE_END]
+
+      # Produce the message
+      response = Rdkafka::Bindings.rd_kafka_producev(
+        @native_kafka,
+        *args
       )
 
       # Raise error if the produce call was not successfull

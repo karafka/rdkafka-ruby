@@ -17,6 +17,15 @@ module Rdkafka
 
     ffi_lib File.join(File.dirname(__FILE__), "../../ext/librdkafka.#{lib_extension}")
 
+    RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS = -175
+    RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS = -174
+    RD_KAFKA_RESP_ERR__NOENT = -156
+    RD_KAFKA_RESP_ERR_NO_ERROR = 0
+
+    class SizePtr < FFI::Struct
+      layout :value, :size_t
+    end
+
     # Polling
 
     attach_function :rd_kafka_poll, [:pointer, :int], :void, blocking: true
@@ -156,10 +165,11 @@ module Rdkafka
     attach_function :rd_kafka_pause_partitions, [:pointer, :pointer], :int
     attach_function :rd_kafka_resume_partitions, [:pointer, :pointer], :int
 
-    # Rebalance
+    # Headers
+    attach_function :rd_kafka_header_get_all, [:pointer, :size_t, :pointer, :pointer, SizePtr], :int
+    attach_function :rd_kafka_message_headers, [:pointer, :pointer], :int
 
-    RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS = -175
-    RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS = -174
+    # Rebalance
 
     callback :rebalance_cb_function, [:pointer, :int, :pointer, :pointer], :void
     attach_function :rd_kafka_conf_set_rebalance_cb, [:pointer, :rebalance_cb_function], :void
@@ -207,6 +217,8 @@ module Rdkafka
     RD_KAFKA_VTYPE_OPAQUE = 6
     RD_KAFKA_VTYPE_MSGFLAGS = 7
     RD_KAFKA_VTYPE_TIMESTAMP = 8
+    RD_KAFKA_VTYPE_HEADER = 9
+    RD_KAFKA_VTYPE_HEADERS = 10
 
     RD_KAFKA_MSG_F_COPY = 0x2
 

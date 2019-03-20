@@ -60,6 +60,43 @@ module Rdkafka
       end
     end
 
+    # Pause producing or consumption for the provided list of partitions
+    #
+    # @param list [TopicPartitionList] The topic with partitions to pause
+    #
+    # @raise [RdkafkaTopicPartitionListError] When pausing subscription fails.
+    #
+    # @return [nil]
+    def pause(list)
+      unless list.is_a?(TopicPartitionList)
+        raise TypeError.new("list has to be a TopicPartitionList")
+      end
+      tpl = list.to_native_tpl
+      response = Rdkafka::Bindings.rd_kafka_pause_partitions(@native_kafka, tpl)
+      if response != 0
+        list = TopicPartitionList.from_native_tpl(tpl)
+        raise Rdkafka::RdkafkaTopicPartitionListError.new(response, list, "Error pausing '#{list.to_h}'")
+      end
+    end
+
+    # Resume producing consumption for the provided list of partitions
+    #
+    # @param list [TopicPartitionList] The topic with partitions to pause
+    #
+    # @raise [RdkafkaError] When resume subscription fails.
+    #
+    # @return [nil]
+    def resume(list)
+      unless list.is_a?(TopicPartitionList)
+        raise TypeError.new("list has to be a TopicPartitionList")
+      end
+      tpl = list.to_native_tpl
+      response = Rdkafka::Bindings.rd_kafka_resume_partitions(@native_kafka, tpl)
+      if response != 0
+        raise Rdkafka::RdkafkaError.new(response, "Error resume '#{list.to_h}'")
+      end
+    end
+
     # Return the current subscription to topics and partitions
     #
     # @raise [RdkafkaError] When getting the subscription fails.

@@ -54,7 +54,7 @@ module Rdkafka
           if partitions.is_a? Integer
             partitions = (0..partitions - 1)
           end
-          @data[topic.to_s] = partitions.map { |p| Partition.new(p, nil) }
+          @data[topic.to_s] = partitions.map { |p| Partition.new(p, nil, 0) }
         end
       end
 
@@ -111,7 +111,7 @@ module Rdkafka
                      else
                        elem[:offset]
                      end
-            partition = Partition.new(elem[:partition], offset)
+            partition = Partition.new(elem[:partition], offset, elem[:err])
             partitions.push(partition)
             data[elem[:topic]] = partitions
           end

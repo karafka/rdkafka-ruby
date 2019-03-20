@@ -47,6 +47,83 @@ describe Rdkafka::Consumer do
     end
   end
 
+  describe "#pause and #resume" do
+    context "subscription" do
+      let(:timeout) { 1000 }
+
+      before { consumer.subscribe("consume_test_topic") }
+      after { consumer.unsubscribe }
+
+      it "should pause and then resume" do
+        # 1. partitions are assigned
+        wait_for_assignment(consumer)
+        expect(consumer.assignment).not_to be_empty
+
+        # 2. send a first message
+        send_one_message
+
+        # 3. ensure that message is successfully consumed
+        records = consumer.poll(timeout)
+        expect(records).not_to be_nil
+        consumer.commit
+
+        # 4. send a second message
+        send_one_message
+
+        # 5. pause the subscription
+        tpl = Rdkafka::Consumer::TopicPartitionList.new
+        tpl.add_topic("consume_test_topic", (0..2))
+        consumer.pause(tpl)
+
+        # 6. unsure that messages are not available
+        records = consumer.poll(timeout)
+        expect(records).to be_nil
+
+        # 7. resume the subscription
+        tpl = Rdkafka::Consumer::TopicPartitionList.new
+        tpl.add_topic("consume_test_topic", (0..2))
+        consumer.resume(tpl)
+
+        # 8. ensure that message is successfuly consumed
+        records = consumer.poll(timeout)
+        expect(records).not_to be_nil
+        consumer.commit
+      end
+    end
+
+    it "should raise when not TopicPartitionList" do
+      expect { consumer.pause(true) }.to raise_error(TypeError)
+      expect { consumer.resume(true) }.to raise_error(TypeError)
+    end
+
+    it "should raise an error when pausing fails" do
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap { |tpl| tpl.add_topic('topic', (0..1)) }
+
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_pause_partitions).and_return(20)
+      expect {
+        consumer.pause(list)
+      }.to raise_error do |err|
+        expect(err).to be_instance_of(Rdkafka::RdkafkaTopicPartitionListError)
+        expect(err.topic_partition_list).to be
+      end
+    end
+
+    it "should raise an error when resume fails" do
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_resume_partitions).and_return(20)
+      expect {
+        consumer.resume(Rdkafka::Consumer::TopicPartitionList.new)
+      }.to raise_error Rdkafka::RdkafkaError
+    end
+
+    def send_one_message
+      producer.produce(
+        topic:     "consume_test_topic",
+        payload:   "payload 1",
+        key:       "key 1"
+      ).wait
+    end
+  end
+
   describe "#assign and #assignment" do
     it "should return an empty assignment if nothing is assigned" do
       expect(consumer.assignment).to be_empty

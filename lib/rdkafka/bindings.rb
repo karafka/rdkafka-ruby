@@ -187,7 +187,7 @@ module Rdkafka
       opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
       return unless opaque
 
-      tpl = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(partitions_ptr, false).freeze
+      tpl = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(partitions_ptr).freeze
       consumer = Rdkafka::Consumer.new(client_ptr)
 
       begin

@@ -151,6 +151,11 @@ module Rdkafka
 
     # Consumer
 
+    RD_KAFKA_OFFSET_BEGINNING = -2
+    RD_KAFKA_OFFSET_END = -1
+    RD_KAFKA_OFFSET_STORED = -1000
+    RD_KAFKA_OFFSET_INVALID = -1001
+
     attach_function :rd_kafka_subscribe, [:pointer, :pointer], :int
     attach_function :rd_kafka_unsubscribe, [:pointer], :int
     attach_function :rd_kafka_subscription, [:pointer, :pointer], :int
@@ -164,6 +169,7 @@ module Rdkafka
     attach_function :rd_kafka_offset_store, [:pointer, :int32, :int64], :int
     attach_function :rd_kafka_pause_partitions, [:pointer, :pointer], :int
     attach_function :rd_kafka_resume_partitions, [:pointer, :pointer], :int
+    attach_function :rd_kafka_seek, [:pointer, :int32, :int64, :int], :int
 
     # Headers
     attach_function :rd_kafka_header_get_all, [:pointer, :size_t, :pointer, :pointer, SizePtr], :int
@@ -177,13 +183,6 @@ module Rdkafka
     RebalanceCallback = FFI::Function.new(
       :void, [:pointer, :int, :pointer, :pointer]
     ) do |client_ptr, code, partitions_ptr, opaque_ptr|
-      case code
-      when RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS
-        Rdkafka::Bindings.rd_kafka_assign(client_ptr, partitions_ptr)
-      else # RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS or errors
-        Rdkafka::Bindings.rd_kafka_assign(client_ptr, FFI::Pointer::NULL)
-      end
-
       opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
       return unless opaque
 

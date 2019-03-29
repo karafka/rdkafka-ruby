@@ -118,10 +118,13 @@ module Rdkafka
     #
     # @raise [RdkafkaError] When assigning fails
     def assign(list)
-      unless list.is_a?(TopicPartitionList)
+      tpl = if list.nil?
+        nil
+      elsif list.is_a?(TopicPartitionList)
+        list.to_native_tpl
+      else
         raise TypeError.new("list has to be a TopicPartitionList")
       end
-      tpl = list.to_native_tpl
       response = Rdkafka::Bindings.rd_kafka_assign(@native_kafka, tpl)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response, "Error assigning '#{list.to_h}'")
@@ -242,6 +245,38 @@ module Rdkafka
     # @return [String, nil]
     def member_id
       Rdkafka::Bindings.rd_kafka_memberid(@native_kafka)
+    end
+
+    # Store offset of a message to be used in the next commit of this consumer
+    #
+    # When using this `enable.auto.offset.store` should be set to `false` in the config.
+    #
+    # @param message [Rdkafka::Consumer::Message] The message which offset will be stored
+    #
+    # @raise [RdkafkaError] When storing the offset fails
+    #
+    # @return [nil]
+    def seek(topic, partition, offset, timeout_ms)
+      # rd_kafka_offset_store is one of the few calls that does not support
+      # a string as the topic, so create a native topic for it.
+      native_topic = Rdkafka::Bindings.rd_kafka_topic_new(
+        @native_kafka,
+        topic,
+        nil
+      )
+      response = Rdkafka::Bindings.rd_kafka_seek(
+        native_topic,
+        partition,
+        offset,
+        timeout_ms
+      )
+      if response != 0
+        raise Rdkafka::RdkafkaError.new(response)
+      end
+    ensure
+      if native_topic && !native_topic.null?
+        Rdkafka::Bindings.rd_kafka_topic_destroy(native_topic)
+      end
     end
 
     # Store offset of a message to be used in the next commit of this consumer

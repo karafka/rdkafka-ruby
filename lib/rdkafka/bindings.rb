@@ -178,13 +178,6 @@ module Rdkafka
     RebalanceCallback = FFI::Function.new(
       :void, [:pointer, :int, :pointer, :pointer]
     ) do |client_ptr, code, partitions_ptr, opaque_ptr|
-      case code
-      when RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS
-        Rdkafka::Bindings.rd_kafka_assign(client_ptr, partitions_ptr)
-      else # RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS or errors
-        Rdkafka::Bindings.rd_kafka_assign(client_ptr, FFI::Pointer::NULL)
-      end
-
       opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
       return unless opaque
 

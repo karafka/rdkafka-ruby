@@ -118,10 +118,13 @@ module Rdkafka
     #
     # @raise [RdkafkaError] When assigning fails
     def assign(list)
-      unless list.is_a?(TopicPartitionList)
+      tpl = if list.nil?
+        nil
+      elsif list.is_a?(TopicPartitionList)
+        list.to_native_tpl
+      else
         raise TypeError.new("list has to be a TopicPartitionList")
       end
-      tpl = list.to_native_tpl
       response = Rdkafka::Bindings.rd_kafka_assign(@native_kafka, tpl)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response, "Error assigning '#{list.to_h}'")

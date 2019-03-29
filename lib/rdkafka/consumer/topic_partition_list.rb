@@ -2,6 +2,8 @@ module Rdkafka
   class Consumer
     # A list of topics with their partition information
     class TopicPartitionList
+      include Enumerable
+
       # Create a topic partition list.
       #
       # @param data [Hash<String => [nil,Partition]>] The topic and partion data or nil to create an empty list
@@ -29,6 +31,28 @@ module Rdkafka
       # @return [Boolean]
       def empty?
         @data.empty?
+      end
+
+      # Whether the specified topic is in this list or not
+      def has_key?(topic)
+        @data.has_key?(topic)
+      end
+
+      # Returns the partitions for the specified topic. Returns `nil` if the
+      # topic is not in the list.
+      #
+      # @return [Array<Partition>,nil]
+      def [](topic)
+        @data[topic]
+      end
+
+      # Iterates through each topic, yielding the topic name, and an array of
+      # partitions within each topic.
+      #
+      # @yieldparam topic [String] Name of the topic
+      # @yieldparam partitions [Array<Partition>] Partitions
+      def each(&block)
+        @data.each(&block)
       end
 
       # Add a topic with optionally partitions to the list.

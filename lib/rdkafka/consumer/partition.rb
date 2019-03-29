@@ -8,7 +8,7 @@ module Rdkafka
 
       # Partition's offset
       # @return [Integer, nil]
-      attr_reader :offset
+      attr_accessor :offset
 
       # Partition's error code
       # @retuen [Integer]

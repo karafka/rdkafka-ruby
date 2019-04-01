@@ -423,10 +423,9 @@ describe Rdkafka::Consumer do
     end
 
     it "returns nil if there are no messages on the topic" do
-      timeout_ms = 1500
       list = consumer.committed(Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
         l.add_topic("consume_test_topic", (0..2))
-      end, timeout_ms)
+      end)
 
       lag = consumer.lag(list)
       expected_lag = {

@@ -155,7 +155,7 @@ module Rdkafka
     # @raise [RdkafkaError] When getting the committed positions fails.
     #
     # @return [TopicPartitionList]
-    def committed(list=nil, timeout_ms=200)
+    def committed(list=nil, timeout_ms=1200)
       if list.nil?
         list = assignment
       elsif !list.is_a?(TopicPartitionList)

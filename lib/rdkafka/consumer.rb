@@ -30,7 +30,8 @@ module Rdkafka
     # @return [nil]
     def subscribe(*topics)
       # Create topic partition list with topics and no partition set
-      tpl = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(topics.length)
+      tpl = TopicPartitionList.new_native_tpl(topics.length)
+
       topics.each do |topic|
         Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
           tpl,
@@ -43,9 +44,6 @@ module Rdkafka
       if response != 0
         raise Rdkafka::RdkafkaError.new(response, "Error subscribing to '#{topics.join(', ')}'")
       end
-    ensure
-      # Clean up the topic partition list
-      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl)
     end
 
     # Unsubscribe from all subscribed topics.
@@ -73,6 +71,7 @@ module Rdkafka
       end
       tpl = list.to_native_tpl
       response = Rdkafka::Bindings.rd_kafka_pause_partitions(@native_kafka, tpl)
+
       if response != 0
         list = TopicPartitionList.from_native_tpl(tpl)
         raise Rdkafka::RdkafkaTopicPartitionListError.new(response, list, "Error pausing '#{list.to_h}'")
@@ -109,7 +108,12 @@ module Rdkafka
         raise Rdkafka::RdkafkaError.new(response)
       end
       tpl = tpl.read(:pointer).tap { |it| it.autorelease = false }
-      Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+
+      begin
+        Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+      ensure
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl)
+      end
     end
 
     # Atomic assignment of partitions to consume
@@ -126,8 +130,6 @@ module Rdkafka
       if response != 0
         raise Rdkafka::RdkafkaError.new(response, "Error assigning '#{list.to_h}'")
       end
-    ensure
-      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl) if tpl
     end
 
     # Returns the current partition assignment.
@@ -143,7 +145,12 @@ module Rdkafka
       end
 
       tpl = tpl.read(:pointer).tap { |it| it.autorelease = false  }
-      Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+
+      begin
+        Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+      ensure
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy tpl
+      end
     end
 
     # Return the current committed offset per partition for this consumer group.
@@ -296,8 +303,6 @@ module Rdkafka
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
-    ensure
-      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl) if tpl
     end
 
     # Poll for the next message on one of the subscribed topics

@@ -1,0 +1,25 @@
+From 1bdcec665df6884dcd20e54b439efa73b0d57a85 Mon Sep 17 00:00:00 2001
+From: Johnny Lai <johnny.lai@me.com>
+Date: Thu, 16 May 2019 14:41:48 -0700
+Subject: [PATCH] Patch for libressl
+
+---
+ src/rdkafka_transport.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/rdkafka_transport.c b/src/rdkafka_transport.c
+index c05df1a..2c59b80 100644
+--- a/src/rdkafka_transport.c
++++ b/src/rdkafka_transport.c
+@@ -831,7 +831,7 @@ int rd_kafka_transport_ssl_ctx_init (rd_kafka_t *rk,
+ 	int r;
+ 	SSL_CTX *ctx;
+ 
+-#if OPENSSL_VERSION_NUMBER >= 0x10100000
++#if 0
+         rd_kafka_dbg(rk, SECURITY, "OPENSSL", "Using OpenSSL version %s "
+                      "(0x%lx, librdkafka built with 0x%lx)",
+                      OpenSSL_version(OPENSSL_VERSION),
+-- 
+2.15.0
+

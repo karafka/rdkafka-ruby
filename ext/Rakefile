@@ -32,6 +32,7 @@ task :default => :clean do
     :url => "https://codeload.github.com/edenhill/librdkafka/tar.gz/v#{Rdkafka::LIBRDKAFKA_VERSION}",
     :sha256 => Rdkafka::LIBRDKAFKA_SOURCE_SHA256
   }
+  recipe.patch_files.concat Dir[File.join(File.dirname(__FILE__), "patches/*")]
   recipe.configure_options = ["--host=#{recipe.host}"]
   recipe.cook
   # Move dynamic library we're interested in

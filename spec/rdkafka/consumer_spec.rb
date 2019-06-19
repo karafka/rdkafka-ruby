@@ -126,49 +126,6 @@ describe Rdkafka::Consumer do
   end
 
   describe "#seek" do
-    let(:timeout) { 1000 }
-
-    before { consumer.subscribe("consume_test_topic") }
-    after { consumer.unsubscribe }
-
-    def send_one_message(val)
-      producer.produce(
-        topic:     "consume_test_topic",
-        payload:   "payload #{val}",
-        key:       "key 1",
-        partition: 0
-      ).wait
-    end
-
-    it "works when a partition is paused" do
-      # 1. partitions are assigned
-      wait_for_assignment(consumer)
-      expect(consumer.assignment).not_to be_empty
-
-      # 2. get reference message
-      send_one_message(:a)
-      message1 = consumer.poll(timeout)
-
-      # 3. pause the subscription
-      tpl = Rdkafka::Consumer::TopicPartitionList.new
-      tpl.add_topic("consume_test_topic", 1)
-      consumer.pause(tpl)
-
-      # 4. seek to previous message
-      consumer.seek(message1)
-
-      # 5. resume the subscription
-      tpl = Rdkafka::Consumer::TopicPartitionList.new
-      tpl.add_topic("consume_test_topic", 1)
-      consumer.resume(tpl)
-
-      # 6. ensure same message is read again
-      message2 = consumer.poll(timeout)
-      consumer.commit
-      expect(message1.offset).to eq message2.offset
-      expect(message1.payload).to eq message2.payload
-    end
-
     it "should raise an error when seeking fails" do
       fake_msg = OpenStruct.new(topic: "consume_test_topic", partition: 0, offset: 0)
 
@@ -178,36 +135,79 @@ describe Rdkafka::Consumer do
       }.to raise_error Rdkafka::RdkafkaError
     end
 
-    it "allows skipping messages" do
-      # 1. partitions are assigned
-      wait_for_assignment(consumer)
-      expect(consumer.assignment).not_to be_empty
+    context "subscription" do
+      let(:timeout) { 1000 }
 
-      # 2. send messages
-      send_one_message(:a)
-      send_one_message(:b)
-      send_one_message(:c)
+      before do
+        consumer.subscribe("consume_test_topic")
 
-      # 3. get reference message
-      message = consumer.poll(timeout)
+        # 1. partitions are assigned
+        wait_for_assignment(consumer)
+        expect(consumer.assignment).not_to be_empty
 
-      # 4. seek over one message
-      fake_msg = message.dup
-      fake_msg.instance_variable_set(:@offset, fake_msg.offset + 2)
-      consumer.seek(fake_msg)
+        # 2. eat unrelated messages
+        while(consumer.poll(timeout)) do; end
+      end
+      after { consumer.unsubscribe }
 
-      # 5. resume the subscription
-      tpl = Rdkafka::Consumer::TopicPartitionList.new
-      tpl.add_topic("consume_test_topic", (0..2))
-      consumer.resume(tpl)
+      def send_one_message(val)
+        producer.produce(
+          topic:     "consume_test_topic",
+          payload:   "payload #{val}",
+          key:       "key 1",
+          partition: 0
+        ).wait
+      end
 
-      # 6. ensure that only one message is available
-      records = consumer.poll(timeout)
-      expect(records&.payload).to eq "payload c"
-      records = consumer.poll(timeout)
-      expect(records).to be_nil
+      it "works when a partition is paused" do
+        # 3. get reference message
+        send_one_message(:a)
+        message1 = consumer.poll(timeout)
+        expect(message1&.payload).to eq "payload a"
 
-      consumer.commit
+        # 4. pause the subscription
+        tpl = Rdkafka::Consumer::TopicPartitionList.new
+        tpl.add_topic("consume_test_topic", 1)
+        consumer.pause(tpl)
+
+        # 5. seek to previous message
+        consumer.seek(message1)
+
+        # 6. resume the subscription
+        tpl = Rdkafka::Consumer::TopicPartitionList.new
+        tpl.add_topic("consume_test_topic", 1)
+        consumer.resume(tpl)
+
+        # 7. ensure same message is read again
+        message2 = consumer.poll(timeout)
+        consumer.commit
+        expect(message1.offset).to eq message2.offset
+        expect(message1.payload).to eq message2.payload
+      end
+
+      it "allows skipping messages" do
+        # 3. send messages
+        send_one_message(:a)
+        send_one_message(:b)
+        send_one_message(:c)
+
+        # 4. get reference message
+        message = consumer.poll(timeout)
+        expect(message&.payload).to eq "payload a"
+
+        # 5. seek over one message
+        fake_msg = message.dup
+        fake_msg.instance_variable_set(:@offset, fake_msg.offset + 2)
+        consumer.seek(fake_msg)
+
+        # 6. ensure that only one message is available
+        records = consumer.poll(timeout)
+        expect(records&.payload).to eq "payload c"
+        records = consumer.poll(timeout)
+        expect(records).to be_nil
+
+        consumer.commit
+      end
     end
   end
 

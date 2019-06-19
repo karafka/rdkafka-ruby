@@ -282,6 +282,37 @@ module Rdkafka
       end
     end
 
+    # Seek to a particular message. The next poll on the topic/partition will return the
+    # message at the given offset.
+    #
+    # @param message [Rdkafka::Consumer::Message] The message to which to seek
+    #
+    # @raise [RdkafkaError] When seeking fails
+    #
+    # @return [nil]
+    def seek(message)
+      # rd_kafka_offset_store is one of the few calls that does not support
+      # a string as the topic, so create a native topic for it.
+      native_topic = Rdkafka::Bindings.rd_kafka_topic_new(
+        @native_kafka,
+        message.topic,
+        nil
+      )
+      response = Rdkafka::Bindings.rd_kafka_seek(
+        native_topic,
+        message.partition,
+        message.offset,
+        0 # timeout
+      )
+      if response != 0
+        raise Rdkafka::RdkafkaError.new(response)
+      end
+    ensure
+      if native_topic && !native_topic.null?
+        Rdkafka::Bindings.rd_kafka_topic_destroy(native_topic)
+      end
+    end
+
     # Commit the current offsets of this consumer
     #
     # @param list [TopicPartitionList,nil] The topic with partitions to commit

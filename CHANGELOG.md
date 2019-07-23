@@ -7,6 +7,7 @@
 * Add cluster and member information (by dmexe)
 * Support message headers for consumer & producer (by dmexe)
 * Add consumer rebalance listener (by dmexe)
+* Implement pause/resume partitions (by dmexe)
 
 # 0.4.2
 * Delivery callback for producer

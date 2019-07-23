@@ -1,3 +1,7 @@
+# 0.6.0
+* Bump librdkafka to 1.1.0 (by Chris Gaffney)
+* Implement seek (by breunigs)
+
 # 0.5.0
 * Bump librdkafka to 1.0.0 (by breunigs)
 * Add cluster and member information (by dmexe)

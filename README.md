@@ -10,6 +10,10 @@ The `rdkafka` gem is a modern Kafka client library for Ruby based on
 It wraps the production-ready C client using the [ffi](https://github.com/ffi/ffi)
 gem and targets Kafka 1.0+ and Ruby 2.3+.
 
+`rdkafka-ruby` was written because we needed a reliable Ruby client for
+Kafka that supports modern Kafka at [AppSignal](https://appsignal.com).
+We run it in production on very high traffic systems.
+
 This gem only provides a high-level Kafka consumer. If you are running
 an older version of Kafka and/or need the legacy simple consumer we
 suggest using the [Hermann](https://github.com/reiseburo/hermann) gem.

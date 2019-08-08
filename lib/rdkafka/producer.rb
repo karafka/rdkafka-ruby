@@ -2,6 +2,9 @@ module Rdkafka
   # A producer for Kafka messages. To create a producer set up a {Config} and call {Config#producer producer} on that.
   class Producer
     # @private
+    # Returns the current delivery callback, by default this is nil.
+    #
+    # @return [Proc, nil]
     attr_reader :delivery_callback
 
     # @private
@@ -30,13 +33,6 @@ module Rdkafka
     def delivery_callback=(callback)
       raise TypeError.new("Callback has to be a proc or lambda") unless callback.is_a? Proc
       @delivery_callback = callback
-    end
-
-    # Returns the current delivery callback, by default this is nil.
-    #
-    # @return [Proc, nil]
-    def delivery_callback
-      @delivery_callback
     end
 
     # Close this producer and wait for the internal poll queue to empty.

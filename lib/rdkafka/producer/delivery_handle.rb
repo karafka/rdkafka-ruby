@@ -10,6 +10,10 @@ module Rdkafka
 
       REGISTRY = {}
 
+      CURRENT_TIME = -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) }.freeze
+
+      private_constant :CURRENT_TIME
+
       def self.register(address, handle)
         REGISTRY[address] = handle
       end
@@ -29,8 +33,8 @@ module Rdkafka
       # If there is a timeout this does not mean the message is not delivered, rdkafka might still be working on delivering the message.
       # In this case it is possible to call wait again.
       #
-      # @param max_wait_timeout [Integer, nil] Number of seconds to wait before timing out. If this is nil it does not time out.
-      # @param wait_timeout [Numeric] Time we should wait before we recheck if there is a delivery report available
+      # @param max_wait_timeout [Numeric, nil] Amount of time to wait before timing out. If this is nil it does not time out.
+      # @param wait_timeout [Numeric] Amount of time we should wait before we recheck if there is a delivery report available
       #
       # @raise [RdkafkaError] When delivering the message failed
       # @raise [WaitTimeoutError] When the timeout has been reached and the handle is still pending
@@ -38,13 +42,13 @@ module Rdkafka
       # @return [DeliveryReport]
       def wait(max_wait_timeout = 60, wait_timeout = 0.1)
         timeout = if max_wait_timeout
-                    Time.now.to_i + max_wait_timeout
+                    CURRENT_TIME.call + max_wait_timeout
                   else
                     nil
                   end
         loop do
           if pending?
-            if timeout && timeout <= Time.now.to_i
+            if timeout && timeout <= CURRENT_TIME.call
               raise WaitTimeoutError.new("Waiting for delivery timed out after #{max_wait_timeout} seconds")
             end
             sleep wait_timeout

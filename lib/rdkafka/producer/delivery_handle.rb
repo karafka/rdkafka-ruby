@@ -52,7 +52,6 @@ module Rdkafka
               raise WaitTimeoutError.new("Waiting for delivery timed out after #{max_wait_timeout} seconds")
             end
             sleep wait_timeout
-            next
           elsif self[:response] != 0
             raise RdkafkaError.new(self[:response])
           else

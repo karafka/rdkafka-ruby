@@ -29,24 +29,25 @@ module Rdkafka
       # If there is a timeout this does not mean the message is not delivered, rdkafka might still be working on delivering the message.
       # In this case it is possible to call wait again.
       #
-      # @param timeout_in_seconds [Integer, nil] Number of seconds to wait before timing out. If this is nil it does not time out.
+      # @param max_wait_timeout [Integer, nil] Number of seconds to wait before timing out. If this is nil it does not time out.
+      # @param wait_timeout [Numeric] Time we should wait before we recheck if there is a delivery report available
       #
       # @raise [RdkafkaError] When delivering the message failed
       # @raise [WaitTimeoutError] When the timeout has been reached and the handle is still pending
       #
       # @return [DeliveryReport]
-      def wait(timeout_in_seconds=60)
-        timeout = if timeout_in_seconds
-                    Time.now.to_i + timeout_in_seconds
+      def wait(max_wait_timeout = 60, wait_timeout = 0.1)
+        timeout = if max_wait_timeout
+                    Time.now.to_i + max_wait_timeout
                   else
                     nil
                   end
         loop do
           if pending?
             if timeout && timeout <= Time.now.to_i
-              raise WaitTimeoutError.new("Waiting for delivery timed out after #{timeout_in_seconds} seconds")
+              raise WaitTimeoutError.new("Waiting for delivery timed out after #{max_wait_timeout} seconds")
             end
-            sleep 0.1
+            sleep wait_timeout
             next
           elsif self[:response] != 0
             raise RdkafkaError.new(self[:response])

@@ -85,7 +85,7 @@ describe Rdkafka::Consumer do
         tpl.add_topic("consume_test_topic", (0..2))
         consumer.resume(tpl)
 
-        # 8. ensure that message is successfuly consumed
+        # 8. ensure that message is successfully consumed
         records = consumer.poll(timeout)
         expect(records).not_to be_nil
         consumer.commit

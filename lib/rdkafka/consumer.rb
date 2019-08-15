@@ -318,7 +318,7 @@ module Rdkafka
     # @param list [TopicPartitionList,nil] The topic with partitions to commit
     # @param async [Boolean] Whether to commit async or wait for the commit to finish
     #
-    # @raise [RdkafkaError] When comitting fails
+    # @raise [RdkafkaError] When committing fails
     #
     # @return [nil]
     def commit(list=nil, async=false)
@@ -372,11 +372,11 @@ module Rdkafka
     # @yieldparam message [Message] Received message
     #
     # @return [nil]
-    def each(&block)
+    def each
       loop do
         message = poll(250)
         if message
-          block.call(message)
+          yield(message)
         else
           if @closing
             break

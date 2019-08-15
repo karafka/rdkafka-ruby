@@ -67,7 +67,7 @@ module Rdkafka
 
     # Returns a new config with the provided options which are merged with {DEFAULT_CONFIG}.
     #
-    # @param config_hash [Hash<String,Symbol => String>] The config options for rdkafka
+    # @param config_hash [Hash{String,Symbol => String}] The config options for rdkafka
     #
     # @return [Config]
     def initialize(config_hash = {})
@@ -155,7 +155,7 @@ module Rdkafka
 
     private
 
-    # This method is only intented to be used to create a client,
+    # This method is only intended to be used to create a client,
     # using it in another way will leak memory.
     def native_config(opaque=nil)
       Rdkafka::Bindings.rd_kafka_conf_new.tap do |config|

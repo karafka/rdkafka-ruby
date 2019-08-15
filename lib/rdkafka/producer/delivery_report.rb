@@ -1,6 +1,6 @@
 module Rdkafka
   class Producer
-    # Delivery report for a succesfully produced message.
+    # Delivery report for a successfully produced message.
     class DeliveryReport
       # The partition this message was produced to.
       # @return [Integer]

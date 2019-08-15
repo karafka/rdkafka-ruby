@@ -367,6 +367,10 @@ module Rdkafka
     # Poll for new messages and yield for each received one. Iteration
     # will end when the consumer is closed.
     #
+    # If `enable.partition.eof` is turned on in the config this will raise an
+    # error when an eof is reached, so you probably want to disable that when
+    # using this method of iteration.
+    #
     # @raise [RdkafkaError] When polling fails
     #
     # @yieldparam message [Message] Received message

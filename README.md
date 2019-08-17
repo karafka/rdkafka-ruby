@@ -72,13 +72,6 @@ end
 delivery_handles.each(&:wait)
 ```
 
-## Known issues
-
-When using forked process such as when using Unicorn you currently need
-to make sure that you create rdkafka instances after forking. Otherwise
-they will not work and crash your Ruby process when they are garbage
-collected. See https://github.com/appsignal/rdkafka-ruby/issues/19
-
 ## Development
 
 A Docker Compose file is included to run Kafka and Zookeeper. To run

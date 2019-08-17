@@ -184,7 +184,7 @@ module Rdkafka
     end
 
     # Return the current committed offset per partition for this consumer group.
-    # The offset field of each requested partition will either be set to stored offset or to -1001 in case there was no stored offset for that partition.
+    # The offset field of each requested partition will either be set to stored offset or to nil in case there was no stored offset for that partition.
     #
     # @param list [TopicPartitionList, nil] The topic with partitions to get the offsets for or nil to use the current subscription.
     # @param timeout_ms [Integer] The timeout for fetching this information.
@@ -210,6 +210,28 @@ module Rdkafka
       ensure
         Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl)
       end
+    end
+
+    # Return the current positions (offsets) for topics and partitions.
+    # The offset field of each requested partition will be set to the offset of the last consumed message + 1, or nil in case there was no previous message.
+    #
+    # @param list [TopicPartitionList, nil] The topic with partitions to get the offsets for or nil to use the current subscription.
+    #
+    # @raise [RdkafkaError] When getting the positions fails.
+    #
+    # @return [TopicPartitionList]
+    def position(list=nil)
+      if list.nil?
+        list = assignment
+      elsif !list.is_a?(TopicPartitionList)
+        raise TypeError.new("list has to be nil or a TopicPartitionList")
+      end
+      tpl = list.to_native_tpl
+      response = Rdkafka::Bindings.rd_kafka_position(@native_kafka, tpl)
+      if response != 0
+        raise Rdkafka::RdkafkaError.new(response)
+      end
+      TopicPartitionList.from_native_tpl(tpl)
     end
 
     # Query broker for low (oldest/beginning) and high (newest/end) offsets for a partition.

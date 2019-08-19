@@ -40,7 +40,7 @@ module Rdkafka
       # @raise [WaitTimeoutError] When the timeout has been reached and the handle is still pending
       #
       # @return [DeliveryReport]
-      def wait(max_wait_timeout = 60, wait_timeout = 0.1)
+      def wait(max_wait_timeout: 60, wait_timeout: 0.1)
         timeout = if max_wait_timeout
                     CURRENT_TIME.call + max_wait_timeout
                   else

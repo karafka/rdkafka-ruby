@@ -318,7 +318,7 @@ module Rdkafka
     # @param list [TopicPartitionList,nil] The topic with partitions to commit
     # @param async [Boolean] Whether to commit async or wait for the commit to finish
     #
-    # @raise [RdkafkaError] When comitting fails
+    # @raise [RdkafkaError] When committing fails
     #
     # @return [nil]
     def commit(list=nil, async=false)
@@ -367,16 +367,20 @@ module Rdkafka
     # Poll for new messages and yield for each received one. Iteration
     # will end when the consumer is closed.
     #
+    # If `enable.partition.eof` is turned on in the config this will raise an
+    # error when an eof is reached, so you probably want to disable that when
+    # using this method of iteration.
+    #
     # @raise [RdkafkaError] When polling fails
     #
     # @yieldparam message [Message] Received message
     #
     # @return [nil]
-    def each(&block)
+    def each
       loop do
         message = poll(250)
         if message
-          block.call(message)
+          yield(message)
         else
           if @closing
             break

@@ -4,7 +4,7 @@ module Rdkafka
     class TopicPartitionList
       # Create a topic partition list.
       #
-      # @param data [Hash<String => [nil,Partition]>] The topic and partion data or nil to create an empty list
+      # @param data [Hash{String => nil,Partition}] The topic and partition data or nil to create an empty list
       #
       # @return [TopicPartitionList]
       def initialize(data=nil)
@@ -71,7 +71,7 @@ module Rdkafka
 
       # Return a `Hash` with the topics as keys and and an array of partition information as the value if present.
       #
-      # @return [Hash<String, [Array<Partition>, nil]>]
+      # @return [Hash{String => Array<Partition>,nil}]
       def to_h
         @data
       end

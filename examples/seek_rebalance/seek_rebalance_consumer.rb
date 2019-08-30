@@ -1,4 +1,8 @@
 #!/usr/bin/env ruby
+
+# Add lib path to LOAD_PATH
+$LOAD_PATH.unshift File.expand_path('../../../lib', __FILE__)
+
 require 'optparse'
 require 'ostruct'
 require 'rdkafka'
@@ -31,7 +35,7 @@ end
 
 params = {}
 optparse = OptionParser.new do |opts|
-  opts.banner = "Usage: seek_rebalance_example.rb [options]"
+  opts.banner = "Usage: seek_rebalance_consumer.rb [options]"
   opts.on("-bSERVER", "--bootstrap-server=SERVER", "Bootstrap server. Defaults to localhost:9092")
   opts.on("-gID", "--group=ID", "[Required] Consumer group ID")
   opts.on("-tTOPIC_NAME", "--topic=TOPIC_NAME", "[Required] Name of Topic to subscribe to")
@@ -75,7 +79,7 @@ c.each do |message|
   puts "Got #{message.topic}/#{message.partition}@#{message.offset} #{message.payload}"
   if !end_offset.nil? && message.offset >= end_offset
     puts "Seeking back to 0 for #{message.topic}, #{message.partition}"
-    c.seek(message.topic, message.partition, 0, 250)
+    c.seek(OpenStruct.new(topic: message.topic, partition: message.partition, offset: 0))
 
     puts "Commiting the updated offsets immediately"
     tpl = Rdkafka::Consumer::TopicPartitionList.new

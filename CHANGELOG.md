@@ -1,3 +1,14 @@
+# 0.6.0
+* Bump librdkafka to 1.1.0 (by Chris Gaffney)
+* Implement seek (by breunigs)
+
+# 0.5.0
+* Bump librdkafka to 1.0.0 (by breunigs)
+* Add cluster and member information (by dmexe)
+* Support message headers for consumer & producer (by dmexe)
+* Add consumer rebalance listener (by dmexe)
+* Implement pause/resume partitions (by dmexe)
+
 # 0.4.2
 * Delivery callback for producer
 * Document list param of commit method

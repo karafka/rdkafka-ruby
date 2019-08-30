@@ -3,7 +3,7 @@ ext/ports
 ext/tmp
 ext/librdkafka.*
 *.gem
-.byebug
+.byebug*
 .yardoc
 doc
 coverage

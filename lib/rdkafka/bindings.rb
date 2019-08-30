@@ -18,8 +18,11 @@ module Rdkafka
     ffi_lib File.join(File.dirname(__FILE__), "../../ext/librdkafka.#{lib_extension}")
 
     RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS = -175
-    RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS = -174
+    RD_KAFKA_RESP_ERR__INVALID_ARG = -186
     RD_KAFKA_RESP_ERR__NOENT = -156
+    RD_KAFKA_RESP_ERR__NOT_IMPLEMENTED = -170
+    RD_KAFKA_RESP_ERR__STATE = -172
+    RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS = -174
     RD_KAFKA_RESP_ERR_NO_ERROR = 0
 
     class SizePtr < FFI::Struct
@@ -175,6 +178,37 @@ module Rdkafka
     attach_function :rd_kafka_header_get_all, [:pointer, :size_t, :pointer, :pointer, SizePtr], :int
     attach_function :rd_kafka_message_headers, [:pointer, :pointer], :int
 
+    # OAUTH
+    attach_function :rd_kafka_oauthbearer_set_token, [
+      :pointer,
+      :string, :int64, :string,
+      :pointer, :size_t,
+      :pointer, :size_t
+    ], :int
+    attach_function :rd_kafka_oauthbearer_set_token_failure, [:pointer, :string], :int
+
+    callback :oauthbearer_token_refresh_cb_function, [:pointer, :string, :pointer], :void
+    attach_function :rd_kafka_conf_set_oauthbearer_token_refresh_cb, [:pointer, :oauthbearer_token_refresh_cb_function], :void
+
+    OauthbearerTokenRefreshCallback = FFI::Function.new(
+      :void, [:pointer, :string, :pointer]
+    ) do |client_ptr, oauthbearer_config, opaque_ptr|
+      opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
+      return unless opaque
+
+      # Run callback in a different thread because calling oauthbearer_set_token
+      # seems to cause logging to deadlock.
+      # TODO: Run in the poll thread instead.
+      Thread.new do
+        begin
+          client = Rdkafka::Client.new(client_ptr)
+          opaque.call_oauthbearer_token_refresh_callback(client, oauthbearer_config)
+        rescue => err
+          Rdkafka::Config.logger.error("Unhandled exception: #{err.class} - #{err.message}")
+        end
+      end
+    end
+
     # Rebalance
 
     callback :rebalance_cb_function, [:pointer, :int, :pointer, :pointer], :void
@@ -199,7 +233,7 @@ module Rdkafka
         when RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS
           opaque.call_on_partitions_revoked(consumer, tpl)
         end
-      rescue Exception => err
+      rescue => err
         Rdkafka::Config.logger.error("Unhandled exception: #{err.class} - #{err.message}")
       end
     end

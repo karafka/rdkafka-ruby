@@ -1,0 +1,7 @@
+# client_id, client_secret, and token_site will be replaced by operations in production.
+:client_id: REPLACE_ME
+:client_secret: REPLACE_ME
+:token_site: https://sand-dev.io.coupadev.com
+:token_path: /oauth2/token
+:access_scopes:
+  - coupa

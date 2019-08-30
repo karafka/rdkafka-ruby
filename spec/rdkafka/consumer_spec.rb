@@ -664,10 +664,12 @@ describe Rdkafka::Consumer do
     it "should get notifications" do
       listener = Struct.new(:queue) do
         def on_partitions_assigned(consumer, list)
+          consumer.assign(list)
           collect(:assign, list)
         end
 
         def on_partitions_revoked(consumer, list)
+          consumer.assign(nil)
           collect(:revoke, list)
         end
 
@@ -688,11 +690,13 @@ describe Rdkafka::Consumer do
     it 'should handle callback exceptions' do
       listener = Struct.new(:queue) do
         def on_partitions_assigned(consumer, list)
+          consumer.assign(list)
           queue << :assigned
           raise 'boom'
         end
 
         def on_partitions_revoked(consumer, list)
+          consumer.assign(nil)
           queue << :revoked
           raise 'boom'
         end

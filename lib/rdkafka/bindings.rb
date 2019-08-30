@@ -183,6 +183,9 @@ module Rdkafka
     RebalanceCallback = FFI::Function.new(
       :void, [:pointer, :int, :pointer, :pointer]
     ) do |client_ptr, code, partitions_ptr, opaque_ptr|
+      # Removed rd_kafka_assign calls from appsignal/master because we want
+      # to have control over the offsets that we start on.
+
       opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
       return unless opaque
 

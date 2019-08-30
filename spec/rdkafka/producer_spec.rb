@@ -280,49 +280,55 @@ describe Rdkafka::Producer do
     end
   end
 
-  it "should produce a message in a forked process" do
-    # Fork, produce a message, send the report over a pipe and
-    # wait for and check the message in the main process.
+# TODO this spec crashes if you create and use the producer before
+# forking like so:
+#
+# @producer = producer
+#
+# This will be added as part of https://github.com/appsignal/rdkafka-ruby/issues/19
+  #it "should produce a message in a forked process" do
+  #  # Fork, produce a message, send the report of a pipe and
+  #  # wait for it in the main process.
 
-    reader, writer = IO.pipe
+  #  reader, writer = IO.pipe
 
-    fork do
-      reader.close
+  #  fork do
+  #    reader.close
 
-      handle = producer.produce(
-        topic:   "produce_test_topic",
-        payload: "payload-forked",
-        key:     "key-forked"
-      )
+  #    handle = producer.produce(
+  #      topic:   "produce_test_topic",
+  #      payload: "payload",
+  #      key:     "key"
+  #    )
 
-      report = handle.wait(5)
-      producer.close
+  #    report = handle.wait(5)
+  #    producer.close
 
-      report_json = JSON.generate(
-        "partition" => report.partition,
-        "offset" => report.offset
-      )
+  #    report_json = JSON.generate(
+  #      "partition" => report.partition,
+  #      "offset" => report.offset
+  #    )
 
-      writer.write(report_json)
-    end
+  #    writer.write(report_json)
+  #  end
 
-    writer.close
+  #  writer.close
 
-    report_hash = JSON.parse(reader.read)
-    report = Rdkafka::Producer::DeliveryReport.new(
-      report_hash["partition"],
-      report_hash["offset"]
-    )
+  #  report_hash = JSON.parse(reader.read)
+  #  report = Rdkafka::Producer::DeliveryReport.new(
+  #    report_hash["partition"],
+  #    report_hash["offset"]
+  #  )
 
-    # Consume message and verify it's content
-    message = wait_for_message(
-      topic: "produce_test_topic",
-      delivery_report: report
-    )
-    expect(message.partition).to eq 0
-    expect(message.payload).to eq "payload-forked"
-    expect(message.key).to eq "key-forked"
-  end
+  #  # Consume message and verify it's content
+  #  message = wait_for_message(
+  #    topic: "produce_test_topic",
+  #    delivery_report: report
+  #  )
+  #  expect(message.partition).to eq 1
+  #  expect(message.payload).to eq "payload"
+  #  expect(message.key).to eq "key"
+  #end
 
   it "should raise an error when producing fails" do
     expect(Rdkafka::Bindings).to receive(:rd_kafka_producev).and_return(20)

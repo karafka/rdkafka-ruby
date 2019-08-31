@@ -30,7 +30,8 @@ module Rdkafka
     # @return [nil]
     def subscribe(*topics)
       # Create topic partition list with topics and no partition set
-      tpl = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(topics.length)
+      tpl = TopicPartitionList.new_native_tpl(topics.length)
+
       topics.each do |topic|
         Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
           tpl,
@@ -43,9 +44,6 @@ module Rdkafka
       if response != 0
         raise Rdkafka::RdkafkaError.new(response, "Error subscribing to '#{topics.join(', ')}'")
       end
-    ensure
-      # Clean up the topic partition list
-      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl)
     end
 
     # Unsubscribe from all subscribed topics.
@@ -73,6 +71,7 @@ module Rdkafka
       end
       tpl = list.to_native_tpl
       response = Rdkafka::Bindings.rd_kafka_pause_partitions(@native_kafka, tpl)
+
       if response != 0
         list = TopicPartitionList.from_native_tpl(tpl)
         raise Rdkafka::RdkafkaTopicPartitionListError.new(response, list, "Error pausing '#{list.to_h}'")
@@ -109,7 +108,12 @@ module Rdkafka
         raise Rdkafka::RdkafkaError.new(response)
       end
       tpl = tpl.read(:pointer).tap { |it| it.autorelease = false }
-      Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+
+      begin
+        Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+      ensure
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl)
+      end
     end
 
     # Atomic assignment of partitions to consume
@@ -129,8 +133,6 @@ module Rdkafka
       if response != 0
         raise Rdkafka::RdkafkaError.new(response, "Error assigning '#{list.to_h}'")
       end
-    ensure
-      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl) if tpl
     end
 
     # Returns the current partition assignment.
@@ -146,7 +148,12 @@ module Rdkafka
       end
 
       tpl = tpl.read(:pointer).tap { |it| it.autorelease = false  }
-      Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+
+      begin
+        Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+      ensure
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy tpl
+      end
     end
 
     # Return the current committed offset per partition for this consumer group.
@@ -158,7 +165,7 @@ module Rdkafka
     # @raise [RdkafkaError] When getting the committed positions fails.
     #
     # @return [TopicPartitionList]
-    def committed(list=nil, timeout_ms=200)
+    def committed(list=nil, timeout_ms=1200)
       if list.nil?
         list = assignment
       elsif !list.is_a?(TopicPartitionList)
@@ -256,38 +263,6 @@ module Rdkafka
     # @raise [RdkafkaError] When storing the offset fails
     #
     # @return [nil]
-    def seek(topic, partition, offset, timeout_ms)
-      # rd_kafka_offset_store is one of the few calls that does not support
-      # a string as the topic, so create a native topic for it.
-      native_topic = Rdkafka::Bindings.rd_kafka_topic_new(
-        @native_kafka,
-        topic,
-        nil
-      )
-      response = Rdkafka::Bindings.rd_kafka_seek(
-        native_topic,
-        partition,
-        offset,
-        timeout_ms
-      )
-      if response != 0
-        raise Rdkafka::RdkafkaError.new(response)
-      end
-    ensure
-      if native_topic && !native_topic.null?
-        Rdkafka::Bindings.rd_kafka_topic_destroy(native_topic)
-      end
-    end
-
-    # Store offset of a message to be used in the next commit of this consumer
-    #
-    # When using this `enable.auto.offset.store` should be set to `false` in the config.
-    #
-    # @param message [Rdkafka::Consumer::Message] The message which offset will be stored
-    #
-    # @raise [RdkafkaError] When storing the offset fails
-    #
-    # @return [nil]
     def store_offset(message)
       # rd_kafka_offset_store is one of the few calls that does not support
       # a string as the topic, so create a native topic for it.
@@ -310,12 +285,43 @@ module Rdkafka
       end
     end
 
+    # Seek to a particular message. The next poll on the topic/partition will return the
+    # message at the given offset.
+    #
+    # @param message [Rdkafka::Consumer::Message] The message to which to seek
+    #
+    # @raise [RdkafkaError] When seeking fails
+    #
+    # @return [nil]
+    def seek(message)
+      # rd_kafka_offset_store is one of the few calls that does not support
+      # a string as the topic, so create a native topic for it.
+      native_topic = Rdkafka::Bindings.rd_kafka_topic_new(
+        @native_kafka,
+        message.topic,
+        nil
+      )
+      response = Rdkafka::Bindings.rd_kafka_seek(
+        native_topic,
+        message.partition,
+        message.offset,
+        0 # timeout
+      )
+      if response != 0
+        raise Rdkafka::RdkafkaError.new(response)
+      end
+    ensure
+      if native_topic && !native_topic.null?
+        Rdkafka::Bindings.rd_kafka_topic_destroy(native_topic)
+      end
+    end
+
     # Commit the current offsets of this consumer
     #
     # @param list [TopicPartitionList,nil] The topic with partitions to commit
     # @param async [Boolean] Whether to commit async or wait for the commit to finish
     #
-    # @raise [RdkafkaError] When comitting fails
+    # @raise [RdkafkaError] When committing fails
     #
     # @return [nil]
     def commit(list=nil, async=false)
@@ -331,8 +337,6 @@ module Rdkafka
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
-    ensure
-      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl) if tpl
     end
 
     # Poll for the next message on one of the subscribed topics
@@ -366,16 +370,20 @@ module Rdkafka
     # Poll for new messages and yield for each received one. Iteration
     # will end when the consumer is closed.
     #
+    # If `enable.partition.eof` is turned on in the config this will raise an
+    # error when an eof is reached, so you probably want to disable that when
+    # using this method of iteration.
+    #
     # @raise [RdkafkaError] When polling fails
     #
     # @yieldparam message [Message] Received message
     #
     # @return [nil]
-    def each(&block)
+    def each
       loop do
         message = poll(250)
         if message
-          block.call(message)
+          yield(message)
         else
           if @closing
             break

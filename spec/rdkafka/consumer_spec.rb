@@ -1,4 +1,5 @@
 require "spec_helper"
+require "ostruct"
 
 describe Rdkafka::Consumer do
   let(:config) { rdkafka_config }
@@ -75,7 +76,7 @@ describe Rdkafka::Consumer do
         tpl.add_topic("consume_test_topic", (0..2))
         consumer.pause(tpl)
 
-        # 6. unsure that messages are not available
+        # 6. ensure that messages are not available
         records = consumer.poll(timeout)
         expect(records).to be_nil
 
@@ -84,7 +85,7 @@ describe Rdkafka::Consumer do
         tpl.add_topic("consume_test_topic", (0..2))
         consumer.resume(tpl)
 
-        # 8. ensure that message is successfuly consumed
+        # 8. ensure that message is successfully consumed
         records = consumer.poll(timeout)
         expect(records).not_to be_nil
         consumer.commit
@@ -121,6 +122,92 @@ describe Rdkafka::Consumer do
         payload:   "payload 1",
         key:       "key 1"
       ).wait
+    end
+  end
+
+  describe "#seek" do
+    it "should raise an error when seeking fails" do
+      fake_msg = OpenStruct.new(topic: "consume_test_topic", partition: 0, offset: 0)
+
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_seek).and_return(20)
+      expect {
+        consumer.seek(fake_msg)
+      }.to raise_error Rdkafka::RdkafkaError
+    end
+
+    context "subscription" do
+      let(:timeout) { 1000 }
+
+      before do
+        consumer.subscribe("consume_test_topic")
+
+        # 1. partitions are assigned
+        wait_for_assignment(consumer)
+        expect(consumer.assignment).not_to be_empty
+
+        # 2. eat unrelated messages
+        while(consumer.poll(timeout)) do; end
+      end
+      after { consumer.unsubscribe }
+
+      def send_one_message(val)
+        producer.produce(
+          topic:     "consume_test_topic",
+          payload:   "payload #{val}",
+          key:       "key 1",
+          partition: 0
+        ).wait
+      end
+
+      it "works when a partition is paused" do
+        # 3. get reference message
+        send_one_message(:a)
+        message1 = consumer.poll(timeout)
+        expect(message1&.payload).to eq "payload a"
+
+        # 4. pause the subscription
+        tpl = Rdkafka::Consumer::TopicPartitionList.new
+        tpl.add_topic("consume_test_topic", 1)
+        consumer.pause(tpl)
+
+        # 5. seek to previous message
+        consumer.seek(message1)
+
+        # 6. resume the subscription
+        tpl = Rdkafka::Consumer::TopicPartitionList.new
+        tpl.add_topic("consume_test_topic", 1)
+        consumer.resume(tpl)
+
+        # 7. ensure same message is read again
+        message2 = consumer.poll(timeout)
+        consumer.commit
+        expect(message1.offset).to eq message2.offset
+        expect(message1.payload).to eq message2.payload
+      end
+
+      it "allows skipping messages" do
+        # 3. send messages
+        send_one_message(:a)
+        send_one_message(:b)
+        send_one_message(:c)
+
+        # 4. get reference message
+        message = consumer.poll(timeout)
+        expect(message&.payload).to eq "payload a"
+
+        # 5. seek over one message
+        fake_msg = message.dup
+        fake_msg.instance_variable_set(:@offset, fake_msg.offset + 2)
+        consumer.seek(fake_msg)
+
+        # 6. ensure that only one message is available
+        records = consumer.poll(timeout)
+        expect(records&.payload).to eq "payload c"
+        records = consumer.poll(timeout)
+        expect(records).to be_nil
+
+        consumer.commit
+      end
     end
   end
 
@@ -577,10 +664,12 @@ describe Rdkafka::Consumer do
     it "should get notifications" do
       listener = Struct.new(:queue) do
         def on_partitions_assigned(consumer, list)
+          consumer.assign(list)
           collect(:assign, list)
         end
 
         def on_partitions_revoked(consumer, list)
+          consumer.assign(nil)
           collect(:revoke, list)
         end
 
@@ -601,11 +690,13 @@ describe Rdkafka::Consumer do
     it 'should handle callback exceptions' do
       listener = Struct.new(:queue) do
         def on_partitions_assigned(consumer, list)
+          consumer.assign(list)
           queue << :assigned
           raise 'boom'
         end
 
         def on_partitions_revoked(consumer, list)
+          consumer.assign(nil)
           queue << :revoked
           raise 'boom'
         end

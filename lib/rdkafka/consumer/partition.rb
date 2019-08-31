@@ -11,7 +11,7 @@ module Rdkafka
       attr_accessor :offset
 
       # Partition's error code
-      # @retuen [Integer]
+      # @return [Integer]
       attr_reader :err
 
       # @private

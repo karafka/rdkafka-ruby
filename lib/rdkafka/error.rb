@@ -41,7 +41,7 @@ module Rdkafka
     end
   end
 
-  # Error with potic partition list returned by the underlying rdkafka library.
+  # Error with topic partition list returned by the underlying rdkafka library.
   class RdkafkaTopicPartitionListError < RdkafkaError
     # @return [TopicPartitionList]
     attr_reader :topic_partition_list

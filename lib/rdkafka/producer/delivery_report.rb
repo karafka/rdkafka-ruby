@@ -10,11 +10,16 @@ module Rdkafka
       # @return [Integer]
       attr_reader :offset
 
+      # The response of the produced message.
+      # @return [string]
+      attr_reader :response
+
       private
 
-      def initialize(partition, offset)
+      def initialize(partition, offset, response = nil)
         @partition = partition
         @offset = offset
+        @response = response
       end
     end
   end

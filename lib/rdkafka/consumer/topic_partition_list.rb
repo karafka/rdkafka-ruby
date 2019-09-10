@@ -106,7 +106,7 @@ module Rdkafka
             data[elem[:topic]] = nil
           else
             partitions = data[elem[:topic]] || []
-            offset = if elem[:offset] == -1001
+            offset = if elem[:offset] == Rdkafka::Bindings::RD_KAFKA_OFFSET_INVALID
                        nil
                      else
                        elem[:offset]

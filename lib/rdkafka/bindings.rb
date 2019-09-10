@@ -22,6 +22,11 @@ module Rdkafka
     RD_KAFKA_RESP_ERR__NOENT = -156
     RD_KAFKA_RESP_ERR_NO_ERROR = 0
 
+    RD_KAFKA_OFFSET_END       = -1
+    RD_KAFKA_OFFSET_BEGINNING = -2
+    RD_KAFKA_OFFSET_STORED    = -1000
+    RD_KAFKA_OFFSET_INVALID   = -1001
+
     class SizePtr < FFI::Struct
       layout :value, :size_t
     end

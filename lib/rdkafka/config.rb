@@ -111,6 +111,12 @@ module Rdkafka
       opaque = Opaque.new
       config = native_config(opaque)
 
+      # Set callback to receive oauthbearer token requests on config
+      if @oauthbearer_token_refresh_callback
+        opaque.oauthbearer_token_refresh_callback = @oauthbearer_token_refresh_callback
+        Rdkafka::Bindings.rd_kafka_conf_set_oauthbearer_token_refresh_cb(config, Rdkafka::Bindings::OauthbearerTokenRefreshCallback)
+      end
+
       if @consumer_rebalance_listener
         opaque.consumer_rebalance_listener = @consumer_rebalance_listener
         Rdkafka::Bindings.rd_kafka_conf_set_rebalance_cb(config, Rdkafka::Bindings::RebalanceCallback)
@@ -125,6 +131,29 @@ module Rdkafka
       Rdkafka::Consumer.new(kafka)
     end
 
+    # Set a callback that will be called when an oauth token is requested.
+    # The callback should call `client.oauthbearer_set_token` or
+    # `client.oauthbearer_set_token_failure` depending on success or failure.
+    #
+    # The String provided to the callback is the value from `sasl.oauthbearer.config`
+    #
+    # The callback is called with a {Client}, {String}
+    #
+    # @param callback [Proc] The callback
+    #
+    # @return [nil]
+    def oauthbearer_token_refresh_callback=(callback)
+      raise TypeError.new("Callback has to be a proc or lambda") unless callback.is_a? Proc
+      @oauthbearer_token_refresh_callback = callback
+    end
+
+    # Returns the current oauth token refresh callback, by default this is nil.
+    #
+    # @return [Proc, nil]
+    def oauthbearer_token_refresh_callback
+      @oauthbearer_token_refresh_callback
+    end
+
     # Create a producer with this configuration.
     #
     # @raise [ConfigError] When the configuration contains invalid options
@@ -136,6 +165,11 @@ module Rdkafka
       opaque = Opaque.new
       # Create Kafka config
       config = native_config(opaque)
+      # Set callback to receive oauthbearer token requests on config
+      if @oauthbearer_token_refresh_callback
+        opaque.oauthbearer_token_refresh_callback = @oauthbearer_token_refresh_callback
+        Rdkafka::Bindings.rd_kafka_conf_set_oauthbearer_token_refresh_cb(config, Rdkafka::Bindings::OauthbearerTokenRefreshCallback)
+      end
       # Set callback to receive delivery reports on config
       Rdkafka::Bindings.rd_kafka_conf_set_dr_msg_cb(config, Rdkafka::Bindings::DeliveryCallback)
       # Return producer with Kafka client
@@ -221,11 +255,16 @@ module Rdkafka
 
   # @private
   class Opaque
-    attr_accessor :producer
+    attr_accessor :oauthbearer_token_refresh_callback
     attr_accessor :consumer_rebalance_listener
+    attr_accessor :producer
 
     def call_delivery_callback(delivery_handle)
       producer.call_delivery_callback(delivery_handle) if producer
+    end
+
+    def call_oauthbearer_token_refresh_callback(client, oauthbearer_config)
+      oauthbearer_token_refresh_callback.call(client, oauthbearer_config) if oauthbearer_token_refresh_callback
     end
 
     def call_on_partitions_assigned(consumer, list)

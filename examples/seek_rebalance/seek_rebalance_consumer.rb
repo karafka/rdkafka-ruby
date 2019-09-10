@@ -6,7 +6,6 @@ $LOAD_PATH.unshift File.expand_path('../../../lib', __FILE__)
 require 'optparse'
 require 'ostruct'
 require 'rdkafka'
-require 'byebug'
 
 class RebalanceListener
   attr_accessor :params

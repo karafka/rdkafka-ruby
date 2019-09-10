@@ -1,6 +1,7 @@
 require "rdkafka/version"
 
 require "rdkafka/bindings"
+require "rdkafka/client"
 require "rdkafka/config"
 require "rdkafka/consumer"
 require "rdkafka/consumer/headers"

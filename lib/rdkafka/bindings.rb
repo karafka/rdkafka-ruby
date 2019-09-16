@@ -1,6 +1,7 @@
 require "ffi"
 require "json"
 require "logger"
+require "rdkafka/error"
 
 module Rdkafka
   # @private
@@ -279,5 +280,177 @@ module Rdkafka
         end
       end
     end
+
+    # RdList
+    class RdList < FFI::Struct
+      layout :rl_size, :int,
+             :rl_cnt, :int,
+             :rl_elems, :pointer,
+             :rl_free_cb, :pointer,
+             :rl_flags, :int,
+             :rl_elemsize, :int,
+             :rl_p, :pointer
+    end
+
+    # Queue
+
+    attach_function :rd_kafka_queue_new, [:pointer], :pointer
+    attach_function :rd_kafka_queue_poll, [:pointer, :int], :pointer
+    attach_function :rd_kafka_queue_destroy, [:pointer], :void
+
+    # Admin
+
+    AdminOptions = enum(
+      :RD_KAFKA_ADMIN_OP_ANY, 0,
+      :RD_KAFKA_ADMIN_OP_CREATETOPICS,
+      :RD_KAFKA_ADMIN_OP_DELETETOPICS,
+      :RD_KAFKA_ADMIN_OP_CREATEPARTITIONS,
+      :RD_KAFKA_ADMIN_OP_ALTERCONFIGS,
+      :RD_KAFKA_ADMIN_OP_DESCRIBECONFIGS,
+      :RD_KAFKA_ADMIN_OP__CNT
+    )
+
+    attach_function :rd_kafka_AdminOptions_new, [:pointer, AdminOptions], :pointer
+    attach_function :rd_kafka_AdminOptions_set_request_timeout, [:pointer, :int, :pointer, :size_t], :int
+    attach_function :rd_kafka_AdminOptions_set_operation_timeout, [:pointer, :int, :pointer, :size_t], :int
+    attach_function :rd_kafka_AdminOptions_destroy, [:pointer], :void
+
+    ResourceType = enum(
+      :RD_KAFKA_RESOURCE_UNKNOWN, 0,
+      :RD_KAFKA_RESOURCE_ANY, 1,
+      :RD_KAFKA_RESOURCE_TOPIC, 2,
+      :RD_KAFKA_RESOURCE_GROUP, 3,
+      :RD_KAFKA_RESOURCE_BROKER, 4,
+      :RD_KAFKA_RESOURCE__CNT
+    )
+
+    class ConfigResource
+      class Native < FFI::Struct
+        layout :restype, ResourceType,
+               :name, :string,
+               :config, RdList,
+               :err, :int,
+               :errstr, :string,
+               :data, [:uint8, 1]
+      end
+
+      def self.from_native(p)
+        entries_cnt = Rdkafka::Bindings::SizePtr.new
+        entries_p = Rdkafka::Bindings.rd_kafka_ConfigResource_configs(p, entries_cnt)
+        entries = entries_p.read_array_of_type(:pointer, :read_pointer, entries_cnt[:value])
+        entries = entries.inject({}) do |h, e|
+          key = Rdkafka::Bindings.rd_kafka_ConfigEntry_name(e)
+          value = Rdkafka::Bindings.rd_kafka_ConfigEntry_value(e)
+          h[key] = value != 0 ? value : nil
+          h
+        end
+
+        n = Native.new(p)
+        ConfigResource.new(
+          name: n[:name],
+          err: n[:err],
+          errstr: n[:errstr],
+          config: entries,
+        )
+      end
+
+      def self.from_native_array(ptr, count)
+        results = ptr.read_array_of_type(:pointer, :read_pointer, count)
+        results = results.map do |p|
+          self.from_native(p)
+        end
+      end
+
+      attr_reader :name, :err, :errstr, :config
+
+      def initialize(name:, err:, errstr:, config:)
+        @name = name
+        @err = err
+        @errstr = errstr
+        @config = config
+      end
+
+      def raise_if_error
+        raise Rdkafka::RdkafkaError.new(err, errstr) if err != 0
+      end
+    end
+
+    class TopicResult
+      class Native < FFI::Struct
+        layout :topic, :string,
+               :err, :int,
+               :errstr, :string,
+               :data, [:uint8, 1]
+      end
+
+      def self.from_native(p)
+        n = TopicResult::Native.new(p)
+        TopicResult.new(
+          topic: n[:topic],
+          err: n[:err],
+          errstr: n[:errstr]
+        )
+      end
+
+      def self.from_native_array(ptr, count)
+        results = ptr.read_array_of_type(:pointer, :read_pointer, count)
+        results = results.map do |p|
+          self.from_native(p)
+        end
+      end
+
+      attr_reader :topic, :err, :errstr
+
+      def initialize(topic:, err:, errstr:)
+        @topic = topic
+        @err = err
+        @errstr = errstr
+      end
+
+      def raise_if_error
+        raise Rdkafka::RdkafkaError.new(err, errstr) if err != 0
+      end
+    end
+
+    attach_function :rd_kafka_NewTopic_new, [:string, :int, :int, :string, :size_t], :pointer
+    attach_function :rd_kafka_NewTopic_destroy, [:pointer], :void
+    attach_function :rd_kafka_NewTopic_destroy_array, [:pointer, :size_t], :void
+    attach_function :rd_kafka_NewTopic_set_config, [:pointer, :string, :string], :int
+
+    attach_function :rd_kafka_CreateTopics, [:pointer, :pointer, :int, :pointer, :pointer], :void
+    attach_function :rd_kafka_CreateTopics_result_topics, [:pointer, :pointer], :pointer
+
+    attach_function :rd_kafka_DeleteTopic_new, [:string], :pointer
+    attach_function :rd_kafka_DeleteTopic_destroy, [:pointer], :void
+    attach_function :rd_kafka_DeleteTopic_destroy_array, [:pointer, :size_t], :void
+    attach_function :rd_kafka_DeleteTopics, [:pointer, :pointer, :size_t, :pointer, :pointer], :void
+    attach_function :rd_kafka_DeleteTopics_result_topics, [:pointer, :pointer], :pointer
+
+    attach_function :rd_kafka_NewPartitions_new, [:pointer, :size_t, :pointer, :size_t], :pointer
+    attach_function :rd_kafka_NewPartitions_destroy, [:pointer], :void
+    attach_function :rd_kafka_NewPartitions_destroy_array, [:pointer, :size_t], :void
+
+    attach_function :rd_kafka_CreatePartitions, [:pointer, :pointer, :size_t, :pointer, :pointer], :void
+    attach_function :rd_kafka_CreatePartitions_result_topics, [:pointer, :pointer], :pointer
+
+    attach_function :rd_kafka_ConfigEntry_name, [:pointer], :string
+    attach_function :rd_kafka_ConfigEntry_value, [:pointer], :string
+
+    attach_function :rd_kafka_ConfigResource_new, [ResourceType, :string], :pointer
+    attach_function :rd_kafka_ConfigResource_destroy, [:pointer], :void
+    attach_function :rd_kafka_ConfigResource_destroy_array, [:pointer, :size_t], :void
+    attach_function :rd_kafka_ConfigResource_set_config, [:pointer, :string, :string], :void
+    attach_function :rd_kafka_ConfigResource_configs, [:pointer, :pointer], :pointer
+
+    attach_function :rd_kafka_AlterConfigs, [:pointer, :pointer, :size_t, :pointer, :pointer], :void
+    attach_function :rd_kafka_AlterConfigs_result_resources, [:pointer, :pointer], :pointer
+
+    attach_function :rd_kafka_DescribeConfigs, [:pointer, :pointer, :size_t, :pointer, :pointer], :void
+    attach_function :rd_kafka_DescribeConfigs_result_resources, [:pointer, :pointer], :pointer
+
+    # Event interface
+
+    attach_function :rd_kafka_event_type, [:pointer], :int
+    attach_function :rd_kafka_event_destroy, [:pointer], :void
   end
 end

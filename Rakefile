@@ -1,7 +1,9 @@
 # Rakefile
 
+$LOAD_PATH << "#{File.dirname(__FILE__)}/lib"
+
 require 'bundler/gem_tasks'
-require "./lib/rdkafka"
+require 'rdkafka'
 
 desc 'Generate some message traffic'
 task :produce_messages do
@@ -93,4 +95,12 @@ task :load_test do
   loop do
     sleep 1
   end
+end
+
+task :console do
+  require 'irb'
+  require 'byebug'
+  puts "Process.pid = #{Process.pid}"
+  ARGV.clear
+  IRB.start
 end

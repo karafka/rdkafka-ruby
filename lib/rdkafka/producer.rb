@@ -1,6 +1,10 @@
+require "rdkafka/admin_operations"
+
 module Rdkafka
   # A producer for Kafka messages. To create a producer set up a {Config} and call {Config#producer producer} on that.
   class Producer
+    include AdminOperations
+
     # @private
     # Returns the current delivery callback, by default this is nil.
     #

@@ -1,3 +1,5 @@
+require "rdkafka/admin_operations"
+
 module Rdkafka
   # A consumer of Kafka messages. It uses the high-level consumer approach where the Kafka
   # brokers automatically assign partitions and load balance partitions over consumers that
@@ -6,6 +8,7 @@ module Rdkafka
   # To create a consumer set up a {Config} and call {Config#consumer consumer} on that. It is
   # mandatory to set `:"group.id"` in the configuration.
   class Consumer
+    include AdminOperations
     include Enumerable
 
     # @private

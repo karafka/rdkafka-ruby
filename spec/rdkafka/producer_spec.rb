@@ -42,7 +42,7 @@ describe Rdkafka::Producer do
       )
 
       # Wait for it to be delivered
-      handle.wait(5)
+      handle.wait(max_wait_timeout: 5)
 
       # Callback should have been called
       expect(@callback_called).to be true
@@ -70,7 +70,7 @@ describe Rdkafka::Producer do
     expect(handle.pending?).to be true
 
     # Check delivery handle and report
-    report = handle.wait(5)
+    report = handle.wait(max_wait_timeout: 5)
     expect(handle.pending?).to be false
     expect(report).not_to be_nil
     expect(report.partition).to eq 1
@@ -100,7 +100,7 @@ describe Rdkafka::Producer do
       key:       "key partition",
       partition: 1
     )
-    report = handle.wait(5)
+    report = handle.wait(max_wait_timeout: 5)
 
     # Consume message and verify it's content
     message = wait_for_message(
@@ -117,7 +117,7 @@ describe Rdkafka::Producer do
       payload: "Τη γλώσσα μου έδωσαν ελληνική",
       key:     "key utf8"
     )
-    report = handle.wait(5)
+    report = handle.wait(max_wait_timeout: 5)
 
     # Consume message and verify it's content
     message = wait_for_message(
@@ -149,7 +149,7 @@ describe Rdkafka::Producer do
         key:       "key timestamp",
         timestamp: 1505069646252
       )
-      report = handle.wait(5)
+      report = handle.wait(max_wait_timeout: 5)
 
       # Consume message and verify it's content
       message = wait_for_message(
@@ -169,7 +169,7 @@ describe Rdkafka::Producer do
         key:       "key timestamp",
         timestamp: Time.at(1505069646, 353_000)
       )
-      report = handle.wait(5)
+      report = handle.wait(max_wait_timeout: 5)
 
       # Consume message and verify it's content
       message = wait_for_message(
@@ -188,7 +188,7 @@ describe Rdkafka::Producer do
       topic:   "produce_test_topic",
       payload: "payload no key"
     )
-    report = handle.wait(5)
+    report = handle.wait(max_wait_timeout: 5)
 
     # Consume message and verify it's content
     message = wait_for_message(
@@ -205,7 +205,7 @@ describe Rdkafka::Producer do
       topic: "produce_test_topic",
       key:   "key no payload"
     )
-    report = handle.wait(5)
+    report = handle.wait(max_wait_timeout: 5)
 
     # Consume message and verify it's content
     message = wait_for_message(
@@ -224,7 +224,7 @@ describe Rdkafka::Producer do
       key:       "key headers",
       headers:   { foo: :bar, baz: :foobar }
     )
-    report = handle.wait(5)
+    report = handle.wait(max_wait_timeout: 5)
 
     # Consume message and verify it's content
     message = wait_for_message(
@@ -246,7 +246,7 @@ describe Rdkafka::Producer do
       key:       "key headers",
       headers:   {}
     )
-    report = handle.wait(5)
+    report = handle.wait(max_wait_timeout: 5)
 
     # Consume message and verify it's content
     message = wait_for_message(
@@ -295,7 +295,7 @@ describe Rdkafka::Producer do
         key:     "key-forked"
       )
 
-      report = handle.wait(5)
+      report = handle.wait(max_wait_timeout: 5)
       producer.close
 
       report_json = JSON.generate(
@@ -342,10 +342,10 @@ describe Rdkafka::Producer do
       key:     "key timeout"
     )
     expect {
-      handle.wait(0)
+      handle.wait(max_wait_timeout: 0)
     }.to raise_error Rdkafka::Producer::DeliveryHandle::WaitTimeoutError
 
     # Waiting a second time should work
-    handle.wait(5)
+    handle.wait(max_wait_timeout: 5)
   end
 end

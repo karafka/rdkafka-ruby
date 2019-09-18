@@ -46,7 +46,7 @@ describe Rdkafka::Producer::DeliveryHandle do
 
     it "should wait until the timeout and then raise an error" do
       expect {
-        subject.wait(0.1)
+        subject.wait(max_wait_timeout: 0.1)
       }.to raise_error Rdkafka::Producer::DeliveryHandle::WaitTimeoutError
     end
 
@@ -61,7 +61,7 @@ describe Rdkafka::Producer::DeliveryHandle do
       end
 
       it "should wait without a timeout" do
-        report = subject.wait(nil)
+        report = subject.wait(max_wait_timeout: nil)
 
         expect(report.partition).to eq(2)
         expect(report.offset).to eq(100)

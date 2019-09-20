@@ -21,6 +21,7 @@ Gem::Specification.new do |gem|
   gem.add_dependency 'mini_portile2', '~> 2.1'
   gem.add_dependency 'rake', '~> 12.3'
 
+  gem.add_development_dependency 'byebug'
   gem.add_development_dependency 'pry', '~> 0.10'
   gem.add_development_dependency 'rspec', '~> 3.5'
   gem.add_development_dependency 'rake', '~> 12.0'

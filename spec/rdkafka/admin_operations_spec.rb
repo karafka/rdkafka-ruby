@@ -30,7 +30,13 @@ describe "AdminOperations" do
           admin.create_partitions_for("admin_new_topic", num_partitions: 1)
         end.to raise_error(Rdkafka::RdkafkaError, /invalid_partitions/)
 
+        metadata = admin.metadata_for("admin_new_topic")
+        expect(metadata.partitions.count).to eq(1)
+
         admin.create_partitions_for("admin_new_topic", num_partitions: 8)
+
+        metadata = admin.metadata_for("admin_new_topic")
+        expect(metadata.partitions.count).to eq(8)
 
         admin.delete_topic("admin_new_topic")
       end

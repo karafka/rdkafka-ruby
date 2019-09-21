@@ -1,4 +1,4 @@
-# 0.6.0
+# 0.7.0
 * Bump librdkafka to 1.2.0 (by rob-as)
 * Allow customizing the wait time for delivery report availability (by mensfeld )
 

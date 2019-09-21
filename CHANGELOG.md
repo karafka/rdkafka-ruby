@@ -1,4 +1,8 @@
 # 0.6.0
+* Bump librdkafka to 1.2.0 (by rob-as)
+* Allow customizing the wait time for delivery report availability (by mensfeld )
+
+# 0.6.0
 * Bump librdkafka to 1.1.0 (by Chris Gaffney)
 * Implement seek (by breunigs)
 

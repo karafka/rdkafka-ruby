@@ -26,6 +26,10 @@ module Rdkafka
     RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS = -174
     RD_KAFKA_RESP_ERR_NO_ERROR = 0
 
+    class PointerPtr < FFI::Struct
+      layout :value, :pointer
+    end
+
     class SizePtr < FFI::Struct
       layout :value, :size_t
     end
@@ -37,8 +41,42 @@ module Rdkafka
 
     # Metadata
 
+    class MetadataBroker < FFI::Struct
+      layout :id, :int32,
+             :host, :string,
+             :port, :int
+    end
+
+    class MetadataPartition < FFI::Struct
+      layout :id, :int32,
+             :err, :int,
+             :leader, :int32,
+             :replica_cnt, :int,
+             :replicas, :pointer, # Array of int32_t
+             :isr_cnt, :int,
+             :isrs, :pointer # Array of int32_t
+    end
+
+    class MetadataTopic < FFI::Struct
+      layout :topic, :string,
+             :partition_cnt, :int,
+             :partitions, :pointer, # Array of Partition
+             :err, :int
+    end
+
+    class Metadata < FFI::Struct
+      layout :broker_cnt, :int,
+             :brokers, :pointer, # Array of Broker
+             :topic_cnt, :int,
+             :topics, :pointer, # Array of Topic
+             :orig_broker_id, :int32,
+             :orig_broker_name, :string
+    end
+
     attach_function :rd_kafka_memberid, [:pointer], :string
     attach_function :rd_kafka_clusterid, [:pointer], :string
+    attach_function :rd_kafka_metadata, [:pointer, :int, :pointer, :pointer, :int], :int
+    attach_function :rd_kafka_metadata_destroy, [:pointer], :void
 
     # Message struct
 

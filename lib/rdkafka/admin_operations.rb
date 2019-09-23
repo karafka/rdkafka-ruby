@@ -1,5 +1,38 @@
+require "rdkafka/metadata"
+
 module Rdkafka
   module AdminOperations
+    # Retrieves metadata for a topic
+    #
+    # @param topic [String] Topic name
+    # @param timeout [Integer,5] Optional timeout in seconds. Defaults to 5
+    #
+    # @raise [RdkafkaError] When retrieve metadata fails
+    #
+    # @return [nil]
+    def metadata_for(topic, timeout: 5)
+      t_p = Rdkafka::Bindings.rd_kafka_topic_new(
+        @native_kafka,
+        topic,
+        nil
+      )
+      metadata_p = Rdkafka::Bindings::PointerPtr.new
+      err = Rdkafka::Bindings.rd_kafka_metadata(
+        @native_kafka, 0, t_p,
+        metadata_p, timeout * 1000
+      )
+      raise Rdkafka::RdkafkaError.new(err) unless err == 0
+
+      metadata = Rdkafka::Metadata.from_native(metadata_p[:value])
+      return metadata.topics.first
+
+    ensure
+      if metadata_p && !metadata_p[:value].null?
+        Rdkafka::Bindings.rd_kafka_metadata_destroy(metadata_p[:value])
+      end
+      Rdkafka::Bindings.rd_kafka_topic_destroy(t_p) if t_p
+    end
+
     # Creates a topic.
     #
     # @param topic [String] Topic name

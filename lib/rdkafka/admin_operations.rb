@@ -16,11 +16,17 @@ module Rdkafka
         topic,
         nil
       )
+
       metadata_p = Rdkafka::Bindings::PointerPtr.new
-      err = Rdkafka::Bindings.rd_kafka_metadata(
-        @native_kafka, 0, t_p,
-        metadata_p, timeout * 1000
-      )
+      end_time = Time.now + timeout
+      while Time.now < end_time
+        err = Rdkafka::Bindings.rd_kafka_metadata(
+          @native_kafka, 0, t_p,
+          metadata_p, 100
+        )
+        break if err == 0
+        sleep 1 # Ruby sleep seems to allow librdkafka to work
+      end
       raise Rdkafka::RdkafkaError.new(err) unless err == 0
 
       metadata = Rdkafka::Metadata.from_native(metadata_p[:value])
@@ -254,13 +260,16 @@ module Rdkafka
 
       yield(options, queue)
 
-      event = Rdkafka::Bindings.rd_kafka_queue_poll(queue, timeout * 1000)
-      if event.null?
-        # RD_KAFKA_RESP_ERR__TIMED_OUT = -185
-        raise Rdkafka::RdkafkaError.new(-185)
+      end_time = Time.now + timeout
+      while Time.now < end_time
+        event = Rdkafka::Bindings.rd_kafka_queue_poll(queue, 100)
+        return event unless event.null?
+        sleep 1 # Ruby sleep seems to allow librdkafka to work
       end
 
-      return event
+      # If we reach here, we timed out
+      # RD_KAFKA_RESP_ERR__TIMED_OUT = -185
+      raise Rdkafka::RdkafkaError.new(-185)
     ensure
       Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(options) if options
       Rdkafka::Bindings.rd_kafka_queue_destroy(queue) if queue

@@ -237,7 +237,7 @@ module Rdkafka
 
       # Run callback in a different thread because calling oauthbearer_set_token
       # seems to cause logging to deadlock.
-      # TODO: Run in the poll thread instead.
+      # TODO: Run in the poll/background thread instead?
       Thread.new do
         begin
           client = Rdkafka::Client.new(client_ptr)

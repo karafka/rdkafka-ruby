@@ -26,7 +26,7 @@ before_script:
   - ./cc-test-reporter before-build
 
 script:
-  - bundle exec rspec
+  - bundle exec rspec --format documentation
 
 after_script:
   - docker-compose stop

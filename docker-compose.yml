@@ -1,22 +1,33 @@
-version: '2.1'
+version: '3.3'
 
 services:
+  # https://hub.docker.com/r/confluentinc/cp-zookeeper
+  # https://zookeeper.apache.org/releases.html
+  # echo status | nc localhost 2181
   zookeeper:
-    image: wurstmeister/zookeeper
+    image: "confluentinc/cp-zookeeper:5.2.2-1"
     ports:
-      - '2181:2181'
-
-  kafka:
-    image: wurstmeister/kafka:1.0.1
-    ports:
-      - '9092:9092'
+      - "2181:2181"
     environment:
-      KAFKA_ADVERTISED_HOST_NAME: localhost
-      KAFKA_ADVERTISED_PORT: 9092
-      KAFKA_ZOOKEEPER_CONNECT: localhost:2181
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SYNC_LIMIT: 2
+
+  # https://hub.docker.com/r/confluentinc/cp-kafka
+  # https://kafka.apache.org/downloads
+  # kafka-topics --version
+  kafka:
+    image: "confluentinc/cp-kafka:5.2.2-1"
+    hostname: "localhost"
+    ports:
+      - "9092:9092"
+    links:
+     - "zookeeper:zookeeper"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: "localhost"
+      KAFKA_BROKER_ID: 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092"
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
       KAFKA_CREATE_TOPICS: 'consume_test_topic:3:1,empty_test_topic:3:1,load_test_topic:3:1,produce_test_topic:3:1,rake_test_topic:3:1,watermarks_test_topic:3:1'
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    depends_on:
-      - 'zookeeper'

@@ -19,10 +19,7 @@ before_install:
   - gem update --system
 
 before_script:
-  - sudo apt-get install dockerize
   - docker-compose up -d
-  - dockerize -wait tcp://localhost:2181 -timeout 1m
-  - dockerize -wait tcp://localhost:9092 -timeout 1m
   - cd ext && bundle exec rake && cd ..
   - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
   - chmod +x ./cc-test-reporter

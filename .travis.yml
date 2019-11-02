@@ -11,15 +11,13 @@ env:
     - KAFKA_HEAP_OPTS="-Xmx512m -Xms512m"
 
 rvm:
-  - 2.4
-  - 2.5
   - 2.6
 
 before_install:
   - gem update --system
 
 before_script:
-  - docker-compose up
+  - docker-compose up -d
   - cd ext && bundle exec rake && cd ..
   - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
   - chmod +x ./cc-test-reporter

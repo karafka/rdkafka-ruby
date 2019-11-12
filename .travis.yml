@@ -8,7 +8,6 @@ services:
 env:
   global:
     - CC_TEST_REPORTER_ID=9f7f740ac1b6e264e1189fa07a6687a87bcdb9f3c0f4199d4344ab3b538e187e
-    - KAFKA_HEAP_OPTS="-Xmx512m -Xms512m"
 
 rvm:
   - 2.4
@@ -20,6 +19,7 @@ before_install:
 
 before_script:
   - docker-compose up -d
+  - sleep 10
   - cd ext && bundle exec rake && cd ..
   - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
   - chmod +x ./cc-test-reporter

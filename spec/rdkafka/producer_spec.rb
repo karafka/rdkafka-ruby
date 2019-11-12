@@ -4,6 +4,10 @@ describe Rdkafka::Producer do
   let(:producer) { rdkafka_config.producer }
 
   after do
+    producer.close
+  end
+
+  after do
     # Registry should always end up being empty
     expect(Rdkafka::Producer::DeliveryHandle::REGISTRY).to be_empty
   end

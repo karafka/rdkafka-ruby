@@ -6,6 +6,11 @@ describe Rdkafka::Consumer do
   let(:consumer) { config.consumer }
   let(:producer) { config.producer }
 
+  after do
+    consumer.close
+    producer.close
+  end
+
   describe "#subscripe, #unsubscribe and #subscription" do
     it "should subscribe, unsubscribe and return the subscription" do
       expect(consumer.subscription).to be_empty
@@ -53,7 +58,6 @@ describe Rdkafka::Consumer do
       let(:timeout) { 1000 }
 
       before { consumer.subscribe("consume_test_topic") }
-      after { consumer.unsubscribe }
 
       it "should pause and then resume" do
         # 1. partitions are assigned
@@ -148,7 +152,6 @@ describe Rdkafka::Consumer do
         # 2. eat unrelated messages
         while(consumer.poll(timeout)) do; end
       end
-      after { consumer.unsubscribe }
 
       def send_one_message(val)
         producer.produce(
@@ -329,6 +332,7 @@ describe Rdkafka::Consumer do
           end
         end
         handles.each(&:wait)
+        producer.close
       end
 
       before do

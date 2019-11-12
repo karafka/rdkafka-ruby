@@ -18,6 +18,17 @@ describe Rdkafka::Config do
         Rdkafka::Config.logger = nil
       }.to raise_error(Rdkafka::Config::NoLoggerError)
     end
+
+    it "supports logging queue" do
+      output = StringIO.new
+      logger = Logger.new(output)
+      Rdkafka::Config.logger = logger
+
+      Rdkafka::Config.logQueue << [Logger::FATAL, "I love testing"]
+      sleep 0.1
+
+      expect(output.string).to include "FATAL -- : I love testing"
+    end
   end
 
   context "statistics callback" do

@@ -33,7 +33,7 @@ module Rdkafka
     # logger directly is that this is safe to use from trap contexts.
     #
     # @return [Queue]
-    def self.logQueue
+    def self.log_queue
       @@log_queue
     end
 

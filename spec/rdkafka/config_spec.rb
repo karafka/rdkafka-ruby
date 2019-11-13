@@ -24,7 +24,7 @@ describe Rdkafka::Config do
       logger = Logger.new(output)
       Rdkafka::Config.logger = logger
 
-      Rdkafka::Config.logQueue << [Logger::FATAL, "I love testing"]
+      Rdkafka::Config.log_queue << [Logger::FATAL, "I love testing"]
       sleep 0.1
 
       expect(output.string).to include "FATAL -- : I love testing"

@@ -660,6 +660,33 @@ describe Rdkafka::Consumer do
     end
   end
 
+  describe "#each_in_batches" do
+    it "should yield batches" do
+      handles = []
+      10.times do
+        handles << producer.produce(
+          topic:     "consume_test_topic",
+          payload:   "payload 1",
+          key:       "key 1",
+          partition: 0
+        )
+      end
+      handles.each(&:wait)
+
+      consumer.subscribe("consume_test_topic")
+      i = 0 # set counter to 0, used to break look
+      consumer.each_in_batches(5, 250) do |batch|
+        expect(batch.first).to be_a Rdkafka::Consumer::Message
+        expect(batch.count).to eq 5
+        consumer.close if i == 1
+        i += 1
+      end
+    end
+
+    it "should not commit the offset if an error occurs in the yeild block" do
+    end
+  end
+
   describe "a rebalance listener" do
     it "should get notifications" do
       listener = Struct.new(:queue) do

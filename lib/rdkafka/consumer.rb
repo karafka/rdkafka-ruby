@@ -390,5 +390,44 @@ module Rdkafka
         end
       end
     end
+
+
+    # Poll for new messages and yield when batch numner is recieved or when the timeout is reached. Iteration
+    # will end when the consumer is closed.
+    #
+    # If `enable.partition.eof` is turned on in the config this will raise an
+    # error when an eof is reached, so you probably want to disable that when
+    # using this method of iteration.
+    #
+    # @param batch_size [Integer] Number of messages that will cause the loop to yield
+    # @param timeout_ms [Integer] Timeout that when reached will cause the loop to yield
+    #
+    # @raise [RdkafkaError] When polling fails
+    #
+    # @yieldparam batch [[Message]] Batch of received messages
+    #
+    # @return [nil]
+    def each_in_batches(batch_size, timeout_ms)
+      batch = []
+      loop do
+        if batch.count == batch_size
+          yield(batch)
+          batch = []
+        end
+        message = poll(timeout_ms)
+        if message
+          batch << message
+        else
+          if batch.size > 0
+            yield(batch)
+            batch = []
+          elsif @closing
+            break
+          else
+            next
+          end
+        end
+      end
+    end
   end
 end

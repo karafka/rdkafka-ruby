@@ -5,6 +5,9 @@ module Rdkafka
   #
   # To create a consumer set up a {Config} and call {Config#consumer consumer} on that. It is
   # mandatory to set `:"group.id"` in the configuration.
+  #
+  # Consumer implements `Enumerable`, so you can use `each` to consume messages, or for example
+  # `each_slice` to consume batches of messages.
   class Consumer
     include Enumerable
 
@@ -313,7 +316,14 @@ module Rdkafka
       end
     end
 
-    # Commit the current offsets of this consumer
+    # Manually commit the current offsets of this consumer.
+    #
+    # To use this set `enable.auto.commit`to `false` to disable automatic triggering
+    # of commits.
+    #
+    # If `enable.auto.offset.store` is set to `true` the offset of the last consumed
+    # message for every partition is used. If set to `false` you can use {store_offset} to
+    # indicate when a message has been fully processed.
     #
     # @param list [TopicPartitionList,nil] The topic with partitions to commit
     # @param async [Boolean] Whether to commit async or wait for the commit to finish

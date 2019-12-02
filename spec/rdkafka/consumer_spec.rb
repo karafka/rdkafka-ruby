@@ -7,8 +7,9 @@ describe Rdkafka::Consumer do
   let(:producer) { config.producer }
 
   after do
-    consumer.close
     producer.close
+    consumer.close
+    sleep 5
   end
 
   describe "#subscripe, #unsubscribe and #subscription" do

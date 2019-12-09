@@ -18,7 +18,7 @@ Gem::Specification.new do |gem|
   gem.extensions = %w(ext/Rakefile)
 
   gem.add_dependency 'ffi', '~> 1.9'
-  gem.add_dependency 'mini_portile2', '~> 2.1'
+  gem.add_dependency 'mini_portile2', '~> 2.4'
   gem.add_dependency 'rake', '>= 12.3'
 
   gem.add_development_dependency 'pry', '~> 0.10'

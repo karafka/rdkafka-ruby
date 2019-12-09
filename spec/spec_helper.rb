@@ -57,14 +57,16 @@ end
 
 def wait_for_assignment(consumer)
   10.times do
-    break if !consumer.assignment.empty?
+    return if !consumer.assignment.empty?
     sleep 1
   end
+  raise "No assignment after 10 seconds"
 end
 
 def wait_for_unassignment(consumer)
   10.times do
-    break if consumer.assignment.empty?
+    return if consumer.assignment.empty?
     sleep 1
   end
+  raise "No unassignment after 10 seconds"
 end

@@ -10,8 +10,8 @@ require "rdkafka"
 def rdkafka_config(config_overrides={})
   config = {
     :"api.version.request" => false,
-    :"broker.version.fallback" => "1.0",
-    :"bootstrap.servers" => "localhost:9092",
+    :"broker.version.fallback" => "2.2",
+    :"bootstrap.servers" => "127.0.0.1:9092",
     :"group.id" => "ruby-test-#{Random.new.rand(0..1_000_000)}",
     :"auto.offset.reset" => "earliest",
     :"enable.partition.eof" => false

@@ -55,3 +55,22 @@ task :clean do
   FileUtils.rm_rf File.join(File.dirname(__FILE__), "ports")
   FileUtils.rm_rf File.join(File.dirname(__FILE__), "tmp")
 end
+
+namespace :build do
+  desc "Build librdkafka at the given git sha or tag"
+  task :git, [:ref] do |task, args|
+    ref = args[:ref]
+    version = "git-#{ref}"
+
+    recipe = MiniPortile.new("librdkafka", version)
+    recipe.files << "https://github.com/edenhill/librdkafka/archive/#{ref}.tar.gz"
+    recipe.configure_options = ["--host=#{recipe.host}"]
+    recipe.cook
+
+    ext = recipe.host.include?("darwin") ? "dylib" : "so"
+    lib = File.expand_path("ports/#{recipe.host}/librdkafka/#{version}/lib/librdkafka.#{ext}", __dir__)
+
+    # Copy will copy the content, following any symlinks
+    FileUtils.cp(lib, __dir__)
+  end
+end

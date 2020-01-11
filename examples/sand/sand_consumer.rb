@@ -52,6 +52,9 @@ if !params.has_key?(:group) || !params.has_key?(:topic)
   exit 1
 end
 
+Rdkafka::Config.attach_rdkafka_log_cb = false
+Rdkafka::Config.attach_rdkafka_stats_cb = false
+
 cfg = Rdkafka::Config.new(
   "bootstrap.servers": params[:"bootstrap-server"],
   "group.id": params[:group],

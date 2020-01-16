@@ -24,7 +24,7 @@ task :default => :clean do
 
   # Use default homebrew openssl if we're on mac and the directory exists
   # and each of flags is not empty
-  if recipe.host.include?("darwin") && Dir.exists?("/usr/local/opt/openssl")
+  if recipe.host&.include?("darwin") && Dir.exist?("/usr/local/opt/openssl")
     ENV["CPPFLAGS"] = "-I/usr/local/opt/openssl/include" unless ENV["CPPFLAGS"]
     ENV["LDFLAGS"] = "-L/usr/local/opt/openssl/lib" unless ENV["LDFLAGS"]
   end

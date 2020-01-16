@@ -6,7 +6,10 @@ describe Rdkafka::Consumer do
   let(:consumer) { config.consumer }
   let(:producer) { config.producer }
 
-  describe "#subscripe, #unsubscribe and #subscription" do
+  after { consumer.close }
+  after { producer.close }
+
+  describe "#subscribe, #unsubscribe and #subscription" do
     it "should subscribe, unsubscribe and return the subscription" do
       expect(consumer.subscription).to be_empty
 
@@ -88,7 +91,6 @@ describe Rdkafka::Consumer do
         # 8. ensure that message is successfully consumed
         records = consumer.poll(timeout)
         expect(records).not_to be_nil
-        consumer.commit
       end
     end
 
@@ -316,8 +318,8 @@ describe Rdkafka::Consumer do
     context "with a commited consumer" do
       before :all do
         # Make sure there are some message
-        producer = rdkafka_config.producer
         handles = []
+        producer = rdkafka_config.producer
         10.times do
           (0..2).each do |i|
             handles << producer.produce(
@@ -554,12 +556,12 @@ describe Rdkafka::Consumer do
         payload:   "payload 1",
         key:       "key 1"
       ).wait
-
       consumer.subscribe("consume_test_topic")
-      message = consumer.poll(5000)
-      expect(message).to be_a Rdkafka::Consumer::Message
+      message = consumer.each {|m| break m}
 
-      # Message content is tested in producer spec
+      expect(message).to be_a Rdkafka::Consumer::Message
+      expect(message.payload).to eq('payload 1')
+      expect(message.key).to eq('key 1')
     end
 
     it "should raise an error when polling fails" do

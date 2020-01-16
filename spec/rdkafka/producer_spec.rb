@@ -42,7 +42,7 @@ describe Rdkafka::Producer do
       )
 
       # Wait for it to be delivered
-      handle.wait(max_wait_timeout: 5)
+      handle.wait(max_wait_timeout: 10)
 
       # Callback should have been called
       expect(@callback_called).to be true
@@ -89,7 +89,7 @@ describe Rdkafka::Producer do
     expect(message.key).to eq "key"
     # Since api.version.request is on by default we will get
     # the message creation timestamp if it's not set.
-    expect(message.timestamp).to be_within(5).of(Time.now)
+    expect(message.timestamp).to be_within(8).of(Time.now)
   end
 
   it "should produce a message with a specified partition" do
@@ -284,11 +284,21 @@ describe Rdkafka::Producer do
     # Fork, produce a message, send the report over a pipe and
     # wait for and check the message in the main process.
 
+    # Kernel#fork is not available in JRuby
+    skip if defined?(JRUBY_VERSION)
+
     reader, writer = IO.pipe
+
+    producer.close
+    producer.instance_eval {@native_kafka = nil}
+    # For GC'ing @native_kafka references here to avoid finalizer being called in the forked process.
+    GC.start
+    sleep 0.1
 
     fork do
       reader.close
 
+      producer = rdkafka_config.producer
       handle = producer.produce(
         topic:   "produce_test_topic",
         payload: "payload-forked",
@@ -296,7 +306,6 @@ describe Rdkafka::Producer do
       )
 
       report = handle.wait(max_wait_timeout: 5)
-      producer.close
 
       report_json = JSON.generate(
         "partition" => report.partition,
@@ -304,15 +313,17 @@ describe Rdkafka::Producer do
       )
 
       writer.write(report_json)
+      writer.close
     end
 
     writer.close
-
     report_hash = JSON.parse(reader.read)
     report = Rdkafka::Producer::DeliveryReport.new(
       report_hash["partition"],
       report_hash["offset"]
     )
+
+    reader.close
 
     # Consume message and verify it's content
     message = wait_for_message(

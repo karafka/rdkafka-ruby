@@ -105,17 +105,20 @@ module Rdkafka
     #
     # @return [TopicPartitionList]
     def subscription
-      tpl = FFI::MemoryPointer.new(:pointer)
-      response = Rdkafka::Bindings.rd_kafka_subscription(@native_kafka, tpl)
+      tpl_ptrptr = FFI::MemoryPointer.new(:pointer)
+      response = Rdkafka::Bindings.rd_kafka_subscription(@native_kafka, tpl_ptrptr)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
-      tpl = tpl.read(:pointer).tap { |it| it.autorelease = false }
+
+      tpl_ptrptr.autorelease = false
+      tpl_ptr = tpl_ptrptr.read_pointer
 
       begin
-        Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+        Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl_ptr)
       ensure
-        Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl)
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl_ptr)
+        tpl_ptrptr.free
       end
     end
 
@@ -141,18 +144,20 @@ module Rdkafka
     #
     # @return [TopicPartitionList]
     def assignment
-      tpl = FFI::MemoryPointer.new(:pointer)
-      response = Rdkafka::Bindings.rd_kafka_assignment(@native_kafka, tpl)
+      tpl_ptrptr = FFI::MemoryPointer.new(:pointer)
+      response = Rdkafka::Bindings.rd_kafka_assignment(@native_kafka, tpl_ptrptr)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
 
-      tpl = tpl.read(:pointer).tap { |it| it.autorelease = false  }
+      tpl_ptrptr.autorelease = false
+      tpl_ptr = tpl_ptrptr.read_pointer
 
       begin
-        Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+        Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl_ptr)
       ensure
-        Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy tpl
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl_ptr)
+        tpl_ptrptr.free
       end
     end
 
@@ -204,7 +209,7 @@ module Rdkafka
         raise Rdkafka::RdkafkaError.new(response, "Error querying watermark offsets for partition #{partition} of #{topic}")
       end
 
-      return low.read_int64, high.read_int64
+      return low.read_array_of_uint64(1).first, high.read_array_of_uint64(1).first
     end
 
     # Calculate the consumer lag per partition for the provided topic partition list.

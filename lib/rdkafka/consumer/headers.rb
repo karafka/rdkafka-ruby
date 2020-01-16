@@ -19,7 +19,8 @@ module Rdkafka
           raise Rdkafka::RdkafkaError.new(err, "Error reading message headers")
         end
 
-        headers_ptr = headers_ptrptr.read(:pointer).tap { |it| it.autorelease = false }
+        headers_ptrptr.autorelease = false
+        headers_ptr = headers_ptrptr.read_pointer
 
         name_ptrptr = FFI::MemoryPointer.new(:pointer)
         value_ptrptr = FFI::MemoryPointer.new(:pointer)
@@ -42,12 +43,17 @@ module Rdkafka
             raise Rdkafka::RdkafkaError.new(err, "Error reading a message header at index #{idx}")
           end
 
-          name = name_ptrptr.read(:pointer).tap { |it| it.autorelease = false }
-          name = name.read_string_to_null
+          name_ptrptr.autorelease = false
+          name_ptr = name_ptrptr.read_pointer
+
+          name = name_ptr.respond_to?(:read_string_to_null) ? name_ptr.read_string_to_null : name_ptr.read_string
 
           size = size_ptr[:value]
-          value = value_ptrptr.read(:pointer).tap { |it| it.autorelease = false }
-          value = value.read_string(size)
+
+          value_ptrptr.autorelease = false
+          value_ptr = value_ptrptr.read_pointer
+
+          value = value_ptr.read_string(size)
 
           headers[name.to_sym] = value
 
@@ -55,6 +61,11 @@ module Rdkafka
         end
 
         headers
+      ensure
+        name_ptr.free if defined?(name_ptr) && name_ptr
+        name_ptrptr.free if defined?(name_ptrptr) && name_ptrptr
+        value_ptr.free if defined?(value_ptr) && value_ptr
+        value_ptrptr.free if defined?(value_ptrptr) && value_ptrptr
       end
     end
   end

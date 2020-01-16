@@ -42,7 +42,7 @@ describe Rdkafka::Producer do
       )
 
       # Wait for it to be delivered
-      handle.wait(max_wait_timeout: 5)
+      handle.wait(max_wait_timeout: 8)
 
       # Callback should have been called
       expect(@callback_called).to be true

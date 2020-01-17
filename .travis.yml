@@ -14,9 +14,21 @@ rvm:
   - 2.4
   - 2.5
   - 2.6
+  - jruby-9.2.9.0
 
 before_install:
   - gem update --system
+  - |
+    r_eng="$(ruby -e 'STDOUT.write RUBY_ENGINE')";
+    if [ "$r_eng" == "jruby" ]; then
+      sudo apt-get update && \
+      sudo apt-get install -y git && \
+      sudo apt-get install -y libpthread-stubs0-dev && \
+      sudo apt-get install -y build-essential && \
+      sudo apt-get install -y zlib1g-dev && \
+      sudo apt-get install -y libssl-dev && \
+      sudo apt-get install -y libsasl2-dev
+    fi
 
 before_script:
   - docker-compose up -d

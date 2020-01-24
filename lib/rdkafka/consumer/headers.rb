@@ -43,7 +43,6 @@ module Rdkafka
           end
 
           name_ptr = name_ptrptr.read_pointer
-
           name = name_ptr.respond_to?(:read_string_to_null) ? name_ptr.read_string_to_null : name_ptr.read_string
 
           size = size_ptr[:value]
@@ -58,10 +57,6 @@ module Rdkafka
         end
 
         headers
-      ensure
-        headers_ptr.free
-        name_ptr.free
-        value_ptr.free
       end
     end
   end

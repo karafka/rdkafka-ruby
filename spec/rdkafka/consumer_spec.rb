@@ -6,6 +6,9 @@ describe Rdkafka::Consumer do
   let(:consumer) { config.consumer }
   let(:producer) { config.producer }
 
+  after { consumer.close }
+  after { producer.close }
+
   describe "#subscripe, #unsubscribe and #subscription" do
     it "should subscribe, unsubscribe and return the subscription" do
       expect(consumer.subscription).to be_empty
@@ -205,8 +208,6 @@ describe Rdkafka::Consumer do
         expect(records&.payload).to eq "payload c"
         records = consumer.poll(timeout)
         expect(records).to be_nil
-
-        consumer.commit
       end
     end
   end

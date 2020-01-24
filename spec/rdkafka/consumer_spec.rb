@@ -207,8 +207,6 @@ describe Rdkafka::Consumer do
         expect(records&.payload).to eq "payload c"
         records = consumer.poll(timeout)
         expect(records).to be_nil
-
-        consumer.commit
       end
     end
   end

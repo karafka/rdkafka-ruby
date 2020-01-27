@@ -9,7 +9,6 @@ module Rdkafka
 
     # @private
     def initialize(native_kafka)
-      @t1 = Time.now
       @closing = false
       @native_kafka = native_kafka
       # Start thread to poll client for delivery callbacks
@@ -17,11 +16,8 @@ module Rdkafka
         loop do
           Rdkafka::Bindings.rd_kafka_poll(@native_kafka, 250)
           # Exit thread if closing and the poll queue is empty
-          len = Rdkafka::Bindings.rd_kafka_outq_len(@native_kafka)
-          if @closing && len == 0
+          if @closing && Rdkafka::Bindings.rd_kafka_outq_len(@native_kafka) == 0
             break
-          else
-            $stdout.puts "Len: #{len}"
           end
         end
       end
@@ -45,7 +41,7 @@ module Rdkafka
       @closing = true
       # Wait for the polling thread to finish up
       @polling_thread.join
-      $stdout.puts "Closing producer took: #{Time.now - @t1}"
+      Rdkafka::Bindings.rd_kafka_destroy(@native_kafka)
     end
 
     # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.

@@ -8,7 +8,11 @@ module Rdkafka
     # @private
     @@logger = Logger.new(STDOUT)
     # @private
+    @@attach_rdkafka_log_cb = true
+    # @private
     @@statistics_callback = nil
+    # @private
+    @@attach_rdkafka_stats_cb = true
     # @private
     @@opaques = {}
 
@@ -29,6 +33,22 @@ module Rdkafka
       @@logger=logger
     end
 
+    # Returns whether to attach the log_cb in rdkafka
+    #
+    # @return [Boolean]
+    def self.attach_rdkafka_log_cb
+      @@attach_rdkafka_log_cb
+    end
+
+    # Decide whether to attach the log_cb in rdkafka
+    #
+    # @param attach_rdkafka_log_cb [Boolean] Set to true to attach
+    #
+    # @return [nil]
+    def self.attach_rdkafka_log_cb=(attach_rdkafka_log_cb)
+      @@attach_rdkafka_log_cb=attach_rdkafka_log_cb
+    end
+
     # Set a callback that will be called every time the underlying client emits statistics.
     # You can configure if and how often this happens using `statistics.interval.ms`.
     # The callback is called with a hash that's documented here: https://github.com/edenhill/librdkafka/blob/master/STATISTICS.md
@@ -46,6 +66,22 @@ module Rdkafka
     # @return [Proc, nil]
     def self.statistics_callback
       @@statistics_callback
+    end
+
+    # Returns whether to attach the stats_cb in rdkafka
+    #
+    # @return [Boolean]
+    def self.attach_rdkafka_stats_cb
+      @@attach_rdkafka_stats_cb
+    end
+
+    # Decide whether to attach the stats_cb in rdkafka
+    #
+    # @param attach_rdkafka_stats_cb [Boolean] Set to true to attach
+    #
+    # @return [nil]
+    def self.attach_rdkafka_stats_cb=(attach_rdkafka_stats_cb)
+      @@attach_rdkafka_stats_cb=attach_rdkafka_stats_cb
     end
 
     # @private
@@ -113,6 +149,7 @@ module Rdkafka
 
       # Set callback to receive oauthbearer token requests on config
       if @oauthbearer_token_refresh_callback
+        raise ArgumentError, "oauth deadlocks with attach_rdkafka_log_cb" if Rdkafka::Config.attach_rdkafka_log_cb
         opaque.oauthbearer_token_refresh_callback = @oauthbearer_token_refresh_callback
         Rdkafka::Bindings.rd_kafka_conf_set_oauthbearer_token_refresh_cb(config, Rdkafka::Bindings::OauthbearerTokenRefreshCallback)
       end
@@ -220,10 +257,14 @@ module Rdkafka
         end
 
         # Set log callback
-        Rdkafka::Bindings.rd_kafka_conf_set_log_cb(config, Rdkafka::Bindings::LogCallback)
+        if Rdkafka::Config.attach_rdkafka_log_cb
+          Rdkafka::Bindings.rd_kafka_conf_set_log_cb(config, Rdkafka::Bindings::LogCallback)
+        end
 
         # Set stats callback
-        Rdkafka::Bindings.rd_kafka_conf_set_stats_cb(config, Rdkafka::Bindings::StatsCallback)
+        if Rdkafka::Config.attach_rdkafka_stats_cb
+          Rdkafka::Bindings.rd_kafka_conf_set_stats_cb(config, Rdkafka::Bindings::StatsCallback)
+        end
       end
     end
 

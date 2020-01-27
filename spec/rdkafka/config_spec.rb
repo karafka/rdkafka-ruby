@@ -20,6 +20,19 @@ describe Rdkafka::Config do
     end
   end
 
+  context "attach_rdkafka_log_cb" do
+    it "should default to true" do
+      expect(Rdkafka::Config.attach_rdkafka_log_cb).to eq true
+    end
+
+    it "should be settable" do
+      Rdkafka::Config.attach_rdkafka_log_cb = false
+      expect(Rdkafka::Config.attach_rdkafka_log_cb).to eq false
+      Rdkafka::Config.attach_rdkafka_log_cb = true
+      expect(Rdkafka::Config.attach_rdkafka_log_cb).to eq true
+    end
+  end
+
   context "statistics callback" do
     it "should set the callback" do
       expect {
@@ -34,6 +47,19 @@ describe Rdkafka::Config do
       expect {
         Rdkafka::Config.statistics_callback = 'a string'
       }.to raise_error(TypeError)
+    end
+  end
+
+  context "attach_rdkafka_stats_cb" do
+    it "should default to true" do
+      expect(Rdkafka::Config.attach_rdkafka_stats_cb).to eq true
+    end
+
+    it "should be settable" do
+      Rdkafka::Config.attach_rdkafka_stats_cb = false
+      expect(Rdkafka::Config.attach_rdkafka_stats_cb).to eq false
+      Rdkafka::Config.attach_rdkafka_stats_cb = true
+      expect(Rdkafka::Config.attach_rdkafka_stats_cb).to eq true
     end
   end
 

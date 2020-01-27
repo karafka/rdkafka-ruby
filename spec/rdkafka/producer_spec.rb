@@ -284,6 +284,9 @@ describe Rdkafka::Producer do
     # Fork, produce a message, send the report over a pipe and
     # wait for and check the message in the main process.
 
+    # Kernel#fork is not available in JRuby
+    skip if defined?(JRUBY_VERSION)
+
     reader, writer = IO.pipe
 
     fork do

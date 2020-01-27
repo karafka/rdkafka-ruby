@@ -68,3 +68,9 @@ def wait_for_unassignment(consumer)
     sleep 1
   end
 end
+
+def trace
+  @trace ||= TracePoint.new do |tp|
+    p "Path: #{tp.path}##{tp.lineno}, Method:#{tp.method_id}, Event: #{tp.event}" unless tp.path.include? 'rspec'
+  end
+end

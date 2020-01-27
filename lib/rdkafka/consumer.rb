@@ -13,6 +13,7 @@ module Rdkafka
 
     # @private
     def initialize(native_kafka)
+      @t1 = Time.now
       @native_kafka = native_kafka
       @closing = false
     end
@@ -22,6 +23,7 @@ module Rdkafka
     def close
       @closing = true
       Rdkafka::Bindings.rd_kafka_consumer_close(@native_kafka)
+      $stdout.puts "Closing consumer took: #{Time.now - @t1}"
     end
 
     # Subscribe to one or more topics letting Kafka handle partition assignments.

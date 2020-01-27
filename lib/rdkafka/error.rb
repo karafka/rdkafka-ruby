@@ -39,6 +39,11 @@ module Rdkafka
     def is_partition_eof?
       code == :partition_eof
     end
+
+    # Error comparison
+    def ==(another_error)
+       another_error.is_a?(self.class) && (self.to_s == another_error.to_s)
+    end
   end
 
   # Error with topic partition list returned by the underlying rdkafka library.

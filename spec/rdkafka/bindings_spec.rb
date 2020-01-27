@@ -7,12 +7,12 @@ describe Rdkafka::Bindings do
 
   describe ".lib_extension" do
     it "should know the lib extension for darwin" do
-      expect(Gem::Platform.local).to receive(:os).and_return("darwin-aaa")
+      stub_const('RbConfig::CONFIG', 'host_os' =>'darwin')
       expect(Rdkafka::Bindings.lib_extension).to eq "dylib"
     end
 
     it "should know the lib extension for linux" do
-      expect(Gem::Platform.local).to receive(:os).and_return("linux")
+      stub_const('RbConfig::CONFIG', 'host_os' =>'linux')
       expect(Rdkafka::Bindings.lib_extension).to eq "so"
     end
   end

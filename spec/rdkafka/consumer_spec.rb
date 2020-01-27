@@ -6,8 +6,12 @@ describe Rdkafka::Consumer do
   let(:consumer) { config.consumer }
   let(:producer) { config.producer }
 
-  describe "#subscripe, #unsubscribe and #subscription" do
+  after { consumer.close }
+  after { producer.close }
+
+  describe "#subscribe, #unsubscribe and #subscription" do
     it "should subscribe, unsubscribe and return the subscription" do
+      # trace.enable
       expect(consumer.subscription).to be_empty
 
       consumer.subscribe("consume_test_topic")
@@ -316,7 +320,6 @@ describe Rdkafka::Consumer do
     context "with a commited consumer" do
       before :all do
         # Make sure there are some message
-        producer = rdkafka_config.producer
         handles = []
         10.times do
           (0..2).each do |i|

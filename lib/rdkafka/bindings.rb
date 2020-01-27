@@ -8,7 +8,7 @@ module Rdkafka
     extend FFI::Library
 
     def self.lib_extension
-      if Gem::Platform.local.os.include?("darwin")
+      if RbConfig::CONFIG['host_os'] =~ /darwin/
         'dylib'
       else
         'so'

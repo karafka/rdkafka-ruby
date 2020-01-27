@@ -31,6 +31,8 @@ before_install:
     fi
 
 before_script:
+  - ulimit -S -n 65536
+  - ulimit -H -n 65536
   - docker-compose up -d
   - cd ext && bundle exec rake && cd ..
   - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter

@@ -118,7 +118,6 @@ module Rdkafka
         Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl_ptr)
       ensure
         Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl_ptr)
-        tpl_ptrptr.free
       end
     end
 
@@ -157,7 +156,6 @@ module Rdkafka
         Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl_ptr)
       ensure
         Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl_ptr)
-        tpl_ptrptr.free
       end
     end
 

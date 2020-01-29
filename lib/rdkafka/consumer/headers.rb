@@ -62,9 +62,7 @@ module Rdkafka
 
         headers
       ensure
-        name_ptr.free if defined?(name_ptr) && name_ptr
         name_ptrptr.free if defined?(name_ptrptr) && name_ptrptr
-        value_ptr.free if defined?(value_ptr) && value_ptr
         value_ptrptr.free if defined?(value_ptrptr) && value_ptrptr
       end
     end

@@ -292,6 +292,7 @@ describe Rdkafka::Producer do
     fork do
       reader.close
 
+      producer = rdkafka_config.producer
       handle = producer.produce(
         topic:   "produce_test_topic",
         payload: "payload-forked",
@@ -299,7 +300,6 @@ describe Rdkafka::Producer do
       )
 
       report = handle.wait(max_wait_timeout: 5)
-      producer.close
 
       report_json = JSON.generate(
         "partition" => report.partition,
@@ -307,15 +307,17 @@ describe Rdkafka::Producer do
       )
 
       writer.write(report_json)
+      writer.close
     end
 
     writer.close
-
     report_hash = JSON.parse(reader.read)
     report = Rdkafka::Producer::DeliveryReport.new(
       report_hash["partition"],
       report_hash["offset"]
     )
+
+    reader.close
 
     # Consume message and verify it's content
     message = wait_for_message(

@@ -22,7 +22,6 @@ module Rdkafka
     def close
       @closing = true
       Rdkafka::Bindings.rd_kafka_consumer_close(@native_kafka)
-      @native_kafka.free
     end
 
     # Subscribe to one or more topics letting Kafka handle partition assignments.

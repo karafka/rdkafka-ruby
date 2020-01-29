@@ -11,7 +11,6 @@ describe Rdkafka::Consumer do
 
   describe "#subscribe, #unsubscribe and #subscription" do
     it "should subscribe, unsubscribe and return the subscription" do
-      # trace.enable
       expect(consumer.subscription).to be_empty
 
       consumer.subscribe("consume_test_topic")
@@ -321,6 +320,7 @@ describe Rdkafka::Consumer do
       before :all do
         # Make sure there are some message
         handles = []
+        producer = rdkafka_config.producer
         10.times do
           (0..2).each do |i|
             handles << producer.produce(

@@ -7,6 +7,12 @@ require "pry"
 require "rspec"
 require "rdkafka"
 
+`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic consume_test_topic`
+`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic empty_test_topic`
+`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic load_test_topic`
+`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic produce_test_topic`
+`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic rake_test_topic`
+
 def rdkafka_config(config_overrides={})
   config = {
     :"api.version.request" => false,
@@ -66,11 +72,5 @@ def wait_for_unassignment(consumer)
   10.times do
     break if consumer.assignment.empty?
     sleep 1
-  end
-end
-
-def trace
-  @trace ||= TracePoint.new do |tp|
-    p "Path: #{tp.path}##{tp.lineno}, Method:#{tp.method_id}, Event: #{tp.event}" unless tp.path.include? 'rspec'
   end
 end

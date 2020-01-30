@@ -91,7 +91,6 @@ describe Rdkafka::Consumer do
         # 8. ensure that message is successfully consumed
         records = consumer.poll(timeout)
         expect(records).not_to be_nil
-        consumer.commit
       end
     end
 

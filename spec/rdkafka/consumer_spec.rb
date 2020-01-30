@@ -557,12 +557,12 @@ describe Rdkafka::Consumer do
         payload:   "payload 1",
         key:       "key 1"
       ).wait
-
       consumer.subscribe("consume_test_topic")
-      message = consumer.poll(5000)
-      expect(message).to be_a Rdkafka::Consumer::Message
+      message = consumer.each {|m| break m}
 
-      # Message content is tested in producer spec
+      expect(message).to be_a Rdkafka::Consumer::Message
+      expect(message.payload).to eq('payload 1')
+      expect(message.key).to eq('key 1')
     end
 
     it "should raise an error when polling fails" do

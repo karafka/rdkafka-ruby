@@ -21,7 +21,6 @@ module Rdkafka
     # @return [nil]
     def close
       @closing = true
-      Rdkafka::Bindings.rd_kafka_consumer_close(@native_kafka)
       Rdkafka::Bindings.rd_kafka_destroy(@native_kafka)
     end
 

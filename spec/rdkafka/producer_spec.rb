@@ -285,7 +285,7 @@ describe Rdkafka::Producer do
     # wait for and check the message in the main process.
 
     # Kernel#fork is not available in JRuby
-    skip #if defined?(JRUBY_VERSION)
+    skip if defined?(JRUBY_VERSION)
 
     reader, writer = IO.pipe
 

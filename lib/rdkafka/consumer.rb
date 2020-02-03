@@ -24,6 +24,7 @@ module Rdkafka
 
       @closing = true
       Rdkafka::Bindings.rd_kafka_consumer_close(@native_kafka)
+      Rdkafka::Bindings.rd_kafka_destroy(@native_kafka)
       @closed = true
     end
 
@@ -82,6 +83,8 @@ module Rdkafka
         list = TopicPartitionList.from_native_tpl(tpl)
         raise Rdkafka::RdkafkaTopicPartitionListError.new(response, list, "Error pausing '#{list.to_h}'")
       end
+    ensure
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl)
     end
 
     # Resume producing consumption for the provided list of partitions
@@ -100,6 +103,8 @@ module Rdkafka
       if response != 0
         raise Rdkafka::RdkafkaError.new(response, "Error resume '#{list.to_h}'")
       end
+    ensure
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl)
     end
 
     # Return the current subscription to topics and partitions
@@ -114,7 +119,6 @@ module Rdkafka
         raise Rdkafka::RdkafkaError.new(response)
       end
 
-      tpl_ptrptr.autorelease = false
       tpl_ptr = tpl_ptrptr.read_pointer
 
       begin
@@ -152,7 +156,6 @@ module Rdkafka
         raise Rdkafka::RdkafkaError.new(response)
       end
 
-      tpl_ptrptr.autorelease = false
       tpl_ptr = tpl_ptrptr.read_pointer
 
       begin

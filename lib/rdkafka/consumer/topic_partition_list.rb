@@ -166,8 +166,7 @@ module Rdkafka
       # @return [FFI::AutoPointer]
       # @private
       def self.new_native_tpl(count)
-        tpl = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(count)
-        FFI::AutoPointer.new(tpl, Rdkafka::Bindings.method(:rd_kafka_topic_partition_list_destroy))
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_new(count)
       end
     end
   end

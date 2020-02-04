@@ -373,11 +373,7 @@ module Rdkafka
         raise TypeError.new("list has to be nil or a TopicPartitionList")
       end
 
-      tpl = if list
-              list.to_native_tpl
-            else
-              nil
-            end
+      tpl = list ? list.to_native_tpl : nil
 
       begin
         response = Rdkafka::Bindings.rd_kafka_commit(@native_kafka, tpl, async)

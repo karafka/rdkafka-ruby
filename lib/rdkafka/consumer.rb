@@ -385,9 +385,7 @@ module Rdkafka
           raise Rdkafka::RdkafkaError.new(response)
         end
       ensure
-        if tpl
-          Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl)
-        end
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl) if tpl
       end
     end
 
@@ -399,6 +397,8 @@ module Rdkafka
     #
     # @return [Message, nil] A message or nil if there was no new message within the timeout
     def poll(timeout_ms)
+      return if @closed
+
       message_ptr = Rdkafka::Bindings.rd_kafka_consumer_poll(@native_kafka, timeout_ms)
       if message_ptr.null?
         nil

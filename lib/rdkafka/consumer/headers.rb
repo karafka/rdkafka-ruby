@@ -28,40 +28,37 @@ module Rdkafka
 
         idx = 0
         loop do
-          err = Rdkafka::Bindings.rd_kafka_header_get_all(
-            headers_ptr,
-            idx,
-            name_ptrptr,
-            value_ptrptr,
-            size_ptr
-          )
+          begin
+            err = Rdkafka::Bindings.rd_kafka_header_get_all(
+              headers_ptr,
+              idx,
+              name_ptrptr,
+              value_ptrptr,
+              size_ptr
+            )
 
-          if err == Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT
-            break
-          elsif err != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-            raise Rdkafka::RdkafkaError.new(err, "Error reading a message header at index #{idx}")
+            if err == Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT
+              break
+            elsif err != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+              raise Rdkafka::RdkafkaError.new(err, "Error reading a message header at index #{idx}")
+            end
+
+            name_ptr = name_ptrptr.read_pointer
+            name = name_ptr.respond_to?(:read_string_to_null) ? name_ptr.read_string_to_null : name_ptr.read_string
+
+            size = size_ptr[:value]
+
+            value_ptr = value_ptrptr.read_pointer
+
+            value = value_ptr.read_string(size)
+
+            headers[name.to_sym] = value
+
+            idx += 1
           end
-
-          name_ptr = name_ptrptr.read_pointer
-
-          name = name_ptr.respond_to?(:read_string_to_null) ? name_ptr.read_string_to_null : name_ptr.read_string
-
-          size = size_ptr[:value]
-
-          value_ptr = value_ptrptr.read_pointer
-
-          value = value_ptr.read_string(size)
-
-          headers[name.to_sym] = value
-
-          idx += 1
         end
 
         headers
-      ensure
-        headers_ptr.free
-        name_ptr.free
-        value_ptr.free
       end
     end
   end

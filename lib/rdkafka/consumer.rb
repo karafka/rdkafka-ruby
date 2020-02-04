@@ -237,7 +237,7 @@ module Rdkafka
         raise Rdkafka::RdkafkaError.new(response, "Error querying watermark offsets for partition #{partition} of #{topic}")
       end
 
-      return low.read_int64, high.read_int64
+      return low.read_array_of_uint64(1).first, high.read_array_of_uint64(1).first
     ensure
       low.free
       high.free

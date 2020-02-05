@@ -24,7 +24,7 @@ module Rdkafka
 
       @closing = true
       Rdkafka::Bindings.rd_kafka_consumer_close(@native_kafka)
-      Rdkafka::Bindings.rd_kafka_destroy(@native_kafka)
+      @native_kafka.free
       @closed = true
     end
 
@@ -237,7 +237,7 @@ module Rdkafka
         raise Rdkafka::RdkafkaError.new(response, "Error querying watermark offsets for partition #{partition} of #{topic}")
       end
 
-      return low.read_array_of_uint64(1).first, high.read_array_of_uint64(1).first
+      return low.read_array_of_int64(1).first, high.read_array_of_int64(1).first
     ensure
       low.free
       high.free

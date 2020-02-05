@@ -212,14 +212,10 @@ module Rdkafka
         Rdkafka::Bindings.rd_kafka_queue_get_main(handle)
       )
 
-      if type == :rd_kafka_consumer
-        handle
-      else
-        FFI::AutoPointer.new(
-          handle,
-          Rdkafka::Bindings.method(:rd_kafka_destroy)
-        )
-      end
+      FFI::AutoPointer.new(
+        handle,
+        Rdkafka::Bindings.method(:rd_kafka_destroy)
+      )
     end
   end
 

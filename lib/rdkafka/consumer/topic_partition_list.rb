@@ -125,7 +125,7 @@ module Rdkafka
       #
       # The pointer will be cleaned by `rd_kafka_topic_partition_list_destroy` when GC releases it.
       #
-      # @return [FFI::AutoPointer]
+      # @return [FFI::Pointer]
       # @private
       def to_native_tpl
         tpl = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(count)

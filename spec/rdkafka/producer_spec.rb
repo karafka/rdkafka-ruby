@@ -289,16 +289,9 @@ describe Rdkafka::Producer do
 
     reader, writer = IO.pipe
 
-    producer.close
-    producer.instance_eval {@native_kafka = nil}
-    # For GC'ing @native_kafka references here to avoid finalizer being called in the forked process.
-    GC.start
-    sleep 0.1
-
     fork do
       reader.close
 
-      producer = rdkafka_config.producer
       handle = producer.produce(
         topic:   "produce_test_topic",
         payload: "payload-forked",

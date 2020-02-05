@@ -24,7 +24,7 @@ module Rdkafka
 
       @closing = true
       Rdkafka::Bindings.rd_kafka_consumer_close(@native_kafka)
-      @native_kafka.free
+      Rdkafka::Bindings.rd_kafka_destroy(@native_kafka)
       @closed = true
     end
 

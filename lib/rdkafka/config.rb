@@ -212,10 +212,8 @@ module Rdkafka
         Rdkafka::Bindings.rd_kafka_queue_get_main(handle)
       )
 
-      FFI::AutoPointer.new(
-        handle,
-        Rdkafka::Bindings.method(:rd_kafka_destroy)
-      )
+      # Return handle which should be closed using rd_kafka_destroy after usage.
+      handle
     end
   end
 

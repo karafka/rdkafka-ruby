@@ -41,7 +41,7 @@ module Rdkafka
       @closing = true
       # Wait for the polling thread to finish up
       @polling_thread.join
-      @native_kafka.free
+      Rdkafka::Bindings.rd_kafka_destroy(@native_kafka)
     end
 
     # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.

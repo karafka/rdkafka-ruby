@@ -307,6 +307,7 @@ describe Rdkafka::Producer do
 
       writer.write(report_json)
       writer.close
+      exit!
     end
 
     writer.close

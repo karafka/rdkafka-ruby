@@ -292,6 +292,9 @@ describe Rdkafka::Producer do
     fork do
       reader.close
 
+      # Avoids sharing the socket between processes.
+      producer = rdkafka_config.producer
+
       handle = producer.produce(
         topic:   "produce_test_topic",
         payload: "payload-forked",
@@ -307,7 +310,7 @@ describe Rdkafka::Producer do
 
       writer.write(report_json)
       writer.close
-      exit!
+      producer.close
     end
 
     writer.close

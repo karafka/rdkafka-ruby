@@ -48,6 +48,7 @@ describe Rdkafka::Producer do
       handle.wait(max_wait_timeout: 15)
 
       # Callback should have been called
+      sleep 1 # Let lambda#call to finish execution.
       expect(@callback_called).to be true
     end
   end

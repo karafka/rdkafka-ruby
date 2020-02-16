@@ -1,7 +1,8 @@
 require "spec_helper"
 
 describe Rdkafka::Consumer::Message do
-  let(:native_topic) { new_native_topic }
+  let(:native_client) { new_native_client }
+  let(:native_topic) { new_native_topic(native_client: native_client) }
   let(:payload) { nil }
   let(:key) { nil }
   let(:native_message) do
@@ -22,6 +23,10 @@ describe Rdkafka::Consumer::Message do
         message[:key_len] = key.bytesize
       end
     end
+  end
+
+  after(:each) do
+    Rdkafka::Bindings.rd_kafka_destroy(native_client)
   end
 
   subject { Rdkafka::Consumer::Message.new(native_message) }

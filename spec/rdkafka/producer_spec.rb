@@ -30,6 +30,7 @@ describe Rdkafka::Producer do
     it "should call the callback when a message is delivered" do
       @callback_called = false
 
+
       producer.delivery_callback = lambda do |report|
         expect(report).not_to be_nil
         expect(report.partition).to eq 1
@@ -47,8 +48,10 @@ describe Rdkafka::Producer do
       # Wait for it to be delivered
       handle.wait(max_wait_timeout: 15)
 
+      # Join the producer thread.
+      producer.close
+
       # Callback should have been called
-      sleep 1 # Let lambda#call to finish execution.
       expect(@callback_called).to be true
     end
   end

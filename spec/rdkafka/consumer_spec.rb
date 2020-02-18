@@ -6,7 +6,10 @@ describe Rdkafka::Consumer do
   let(:consumer) { config.consumer }
   let(:producer) { config.producer }
 
-  describe "#subscripe, #unsubscribe and #subscription" do
+  after { consumer.close }
+  after { producer.close }
+
+  describe "#subscribe, #unsubscribe and #subscription" do
     it "should subscribe, unsubscribe and return the subscription" do
       expect(consumer.subscription).to be_empty
 
@@ -88,7 +91,6 @@ describe Rdkafka::Consumer do
         # 8. ensure that message is successfully consumed
         records = consumer.poll(timeout)
         expect(records).not_to be_nil
-        consumer.commit
       end
     end
 
@@ -205,8 +207,6 @@ describe Rdkafka::Consumer do
         expect(records&.payload).to eq "payload c"
         records = consumer.poll(timeout)
         expect(records).to be_nil
-
-        consumer.commit
       end
     end
   end
@@ -313,11 +313,11 @@ describe Rdkafka::Consumer do
       }.to raise_error TypeError
     end
 
-    context "with a commited consumer" do
+    context "with a committed consumer" do
       before :all do
-        # Make sure there are some message
-        producer = rdkafka_config.producer
+        # Make sure there are some messages.
         handles = []
+        producer = rdkafka_config.producer
         10.times do
           (0..2).each do |i|
             handles << producer.produce(
@@ -329,6 +329,7 @@ describe Rdkafka::Consumer do
           end
         end
         handles.each(&:wait)
+        producer.close
       end
 
       before do
@@ -389,20 +390,26 @@ describe Rdkafka::Consumer do
 
       describe "#store_offset" do
         before do
+          config = {}
           config[:'enable.auto.offset.store'] = false
           config[:'enable.auto.commit'] = false
-          consumer.subscribe("consume_test_topic")
-          wait_for_assignment(consumer)
+          @new_consumer = rdkafka_config(config).consumer
+          @new_consumer.subscribe("consume_test_topic")
+          wait_for_assignment(@new_consumer)
+        end
+
+        after do
+          @new_consumer.close
         end
 
         it "should store the offset for a message" do
-          consumer.store_offset(message)
-          consumer.commit
+          @new_consumer.store_offset(message)
+          @new_consumer.commit
 
           list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
             list.add_topic("consume_test_topic", [0, 1, 2])
           end
-          partitions = consumer.committed(list).to_h["consume_test_topic"]
+          partitions = @new_consumer.committed(list).to_h["consume_test_topic"]
           expect(partitions).not_to be_nil
           expect(partitions[message.partition].offset).to eq(message.offset + 1)
         end
@@ -410,7 +417,7 @@ describe Rdkafka::Consumer do
         it "should raise an error with invalid input" do
           allow(message).to receive(:partition).and_return(9999)
           expect {
-            consumer.store_offset(message)
+            @new_consumer.store_offset(message)
           }.to raise_error Rdkafka::RdkafkaError
         end
       end
@@ -554,12 +561,12 @@ describe Rdkafka::Consumer do
         payload:   "payload 1",
         key:       "key 1"
       ).wait
-
       consumer.subscribe("consume_test_topic")
-      message = consumer.poll(5000)
-      expect(message).to be_a Rdkafka::Consumer::Message
+      message = consumer.each {|m| break m}
 
-      # Message content is tested in producer spec
+      expect(message).to be_a Rdkafka::Consumer::Message
+      expect(message.payload).to eq('payload 1')
+      expect(message.key).to eq('key 1')
     end
 
     it "should raise an error when polling fails" do

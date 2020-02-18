@@ -7,6 +7,13 @@ require "pry"
 require "rspec"
 require "rdkafka"
 
+`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic consume_test_topic`
+`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic empty_test_topic`
+`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic load_test_topic`
+`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic produce_test_topic`
+`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic rake_test_topic`
+`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic watermarks_test_topic`
+
 def rdkafka_config(config_overrides={})
   config = {
     :"api.version.request" => false,
@@ -25,12 +32,12 @@ def rdkafka_config(config_overrides={})
   Rdkafka::Config.new(config)
 end
 
-def native_client
+def new_native_client
   config = rdkafka_config
   config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer)
 end
 
-def new_native_topic(topic_name="topic_name")
+def new_native_topic(topic_name="topic_name", native_client: )
   Rdkafka::Bindings.rd_kafka_topic_new(
     native_client,
     topic_name,
@@ -39,6 +46,7 @@ def new_native_topic(topic_name="topic_name")
 end
 
 def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, consumer: nil)
+  new_consumer = !!consumer
   consumer = rdkafka_config.consumer if consumer.nil?
   consumer.subscribe(topic)
   timeout = Time.now.to_i + timeout_in_seconds
@@ -53,6 +61,8 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, consumer:
       return message
     end
   end
+ensure
+  consumer.close if new_consumer
 end
 
 def wait_for_assignment(consumer)

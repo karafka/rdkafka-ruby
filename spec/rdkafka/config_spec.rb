@@ -50,7 +50,9 @@ describe Rdkafka::Config do
     end
 
     it "should create a consumer with valid config" do
-      expect(rdkafka_config.consumer).to be_a Rdkafka::Consumer
+      consumer = rdkafka_config.consumer
+      expect(consumer).to be_a Rdkafka::Consumer
+      consumer.close
     end
 
     it "should raise an error when creating a consumer with invalid config" do
@@ -76,7 +78,9 @@ describe Rdkafka::Config do
     end
 
     it "should create a producer with valid config" do
-      expect(rdkafka_config.producer).to be_a Rdkafka::Producer
+      producer = rdkafka_config.producer
+      expect(producer).to be_a Rdkafka::Producer
+      producer.close
     end
 
     it "should raise an error when creating a producer with invalid config" do

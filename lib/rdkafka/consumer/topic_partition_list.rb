@@ -125,10 +125,10 @@ module Rdkafka
       #
       # The pointer will be cleaned by `rd_kafka_topic_partition_list_destroy` when GC releases it.
       #
-      # @return [FFI::AutoPointer]
+      # @return [FFI::Pointer]
       # @private
       def to_native_tpl
-        tpl = TopicPartitionList.new_native_tpl(count)
+        tpl = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(count)
 
         @data.each do |topic, partitions|
           if partitions
@@ -138,6 +138,7 @@ module Rdkafka
                 topic,
                 p.partition
               )
+
               if p.offset
                 Rdkafka::Bindings.rd_kafka_topic_partition_list_set_offset(
                   tpl,
@@ -157,17 +158,6 @@ module Rdkafka
         end
 
         tpl
-      end
-
-      # Creates a new native tpl and wraps it into FFI::AutoPointer which in turn calls
-      # `rd_kafka_topic_partition_list_destroy` when a pointer will be cleaned by GC
-      #
-      # @param count [Integer] an initial capacity of partitions list
-      # @return [FFI::AutoPointer]
-      # @private
-      def self.new_native_tpl(count)
-        tpl = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(count)
-        FFI::AutoPointer.new(tpl, Rdkafka::Bindings.method(:rd_kafka_topic_partition_list_destroy))
       end
     end
   end

@@ -2,10 +2,13 @@ require "spec_helper"
 
 describe Rdkafka::Producer do
   let(:producer) { rdkafka_config.producer }
+  let(:consumer) { rdkafka_config.consumer }
 
   after do
     # Registry should always end up being empty
     expect(Rdkafka::Producer::DeliveryHandle::REGISTRY).to be_empty
+    producer.close
+    consumer.close
   end
 
   context "delivery callback" do
@@ -27,6 +30,7 @@ describe Rdkafka::Producer do
     it "should call the callback when a message is delivered" do
       @callback_called = false
 
+
       producer.delivery_callback = lambda do |report|
         expect(report).not_to be_nil
         expect(report.partition).to eq 1
@@ -42,7 +46,10 @@ describe Rdkafka::Producer do
       )
 
       # Wait for it to be delivered
-      handle.wait(max_wait_timeout: 5)
+      handle.wait(max_wait_timeout: 15)
+
+      # Join the producer thread.
+      producer.close
 
       # Callback should have been called
       expect(@callback_called).to be true
@@ -82,14 +89,15 @@ describe Rdkafka::Producer do
     # Consume message and verify it's content
     message = wait_for_message(
       topic: "produce_test_topic",
-      delivery_report: report
+      delivery_report: report,
+      consumer: consumer
     )
     expect(message.partition).to eq 1
     expect(message.payload).to eq "payload"
     expect(message.key).to eq "key"
     # Since api.version.request is on by default we will get
     # the message creation timestamp if it's not set.
-    expect(message.timestamp).to be_within(5).of(Time.now)
+    expect(message.timestamp).to be_within(8).of(Time.now)
   end
 
   it "should produce a message with a specified partition" do
@@ -105,7 +113,8 @@ describe Rdkafka::Producer do
     # Consume message and verify it's content
     message = wait_for_message(
       topic: "produce_test_topic",
-      delivery_report: report
+      delivery_report: report,
+      consumer: consumer
     )
     expect(message.partition).to eq 1
     expect(message.key).to eq "key partition"
@@ -122,7 +131,8 @@ describe Rdkafka::Producer do
     # Consume message and verify it's content
     message = wait_for_message(
       topic: "produce_test_topic",
-      delivery_report: report
+      delivery_report: report,
+      consumer: consumer
     )
 
     expect(message.partition).to eq 1
@@ -154,7 +164,8 @@ describe Rdkafka::Producer do
       # Consume message and verify it's content
       message = wait_for_message(
         topic: "produce_test_topic",
-        delivery_report: report
+        delivery_report: report,
+        consumer: consumer
       )
 
       expect(message.partition).to eq 2
@@ -174,7 +185,8 @@ describe Rdkafka::Producer do
       # Consume message and verify it's content
       message = wait_for_message(
         topic: "produce_test_topic",
-        delivery_report: report
+        delivery_report: report,
+        consumer: consumer
       )
 
       expect(message.partition).to eq 2
@@ -193,7 +205,8 @@ describe Rdkafka::Producer do
     # Consume message and verify it's content
     message = wait_for_message(
       topic: "produce_test_topic",
-      delivery_report: report
+      delivery_report: report,
+      consumer: consumer
     )
 
     expect(message.key).to be_nil
@@ -210,7 +223,8 @@ describe Rdkafka::Producer do
     # Consume message and verify it's content
     message = wait_for_message(
       topic: "produce_test_topic",
-      delivery_report: report
+      delivery_report: report,
+      consumer: consumer
     )
 
     expect(message.key).to eq "key no payload"
@@ -229,7 +243,8 @@ describe Rdkafka::Producer do
     # Consume message and verify it's content
     message = wait_for_message(
       topic: "produce_test_topic",
-      delivery_report: report
+      delivery_report: report,
+      consumer: consumer
     )
 
     expect(message.payload).to eq "payload headers"
@@ -251,7 +266,8 @@ describe Rdkafka::Producer do
     # Consume message and verify it's content
     message = wait_for_message(
       topic: "produce_test_topic",
-      delivery_report: report
+      delivery_report: report,
+      consumer: consumer
     )
 
     expect(message.payload).to eq "payload headers"
@@ -284,10 +300,16 @@ describe Rdkafka::Producer do
     # Fork, produce a message, send the report over a pipe and
     # wait for and check the message in the main process.
 
+    # Kernel#fork is not available in JRuby
+    skip if defined?(JRUBY_VERSION)
+
     reader, writer = IO.pipe
 
     fork do
       reader.close
+
+      # Avoids sharing the socket between processes.
+      producer = rdkafka_config.producer
 
       handle = producer.produce(
         topic:   "produce_test_topic",
@@ -296,7 +318,6 @@ describe Rdkafka::Producer do
       )
 
       report = handle.wait(max_wait_timeout: 5)
-      producer.close
 
       report_json = JSON.generate(
         "partition" => report.partition,
@@ -304,20 +325,24 @@ describe Rdkafka::Producer do
       )
 
       writer.write(report_json)
+      writer.close
+      producer.close
     end
 
     writer.close
-
     report_hash = JSON.parse(reader.read)
     report = Rdkafka::Producer::DeliveryReport.new(
       report_hash["partition"],
       report_hash["offset"]
     )
 
+    reader.close
+
     # Consume message and verify it's content
     message = wait_for_message(
       topic: "produce_test_topic",
-      delivery_report: report
+      delivery_report: report,
+      consumer: consumer
     )
     expect(message.partition).to eq 0
     expect(message.payload).to eq "payload-forked"

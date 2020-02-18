@@ -71,15 +71,15 @@ describe Rdkafka::RdkafkaError do
     end
 
     it "should not equal another error with a different error code" do
-      expect(subject).to eq Rdkafka::RdkafkaError.new(20, "Error explanation")
+      expect(subject).not_to eq Rdkafka::RdkafkaError.new(20, "Error explanation")
     end
 
     it "should not equal another error with a different message" do
-      expect(subject).to eq Rdkafka::RdkafkaError.new(10, "Different error explanation")
+      expect(subject).not_to eq Rdkafka::RdkafkaError.new(10, "Different error explanation")
     end
 
     it "should not equal another error with no message" do
-      expect(subject).to eq Rdkafka::RdkafkaError.new(10)
+      expect(subject).not_to eq Rdkafka::RdkafkaError.new(10)
     end
   end
 end

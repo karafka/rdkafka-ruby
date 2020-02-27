@@ -10,11 +10,16 @@ module Rdkafka
       # @return [Integer]
       attr_reader :offset
 
+      # Error in case happen during produce.
+      # @return [string]
+      attr_reader :error
+
       private
 
-      def initialize(partition, offset)
+      def initialize(partition, offset, error = nil)
         @partition = partition
         @offset = offset
+        @error = error
       end
     end
   end

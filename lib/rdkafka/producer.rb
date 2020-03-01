@@ -37,14 +37,18 @@ module Rdkafka
 
     # Close this producer and wait for the internal poll queue to empty.
     def close
-      return if @closed
+      return unless @native_kafka
 
       # Indicate to polling thread that we're closing
       @closing = true
       # Wait for the polling thread to finish up
       @polling_thread.join
       Rdkafka::Bindings.rd_kafka_destroy(@native_kafka)
-      @closed = true
+      @native_kafka = nil
+    end
+
+    def partition_count(topic)
+      Rdkafka::Metadata.new(@native_kafka, topic).topics.select { |x| x[:topic_name].casecmp?(topic) }&.first&.dig(:partition_count)
     end
 
     # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.

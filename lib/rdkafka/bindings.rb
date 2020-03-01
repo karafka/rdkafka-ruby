@@ -41,6 +41,19 @@ module Rdkafka
     attach_function :rd_kafka_memberid, [:pointer], :string
     attach_function :rd_kafka_clusterid, [:pointer], :string
 
+    def self.partitions(native_kafka, topic_name)
+      native_topic = rd_kafka_topic_new(native_kafka, topic_name, nil)
+      metadata_ptr = FFI::MemoryPointer.new(:pointer)
+      rd_kafka_metadata(native_kafka, 1, native_topic, metadata_ptr, 250)
+      metadata = Metadata.new(metadata_ptr.read_pointer)
+      metadata[:topics_metadata][:topic_metadata][:partition_count]
+    ensure
+      rd_kafka_topic_destroy(native_topic)
+    end
+
+    attach_function :rd_kafka_metadata, [:pointer, :int, :pointer, :pointer, :int], :int
+    attach_function :rd_kafka_metadata_destroy, [:pointer], :void
+
     # Message struct
 
     class Message < FFI::Struct

@@ -40,17 +40,6 @@ module Rdkafka
 
     attach_function :rd_kafka_memberid, [:pointer], :string
     attach_function :rd_kafka_clusterid, [:pointer], :string
-
-    def self.partitions(native_kafka, topic_name)
-      native_topic = rd_kafka_topic_new(native_kafka, topic_name, nil)
-      metadata_ptr = FFI::MemoryPointer.new(:pointer)
-      rd_kafka_metadata(native_kafka, 1, native_topic, metadata_ptr, 250)
-      metadata = Metadata.new(metadata_ptr.read_pointer)
-      metadata[:topics_metadata][:topic_metadata][:partition_count]
-    ensure
-      rd_kafka_topic_destroy(native_topic)
-    end
-
     attach_function :rd_kafka_metadata, [:pointer, :int, :pointer, :pointer, :int], :int
     attach_function :rd_kafka_metadata_destroy, [:pointer], :void
 
@@ -244,6 +233,16 @@ module Rdkafka
     attach_function :rd_kafka_producev, [:pointer, :varargs], :int
     callback :delivery_cb, [:pointer, :pointer, :pointer], :void
     attach_function :rd_kafka_conf_set_dr_msg_cb, [:pointer, :delivery_cb], :void
+
+    # Partitioner
+    attach_function :rd_kafka_msg_partitioner_consistent_random, [:pointer, :pointer, :size_t, :int32, :pointer, :pointer], :int32
+
+    def self.partitioner(str, partition_count)
+      return -1 if str.casecmp?('') || partition_count.zero?
+
+      str_ptr = FFI::MemoryPointer.from_string(str)
+      rd_kafka_msg_partitioner_consistent_random(nil, str_ptr, str.size, partition_count, nil, nil)
+    end
 
     DeliveryCallback = FFI::Function.new(
       :void, [:pointer, :pointer, :pointer]

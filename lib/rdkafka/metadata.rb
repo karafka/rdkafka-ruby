@@ -9,8 +9,12 @@ module Rdkafka
       # Retrieve metadata flag is 0/1 for single/multiple topics.
       topic_flag = topic_name ? 1 : 0
 
-      # TODO: Handle errors.
-      Rdkafka::Bindings.rd_kafka_metadata(native_client, topic_flag, native_topic, ptr, 250)
+      # Retrieve the Metadata
+      result = Rdkafka::Bindings.rd_kafka_metadata(native_client, topic_flag, native_topic, ptr, 250)
+
+      # Error Handling
+      Rdkafka::Error.new(result) unless result.zero?
+
       @metadata = metadata_from_native(ptr)
     ensure
       Rdkafka::Bindings.rd_kafka_topic_destroy(native_topic) if topic_name

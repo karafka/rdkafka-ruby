@@ -66,7 +66,7 @@ module Rdkafka
     # @raise [RdkafkaError] When adding the message to rdkafka's queue failed
     #
     # @return [DeliveryHandle] Delivery handle that can be used to wait for the result of producing this message
-    def produce(topic:, payload: nil, key: nil, partition: nil, timestamp: nil, headers: nil)
+    def produce(topic:, payload: nil, key: nil, partition: nil, partition_key: nil, timestamp: nil, headers: nil)
       # Start by checking and converting the input
 
       # Get payload length
@@ -85,7 +85,12 @@ module Rdkafka
 
       # If partition is nil use -1 to let Kafka set the partition based
       # on the key/randomly if there is no key
-      partition = -1 if partition.nil?
+      partition = -1 if partition.nil? && partition_key.nil?
+
+      if partition_key
+        partition_count = partition_count(topic)
+        partition = Rdkafka::Bindings.partitioner(partition_key, partition_count)
+      end
 
       # If timestamp is nil use 0 and let Kafka set one. If an integer or time
       # use it.

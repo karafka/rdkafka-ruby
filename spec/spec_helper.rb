@@ -13,6 +13,7 @@ require "rdkafka"
 `docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic produce_test_topic`
 `docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic rake_test_topic`
 `docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic watermarks_test_topic`
+`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 25 --if-not-exists --topic partitioner_test_topic`
 
 def rdkafka_config(config_overrides={})
   config = {
@@ -31,8 +32,6 @@ def rdkafka_config(config_overrides={})
   config.merge!(config_overrides)
   Rdkafka::Config.new(config)
 end
-
-native_kafka = rdkafka_config.producer.instance_eval {@native_kafka}
 
 def new_native_client
   config = rdkafka_config

@@ -120,6 +120,35 @@ describe Rdkafka::Producer do
     expect(message.key).to eq "key partition"
   end
 
+  it "should produce a message to the same partition with a similar partition key" do
+    key = ('a'..'z').to_a.shuffle.take(10).join('')
+    partition_key = ('a'..'z').to_a.shuffle.take(10).join('')
+
+    # Produce a message with key, partition_key and key + partition_key
+    messages = [{key: key}, {partition_key: partition_key}, {key: key, partition_key: partition_key}]
+
+    messages = messages.map do |m|
+      handle = producer.produce(
+        topic:     "partitioner_test_topic",
+        payload:   "payload partition",
+        key:       m[:key],
+        partition_key: m[:partition_key]
+      )
+      report = handle.wait(max_wait_timeout: 5)
+
+      wait_for_message(
+        topic: "partitioner_test_topic",
+        delivery_report: report,
+      )
+    end
+
+    expect(messages[0].partition).not_to eq(messages[2].partition)
+    expect(messages[1].partition).to eq(messages[2].partition)
+    expect(messages[0].key).to eq key
+    expect(messages[1].key).to be_nil
+    expect(messages[2].key).to eq key
+  end
+
   it "should produce a message with utf-8 encoding" do
     handle = producer.produce(
       topic:   "produce_test_topic",

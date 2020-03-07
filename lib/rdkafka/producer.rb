@@ -48,7 +48,7 @@ module Rdkafka
     end
 
     def partition_count(topic)
-      Rdkafka::Metadata.new(@native_kafka, topic).topics.select { |x| x[:topic_name].casecmp?(topic) }&.first&.dig(:partition_count)
+      Rdkafka::Metadata.new(@native_kafka, topic).topics.select { |x| x[:topic_name].casecmp?(topic) }&.dig(0, :partition_count)
     end
 
     # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.

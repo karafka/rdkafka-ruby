@@ -1,11 +1,14 @@
 module Rdkafka
   class Metadata
+    attr_reader :brokers, :topics
+
     def initialize(native_client, topic_name = nil)
       native_topic = if topic_name
         Rdkafka::Bindings.rd_kafka_topic_new(native_client, topic_name, nil)
       end
 
       ptr = FFI::MemoryPointer.new(:pointer)
+
       # Retrieve metadata flag is 0/1 for single/multiple topics.
       topic_flag = topic_name ? 1 : 0
 
@@ -15,96 +18,74 @@ module Rdkafka
       # Error Handling
       Rdkafka::Error.new(result) unless result.zero?
 
-      @metadata = metadata_from_native(ptr)
+      metadata_from_native(ptr.read_pointer)
     ensure
       Rdkafka::Bindings.rd_kafka_topic_destroy(native_topic) if topic_name
-      Rdkafka::Bindings.rd_kafka_metadata_destroy(ptr)
-    end
-
-    def brokers
-      @metadata[:brokers]
-    end
-
-    def topics
-      @metadata[:topics]
+      Rdkafka::Bindings.rd_kafka_metadata_destroy(ptr.read_pointer)
     end
 
     private
 
     def metadata_from_native(ptr)
-      metadata_struct = Metadata.new(ptr.read_pointer)
-
-      metadata = {}
-      metadata[:brokers] = Array.new(metadata_struct[:brokers_count]) do |i|
-        BrokerMetadata.new(metadata_struct[:brokers_metadata] + (i * BrokerMetadata.size)).to_h
+      metadata = Metadata.new(ptr)
+      @brokers = Array.new(metadata[:brokers_count]) do |i|
+        BrokerMetadata.new(metadata[:brokers_metadata] + (i * BrokerMetadata.size)).to_h
       end
 
-      metadata[:topics] = Array.new(metadata_struct[:topics_count]) do |i|
-        TopicMetadata.new(metadata_struct[:topics_metadata] + (i * TopicMetadata.size)).to_h
-      end
+      @topics = Array.new(metadata[:topics_count]) do |i|
+        topic = TopicMetadata.new(metadata[:topics_metadata] + (i * TopicMetadata.size))
+        Rdkafka::Error.new(topic[:rd_kafka_resp_err]) unless topic[:rd_kafka_resp_err].zero?
 
-      metadata[:topics].each do |topic|
-        topic[:partitions] = Array.new(topic[:partition_count]) do |i|
-          PartitionMetadata.new(topic[:partitions_metadata] + (i * PartitionMetadata.size)).to_h
+        partitions = Array.new(topic[:partition_count]) do |j|
+          partition = PartitionMetadata.new(topic[:partitions_metadata] + (j * PartitionMetadata.size))
+          Rdkafka::Error.new(partition[:rd_kafka_resp_err]) unless partition[:rd_kafka_resp_err].zero?
+          partition.to_h
         end
+        topic.to_h.merge!(partitions: partitions)
       end
-      metadata
     end
 
-    class BrokerMetadata < FFI::Struct
+    class CustomFFIStruct < FFI::Struct
+      def to_h
+        members.each_with_object({}) do |mem, hsh|
+          val = self.[](mem)
+          next if val.is_a?(FFI::Pointer) || mem == :rd_kafka_resp_err
+
+          hsh[mem] = self.[](mem)
+        end
+      end
+    end
+
+    class Metadata < CustomFFIStruct
+      layout :brokers_count, :int,
+             :brokers_metadata, :pointer,
+             :topics_count, :int,
+             :topics_metadata, :pointer,
+             :broker_id, :int32,
+             :broker_name, :string
+    end
+
+    class BrokerMetadata < CustomFFIStruct
       layout :broker_id, :int32,
              :broker_name, :string,
              :broker_port, :int
-
-      def to_h
-        members.each_with_object({}) do |mem, hsh|
-          hsh[mem] = self.[](mem)
-        end
-      end
     end
 
-    class PartitionMetadata < FFI::Struct
-      layout :partition_id, :int32,
-             :rd_kafka_resp_err, :int,
-             :leader, :int32,
-             :replica_count, :int,
-             :replicas, :int32,
-             :isr_broker_count, :int,
-             :sync_replica_count, :int32
-
-      def to_h
-        members.each_with_object({}) do |mem, hsh|
-          hsh[mem] = self.[](mem)
-        end
-      end
-    end
-
-    class TopicMetadata < FFI::Struct
+    class TopicMetadata < CustomFFIStruct
       layout :topic_name, :string,
              :partition_count, :int,
              :partitions_metadata, :pointer,
              :rd_kafka_resp_err, :int
-
-      def to_h
-        members.each_with_object({}) do |mem, hsh|
-          hsh[mem] = self.[](mem)
-        end
-      end
     end
 
-    class Metadata < FFI::Struct
-      layout :brokers_count, :int,
-             :brokers_metadata, :pointer, #BrokersMetadata.ptr, # Array of BrokerMetadata
-             :topics_count, :int,
-             :topics_metadata, :pointer, #TopicsMetadata.ptr, # Array of TopicMetadata
-             :broker_id, :int32,
-             :broker_name, :string
-
-      def to_h
-        members.each_with_object({}) do |mem, hsh|
-          hsh[mem] = self.[](mem)
-        end
-      end
+    class PartitionMetadata < CustomFFIStruct
+      layout :partition_id, :int32,
+             :rd_kafka_resp_err, :int,
+             :leader, :int32,
+             :replica_count, :int,
+             :replicas, :pointer,
+             :in_sync_replica_brokers, :int,
+             :isrs, :pointer
     end
   end
 end

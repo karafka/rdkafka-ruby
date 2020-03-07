@@ -393,7 +393,7 @@ module Rdkafka
     #
     # @return [Message, nil] A message or nil if there was no new message within the timeout
     def poll(timeout_ms)
-      return if @closed
+      return unless @native_kafka
 
       message_ptr = Rdkafka::Bindings.rd_kafka_consumer_poll(@native_kafka, timeout_ms)
       if message_ptr.null?

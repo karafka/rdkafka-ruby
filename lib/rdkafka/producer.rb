@@ -47,8 +47,15 @@ module Rdkafka
       @native_kafka = nil
     end
 
+    # Partition count for a given topic.
+    # NOTE: If 'allow.auto.create.topics' is set to true in the broker, the topic will be auto-created after returning nil.
+    #
+    # @param topic [String] The topic name.
+    #
+    # @return partition count [Integer,nil]
+    #
     def partition_count(topic)
-      Rdkafka::Metadata.new(@native_kafka, topic).topics.select { |x| x[:topic_name].casecmp?(topic) }&.dig(0, :partition_count)
+      Rdkafka::Metadata.new(@native_kafka, topic).topics&.select { |x| x[:topic_name].casecmp?(topic) }&.dig(0, :partition_count)
     end
 
     # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.
@@ -83,14 +90,15 @@ module Rdkafka
                    key.bytesize
                  end
 
-      # If partition is nil use -1 to let Kafka set the partition based
-      # on the key/randomly if there is no key
-      partition = -1 if partition.nil? && partition_key.nil?
-
       if partition_key
         partition_count = partition_count(topic)
-        partition = Rdkafka::Bindings.partitioner(partition_key, partition_count)
+        # If the topic is not present, set to -1
+        partition = Rdkafka::Bindings.partitioner(partition_key, partition_count) if partition_count
       end
+
+      # If partition is nil, use -1 to let librdafka set the partition randomly or
+      # based on the key when present.
+      partition = -1 if partition.nil? && partition_key.nil?
 
       # If timestamp is nil use 0 and let Kafka set one. If an integer or time
       # use it.

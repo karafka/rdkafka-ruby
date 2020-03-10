@@ -98,7 +98,7 @@ module Rdkafka
 
       # If partition is nil, use -1 to let librdafka set the partition randomly or
       # based on the key when present.
-      partition = -1 if partition.nil? && partition_key.nil?
+      partition ||= -1
 
       # If timestamp is nil use 0 and let Kafka set one. If an integer or time
       # use it.

@@ -121,8 +121,13 @@ describe Rdkafka::Producer do
   end
 
   it "should produce a message to the same partition with a similar partition key" do
-    key = ('a'..'z').to_a.shuffle.take(10).join('')
-    partition_key = ('a'..'z').to_a.shuffle.take(10).join('')
+    # Avoid partitioner collisions.
+    while true
+      key = ('a'..'z').to_a.shuffle.take(10).join('')
+      partition_key = ('a'..'z').to_a.shuffle.take(10).join('')
+      partition_count = producer.partition_count('partitioner_test_topic')
+      break if (Zlib.crc32(key) % partition_count) != (Zlib.crc32(partition_key) % partition_count)
+    end
 
     # Produce a message with key, partition_key and key + partition_key
     messages = [{key: key}, {partition_key: partition_key}, {key: key, partition_key: partition_key}]

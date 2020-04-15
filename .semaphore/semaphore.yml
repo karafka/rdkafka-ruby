@@ -1,0 +1,58 @@
+---
+
+version: v1.0
+
+name: Rdkafka
+
+agent:
+  machine:
+    type: e1-standard-2
+  containers:
+    - name: main
+      image: semaphoreci/ruby:2.6.1
+    - name: zookeeper
+      image: confluentinc/cp-zookeeper:latest
+      env_vars:
+        - name: "ZOOKEEPER_CLIENT_PORT"
+          value: "2181"
+        - name: "ZOOKEEPER_TICK_TIME"
+          value: "2000"
+    - name: kafka
+      image: confluentinc/cp-kafka:latest
+      env_vars:
+        - name: "KAFKA_BROKER_ID"
+          value: "1"
+        - name: "KAFKA_ZOOKEEPER_CONNECT"
+          value: "zookeeper:2181"
+        - name: "KAFKA_ADVERTISED_LISTENERS"
+          value: "PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092"
+        - name: "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP"
+          value: "PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+        - name: "KAFKA_INTER_BROKER_LISTENER_NAME"
+          value: "PLAINTEXT"
+        - name: "KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR"
+          value: "1"
+
+blocks:
+  - name: Install dependencies
+    task:
+      jobs:
+        - name: cache bundle
+          commands:
+            - checkout
+            - cache restore
+            - bundle install --path vendor/bundle
+            - "cd ext && bundle exec rake"
+            - cache store
+
+  - name: Run tests
+    task:
+      prologue:
+        commands:
+          - checkout
+          - cache restore
+          - bundle install --path vendor/bundle
+      jobs:
+        - name: Run tests
+          commands:
+            - bundle exec rspec

@@ -13,6 +13,7 @@ require "rdkafka"
 `docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic produce_test_topic`
 `docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic rake_test_topic`
 `docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic watermarks_test_topic`
+`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 25 --if-not-exists --topic partitioner_test_topic`
 
 def rdkafka_config(config_overrides={})
   config = {
@@ -47,7 +48,7 @@ end
 
 def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, consumer: nil)
   new_consumer = !!consumer
-  consumer = rdkafka_config.consumer if consumer.nil?
+  consumer ||= rdkafka_config.consumer
   consumer.subscribe(topic)
   timeout = Time.now.to_i + timeout_in_seconds
   loop do

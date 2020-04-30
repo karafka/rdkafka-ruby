@@ -1,4 +1,5 @@
 require "spec_helper"
+require 'zlib'
 
 describe Rdkafka::Bindings do
   it "should load librdkafka" do
@@ -57,6 +58,23 @@ describe Rdkafka::Bindings do
     it "should log unknown messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 100, nil, "log line")
       expect(log.string).to include "ANY -- : rdkafka: log line"
+    end
+  end
+
+  describe "partitioner" do
+    let(:partition_key) { ('a'..'z').to_a.shuffle.take(15).join('') }
+    let(:partition_count) { rand(50) + 1 }
+
+    it "should return the same partition for a similar string and the same partition count" do
+      result_1 = Rdkafka::Bindings.partitioner(partition_key, partition_count)
+      result_2 = Rdkafka::Bindings.partitioner(partition_key, partition_count)
+      expect(result_1).to eq(result_2)
+    end
+
+    it "should match the old partitioner" do
+      result_1 = Rdkafka::Bindings.partitioner(partition_key, partition_count)
+      result_2 = (Zlib.crc32(partition_key) % partition_count)
+      expect(result_1).to eq(result_2)
     end
   end
 

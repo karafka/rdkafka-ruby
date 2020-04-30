@@ -37,14 +37,25 @@ module Rdkafka
 
     # Close this producer and wait for the internal poll queue to empty.
     def close
-      return if @closed
+      return unless @native_kafka
 
       # Indicate to polling thread that we're closing
       @closing = true
       # Wait for the polling thread to finish up
       @polling_thread.join
       Rdkafka::Bindings.rd_kafka_destroy(@native_kafka)
-      @closed = true
+      @native_kafka = nil
+    end
+
+    # Partition count for a given topic.
+    # NOTE: If 'allow.auto.create.topics' is set to true in the broker, the topic will be auto-created after returning nil.
+    #
+    # @param topic [String] The topic name.
+    #
+    # @return partition count [Integer,nil]
+    #
+    def partition_count(topic)
+      Rdkafka::Metadata.new(@native_kafka, topic).topics&.select { |x| x[:topic_name] == topic }&.dig(0, :partition_count)
     end
 
     # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.
@@ -62,7 +73,7 @@ module Rdkafka
     # @raise [RdkafkaError] When adding the message to rdkafka's queue failed
     #
     # @return [DeliveryHandle] Delivery handle that can be used to wait for the result of producing this message
-    def produce(topic:, payload: nil, key: nil, partition: nil, timestamp: nil, headers: nil)
+    def produce(topic:, payload: nil, key: nil, partition: nil, partition_key: nil, timestamp: nil, headers: nil)
       # Start by checking and converting the input
 
       # Get payload length
@@ -79,9 +90,15 @@ module Rdkafka
                    key.bytesize
                  end
 
-      # If partition is nil use -1 to let Kafka set the partition based
-      # on the key/randomly if there is no key
-      partition = -1 if partition.nil?
+      if partition_key
+        partition_count = partition_count(topic)
+        # If the topic is not present, set to -1
+        partition = Rdkafka::Bindings.partitioner(partition_key, partition_count) if partition_count
+      end
+
+      # If partition is nil, use -1 to let librdafka set the partition randomly or
+      # based on the key when present.
+      partition ||= -1
 
       # If timestamp is nil use 0 and let Kafka set one. If an integer or time
       # use it.

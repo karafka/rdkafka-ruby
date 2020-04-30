@@ -40,6 +40,8 @@ module Rdkafka
 
     attach_function :rd_kafka_memberid, [:pointer], :string
     attach_function :rd_kafka_clusterid, [:pointer], :string
+    attach_function :rd_kafka_metadata, [:pointer, :int, :pointer, :pointer, :int], :int
+    attach_function :rd_kafka_metadata_destroy, [:pointer], :void
 
     # Message struct
 
@@ -231,6 +233,17 @@ module Rdkafka
     attach_function :rd_kafka_producev, [:pointer, :varargs], :int
     callback :delivery_cb, [:pointer, :pointer, :pointer], :void
     attach_function :rd_kafka_conf_set_dr_msg_cb, [:pointer, :delivery_cb], :void
+
+    # Partitioner
+    attach_function :rd_kafka_msg_partitioner_consistent_random, [:pointer, :pointer, :size_t, :int32, :pointer, :pointer], :int32
+
+    def self.partitioner(str, partition_count)
+      # Return RD_KAFKA_PARTITION_UA(unassigned partition) when partition count is nil/zero.
+      return -1 unless partition_count&.nonzero?
+
+      str_ptr = FFI::MemoryPointer.from_string(str)
+      rd_kafka_msg_partitioner_consistent_random(nil, str_ptr, str.size, partition_count, nil, nil)
+    end
 
     DeliveryCallback = FFI::Function.new(
       :void, [:pointer, :pointer, :pointer]

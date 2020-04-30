@@ -97,7 +97,7 @@ describe Rdkafka::Producer do
     expect(message.key).to eq "key"
     # Since api.version.request is on by default we will get
     # the message creation timestamp if it's not set.
-    expect(message.timestamp).to be_within(8).of(Time.now)
+    expect(message.timestamp).to be_within(10).of(Time.now)
   end
 
   it "should produce a message with a specified partition" do
@@ -118,6 +118,40 @@ describe Rdkafka::Producer do
     )
     expect(message.partition).to eq 1
     expect(message.key).to eq "key partition"
+  end
+
+  it "should produce a message to the same partition with a similar partition key" do
+    # Avoid partitioner collisions.
+    while true
+      key = ('a'..'z').to_a.shuffle.take(10).join('')
+      partition_key = ('a'..'z').to_a.shuffle.take(10).join('')
+      partition_count = producer.partition_count('partitioner_test_topic')
+      break if (Zlib.crc32(key) % partition_count) != (Zlib.crc32(partition_key) % partition_count)
+    end
+
+    # Produce a message with key, partition_key and key + partition_key
+    messages = [{key: key}, {partition_key: partition_key}, {key: key, partition_key: partition_key}]
+
+    messages = messages.map do |m|
+      handle = producer.produce(
+        topic:     "partitioner_test_topic",
+        payload:   "payload partition",
+        key:       m[:key],
+        partition_key: m[:partition_key]
+      )
+      report = handle.wait(max_wait_timeout: 5)
+
+      wait_for_message(
+        topic: "partitioner_test_topic",
+        delivery_report: report,
+      )
+    end
+
+    expect(messages[0].partition).not_to eq(messages[2].partition)
+    expect(messages[1].partition).to eq(messages[2].partition)
+    expect(messages[0].key).to eq key
+    expect(messages[1].key).to be_nil
+    expect(messages[2].key).to eq key
   end
 
   it "should produce a message with utf-8 encoding" do

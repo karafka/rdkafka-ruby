@@ -1,3 +1,11 @@
+# 0.8.0
+* Upgrade librdkafka to 1.4.0
+* Integrate librdkafka metadata API and add partition_key (by Adithya-copart)
+* Ruby 2.7 compatibility fix (by Geoff Thé)A
+* Add error to delivery report (by Alex Stanovsky)
+* Don't override CPPFLAGS and LDFLAGS if already set on Mac (by Hiroshi Hatake)
+* Allow use of Rake 13.x and up (by Tomasz Pajor)
+
 # 0.7.0
 * Bump librdkafka to 1.2.0 (by rob-as)
 * Allow customizing the wait time for delivery report availability (by mensfeld)

@@ -62,7 +62,7 @@ describe Rdkafka::Producer do
         payload: "payload",
         key:     "key"
      )
-    }.to raise_error ArgumentError, "missing keyword: topic"
+    }.to raise_error ArgumentError, /missing keyword: [\:]?topic/
   end
 
   it "should produce a message" do

@@ -16,7 +16,7 @@ module Rdkafka
       result = Rdkafka::Bindings.rd_kafka_metadata(native_client, topic_flag, native_topic, ptr, 250)
 
       # Error Handling
-      Rdkafka::Error.new(result) unless result.zero?
+      Rdkafka::RdkafkaError.new(result) unless result.zero?
 
       metadata_from_native(ptr.read_pointer)
     ensure
@@ -34,11 +34,11 @@ module Rdkafka
 
       @topics = Array.new(metadata[:topics_count]) do |i|
         topic = TopicMetadata.new(metadata[:topics_metadata] + (i * TopicMetadata.size))
-        Rdkafka::Error.new(topic[:rd_kafka_resp_err]) unless topic[:rd_kafka_resp_err].zero?
+        Rdkafka::RdkafkaError.new(topic[:rd_kafka_resp_err]) unless topic[:rd_kafka_resp_err].zero?
 
         partitions = Array.new(topic[:partition_count]) do |j|
           partition = PartitionMetadata.new(topic[:partitions_metadata] + (j * PartitionMetadata.size))
-          Rdkafka::Error.new(partition[:rd_kafka_resp_err]) unless partition[:rd_kafka_resp_err].zero?
+          Rdkafka::RdkafkaError.new(partition[:rd_kafka_resp_err]) unless partition[:rd_kafka_resp_err].zero?
           partition.to_h
         end
         topic.to_h.merge!(partitions: partitions)

@@ -13,7 +13,8 @@ module Rdkafka
 
     private_constant :CURRENT_TIME
 
-    def self.register(address, handle)
+    def self.register(handle)
+      address = handle.to_ptr.address
       REGISTRY[address] = handle
     end
 

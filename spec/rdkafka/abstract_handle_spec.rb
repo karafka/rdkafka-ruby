@@ -30,7 +30,7 @@ describe Rdkafka::AbstractHandle do
     let(:pending_handle) { true }
 
     it "should register and remove a delivery handle" do
-      Rdkafka::AbstractHandle.register(subject.to_ptr.address, subject)
+      Rdkafka::AbstractHandle.register(subject)
       removed = Rdkafka::AbstractHandle.remove(subject.to_ptr.address)
       expect(removed).to eq subject
       expect(Rdkafka::AbstractHandle::REGISTRY).to be_empty

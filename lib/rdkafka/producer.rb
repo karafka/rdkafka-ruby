@@ -117,7 +117,7 @@ module Rdkafka
       delivery_handle[:response] = -1
       delivery_handle[:partition] = -1
       delivery_handle[:offset] = -1
-      DeliveryHandle.register(delivery_handle.to_ptr.address, delivery_handle)
+      DeliveryHandle.register(delivery_handle)
 
       args = [
         :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_TOPIC, :string, topic,

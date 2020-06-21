@@ -3,13 +3,22 @@ module Rdkafka
   class RdkafkaError < RuntimeError
     # The underlying raw error response
     # @return [Integer]
-    attr_reader :rdkafka_response, :message_prefix
+    attr_reader :rdkafka_response
+
+    # Prefix to be used for human readable representation
+    # @return [String]
+    attr_reader :message_prefix
+
+    # Error message sent by the broker
+    # @return [String]
+    attr_reader :broker_message
 
     # @private
-    def initialize(response, message_prefix=nil)
+    def initialize(response, message_prefix=nil, broker_message: nil)
       raise TypeError.new("Response has to be an integer") unless response.is_a? Integer
       @rdkafka_response = response
       @message_prefix = message_prefix
+      @broker_message = broker_message
     end
 
     # This error's code, for example `:partition_eof`, `:msg_size_too_large`.

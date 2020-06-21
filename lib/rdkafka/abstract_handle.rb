@@ -53,7 +53,7 @@ module Rdkafka
           end
           sleep wait_timeout
         elsif self[:response] != 0
-          raise RdkafkaError.new(self[:response])
+          raise_error
         else
           return create_result
         end
@@ -68,6 +68,11 @@ module Rdkafka
     # @return [Object] operation-specific result
     def create_result
       raise "Must be implemented by subclass!"
+    end
+
+    # Allow subclasses to override
+    def raise_error
+      raise RdkafkaError.new(self[:response])
     end
 
     # Error that is raised when waiting for the handle to complete

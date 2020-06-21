@@ -11,7 +11,7 @@ module Rdkafka
         "create topic"
       end
 
-      # @return [Boolean] whether the create_topic was successful
+      # @return [Boolean] whether the create topic was successful
       def create_result
         CreateTopicReport.new(self[:error_string], self[:result_name])
       end

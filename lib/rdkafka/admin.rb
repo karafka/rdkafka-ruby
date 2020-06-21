@@ -76,10 +76,8 @@ module Rdkafka
         raise
       end
 
-      # TODO: when should these get cleaned up?
+      # TODO GT: when should these get cleaned up?
       # Rdkafka::Bindings.rd_kafka_NewTopic_destroy(new_topic)
-
-      # TODO: Return the handle
 
       create_topic_handle
     end

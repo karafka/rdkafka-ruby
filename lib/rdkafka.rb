@@ -1,6 +1,9 @@
 require "rdkafka/version"
 
 require "rdkafka/abstract_handle"
+require "rdkafka/admin"
+require "rdkafka/admin/create_topic_handle"
+require "rdkafka/admin/create_topic_report"
 require "rdkafka/bindings"
 require "rdkafka/config"
 require "rdkafka/consumer"

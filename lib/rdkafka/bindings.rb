@@ -308,10 +308,10 @@ module Rdkafka
       # Get the number of topic results
       pointer_to_size_t = FFI::MemoryPointer.new(:int32)
       topic_results = Rdkafka::Bindings.rd_kafka_CreateTopics_result_topics(create_topics_result, pointer_to_size_t)
-      topic_result_count = pointer_to_size_t.read(:int32)
+      topic_result_count = pointer_to_size_t.read_int
 
       topic_results = (1..topic_result_count).map do |index|
-        pointer = (topic_results + (index - 1)).read(:pointer)
+        pointer = (topic_results + (index - 1)).read_pointer
         TopicResult.new(pointer)
       end
 

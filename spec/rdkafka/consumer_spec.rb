@@ -678,6 +678,91 @@ describe Rdkafka::Consumer do
     end
   end
 
+  describe "#each_batch" do
+    def produce_n(n)
+      handles = []
+      n.times do |i|
+        handles << producer.produce(
+          topic:     "consume_test_topic",
+          payload:   "payload #{i}",
+          key:       "key #{i}",
+          partition: 0
+        )
+      end
+      handles.each(&:wait)
+    end
+ 
+    it "should yield batches of messages" do
+      consumer.subscribe("consume_test_topic")
+      produce_n 10
+      consumer.each_batch(max_items: 10) do |batch|
+        expect(batch).to be_instance_of(Array)
+        expect(batch.size).to eq 10
+        break
+      end
+    end
+
+    it "should yield a partial batch if the timeout is hit with some messages" do
+      pending "not working yet, interference between tests?"
+      consumer.subscribe("consume_test_topic")
+      produce_n 2
+      consumer.each_batch(max_items: 10) do |batch|
+        expect(batch.size).to eq 2
+        break
+      end
+    end
+
+    it "should yield [] if nothing is received before the timeout" do
+      first_yield = "a not nil value, to be replaced by nil"
+      thread = Thread.new do
+        consumer.subscribe("consume_test_topic")
+        consumer.each_batch(max_items: 10, max_latency_ms: 1) do |batch|
+          first_yield = batch
+          break
+        end
+      end
+      thread.join(0.1)
+      thread.kill
+      expect(first_yield).to eq([])
+    end
+
+    it "should yield sooner than the timeout latency if batch size is reached" do
+      pending "not working yet, time_done is nil, is each_batch reached?"
+      first_yield = []
+      time_start = nil
+      time_done = nil
+      consumer.subscribe("consume_test_topic")
+      thread = Thread.new do
+        consumer.subscribe("consume_test_topic")
+        time_start = Time.new.to_f
+        consumer.each_batch(max_items: 10, max_latency_ms: 2000) do |batch|
+          first_yield = batch
+          time_done = Time.new.to_f
+          break
+        end
+      end
+      produce_n 10
+      thread.join(3)
+      thread.kill
+      expect(time_start).to_not be_nil
+      expect(time_done).to_not be_nil
+      expect(time_done - time_start).to be_less_than 0.3
+      expect(first_yield.size).to eq 10
+    end
+
+    it "should return if the connection is closing" do
+      consumer.subscribe("consume_test_topic")
+      produce_n 10
+      loop_count = 0
+      consumer.close
+      consumer.each_batch(max_items: 10, max_latency_ms: 10) do |batch|
+        loop_count = loop_count + 1
+        break if loop_count > 10
+      end
+      expect(loop_count).to eq 0
+    end
+  end
+
   describe "a rebalance listener" do
     it "should get notifications" do
       listener = Struct.new(:queue) do

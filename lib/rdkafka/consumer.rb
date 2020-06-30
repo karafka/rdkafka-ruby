@@ -471,5 +471,27 @@ module Rdkafka
     def closed_consumer_check(method)
       raise Rdkafka::ClosedConsumerError.new(method) if @native_kafka.nil?
     end
+
+    def each_batch(max_items: 100, max_latency_ms: 250, &block)
+      closed_consumer_check(__method__)
+      slice = []
+      loop do
+        start_time = Time.new.to_f
+        end_time = start_time + max_latency_ms / 1000.0
+        max_wait = end_time - Time.now.to_f
+        max_wait_ms = if max_wait <= 0
+                        0   
+                      else
+                        (max_wait * 1000).floor
+                      end 
+        message = poll max_wait_ms
+        slice << message if message
+        if slice.size == max_items || Time.now.to_f >= end_time
+          yield slice.dup
+          slice = []
+        end 
+        break if @closing
+      end 
+    end
   end
 end

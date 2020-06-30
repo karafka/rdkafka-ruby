@@ -476,6 +476,7 @@ module Rdkafka
       closed_consumer_check(__method__)
       slice = []
       loop do
+        break if @closing
         start_time = Time.new.to_f
         end_time = start_time + max_latency_ms / 1000.0
         max_wait = end_time - Time.now.to_f
@@ -490,7 +491,6 @@ module Rdkafka
           yield slice.dup
           slice = []
         end 
-        break if @closing
       end 
     end
   end

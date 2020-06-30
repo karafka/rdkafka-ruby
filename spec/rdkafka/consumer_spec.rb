@@ -271,6 +271,14 @@ describe Rdkafka::Consumer do
   describe "#close" do
     it "should close a consumer" do
       consumer.subscribe("consume_test_topic")
+      100.times do |i|
+        report = producer.produce(
+          topic:     "consume_test_topic",
+          payload:   "payload #{i}",
+          key:       "key #{i}",
+          partition: 0
+        ).wait
+      end
       consumer.close
       expect {
         consumer.poll(100)

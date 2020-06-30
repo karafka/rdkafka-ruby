@@ -44,6 +44,7 @@ blocks:
             - bundle install --path vendor/bundle
             - "cd ext && bundle exec rake"
             - cache store
+            - cache store native_extensions-$SEMAPHORE_GIT_BRANCH ext/librdkafka*
 
   - name: Run tests
     task:
@@ -51,6 +52,7 @@ blocks:
         commands:
           - checkout
           - cache restore
+          - cache restore native_extensions-$SEMAPHORE_GIT_BRANCH
           - bundle install --path vendor/bundle
       jobs:
         - name: Run tests

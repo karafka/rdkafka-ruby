@@ -6,7 +6,7 @@ name: Rdkafka
 
 agent:
   machine:
-    type: e1-standard-2
+    type: e1-standard-4
   containers:
     - name: main
       image: semaphoreci/ruby:2.6.1

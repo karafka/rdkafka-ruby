@@ -489,7 +489,7 @@ module Rdkafka
         slice << message if message
         if slice.size == max_items || Time.now.to_f >= end_time
           yield slice.dup
-          slice = []
+          slice.clear
         end 
       end 
     end

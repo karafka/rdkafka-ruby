@@ -34,7 +34,7 @@ module Rdkafka
 
       error_buffer = FFI::MemoryPointer.from_string(" " * 256)
 
-      new_topic = Rdkafka::Bindings.rd_kafka_NewTopic_new(
+      new_topic_ptr = Rdkafka::Bindings.rd_kafka_NewTopic_new(
         FFI::MemoryPointer.from_string(topic_name),
         partition_count,
         replication_factor,
@@ -42,16 +42,17 @@ module Rdkafka
         256
       )
 
-      if new_topic == FFI::Pointer::NULL
+      if new_topic_ptr == FFI::Pointer::NULL
         raise Rdkafka::Config::ConfigError.new(error_buffer.read_string)
       end
 
-      pointer_array = [new_topic]
-      topics_array = FFI::MemoryPointer.new(:pointer)
-      topics_array.write_array_of_pointer(pointer_array)
+      pointer_array = [new_topic_ptr]
+      topics_array_ptr = FFI::MemoryPointer.new(:pointer)
+      topics_array_ptr.write_array_of_pointer(pointer_array)
 
-      queue = Rdkafka::Bindings.rd_kafka_queue_get_background(@native_kafka)
-      if queue == FFI::Pointer::NULL
+      queue_ptr = Rdkafka::Bindings.rd_kafka_queue_get_background(@native_kafka)
+      if queue_ptr == FFI::Pointer::NULL
+        Rdkafka::Bindings.rd_kafka_NewTopic_destroy(new_topic_ptr)
         raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
       end
 
@@ -66,18 +67,19 @@ module Rdkafka
       begin
         Rdkafka::Bindings.rd_kafka_CreateTopics(
             @native_kafka,
-            topics_array,
+            topics_array_ptr,
             1,
             admin_options_ptr,
-            queue
+            queue_ptr
         )
       rescue Exception => err
         CreateTopicHandle.remove(create_topic_handle.to_ptr.address)
         raise
+      ensure
+        Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
+        Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr)
+        Rdkafka::Bindings.rd_kafka_NewTopic_destroy(new_topic_ptr)
       end
-
-      # TODO GT: when should these get cleaned up?
-      # Rdkafka::Bindings.rd_kafka_NewTopic_destroy(new_topic)
 
       create_topic_handle
     end

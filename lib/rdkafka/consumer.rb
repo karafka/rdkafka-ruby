@@ -487,7 +487,7 @@ module Rdkafka
                       end 
         message = poll max_wait_ms
         slice << message if message
-        if slice.size == max_items || Time.now.to_f >= end_time
+        if slice.size == max_items || Time.now.to_f >= end_time - 0.001
           yield slice.dup
           slice.clear
         end 

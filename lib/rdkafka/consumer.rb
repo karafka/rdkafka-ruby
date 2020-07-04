@@ -472,13 +472,37 @@ module Rdkafka
       raise Rdkafka::ClosedConsumerError.new(method) if @native_kafka.nil?
     end
 
-    def each_batch(max_items: 100, max_latency_ms: 250, &block)
+    # Poll for new messages and yield them in batches.
+    #
+    # As with `each`, iteration will end when the consumer is closed.
+    # Exception behavior is also the same as with `each`.
+    #
+    # Rather than yield each message immediately as soon as it is received,
+    # each_batch will attempt to wait for as long as `timeout_ms` in order
+    # to create a batch of no more than `max_items` in size.
+    #
+    # Said differently, if more than `max_items` are available within
+    # `timeout_ms`, then `each_batch` will yield early with
+    # `max_items` in the array, but if `timeout_ms` passes by
+    # with fewer messages arriving, it will yield an array of fewer
+    # messages, possibly zero.
+    #
+    # @param max_items [Integer] Maximum size of the yielded array of messages
+    #
+    # @param timeout_ms [Integer] Timeout of this poll
+    #
+    # @raise [RdkafkaError] When polling fails
+    #
+    # @yieldparam message [Batch] An array of received messages
+    #
+    # @return [nil]
+    def each_batch(max_items: 100, timeout_ms: 250, &block)
       closed_consumer_check(__method__)
       slice = []
       loop do
         break if @closing
         start_time = Time.new.to_f
-        end_time = start_time + max_latency_ms / 1000.0
+        end_time = start_time + timeout_ms / 1000.0
         max_wait = end_time - Time.now.to_f
         max_wait_ms = if max_wait <= 0
                         0   

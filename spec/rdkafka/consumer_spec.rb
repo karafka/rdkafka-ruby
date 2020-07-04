@@ -752,7 +752,7 @@ describe Rdkafka::Consumer do
       yields = []
       timing = []
 
-      consumer.each_batch(max_items: 10, max_latency_ms: 500) do |batch|
+      consumer.each_batch(max_items: 10, timeout_ms: 500) do |batch|
         now = Time.now.to_f
         yields << batch
         timing << now - prev_time
@@ -760,7 +760,7 @@ describe Rdkafka::Consumer do
         break if batch&.size > 0
       end
       expect(timing.last < 0.5).to be true
-      expect(yields.flatten.size).to eq 10
+      expect(yields.last.size).to eq 10
     end
 
     it "should return if the connection is closing" do
@@ -768,7 +768,7 @@ describe Rdkafka::Consumer do
       produce_n 10
       loop_count = 0
       consumer.close
-      consumer.each_batch(max_items: 10, max_latency_ms: 10) do |batch|
+      consumer.each_batch(max_items: 10, timeout_ms: 10) do |batch|
         loop_count = loop_count + 1
         break if loop_count > 10
       end

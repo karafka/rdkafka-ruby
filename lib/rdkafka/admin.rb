@@ -90,5 +90,55 @@ module Rdkafka
 
       create_topic_handle
     end
+
+    # Delete the named topic
+    #
+    # @raise [RdkafkaError] When the topic name is invalid or the topic does not exist
+    #
+    # @return [DeleteTopicHandle] Delete topic handle that can be used to wait for the result of deleting the topic
+    def delete_topic(topic_name)
+
+      # Create a rd_kafka_DeleteTopic_t representing the topic to be deleted
+      delete_topic_ptr = Rdkafka::Bindings.rd_kafka_DeleteTopic_new(FFI::MemoryPointer.from_string(topic_name))
+
+      # Note that rd_kafka_DeleteTopics can create more than one topic at a time
+      pointer_array = [delete_topic_ptr]
+      topics_array_ptr = FFI::MemoryPointer.new(:pointer)
+      topics_array_ptr.write_array_of_pointer(pointer_array)
+
+      # Get a pointer to the queue that our request will be enqueued on
+      queue_ptr = Rdkafka::Bindings.rd_kafka_queue_get_background(@native_kafka)
+      if queue_ptr == FFI::Pointer::NULL
+        Rdkafka::Bindings.rd_kafka_DeleteTopic_destroy(delete_topic_ptr)
+        raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
+      end
+
+      # Create and register the handle we will return to the caller
+      delete_topic_handle = DeleteTopicHandle.new
+      delete_topic_handle[:pending] = true
+      delete_topic_handle[:response] = -1
+      DeleteTopicHandle.register(delete_topic_handle)
+      admin_options_ptr = Rdkafka::Bindings.rd_kafka_AdminOptions_new(@native_kafka, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DELETETOPICS)
+      Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, delete_topic_handle.to_ptr)
+
+      begin
+        Rdkafka::Bindings.rd_kafka_DeleteTopics(
+            @native_kafka,
+            topics_array_ptr,
+            1,
+            admin_options_ptr,
+            queue_ptr
+        )
+      rescue Exception => err
+        DeleteTopicHandle.remove(create_topic_handle.to_ptr.address)
+        raise
+      ensure
+        Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
+        Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr)
+        Rdkafka::Bindings.rd_kafka_DeleteTopic_destroy(delete_topic_ptr)
+      end
+
+      delete_topic_handle
+    end
   end
 end

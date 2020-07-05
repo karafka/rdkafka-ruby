@@ -30,10 +30,16 @@ module Rdkafka
       @native_kafka = nil
     end
 
+    # Create a topic with the given partition count and replication factor
+    #
+    # @raise [ConfigError] When the partition count or replication factor are out of valid range
+    # @raise [RdkafkaError] When the topic name is invalid or the topic already exists
+    #
+    # @return [CreateTopicHandle] Create topic handle that can be used to wait for the result of creating the topic
     def create_topic(topic_name, partition_count, replication_factor)
 
+      # Create a rd_kafka_NewTopic_t representing the new topic
       error_buffer = FFI::MemoryPointer.from_string(" " * 256)
-
       new_topic_ptr = Rdkafka::Bindings.rd_kafka_NewTopic_new(
         FFI::MemoryPointer.from_string(topic_name),
         partition_count,
@@ -41,26 +47,27 @@ module Rdkafka
         error_buffer,
         256
       )
-
       if new_topic_ptr == FFI::Pointer::NULL
         raise Rdkafka::Config::ConfigError.new(error_buffer.read_string)
       end
 
+      # Note that rd_kafka_CreateTopics can create more than one topic at a time
       pointer_array = [new_topic_ptr]
       topics_array_ptr = FFI::MemoryPointer.new(:pointer)
       topics_array_ptr.write_array_of_pointer(pointer_array)
 
+      # Get a pointer to the queue that our request will be enqueued on
       queue_ptr = Rdkafka::Bindings.rd_kafka_queue_get_background(@native_kafka)
       if queue_ptr == FFI::Pointer::NULL
         Rdkafka::Bindings.rd_kafka_NewTopic_destroy(new_topic_ptr)
         raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
       end
 
+      # Create and register the handle we will return to the caller
       create_topic_handle = CreateTopicHandle.new
       create_topic_handle[:pending] = true
       create_topic_handle[:response] = -1
       CreateTopicHandle.register(create_topic_handle)
-
       admin_options_ptr = Rdkafka::Bindings.rd_kafka_AdminOptions_new(@native_kafka, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATETOPICS)
       Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, create_topic_handle.to_ptr)
 

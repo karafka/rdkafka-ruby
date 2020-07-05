@@ -130,7 +130,7 @@ module Rdkafka
             queue_ptr
         )
       rescue Exception => err
-        DeleteTopicHandle.remove(create_topic_handle.to_ptr.address)
+        DeleteTopicHandle.remove(delete_topic_handle.to_ptr.address)
         raise
       ensure
         Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)

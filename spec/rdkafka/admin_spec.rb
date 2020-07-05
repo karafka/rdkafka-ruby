@@ -70,6 +70,32 @@ describe Rdkafka::Admin do
       end
     end
 
+    context "edge case" do
+      context "where we are unable to get the background queue" do
+        before do
+          allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_get_background).and_return(FFI::Pointer::NULL)
+        end
+
+        it "raises an exception" do
+          expect {
+            admin.create_topic(topic_name, topic_partition_count, topic_replication_factor)
+          }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
+        end
+      end
+
+      context "where rd_kafka_CreateTopics raises an exception" do
+        before do
+          allow(Rdkafka::Bindings).to receive(:rd_kafka_CreateTopics).and_raise(RuntimeError.new("oops"))
+        end
+
+        it "raises an exception" do
+          expect {
+            admin.create_topic(topic_name, topic_partition_count, topic_replication_factor)
+          }.to raise_error RuntimeError, /oops/
+        end
+      end
+    end
+
     it "creates a topic" do
       create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor)
       create_topic_report = create_topic_handle.wait(max_wait_timeout: 15.0)
@@ -110,6 +136,33 @@ describe Rdkafka::Admin do
         end
       end
     end
+
+    context "edge case" do
+      context "where we are unable to get the background queue" do
+        before do
+          allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_get_background).and_return(FFI::Pointer::NULL)
+        end
+
+        it "raises an exception" do
+          expect {
+            admin.delete_topic(topic_name)
+          }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
+        end
+      end
+
+      context "where rd_kafka_DeleteTopics raises an exception" do
+        before do
+          allow(Rdkafka::Bindings).to receive(:rd_kafka_DeleteTopics).and_raise(RuntimeError.new("oops"))
+        end
+
+        it "raises an exception" do
+          expect {
+            admin.delete_topic(topic_name)
+          }.to raise_error RuntimeError, /oops/
+        end
+      end
+    end
+
 
     it "deletes a topic that was newly created" do
       create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor)

@@ -16,12 +16,10 @@ describe Rdkafka::Admin do
   let(:topic_replication_factor) { 1 }
 
   describe "#create_topic" do
-
     describe "called with invalid input" do
-
-      # https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/common/internals/Topic.java#L29
-      # public static final String LEGAL_CHARS = "[a-zA-Z0-9._-]";
       describe "with an invalid topic name" do
+        # https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/common/internals/Topic.java#L29
+        # public static final String LEGAL_CHARS = "[a-zA-Z0-9._-]";
         let(:topic_name) { "[!@#]" }
 
         it "raises an exception" do
@@ -32,6 +30,21 @@ describe Rdkafka::Admin do
             expect(ex).to be_a(Rdkafka::RdkafkaError)
             expect(ex.message).to match(/Broker: Invalid topic \(topic_exception\)/)
             expect(ex.broker_message).to match(/Topic name.*is illegal, it contains a character other than ASCII alphanumerics/)
+          }
+        end
+      end
+
+      describe "with the name of a topic that already exists" do
+        let(:topic_name) { "empty_test_topic" } # created in spec_helper.rb
+
+        it "raises an exception" do
+          create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor)
+          expect {
+            create_topic_handle.wait(max_wait_timeout: 15.0)
+          }.to raise_exception { |ex|
+            expect(ex).to be_a(Rdkafka::RdkafkaError)
+            expect(ex.message).to match(/Broker: Topic already exists \(topic_already_exists\)/)
+            expect(ex.broker_message).to match(/Topic 'empty_test_topic' already exists/)
           }
         end
       end

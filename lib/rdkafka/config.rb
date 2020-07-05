@@ -137,7 +137,7 @@ module Rdkafka
       # Create Kafka config
       config = native_config(opaque)
       # Set callback to receive delivery reports on config
-      Rdkafka::Bindings.rd_kafka_conf_set_dr_msg_cb(config, Rdkafka::Callbacks::DeliveryCallback)
+      Rdkafka::Bindings.rd_kafka_conf_set_dr_msg_cb(config, Rdkafka::Callbacks::DeliveryCallbackFunction)
       # Return producer with Kafka client
       Rdkafka::Producer.new(native_kafka(config, :rd_kafka_producer)).tap do |producer|
         opaque.producer = producer
@@ -153,7 +153,7 @@ module Rdkafka
     def admin
       opaque = Opaque.new
       config = native_config(opaque)
-      Rdkafka::Bindings.rd_kafka_conf_set_background_event_cb(config, Rdkafka::Callbacks::BackgroundEventCallback)
+      Rdkafka::Bindings.rd_kafka_conf_set_background_event_cb(config, Rdkafka::Callbacks::BackgroundEventCallbackFunction)
       Rdkafka::Admin.new(native_kafka(config, :rd_kafka_producer))
     end
 

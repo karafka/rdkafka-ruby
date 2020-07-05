@@ -4,6 +4,26 @@ describe Rdkafka::AbstractHandle do
   let(:response) { 0 }
   let(:result) { -1 }
 
+  context "A subclass that does not implement the required methods" do
+
+    class BadTestHandle < Rdkafka::AbstractHandle
+      layout :pending, :bool,
+             :response, :int
+    end
+
+    it "raises an exception if operation_name is called" do
+      expect {
+        BadTestHandle.new.operation_name
+      }.to raise_exception(RuntimeError, /Must be implemented by subclass!/)
+    end
+
+    it "raises an exception if create_result is called" do
+      expect {
+        BadTestHandle.new.create_result
+      }.to raise_exception(RuntimeError, /Must be implemented by subclass!/)
+    end
+  end
+
   class TestHandle < Rdkafka::AbstractHandle
     layout :pending, :bool,
            :response, :int,

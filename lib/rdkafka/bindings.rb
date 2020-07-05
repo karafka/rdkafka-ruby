@@ -264,6 +264,8 @@ module Rdkafka
     attach_function :rd_kafka_DeleteTopics, [:pointer, :pointer, :size_t, :pointer, :pointer], :int32
     attach_function :rd_kafka_DeleteTopic_new, [:pointer], :pointer
     attach_function :rd_kafka_DeleteTopic_destroy, [:pointer], :void
+    attach_function :rd_kafka_event_DeleteTopics_result, [:pointer], :pointer
+    attach_function :rd_kafka_DeleteTopics_result_topics, [:pointer, :pointer], :pointer
 
     # Background Queue and Callback
 

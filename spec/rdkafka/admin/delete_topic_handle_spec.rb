@@ -1,10 +1,10 @@
 require "spec_helper"
 
-describe Rdkafka::Admin::CreateTopicHandle do
+describe Rdkafka::Admin::DeleteTopicHandle do
   let(:response) { 0 }
 
   subject do
-    Rdkafka::Admin::CreateTopicHandle.new.tap do |handle|
+    Rdkafka::Admin::DeleteTopicHandle.new.tap do |handle|
       handle[:pending] = pending_handle
       handle[:response] = response
       handle[:error_string] = FFI::Pointer::NULL
@@ -18,13 +18,13 @@ describe Rdkafka::Admin::CreateTopicHandle do
     it "should wait until the timeout and then raise an error" do
       expect {
         subject.wait(max_wait_timeout: 0.1)
-      }.to raise_error Rdkafka::Admin::CreateTopicHandle::WaitTimeoutError, /create topic/
+      }.to raise_error Rdkafka::Admin::DeleteTopicHandle::WaitTimeoutError, /delete topic/
     end
 
     context "when not pending anymore and no error" do
       let(:pending_handle) { false }
 
-      it "should return a create topic report" do
+      it "should return a delete topic report" do
         report = subject.wait
 
         expect(report.error_string).to eq(nil)

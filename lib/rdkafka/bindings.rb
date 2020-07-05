@@ -304,28 +304,49 @@ module Rdkafka
         :void, [:pointer, :pointer, :pointer]
     ) do |client_ptr, event_ptr, opaque_ptr|
 
-      return if Rdkafka::Bindings.rd_kafka_event_type(event_ptr) != RD_KAFKA_EVENT_CREATETOPICS_RESULT
+      if Rdkafka::Bindings.rd_kafka_event_type(event_ptr) == RD_KAFKA_EVENT_CREATETOPICS_RESULT
+        create_topics_result = Rdkafka::Bindings.rd_kafka_event_CreateTopics_result(event_ptr)
 
-      create_topics_result = Rdkafka::Bindings.rd_kafka_event_CreateTopics_result(event_ptr)
+        # Get the number of create topic results
+        pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+        create_topic_results = Rdkafka::Bindings.rd_kafka_CreateTopics_result_topics(create_topics_result, pointer_to_size_t)
 
-      # Get the number of topic results
-      pointer_to_size_t = FFI::MemoryPointer.new(:int32)
-      topic_results = Rdkafka::Bindings.rd_kafka_CreateTopics_result_topics(create_topics_result, pointer_to_size_t)
-      topic_result_count = pointer_to_size_t.read_int
+        create_topic_results = (1..pointer_to_size_t.read_int).map do |index|
+          pointer = (create_topic_results + (index - 1)).read_pointer
+          TopicResult.new(pointer)
+        end
+        create_topic_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
 
-      topic_results = (1..topic_result_count).map do |index|
-        pointer = (topic_results + (index - 1)).read_pointer
-        TopicResult.new(pointer)
-      end
+        if create_topic_handle = Rdkafka::Admin::CreateTopicHandle.remove(create_topic_handle_ptr.address)
+          # TODO GT: support more than one topic creation at a time?
+          create_topic_handle[:response] = create_topic_results[0].result_error
+          create_topic_handle[:error_string] = create_topic_results[0].error_string
+          create_topic_handle[:result_name] = create_topic_results[0].result_name
+          create_topic_handle[:pending] = false
+        end
+      elsif Rdkafka::Bindings.rd_kafka_event_type(event_ptr) == RD_KAFKA_EVENT_DELETETOPICS_RESULT
 
-      create_topic_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
+        delete_topics_result = Rdkafka::Bindings.rd_kafka_event_DeleteTopics_result(event_ptr)
 
-      if create_topic_handle = Rdkafka::Admin::CreateTopicHandle.remove(create_topic_handle_ptr.address)
-        create_topic_handle[:pending] = false
-        # TODO GT: support more than one topic creation at a time?
-        create_topic_handle[:response] = topic_results[0].result_error
-        create_topic_handle[:error_string] = topic_results[0].error_string
-        create_topic_handle[:result_name] = topic_results[0].result_name
+        # Get the number of topic results
+        pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+        delete_topic_results = Rdkafka::Bindings.rd_kafka_DeleteTopics_result_topics(delete_topics_result, pointer_to_size_t)
+
+        delete_topic_results = (1..pointer_to_size_t.read_int).map do |index|
+          pointer = (delete_topic_results + (index - 1)).read_pointer
+          TopicResult.new(pointer)
+        end
+        delete_topic_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
+
+        if delete_topic_handle = Rdkafka::Admin::DeleteTopicHandle.remove(delete_topic_handle_ptr.address)
+          # TODO GT: support more than one topic deletion at a time?
+          delete_topic_handle[:response] = delete_topic_results[0].result_error
+          delete_topic_handle[:error_string] = delete_topic_results[0].error_string
+          delete_topic_handle[:result_name] = delete_topic_results[0].result_name
+          delete_topic_handle[:pending] = false
+        end
+      else
+        # NOP
       end
     end
 

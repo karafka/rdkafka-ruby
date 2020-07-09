@@ -47,7 +47,7 @@ module Rdkafka
         error_buffer,
         256
       )
-      if new_topic_ptr == FFI::Pointer::NULL
+      if new_topic_ptr.null?
         raise Rdkafka::Config::ConfigError.new(error_buffer.read_string)
       end
 
@@ -58,7 +58,7 @@ module Rdkafka
 
       # Get a pointer to the queue that our request will be enqueued on
       queue_ptr = Rdkafka::Bindings.rd_kafka_queue_get_background(@native_kafka)
-      if queue_ptr == FFI::Pointer::NULL
+      if queue_ptr.null?
         Rdkafka::Bindings.rd_kafka_NewTopic_destroy(new_topic_ptr)
         raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
       end
@@ -108,7 +108,7 @@ module Rdkafka
 
       # Get a pointer to the queue that our request will be enqueued on
       queue_ptr = Rdkafka::Bindings.rd_kafka_queue_get_background(@native_kafka)
-      if queue_ptr == FFI::Pointer::NULL
+      if queue_ptr.null?
         Rdkafka::Bindings.rd_kafka_DeleteTopic_destroy(delete_topic_ptr)
         raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
       end

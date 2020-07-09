@@ -36,6 +36,8 @@ module Rdkafka
     #
     # @return [nil]
     def subscribe(*topics)
+      raise "Illegal call to #subscribe after closing the consumer" if @native_kafka.nil?
+
       # Create topic partition list with topics and no partition set
       tpl = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(topics.length)
 
@@ -58,6 +60,8 @@ module Rdkafka
     #
     # @return [nil]
     def unsubscribe
+      raise "Illegal call to #unsubscribe after closing the consumer" if @native_kafka.nil?
+
       response = Rdkafka::Bindings.rd_kafka_unsubscribe(@native_kafka)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
@@ -72,6 +76,8 @@ module Rdkafka
     #
     # @return [nil]
     def pause(list)
+      raise "Illegal call to #pause after closing the consumer" if @native_kafka.nil?
+
       unless list.is_a?(TopicPartitionList)
         raise TypeError.new("list has to be a TopicPartitionList")
       end
@@ -98,6 +104,8 @@ module Rdkafka
     #
     # @return [nil]
     def resume(list)
+      raise "Illegal call to #resume after closing the consumer" if @native_kafka.nil?
+
       unless list.is_a?(TopicPartitionList)
         raise TypeError.new("list has to be a TopicPartitionList")
       end
@@ -120,6 +128,8 @@ module Rdkafka
     #
     # @return [TopicPartitionList]
     def subscription
+      raise "Illegal call to #subscription after closing the consumer" if @native_kafka.nil?
+
       ptr = FFI::MemoryPointer.new(:pointer)
       response = Rdkafka::Bindings.rd_kafka_subscription(@native_kafka, ptr)
 
@@ -142,6 +152,8 @@ module Rdkafka
     #
     # @raise [RdkafkaError] When assigning fails
     def assign(list)
+      raise "Illegal call to #assign after closing the consumer" if @native_kafka.nil?
+
       unless list.is_a?(TopicPartitionList)
         raise TypeError.new("list has to be a TopicPartitionList")
       end
@@ -164,6 +176,8 @@ module Rdkafka
     #
     # @return [TopicPartitionList]
     def assignment
+      raise "Illegal call to #assignment after closing the consumer" if @native_kafka.nil?
+
       ptr = FFI::MemoryPointer.new(:pointer)
       response = Rdkafka::Bindings.rd_kafka_assignment(@native_kafka, ptr)
       if response != 0
@@ -193,6 +207,8 @@ module Rdkafka
     #
     # @return [TopicPartitionList]
     def committed(list=nil, timeout_ms=1200)
+      raise "Illegal call to #committed after closing the consumer" if @native_kafka.nil?
+
       if list.nil?
         list = assignment
       elsif !list.is_a?(TopicPartitionList)
@@ -222,6 +238,8 @@ module Rdkafka
     #
     # @return [Integer] The low and high watermark
     def query_watermark_offsets(topic, partition, timeout_ms=200)
+      raise "Illegal call to #query_watermark_offsets after closing the consumer" if @native_kafka.nil?
+
       low = FFI::MemoryPointer.new(:int64, 1)
       high = FFI::MemoryPointer.new(:int64, 1)
 
@@ -279,6 +297,7 @@ module Rdkafka
     #
     # @return [String, nil]
     def cluster_id
+      raise "Illegal call to #cluster_id after closing the consumer" if @native_kafka.nil?
       Rdkafka::Bindings.rd_kafka_clusterid(@native_kafka)
     end
 
@@ -288,6 +307,7 @@ module Rdkafka
     #
     # @return [String, nil]
     def member_id
+      raise "Illegal call to #member_id after closing the consumer" if @native_kafka.nil?
       Rdkafka::Bindings.rd_kafka_memberid(@native_kafka)
     end
 
@@ -301,6 +321,8 @@ module Rdkafka
     #
     # @return [nil]
     def store_offset(message)
+      raise "Illegal call to #store_offset after closing the consumer" if @native_kafka.nil?
+
       # rd_kafka_offset_store is one of the few calls that does not support
       # a string as the topic, so create a native topic for it.
       native_topic = Rdkafka::Bindings.rd_kafka_topic_new(
@@ -331,6 +353,8 @@ module Rdkafka
     #
     # @return [nil]
     def seek(message)
+      raise "Illegal call to #seek after closing the consumer" if @native_kafka.nil?
+
       # rd_kafka_offset_store is one of the few calls that does not support
       # a string as the topic, so create a native topic for it.
       native_topic = Rdkafka::Bindings.rd_kafka_topic_new(
@@ -369,6 +393,8 @@ module Rdkafka
     #
     # @return [nil]
     def commit(list=nil, async=false)
+      raise "Illegal call to #commit after closing the consumer" if @native_kafka.nil?
+
       if !list.nil? && !list.is_a?(TopicPartitionList)
         raise TypeError.new("list has to be nil or a TopicPartitionList")
       end
@@ -393,7 +419,7 @@ module Rdkafka
     #
     # @return [Message, nil] A message or nil if there was no new message within the timeout
     def poll(timeout_ms)
-      return unless @native_kafka
+      raise "Illegal call to #poll after closing the consumer" if @native_kafka.nil?
 
       message_ptr = Rdkafka::Bindings.rd_kafka_consumer_poll(@native_kafka, timeout_ms)
       if message_ptr.null?

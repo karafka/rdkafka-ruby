@@ -59,6 +59,7 @@ module Rdkafka
     # @return partition count [Integer,nil]
     #
     def partition_count(topic)
+      raise "Illegal call to #partition_count after closing the producer" if @native_kafka.nil?
       Rdkafka::Metadata.new(@native_kafka, topic).topics&.first[:partition_count]
     end
 
@@ -78,6 +79,8 @@ module Rdkafka
     #
     # @return [DeliveryHandle] Delivery handle that can be used to wait for the result of producing this message
     def produce(topic:, payload: nil, key: nil, partition: nil, partition_key: nil, timestamp: nil, headers: nil)
+      raise "Illegal call to #produce after closing the producer" if @native_kafka.nil?
+
       # Start by checking and converting the input
 
       # Get payload length

@@ -272,7 +272,9 @@ describe Rdkafka::Consumer do
     it "should close a consumer" do
       consumer.subscribe("consume_test_topic")
       consumer.close
-      expect(consumer.poll(100)).to be_nil
+      expect {
+        consumer.poll(100)
+      }.to raise_error(Rdkafka::Consumer::ClosedConsumerError, /poll/)
     end
   end
 
@@ -661,9 +663,12 @@ describe Rdkafka::Consumer do
       # Check the first 10 messages. Then close the consumer, which
       # should break the each loop.
       consumer.each_with_index do |message, i|
+        puts message
+        puts i
         expect(message).to be_a Rdkafka::Consumer::Message
-        consumer.close if i == 10
+        break if i == 10
       end
+      consumer.close
     end
   end
 
@@ -721,6 +726,35 @@ describe Rdkafka::Consumer do
       consumer.unsubscribe
       wait_for_unassignment(consumer)
       consumer.close
+    end
+  end
+
+  context "methods that should not be called after a producer has been closed" do
+    before do
+      consumer.close
+    end
+
+    {
+        :subscribe       => [ nil ],
+        :unsubscribe     => nil,
+        :pause           => [ nil ],
+        :resume          => [ nil ],
+        :subscription    => nil,
+        :assign          => [ nil ],
+        :assignment      => nil,
+        :committed       => [],
+        :query_watermark_offsets => [ nil, nil ],
+    }.each do |method, args|
+      it "raises an exception if #{method} is called" do
+        puts method
+        expect {
+          if args.nil?
+            consumer.public_send(method)
+          else
+            consumer.public_send(method, *args)
+          end
+        }.to raise_exception(Rdkafka::Consumer::ClosedConsumerError, /#{method.to_s}/)
+      end
     end
   end
 end

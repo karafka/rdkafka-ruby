@@ -59,7 +59,7 @@ module Rdkafka
     # @return partition count [Integer,nil]
     #
     def partition_count(topic)
-      raise "Illegal call to #partition_count after closing the producer" if @native_kafka.nil?
+      closed_producer_check(__method__)
       Rdkafka::Metadata.new(@native_kafka, topic).topics&.first[:partition_count]
     end
 
@@ -79,7 +79,7 @@ module Rdkafka
     #
     # @return [DeliveryHandle] Delivery handle that can be used to wait for the result of producing this message
     def produce(topic:, payload: nil, key: nil, partition: nil, partition_key: nil, timestamp: nil, headers: nil)
-      raise "Illegal call to #produce after closing the producer" if @native_kafka.nil?
+      closed_producer_check(__method__)
 
       # Start by checking and converting the input
 
@@ -169,6 +169,16 @@ module Rdkafka
     # @private
     def call_delivery_callback(delivery_handle)
       @delivery_callback.call(delivery_handle) if @delivery_callback
+    end
+
+    class ClosedProducerError < RuntimeError
+      def initialize(method)
+        super("Illegal call to #{method.to_s} on a closed producer")
+      end
+    end
+
+    def closed_producer_check(method)
+      raise ClosedProducerError.new(method) if @native_kafka.nil?
     end
   end
 end

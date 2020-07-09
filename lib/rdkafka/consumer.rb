@@ -51,7 +51,7 @@ module Rdkafka
         raise Rdkafka::RdkafkaError.new(response, "Error subscribing to '#{topics.join(', ')}'")
       end
     ensure
-      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl) if tpl
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl) unless tpl.nil?
     end
 
     # Unsubscribe from all subscribed topics.

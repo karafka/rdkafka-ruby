@@ -413,6 +413,7 @@ describe Rdkafka::Producer do
       producer.close
     end
 
+    # Affected methods and a non-invalid set of parameters for the method
     {
         :produce         => { topic: nil },
         :partition_count => nil,

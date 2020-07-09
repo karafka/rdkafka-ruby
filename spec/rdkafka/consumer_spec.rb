@@ -734,15 +734,16 @@ describe Rdkafka::Consumer do
       consumer.close
     end
 
+    # Affected methods and a non-invalid set of parameters for the method
     {
-        :subscribe       => [ nil ],
-        :unsubscribe     => nil,
-        :pause           => [ nil ],
-        :resume          => [ nil ],
-        :subscription    => nil,
-        :assign          => [ nil ],
-        :assignment      => nil,
-        :committed       => [],
+        :subscribe               => [ nil ],
+        :unsubscribe             => nil,
+        :pause                   => [ nil ],
+        :resume                  => [ nil ],
+        :subscription            => nil,
+        :assign                  => [ nil ],
+        :assignment              => nil,
+        :committed               => [],
         :query_watermark_offsets => [ nil, nil ],
     }.each do |method, args|
       it "raises an exception if #{method} is called" do

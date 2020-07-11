@@ -47,9 +47,9 @@ module Rdkafka
         end
 
         def to_native(value, context)
-          raise if value.nil? || value.handle_pointer.null?
+          raise if value.nil?
 
-          value.handle_pointer
+          value.is_a?(Handle) ? value.handle_pointer : value
         end
       end
     end

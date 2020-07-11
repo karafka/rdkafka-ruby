@@ -43,7 +43,6 @@ module Rdkafka
 
       class << self
         def from_native(ptr, context)
-          p "Hello there........... #{ptr}"
           new(ptr)
         end
 
@@ -57,7 +56,7 @@ module Rdkafka
 
     # Polling
 
-    attach_function :rd_kafka_poll, [:pointer, :int], :void, blocking: true
+    attach_function :rd_kafka_poll, [Handle, :int], :void, blocking: true
     attach_function :rd_kafka_outq_len, [Handle], :int, blocking: true
 
     # Metadata
@@ -254,7 +253,7 @@ module Rdkafka
 
     RD_KAFKA_MSG_F_COPY = 0x2
 
-    attach_function :rd_kafka_producev, [:pointer, :varargs], :int
+    attach_function :rd_kafka_producev, [Handle, :varargs], :int
     callback :delivery_cb, [:pointer, :pointer, :pointer], :void
     attach_function :rd_kafka_conf_set_dr_msg_cb, [:pointer, :delivery_cb], :void
 

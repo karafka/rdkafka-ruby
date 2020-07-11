@@ -472,20 +472,29 @@ module Rdkafka
       raise Rdkafka::ClosedConsumerError.new(method) if @native_kafka.nil?
     end
 
-    # Poll for new messages and yield them in batches.
-    #
-    # As with `each`, iteration will end when the consumer is closed.
-    # Exception behavior is also the same as with `each`.
+    # Poll for new messages and yield them in batches that may contain
+    # messages from more than one partition.
     #
     # Rather than yield each message immediately as soon as it is received,
     # each_batch will attempt to wait for as long as `timeout_ms` in order
-    # to create a batch of no more than `max_items` in size.
+    # to create a batch of up to but no more than `max_items` in size.
     #
     # Said differently, if more than `max_items` are available within
-    # `timeout_ms`, then `each_batch` will yield early with
-    # `max_items` in the array, but if `timeout_ms` passes by
-    # with fewer messages arriving, it will yield an array of fewer
-    # messages, possibly zero.
+    # `timeout_ms`, then `each_batch` will yield early with `max_items` in the
+    # array, but if `timeout_ms` passes by with fewer messages arriving, it
+    # will yield an array of fewer messages, quite possibly zero.
+    #
+    # In order to prevent wrongly auto committing many messages at once across
+    # possibly many partitions, callers must explicitly indicate which messages
+    # have been successfully processed as some consumed messages may not have
+    # been yielded yet. To do this, the caller should set
+    # `enable.auto.offset.store` to false and pass processed messages to
+    # {store_offset}. It is also possible, though more complex, to set
+    # 'enable.auto.commit' to false and then pass a manually assembled
+    # TopicPartitionList to {commit}.
+    #
+    # As with `each`, iteration will end when the consumer is closed.
+    # Exception behavior is also the same as with `each`.
     #
     # @param max_items [Integer] Maximum size of the yielded array of messages
     #

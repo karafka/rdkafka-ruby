@@ -202,7 +202,7 @@ module Rdkafka
         256
       )
 
-      if handle.null?
+      if handle.handle_pointer.null?
         raise ClientCreationError.new(error_buffer.read_string)
       end
 

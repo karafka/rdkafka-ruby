@@ -31,16 +31,40 @@ module Rdkafka
       layout :value, :size_t
     end
 
+    class Handle
+      extend FFI::DataConverter
+      native_type FFI::Type::POINTER
+
+      attr_reader :handle_pointer
+
+      def initialize(ptr)
+        @handle_pointer = ptr
+      end
+
+      class << self
+        def from_native(ptr, context)
+          p "Hello there........... #{ptr}"
+          new(ptr)
+        end
+
+        def to_native(value, context)
+          raise if value.nil? || value.handle_pointer.null?
+
+          value.handle_pointer
+        end
+      end
+    end
+
     # Polling
 
     attach_function :rd_kafka_poll, [:pointer, :int], :void, blocking: true
-    attach_function :rd_kafka_outq_len, [:pointer], :int, blocking: true
+    attach_function :rd_kafka_outq_len, [Handle], :int, blocking: true
 
     # Metadata
 
-    attach_function :rd_kafka_memberid, [:pointer], :string
-    attach_function :rd_kafka_clusterid, [:pointer], :string
-    attach_function :rd_kafka_metadata, [:pointer, :int, :pointer, :pointer, :int], :int
+    attach_function :rd_kafka_memberid, [Handle], :string
+    attach_function :rd_kafka_clusterid, [Handle], :string
+    attach_function :rd_kafka_metadata, [Handle, :int, :pointer, :pointer, :int], :int
     attach_function :rd_kafka_metadata_destroy, [:pointer], :void
 
     # Message struct
@@ -59,7 +83,7 @@ module Rdkafka
 
     attach_function :rd_kafka_message_destroy, [:pointer], :void
     attach_function :rd_kafka_message_timestamp, [:pointer, :pointer], :int64
-    attach_function :rd_kafka_topic_new, [:pointer, :string, :pointer], :pointer
+    attach_function :rd_kafka_topic_new, [Handle, :string, :pointer], :pointer
     attach_function :rd_kafka_topic_destroy, [:pointer], :pointer
     attach_function :rd_kafka_topic_name, [:pointer], :string
 
@@ -110,8 +134,8 @@ module Rdkafka
     attach_function :rd_kafka_conf_set_stats_cb, [:pointer, :stats_cb], :void
 
     # Log queue
-    attach_function :rd_kafka_set_log_queue, [:pointer, :pointer], :void
-    attach_function :rd_kafka_queue_get_main, [:pointer], :pointer
+    attach_function :rd_kafka_set_log_queue, [Handle, :pointer], :void
+    attach_function :rd_kafka_queue_get_main, [Handle], :pointer
 
     LogCallback = FFI::Function.new(
       :void, [:pointer, :int, :string, :string]
@@ -153,24 +177,24 @@ module Rdkafka
       :rd_kafka_consumer
     ]
 
-    attach_function :rd_kafka_new, [:kafka_type, :pointer, :pointer, :int], :pointer
-    attach_function :rd_kafka_destroy, [:pointer], :void
+    attach_function :rd_kafka_new, [:kafka_type, :pointer, :pointer, :int], Handle
+    attach_function :rd_kafka_destroy, [Handle], :void
 
     # Consumer
 
-    attach_function :rd_kafka_subscribe, [:pointer, :pointer], :int
-    attach_function :rd_kafka_unsubscribe, [:pointer], :int
-    attach_function :rd_kafka_subscription, [:pointer, :pointer], :int
-    attach_function :rd_kafka_assign, [:pointer, :pointer], :int
-    attach_function :rd_kafka_assignment, [:pointer, :pointer], :int
-    attach_function :rd_kafka_committed, [:pointer, :pointer, :int], :int
-    attach_function :rd_kafka_commit, [:pointer, :pointer, :bool], :int, blocking: true
-    attach_function :rd_kafka_poll_set_consumer, [:pointer], :void
-    attach_function :rd_kafka_consumer_poll, [:pointer, :int], :pointer, blocking: true
-    attach_function :rd_kafka_consumer_close, [:pointer], :void, blocking: true
+    attach_function :rd_kafka_subscribe, [Handle, :pointer], :int
+    attach_function :rd_kafka_unsubscribe, [Handle], :int
+    attach_function :rd_kafka_subscription, [Handle, :pointer], :int
+    attach_function :rd_kafka_assign, [Handle, :pointer], :int
+    attach_function :rd_kafka_assignment, [Handle, :pointer], :int
+    attach_function :rd_kafka_committed, [Handle, :pointer, :int], :int
+    attach_function :rd_kafka_commit, [Handle, :pointer, :bool], :int, blocking: true
+    attach_function :rd_kafka_poll_set_consumer, [Handle], :void
+    attach_function :rd_kafka_consumer_poll, [Handle, :int], :pointer, blocking: true
+    attach_function :rd_kafka_consumer_close, [Handle], :void, blocking: true
     attach_function :rd_kafka_offset_store, [:pointer, :int32, :int64], :int
-    attach_function :rd_kafka_pause_partitions, [:pointer, :pointer], :int
-    attach_function :rd_kafka_resume_partitions, [:pointer, :pointer], :int
+    attach_function :rd_kafka_pause_partitions, [Handle, :pointer], :int
+    attach_function :rd_kafka_resume_partitions, [Handle, :pointer], :int
     attach_function :rd_kafka_seek, [:pointer, :int32, :int64, :int], :int
 
     # Headers

@@ -9,14 +9,15 @@ module Rdkafka
 
       ptr = FFI::MemoryPointer.new(:pointer)
 
-      # Retrieve metadata flag is 0/1 for single/multiple topics.
-      topic_flag = topic_name ? 1 : 0
+      # If topic_flag is 1, request info about all topics in cluster.  If topic_flag is 0,
+      # only request info about locally known topics (or a single topic).
+      topic_flag = topic_name.nil? ? 1 : 0
 
       # Retrieve the Metadata
       result = Rdkafka::Bindings.rd_kafka_metadata(native_client, topic_flag, native_topic, ptr, 250)
 
       # Error Handling
-      Rdkafka::RdkafkaError.new(result) unless result.zero?
+      raise Rdkafka::RdkafkaError.new(result) unless result.zero?
 
       metadata_from_native(ptr.read_pointer)
     ensure

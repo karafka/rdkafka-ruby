@@ -9,8 +9,8 @@ module Rdkafka
 
       ptr = FFI::MemoryPointer.new(:pointer)
 
-      # If topic_flag is 1, request info about all topics in cluster.  If topic_flag is 0,
-      # only request info about locally known topics (or a single topic).
+      # If topic_flag is 1, we request info about *all* topics in the cluster.  If topic_flag is 0,
+      # we only request info about locally known topics (or a single topic if one is passed in).
       topic_flag = topic_name.nil? ? 1 : 0
 
       # Retrieve the Metadata

@@ -25,6 +25,7 @@ describe Rdkafka::Metadata do
       end
 
       it "#topics returns no partitions" do
+        expect(subject.topics.length).to eq(1)
         expect(subject.topics[0][:partition_count]).to eq(0)
         expect(subject.topics[0][:partitions]).to eq([])
         expect(subject.topics[0][:topic_name]).to eq(topic_name)
@@ -42,6 +43,7 @@ describe Rdkafka::Metadata do
       end
 
       it "#topics returns data on our test topic" do
+        expect(subject.topics.length).to eq(1)
         expect(subject.topics[0][:partition_count]).to eq(25)
         expect(subject.topics[0][:partitions].length).to eq(25)
         expect(subject.topics[0][:topic_name]).to eq(topic_name)

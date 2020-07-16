@@ -26,7 +26,7 @@ describe Rdkafka::Consumer::Message do
   end
 
   after(:each) do
-    Rdkafka::Bindings.rd_kafka_destroy(native_client)
+    Rdkafka::Bindings.close_handle(native_client)
   end
 
   subject { Rdkafka::Consumer::Message.new(native_message) }

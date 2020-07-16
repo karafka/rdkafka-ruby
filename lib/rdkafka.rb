@@ -1,5 +1,9 @@
-require "rdkafka/version"
+require "ffi"
+require "json"
+require "logger"
 
+require "rdkafka/version"
+require "rdkafka/bindings/handle"
 require "rdkafka/bindings"
 require "rdkafka/config"
 require "rdkafka/consumer"

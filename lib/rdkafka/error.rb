@@ -1,6 +1,9 @@
 module Rdkafka
+  # Base error class.
+  class BaseError < RuntimeError; end
+
   # Error returned by the underlying rdkafka library.
-  class RdkafkaError < RuntimeError
+  class RdkafkaError < BaseError
     # The underlying raw error response
     # @return [Integer]
     attr_reader :rdkafka_response, :message_prefix
@@ -8,6 +11,7 @@ module Rdkafka
     # @private
     def initialize(response, message_prefix=nil)
       raise TypeError.new("Response has to be an integer") unless response.is_a? Integer
+
       @rdkafka_response = response
       @message_prefix = message_prefix
     end
@@ -57,4 +61,13 @@ module Rdkafka
       @topic_partition_list = topic_partition_list
     end
   end
+
+  # Consumer closed error.
+  class ConsumerClosedError < BaseError; end
+
+  # Producer closed error.
+  class ProducerClosedError < BaseError; end
+
+  # Error that is returned by the underlying rdkafka library if the client cannot be created.
+  class ClientCreationError < RuntimeError; end
 end

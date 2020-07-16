@@ -47,7 +47,7 @@ module Rdkafka
       @closing = true
       # Wait for the polling thread to finish up
       @polling_thread.join
-      Rdkafka::Bindings.rd_kafka_destroy(@native_kafka)
+      @native_kafka.close
       @native_kafka = nil
     end
 

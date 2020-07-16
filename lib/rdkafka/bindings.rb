@@ -1,7 +1,3 @@
-require "ffi"
-require "json"
-require "logger"
-
 module Rdkafka
   # @private
   module Bindings
@@ -29,29 +25,6 @@ module Rdkafka
 
     class SizePtr < FFI::Struct
       layout :value, :size_t
-    end
-
-    class Handle
-      extend FFI::DataConverter
-      native_type FFI::Type::POINTER
-
-      attr_reader :handle_pointer
-
-      def initialize(ptr)
-        @handle_pointer = ptr
-      end
-
-      class << self
-        def from_native(ptr, context)
-          new(ptr)
-        end
-
-        def to_native(value, context)
-          raise if value.nil?
-
-          value.is_a?(Handle) ? value.handle_pointer : value
-        end
-      end
     end
 
     # Polling
@@ -169,15 +142,14 @@ module Rdkafka
       0
     end
 
-    # Handle
-
-    enum :kafka_type, [
+    enum :handle_type, [
       :rd_kafka_producer,
       :rd_kafka_consumer
     ]
 
-    attach_function :rd_kafka_new, [:kafka_type, :pointer, :pointer, :int], Handle
-    attach_function :rd_kafka_destroy, [Handle], :void
+    # Handle
+    attach_function :create_handle, :rd_kafka_new, [:handle_type, :pointer, :pointer, :int], Handle
+    attach_function :close_handle, :rd_kafka_destroy, [Handle], :void
 
     # Consumer
 
@@ -190,7 +162,7 @@ module Rdkafka
     attach_function :rd_kafka_commit, [Handle, :pointer, :bool], :int, blocking: true
     attach_function :rd_kafka_poll_set_consumer, [Handle], :void
     attach_function :rd_kafka_consumer_poll, [Handle, :int], :pointer, blocking: true
-    attach_function :rd_kafka_consumer_close, [Handle], :void, blocking: true
+    attach_function :consumer_close, :rd_kafka_consumer_close, [Handle], :void, blocking: true
     attach_function :rd_kafka_offset_store, [:pointer, :int32, :int64], :int
     attach_function :rd_kafka_pause_partitions, [Handle, :pointer], :int
     attach_function :rd_kafka_resume_partitions, [Handle, :pointer], :int

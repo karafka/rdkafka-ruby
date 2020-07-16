@@ -116,13 +116,13 @@ module Rdkafka
         Rdkafka::Bindings.rd_kafka_conf_set_rebalance_cb(config, Rdkafka::Bindings::RebalanceCallback)
       end
 
-      kafka = native_kafka(config, :rd_kafka_consumer)
+      handle = Rdkafka::Bindings.new_native_handle(config, :consumer)
 
       # Redirect the main queue to the consumer
-      Rdkafka::Bindings.rd_kafka_poll_set_consumer(kafka)
+      Rdkafka::Bindings.rd_kafka_poll_set_consumer(handle)
 
       # Return consumer with Kafka client
-      Rdkafka::Consumer.new(kafka)
+      Rdkafka::Consumer.new(handle)
     end
 
     # Create a producer with this configuration.
@@ -138,17 +138,16 @@ module Rdkafka
       config = native_config(opaque)
       # Set callback to receive delivery reports on config
       Rdkafka::Bindings.rd_kafka_conf_set_dr_msg_cb(config, Rdkafka::Bindings::DeliveryCallback)
+
+      handle = Rdkafka::Bindings.new_native_handle(config, :producer)
       # Return producer with Kafka client
-      Rdkafka::Producer.new(native_kafka(config, :rd_kafka_producer)).tap do |producer|
+      Rdkafka::Producer.new(handle).tap do |producer|
         opaque.producer = producer
       end
     end
 
     # Error that is returned by the underlying rdkafka error if an invalid configuration option is present.
     class ConfigError < RuntimeError; end
-
-    # Error that is returned by the underlying rdkafka library if the client cannot be created.
-    class ClientCreationError < RuntimeError; end
 
     # Error that is raised when trying to set a nil logger
     class NoLoggerError < RuntimeError; end
@@ -191,29 +190,6 @@ module Rdkafka
         # Set stats callback
         Rdkafka::Bindings.rd_kafka_conf_set_stats_cb(config, Rdkafka::Bindings::StatsCallback)
       end
-    end
-
-    def native_kafka(config, type)
-      error_buffer = FFI::MemoryPointer.from_string(" " * 256)
-      handle = Rdkafka::Bindings.rd_kafka_new(
-        type,
-        config,
-        error_buffer,
-        256
-      )
-
-      if handle.handle_pointer.null?
-        raise ClientCreationError.new(error_buffer.read_string)
-      end
-
-      # Redirect log to handle's queue
-      Rdkafka::Bindings.rd_kafka_set_log_queue(
-        handle,
-        Rdkafka::Bindings.rd_kafka_queue_get_main(handle)
-      )
-
-      # Return handle which should be closed using rd_kafka_destroy after usage.
-      handle
     end
   end
 

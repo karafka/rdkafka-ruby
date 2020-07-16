@@ -97,7 +97,7 @@ describe Rdkafka::Config do
       )
       expect {
         config.consumer
-      }.to raise_error(Rdkafka::Config::ClientCreationError, /ssl.ca.location failed(.*)/)
+      }.to raise_error(Rdkafka::ClientCreationError, /ssl.ca.location failed(.*)/)
     end
 
     it "should raise an error when client creation fails for a producer" do
@@ -107,7 +107,7 @@ describe Rdkafka::Config do
       )
       expect {
         config.producer
-      }.to raise_error(Rdkafka::Config::ClientCreationError, /ssl.ca.location failed(.*)/)
+      }.to raise_error(Rdkafka::ClientCreationError, /ssl.ca.location failed(.*)/)
     end
   end
 end

@@ -23,8 +23,7 @@ module Rdkafka
       return unless @native_kafka
 
       @closing = true
-      Rdkafka::Bindings.rd_kafka_consumer_close(@native_kafka)
-      Rdkafka::Bindings.rd_kafka_destroy(@native_kafka)
+      @native_kafka.close
       @native_kafka = nil
     end
 

@@ -518,7 +518,19 @@ module Rdkafka
                       else
                         (max_wait * 1000).floor
                       end 
-        message = poll max_wait_ms
+        message = nil
+        begin
+          message = poll max_wait_ms
+        rescue Rdkafka::RdkafkaError => error
+          # https://docs.confluent.io/2.0.0/clients/librdkafka/rdkafka_8h.html
+          #   RD_KAFKA_RESP_ERR_REBALANCE_IN_PROGRESS = 27,
+          if error.rdkafka_response == 27
+            yield slice.dup
+            return
+          else
+            raise
+          end
+        end
         slice << message if message
         if slice.size == max_items || Time.now.to_f >= end_time - 0.001
           yield slice.dup

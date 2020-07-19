@@ -704,7 +704,7 @@ describe Rdkafka::Consumer do
       end
       handles.each(&:wait)
     end
- 
+
     it "should yield arrays of messages" do
       produce_n 10
       consumer.subscribe(topic_name)
@@ -773,6 +773,39 @@ describe Rdkafka::Consumer do
         break if loop_count > 10
       end
       expect(loop_count).to eq 0
+    end
+
+    it "should yield buffered exceptions on rebalance, then break" do
+      config = rdkafka_config({:"enable.auto.commit" => false,
+                               :"enable.auto.offset.store" => false })
+      consumer = config.consumer
+      consumer.subscribe(topic_name)
+      wait_for_assignment consumer
+      loop_count = 0
+      batches_yielded = []
+      iterations = 0
+      poll_count = 0
+      expect(Rdkafka::Bindings)
+        .to receive(:rd_kafka_consumer_poll)
+        .exactly(3).times
+        .and_wrap_original do |method, *args| 
+          poll_count = poll_count + 1
+          if poll_count == 3
+            raise Rdkafka::RdkafkaError
+              .new(27, "partitions ... too ... heavy ... must ... rebalance")
+          else
+            method.call *args
+          end
+        end
+      produce_n 3
+      consumer.each_batch(max_items: 30) do |batch|
+        batches_yielded << batch
+        iterations = iterations + 1
+      end
+      expect(poll_count).to eq 3
+      expect(iterations).to eq 1
+      expect(batches_yielded.size).to eq 1
+      expect(batches_yielded.first.size).to eq 2
     end
   end
 

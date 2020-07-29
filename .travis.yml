@@ -22,19 +22,8 @@ rvm:
 before_install:
   - gem update --system
   - |
-    r_eng="$(ruby -e 'STDOUT.write RUBY_ENGINE')";
-    if [ "$r_eng" == "jruby" ]; then
-      sudo apt-get update && \
-      sudo apt-get install -y git && \
-      sudo apt-get install -y libpthread-stubs0-dev && \
-      sudo apt-get install -y build-essential && \
-      sudo apt-get install -y zlib1g-dev && \
-      sudo apt-get install -y libzstd-dev && \
-      sudo apt-get install -y libssl-dev && \
-      sudo apt-get install -y libsasl2-dev
-    else
-      apt-get update && apt-get install -y git build-essential libpthread-stubs0-dev zlib1g-dev libzstd-dev libssl-dev libsasl2-dev
-    fi
+    sudo apt-get update && \
+    sudo apt-get install -y git build-essential libpthread-stubs0-dev zlib1g-dev libzstd-dev libssl-dev libsasl2-dev
 
 before_script:
   - docker-compose up -d

@@ -32,7 +32,7 @@ before_install:
       sudo apt-get install -y libzstd-dev && \
       sudo apt-get install -y libssl-dev && \
       sudo apt-get install -y libsasl2-dev
-    elif
+    else
       apt-get update && apt-get install -y git build-essential libpthread-stubs0-dev zlib1g-dev libzstd-dev libssl-dev libsasl2-dev
     fi
 

@@ -11,28 +11,19 @@ describe Rdkafka::Metadata do
     Rdkafka::Bindings.rd_kafka_destroy(native_kafka)
   end
 
-  subject { described_class.new(native_kafka, topic_name) }
-
   context "passing in a topic name" do
     context "that is non-existent topic" do
       let(:topic_name) { SecureRandom.uuid.to_s }
 
-      it "#brokers returns our single broker" do
-        expect(subject.brokers.length).to eq(1)
-        expect(subject.brokers[0][:broker_id]).to eq(1)
-        expect(subject.brokers[0][:broker_name]).to eq("localhost")
-        expect(subject.brokers[0][:broker_port]).to eq(9092)
-      end
-
-      it "#topics returns no partitions" do
-        expect(subject.topics.length).to eq(1)
-        expect(subject.topics[0][:partition_count]).to eq(0)
-        expect(subject.topics[0][:partitions]).to eq([])
-        expect(subject.topics[0][:topic_name]).to eq(topic_name)
+      it "raises an appropriate exception" do
+        expect {
+          described_class.new(native_kafka, topic_name)
+        }.to raise_exception(Rdkafka::RdkafkaError, "Broker: Leader not available (leader_not_available)")
       end
     end
 
     context "that is one of our test topics" do
+      subject { described_class.new(native_kafka, topic_name) }
       let(:topic_name) { "partitioner_test_topic" }
 
       it "#brokers returns our single broker" do
@@ -52,6 +43,7 @@ describe Rdkafka::Metadata do
   end
 
   context "not passing in a topic name" do
+    subject { described_class.new(native_kafka, topic_name) }
     let(:topic_name) { nil }
     let(:test_topics) {
       %w(consume_test_topic empty_test_topic load_test_topic produce_test_topic rake_test_topic watermarks_test_topic partitioner_test_topic)

@@ -35,11 +35,11 @@ module Rdkafka
 
       @topics = Array.new(metadata[:topics_count]) do |i|
         topic = TopicMetadata.new(metadata[:topics_metadata] + (i * TopicMetadata.size))
-        Rdkafka::RdkafkaError.new(topic[:rd_kafka_resp_err]) unless topic[:rd_kafka_resp_err].zero?
+        raise Rdkafka::RdkafkaError.new(topic[:rd_kafka_resp_err]) unless topic[:rd_kafka_resp_err].zero?
 
         partitions = Array.new(topic[:partition_count]) do |j|
           partition = PartitionMetadata.new(topic[:partitions_metadata] + (j * PartitionMetadata.size))
-          Rdkafka::RdkafkaError.new(partition[:rd_kafka_resp_err]) unless partition[:rd_kafka_resp_err].zero?
+          raise Rdkafka::RdkafkaError.new(partition[:rd_kafka_resp_err]) unless partition[:rd_kafka_resp_err].zero?
           partition.to_h
         end
         topic.to_h.merge!(partitions: partitions)

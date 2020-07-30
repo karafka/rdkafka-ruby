@@ -52,6 +52,8 @@ module Rdkafka
     #
     # @param topic [String] The topic name.
     #
+    # @raise [RdkafkaError] When unable to retrieve the metadata
+    #
     # @return partition count [Integer,nil]
     #
     def partition_count(topic)

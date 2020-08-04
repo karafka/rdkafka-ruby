@@ -9,14 +9,15 @@ module Rdkafka
 
       ptr = FFI::MemoryPointer.new(:pointer)
 
-      # Retrieve metadata flag is 0/1 for single/multiple topics.
-      topic_flag = topic_name ? 1 : 0
+      # If topic_flag is 1, we request info about *all* topics in the cluster.  If topic_flag is 0,
+      # we only request info about locally known topics (or a single topic if one is passed in).
+      topic_flag = topic_name.nil? ? 1 : 0
 
       # Retrieve the Metadata
       result = Rdkafka::Bindings.rd_kafka_metadata(native_client, topic_flag, native_topic, ptr, 250)
 
       # Error Handling
-      Rdkafka::RdkafkaError.new(result) unless result.zero?
+      raise Rdkafka::RdkafkaError.new(result) unless result.zero?
 
       metadata_from_native(ptr.read_pointer)
     ensure
@@ -34,11 +35,11 @@ module Rdkafka
 
       @topics = Array.new(metadata[:topics_count]) do |i|
         topic = TopicMetadata.new(metadata[:topics_metadata] + (i * TopicMetadata.size))
-        Rdkafka::RdkafkaError.new(topic[:rd_kafka_resp_err]) unless topic[:rd_kafka_resp_err].zero?
+        raise Rdkafka::RdkafkaError.new(topic[:rd_kafka_resp_err]) unless topic[:rd_kafka_resp_err].zero?
 
         partitions = Array.new(topic[:partition_count]) do |j|
           partition = PartitionMetadata.new(topic[:partitions_metadata] + (j * PartitionMetadata.size))
-          Rdkafka::RdkafkaError.new(partition[:rd_kafka_resp_err]) unless partition[:rd_kafka_resp_err].zero?
+          raise Rdkafka::RdkafkaError.new(partition[:rd_kafka_resp_err]) unless partition[:rd_kafka_resp_err].zero?
           partition.to_h
         end
         topic.to_h.merge!(partitions: partitions)

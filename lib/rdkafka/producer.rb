@@ -11,6 +11,10 @@ module Rdkafka
     def initialize(native_kafka)
       @closing = false
       @native_kafka = native_kafka
+
+      # Makes sure, that the producer gets closed before it gets GCed by Ruby
+      ObjectSpace.define_finalizer(self, proc { close })
+
       # Start thread to poll client for delivery callbacks
       @polling_thread = Thread.new do
         loop do

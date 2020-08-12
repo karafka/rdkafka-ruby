@@ -4,11 +4,10 @@ require "securerandom"
 describe Rdkafka::Metadata do
   let(:config)        { rdkafka_config }
   let(:native_config) { config.send(:native_config) }
-  let(:native_kafka)  { config.send(:native_kafka, native_config, :rd_kafka_consumer) }
+  let(:native_kafka)  { Rdkafka::Bindings.new_native_handle(native_config, :producer) }
 
   after do
-    Rdkafka::Bindings.rd_kafka_consumer_close(native_kafka)
-    Rdkafka::Bindings.rd_kafka_destroy(native_kafka)
+    native_kafka.close
   end
 
   context "passing in a topic name" do
@@ -47,7 +46,7 @@ describe Rdkafka::Metadata do
     let(:topic_name) { nil }
     let(:test_topics) {
       %w(consume_test_topic empty_test_topic load_test_topic produce_test_topic rake_test_topic watermarks_test_topic partitioner_test_topic)
-    } # Test topics crated in spec_helper.rb
+    } # Test topics created in spec_helper.rb
 
     it "#brokers returns our single broker" do
       expect(subject.brokers.length).to eq(1)

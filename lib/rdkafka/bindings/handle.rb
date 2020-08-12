@@ -9,14 +9,16 @@ module Rdkafka
       attr_accessor :type
       attr_reader :handle_pointer
 
-      # TODO: Raise error when NULL
       def initialize(ptr)
         @handle_pointer = ptr
       end
 
       def close
-        Rdkafka::Bindings.consumer_close(handle_pointer) if type == :consumer
-        Rdkafka::Bindings.close_handle(handle_pointer)
+        return unless @handle_pointer
+
+        Rdkafka::Bindings.close_consumer(self) if type == :consumer
+        Rdkafka::Bindings.close_handle(self)
+        @handle_pointer = nil
       end
 
       class << self
@@ -25,30 +27,37 @@ module Rdkafka
         end
 
         def to_native(value, _)
-          raise ProducerClosedError if value.nil? && type == :producer
-          raise ConsumerClosedError if value.nil? && type == :consumer
+          if value.is_a?(self)
+            raise ProducerClosedError if value.handle_pointer.nil? && type == :producer
+            raise ConsumerClosedError if value.handle_pointer.nil? && type == :consumer
 
-          value.is_a?(Handle) ? value.handle_pointer : value
+            value.handle_pointer
+          else
+            raise TypeError.new('Must be a Rdkafka::Bindings::Handle instance')
+          end
         end
       end
     end
 
-    def self.new_native_handle(config, type)
+    # Create a native kafka handle which is the socket connection used by librdkafka
+    def self.new_native_handle(native_config, type)
       error_buffer = FFI::MemoryPointer.from_string(" " * 256)
 
       handle =
         case type
         when :producer
-          create_handle(:rd_kafka_producer, config, error_buffer, 256)&.tap do |h|
+          create_handle(:rd_kafka_producer, native_config, error_buffer, 256)&.tap do |h|
             h.type = :producer
           end
         when :consumer
-          create_handle(:rd_kafka_consumer, config, error_buffer, 256)&.tap do |h|
+          create_handle(:rd_kafka_consumer, native_config, error_buffer, 256)&.tap do |h|
             h.type = :consumer
           end
+        else
+          raise TypeError.new('Type has to be a :consumer or :producer')
         end
 
-      if handle.nil? || handle.handle_pointer.null?
+      if handle.handle_pointer.nil? || handle.handle_pointer.null?
         raise Rdkafka::ClientCreationError.new(error_buffer.read_string)
       end
 
@@ -58,7 +67,7 @@ module Rdkafka
         Rdkafka::Bindings.rd_kafka_queue_get_main(handle)
       )
 
-      # Return handle which should be closed using rd_kafka_destroy after usage.
+      # Return handle which should be closed using #close after usage.
       handle
     end
   end

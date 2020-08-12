@@ -162,7 +162,7 @@ module Rdkafka
     attach_function :rd_kafka_commit, [Handle, :pointer, :bool], :int, blocking: true
     attach_function :rd_kafka_poll_set_consumer, [Handle], :void
     attach_function :rd_kafka_consumer_poll, [Handle, :int], :pointer, blocking: true
-    attach_function :consumer_close, :rd_kafka_consumer_close, [Handle], :void, blocking: true
+    attach_function :close_consumer, :rd_kafka_consumer_close, [Handle], :void, blocking: true
     attach_function :rd_kafka_offset_store, [:pointer, :int32, :int64], :int
     attach_function :rd_kafka_pause_partitions, [Handle, :pointer], :int
     attach_function :rd_kafka_resume_partitions, [Handle, :pointer], :int
@@ -180,18 +180,19 @@ module Rdkafka
     RebalanceCallback = FFI::Function.new(
       :void, [:pointer, :int, :pointer, :pointer]
     ) do |client_ptr, code, partitions_ptr, opaque_ptr|
+      handle = Handle.new(client_ptr)
       case code
       when RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS
-        Rdkafka::Bindings.rd_kafka_assign(client_ptr, partitions_ptr)
+        Rdkafka::Bindings.rd_kafka_assign(handle, partitions_ptr)
       else # RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS or errors
-        Rdkafka::Bindings.rd_kafka_assign(client_ptr, FFI::Pointer::NULL)
+        Rdkafka::Bindings.rd_kafka_assign(handle, FFI::Pointer::NULL)
       end
 
       opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
       return unless opaque
 
       tpl = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(partitions_ptr).freeze
-      consumer = Rdkafka::Consumer.new(client_ptr)
+      consumer = Rdkafka::Consumer.new(handle)
 
       begin
         case code
@@ -242,7 +243,7 @@ module Rdkafka
 
     DeliveryCallback = FFI::Function.new(
       :void, [:pointer, :pointer, :pointer]
-    ) do |client_ptr, message_ptr, opaque_ptr|
+    ) do |_client_ptr, message_ptr, opaque_ptr|
       message = Message.new(message_ptr)
       delivery_handle_ptr_address = message[:_private].address
       if delivery_handle = Rdkafka::Producer::DeliveryHandle.remove(delivery_handle_ptr_address)

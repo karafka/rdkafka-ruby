@@ -69,5 +69,5 @@ module Rdkafka
   class ProducerClosedError < BaseError; end
 
   # Error that is returned by the underlying rdkafka library if the client cannot be created.
-  class ClientCreationError < RuntimeError; end
+  class ClientCreationError < BaseError; end
 end

@@ -20,11 +20,8 @@ module Rdkafka
     # Close this consumer
     # @return [nil]
     def close
-      return unless @native_kafka
-
       @closing = true
       @native_kafka.close
-      @native_kafka = nil
     end
 
     # Subscribe to one or more topics letting Kafka handle partition assignments.
@@ -392,8 +389,6 @@ module Rdkafka
     #
     # @return [Message, nil] A message or nil if there was no new message within the timeout
     def poll(timeout_ms)
-      return unless @native_kafka
-
       message_ptr = Rdkafka::Bindings.rd_kafka_consumer_poll(@native_kafka, timeout_ms)
       if message_ptr.null?
         nil

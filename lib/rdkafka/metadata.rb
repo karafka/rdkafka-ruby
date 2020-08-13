@@ -21,8 +21,8 @@ module Rdkafka
 
       metadata_from_native(ptr.read_pointer)
     ensure
-      Rdkafka::Bindings.rd_kafka_topic_destroy(native_topic) if topic_name
-      Rdkafka::Bindings.rd_kafka_metadata_destroy(ptr.read_pointer)
+      Rdkafka::Bindings.rd_kafka_topic_destroy(native_topic) if defined?(native_topic) && native_topic
+      Rdkafka::Bindings.rd_kafka_metadata_destroy(ptr.read_pointer) if defined?(ptr) && ptr
     end
 
     private

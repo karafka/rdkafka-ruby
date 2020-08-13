@@ -62,11 +62,11 @@ module Rdkafka
     end
   end
 
-  # Consumer closed error.
-  class ConsumerClosedError < BaseError; end
+  # Error class for public consumer method calls on a closed consumer.
+  class ClosedConsumerError < BaseError; end
 
-  # Producer closed error.
-  class ProducerClosedError < BaseError; end
+  # Error class for public producer method calls on a closed producer.
+  class ClosedProducerError < BaseError; end
 
   # Error that is returned by the underlying rdkafka library if the client cannot be created.
   class ClientCreationError < BaseError; end

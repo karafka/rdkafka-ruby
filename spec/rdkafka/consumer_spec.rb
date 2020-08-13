@@ -723,4 +723,32 @@ describe Rdkafka::Consumer do
       consumer.close
     end
   end
+
+  describe "closed consumer" do
+    context "should raise an error on public methods that internally use handle" do
+      let(:topic_partition_list) do
+        Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic("consume_test_topic")
+        end
+      end
+
+      it "should raise closed consumer error" do
+        consumer.close
+        expect { consumer.assign(topic_partition_list) }.to raise_error(Rdkafka::ClosedConsumerError)
+        expect { consumer.assignment }.to raise_error(Rdkafka::ClosedConsumerError)
+        expect { consumer.cluster_id }.to raise_error(Rdkafka::ClosedConsumerError)
+        expect { consumer.committed }.to raise_error(Rdkafka::ClosedConsumerError)
+        expect { consumer.lag }.to raise_error(Rdkafka::ClosedConsumerError)
+        expect { consumer.member_id }.to raise_error(Rdkafka::ClosedConsumerError)
+        expect { consumer.pause(topic_partition_list) }.to raise_error(Rdkafka::ClosedConsumerError)
+        expect { consumer.resume(topic_partition_list) }.to raise_error(Rdkafka::ClosedConsumerError)
+        expect { consumer.subscribe("consume_test_topic") }.to raise_error(Rdkafka::ClosedConsumerError)
+        expect { consumer.subscription }.to raise_error(Rdkafka::ClosedConsumerError)
+        expect { consumer.unsubscribe }.to raise_error(Rdkafka::ClosedConsumerError)
+        expect {
+          consumer.query_watermark_offsets("consume_test_topic", 0)
+        }.to raise_error(Rdkafka::ClosedConsumerError)
+      end
+    end
+  end
 end

@@ -407,4 +407,19 @@ describe Rdkafka::Producer do
     # Waiting a second time should work
     handle.wait(max_wait_timeout: 5)
   end
+
+  describe "closed producer" do
+    context "should raise an error on public methods that internally use handle" do
+      it "should raise closed producer error" do
+        producer.close
+        expect {
+          producer.produce(
+            topic:   "produce_test_topic",
+            payload: "closed producer error",
+          )
+        }.to raise_error(Rdkafka::ClosedProducerError)
+        expect { producer.partition_count('produce_test_topic') }.to raise_error(Rdkafka::ClosedProducerError)
+      end
+    end
+  end
 end

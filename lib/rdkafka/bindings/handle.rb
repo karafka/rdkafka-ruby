@@ -21,17 +21,20 @@ module Rdkafka
         @handle_pointer = nil
       end
 
+      def closed?
+        handle_pointer.nil?
+      end
+
       class << self
         def from_native(ptr, _)
           new(ptr)
         end
 
-        def to_native(value, _)
-          if value.is_a?(self)
-            raise ProducerClosedError if value.handle_pointer.nil? && type == :producer
-            raise ConsumerClosedError if value.handle_pointer.nil? && type == :consumer
-
-            value.handle_pointer
+        def to_native(handle, _)
+          if handle.is_a?(self)
+            raise Rdkafka::ClosedProducerError if handle.closed? && handle.type == :producer
+            raise Rdkafka::ClosedConsumerError if handle.closed? && handle.type == :consumer
+            handle.handle_pointer
           else
             raise TypeError.new('Must be a Rdkafka::Bindings::Handle instance')
           end

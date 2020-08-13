@@ -41,14 +41,11 @@ module Rdkafka
 
     # Close this producer and wait for the internal poll queue to empty.
     def close
-      return unless @native_kafka
-
       # Indicate to polling thread that we're closing
       @closing = true
       # Wait for the polling thread to finish up
       @polling_thread.join
       @native_kafka.close
-      @native_kafka = nil
     end
 
     # Partition count for a given topic.
@@ -78,6 +75,8 @@ module Rdkafka
     #
     # @return [DeliveryHandle] Delivery handle that can be used to wait for the result of producing this message
     def produce(topic:, payload: nil, key: nil, partition: nil, partition_key: nil, timestamp: nil, headers: nil)
+      raise Rdkafka::ClosedProducerError if @native_kafka.closed?
+
       # Start by checking and converting the input
 
       # Get payload length

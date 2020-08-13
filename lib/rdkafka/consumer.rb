@@ -423,15 +423,13 @@ module Rdkafka
     # @return [nil]
     def each
       loop do
+        break if @closing
+
         message = poll(250)
         if message
           yield(message)
         else
-          if @closing
-            break
-          else
-            next
-          end
+          next
         end
       end
     end

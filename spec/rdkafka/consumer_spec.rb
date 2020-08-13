@@ -272,7 +272,7 @@ describe Rdkafka::Consumer do
     it "should close a consumer" do
       consumer.subscribe("consume_test_topic")
       consumer.close
-      expect(consumer.poll(100)).to be_nil
+      expect(consumer.instance_variable_get(:@native_kafka).closed?).to be true
     end
   end
 
@@ -662,7 +662,7 @@ describe Rdkafka::Consumer do
       # should break the each loop.
       consumer.each_with_index do |message, i|
         expect(message).to be_a Rdkafka::Consumer::Message
-        consumer.close if i == 10
+        consumer.close if i >= 9
       end
     end
   end

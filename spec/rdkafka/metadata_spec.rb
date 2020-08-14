@@ -4,7 +4,7 @@ require "securerandom"
 describe Rdkafka::Metadata do
   let(:config)        { rdkafka_config }
   let(:native_config) { config.send(:native_config) }
-  let(:native_kafka)  { Rdkafka::Bindings.new_native_handle(native_config, :producer) }
+  let(:native_kafka)  { new_native_client }
 
   after do
     native_kafka.close

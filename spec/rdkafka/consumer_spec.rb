@@ -738,7 +738,6 @@ describe Rdkafka::Consumer do
         expect { consumer.assignment }.to raise_error(Rdkafka::ClosedConsumerError)
         expect { consumer.cluster_id }.to raise_error(Rdkafka::ClosedConsumerError)
         expect { consumer.committed }.to raise_error(Rdkafka::ClosedConsumerError)
-        expect { consumer.lag }.to raise_error(Rdkafka::ClosedConsumerError)
         expect { consumer.member_id }.to raise_error(Rdkafka::ClosedConsumerError)
         expect { consumer.pause(topic_partition_list) }.to raise_error(Rdkafka::ClosedConsumerError)
         expect { consumer.resume(topic_partition_list) }.to raise_error(Rdkafka::ClosedConsumerError)

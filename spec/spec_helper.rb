@@ -37,7 +37,7 @@ end
 
 def new_native_client
   config = rdkafka_config
-  Rdkafka::Bindings.new_native_handle(config.send(:native_config), :consumer)
+  Rdkafka::Bindings.new_native_handle(config.send(:native_config), :producer)
 end
 
 def new_native_topic(topic_name="topic_name", native_client: )

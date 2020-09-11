@@ -11,6 +11,10 @@ describe Rdkafka::RdkafkaError do
     expect(Rdkafka::RdkafkaError.new(10, "message prefix").message_prefix).to eq "message prefix"
   end
 
+  it "should create an error with a broker message" do
+    expect(Rdkafka::RdkafkaError.new(10, broker_message: "broker message").broker_message).to eq "broker message"
+  end
+
   describe "#code" do
     it "should handle an invalid response" do
       expect(Rdkafka::RdkafkaError.new(933975).code).to eq :err_933975?

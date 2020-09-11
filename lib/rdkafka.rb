@@ -1,6 +1,13 @@
 require "rdkafka/version"
 
+require "rdkafka/abstract_handle"
+require "rdkafka/admin"
+require "rdkafka/admin/create_topic_handle"
+require "rdkafka/admin/create_topic_report"
+require "rdkafka/admin/delete_topic_handle"
+require "rdkafka/admin/delete_topic_report"
 require "rdkafka/bindings"
+require "rdkafka/callbacks"
 require "rdkafka/config"
 require "rdkafka/consumer"
 require "rdkafka/consumer/headers"

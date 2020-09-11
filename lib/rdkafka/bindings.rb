@@ -245,22 +245,49 @@ module Rdkafka
       rd_kafka_msg_partitioner_consistent_random(nil, str_ptr, str.size, partition_count, nil, nil)
     end
 
-    DeliveryCallback = FFI::Function.new(
-      :void, [:pointer, :pointer, :pointer]
-    ) do |client_ptr, message_ptr, opaque_ptr|
-      message = Message.new(message_ptr)
-      delivery_handle_ptr_address = message[:_private].address
-      if delivery_handle = Rdkafka::Producer::DeliveryHandle.remove(delivery_handle_ptr_address)
-        # Update delivery handle
-        delivery_handle[:pending] = false
-        delivery_handle[:response] = message[:err]
-        delivery_handle[:partition] = message[:partition]
-        delivery_handle[:offset] = message[:offset]
-        # Call delivery callback on opaque
-        if opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
-          opaque.call_delivery_callback(Rdkafka::Producer::DeliveryReport.new(message[:partition], message[:offset], message[:err]))
-        end
-      end
-    end
+    # Create Topics
+
+    RD_KAFKA_ADMIN_OP_CREATETOPICS     = 1   # rd_kafka_admin_op_t
+    RD_KAFKA_EVENT_CREATETOPICS_RESULT = 100 # rd_kafka_event_type_t
+
+    attach_function :rd_kafka_CreateTopics, [:pointer, :pointer, :size_t, :pointer, :pointer], :void
+    attach_function :rd_kafka_NewTopic_new, [:pointer, :size_t, :size_t, :pointer, :size_t], :pointer
+    attach_function :rd_kafka_NewTopic_destroy, [:pointer], :void
+    attach_function :rd_kafka_event_CreateTopics_result, [:pointer], :pointer
+    attach_function :rd_kafka_CreateTopics_result_topics, [:pointer, :pointer], :pointer
+
+    # Delete Topics
+
+    RD_KAFKA_ADMIN_OP_DELETETOPICS     = 2   # rd_kafka_admin_op_t
+    RD_KAFKA_EVENT_DELETETOPICS_RESULT = 101 # rd_kafka_event_type_t
+
+    attach_function :rd_kafka_DeleteTopics, [:pointer, :pointer, :size_t, :pointer, :pointer], :int32
+    attach_function :rd_kafka_DeleteTopic_new, [:pointer], :pointer
+    attach_function :rd_kafka_DeleteTopic_destroy, [:pointer], :void
+    attach_function :rd_kafka_event_DeleteTopics_result, [:pointer], :pointer
+    attach_function :rd_kafka_DeleteTopics_result_topics, [:pointer, :pointer], :pointer
+
+    # Background Queue and Callback
+
+    attach_function :rd_kafka_queue_get_background, [:pointer], :pointer
+    attach_function :rd_kafka_conf_set_background_event_cb, [:pointer, :pointer], :void
+    attach_function :rd_kafka_queue_destroy, [:pointer], :void
+
+    # Admin Options
+
+    attach_function :rd_kafka_AdminOptions_new, [:pointer, :int32], :pointer
+    attach_function :rd_kafka_AdminOptions_set_opaque, [:pointer, :pointer], :void
+    attach_function :rd_kafka_AdminOptions_destroy, [:pointer], :void
+
+    # Extracting data from event types
+
+    attach_function :rd_kafka_event_type, [:pointer], :int32
+    attach_function :rd_kafka_event_opaque, [:pointer], :pointer
+
+    # Extracting data from topic results
+
+    attach_function :rd_kafka_topic_result_error, [:pointer], :int32
+    attach_function :rd_kafka_topic_result_error_string, [:pointer], :pointer
+    attach_function :rd_kafka_topic_result_name, [:pointer], :pointer
   end
 end

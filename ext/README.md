@@ -9,3 +9,7 @@ To update the `librdkafka` version follow the following steps:
   version number and asset checksum for `tar.gz`.
 * Change the version in `lib/rdkafka/version.rb`
 * Change the `sha256` in `lib/rdkafka/version.rb`
+* Run `bundle exec rake` in the `ext` directory to download and build
+  the new version 
+* Run `bundle exec rspec` in the main gem directory to execute the test
+  suite to detect any regressions

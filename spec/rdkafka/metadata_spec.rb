@@ -18,7 +18,7 @@ describe Rdkafka::Metadata do
       it "raises an appropriate exception" do
         expect {
           described_class.new(native_kafka, topic_name)
-        }.to raise_exception(Rdkafka::RdkafkaError, "Broker: Leader not available (leader_not_available)")
+        }.to raise_exception(Rdkafka::RdkafkaError, "Broker: Unknown topic or partition (unknown_topic_or_part)")
       end
     end
 

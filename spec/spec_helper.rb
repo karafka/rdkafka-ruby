@@ -9,14 +9,6 @@ require "pry"
 require "rspec"
 require "rdkafka"
 
-`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic consume_test_topic`
-`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic empty_test_topic`
-`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic load_test_topic`
-`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic produce_test_topic`
-`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic rake_test_topic`
-`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 3 --if-not-exists --topic watermarks_test_topic`
-`docker-compose exec kafka kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 25 --if-not-exists --topic partitioner_test_topic`
-
 def rdkafka_config(config_overrides={})
   config = {
     :"api.version.request" => false,
@@ -79,5 +71,23 @@ def wait_for_unassignment(consumer)
   10.times do
     break if consumer.assignment.empty?
     sleep 1
+  end
+end
+
+RSpec.configure do |config|
+  config.before(:suite) do
+    admin = rdkafka_config.admin
+    {
+        consume_test_topic:      3,
+        empty_test_topic:        3,
+        load_test_topic:         3,
+        produce_test_topic:      3,
+        rake_test_topic:         3,
+        watermarks_test_topic:   3,
+        partitioner_test_topic: 25,
+    }.each do |topic, partitions|
+      create_topic_handle = admin.create_topic(topic.to_s, partitions, 1)
+      create_topic_handle.wait(max_wait_timeout: 15)
+    end
   end
 end

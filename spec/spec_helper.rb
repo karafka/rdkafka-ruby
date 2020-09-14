@@ -87,7 +87,12 @@ RSpec.configure do |config|
         partitioner_test_topic: 25,
     }.each do |topic, partitions|
       create_topic_handle = admin.create_topic(topic.to_s, partitions, 1)
-      create_topic_handle.wait(max_wait_timeout: 15)
+      begin
+        create_topic_handle.wait(max_wait_timeout: 15)
+      rescue Rdkafka::RdkafkaError => ex
+        raise unless ex.message.match?(/topic_already_exists/)
+      end
     end
+    admin.close
   end
 end

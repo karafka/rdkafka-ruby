@@ -171,14 +171,8 @@ module Rdkafka
       @delivery_callback.call(delivery_handle) if @delivery_callback
     end
 
-    class ClosedProducerError < RuntimeError
-      def initialize(method)
-        super("Illegal call to #{method.to_s} on a closed producer")
-      end
-    end
-
     def closed_producer_check(method)
-      raise ClosedProducerError.new(method) if @native_kafka.nil?
+      raise Rdkafka::ClosedProducerError.new(method) if @native_kafka.nil?
     end
   end
 end

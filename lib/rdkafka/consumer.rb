@@ -468,14 +468,8 @@ module Rdkafka
       end
     end
 
-    class ClosedConsumerError < RuntimeError
-      def initialize(method)
-        super("Illegal call to #{method.to_s} on a closed consumer")
-      end
-    end
-
     def closed_consumer_check(method)
-      raise ClosedConsumerError.new(method) if @native_kafka.nil?
+      raise Rdkafka::ClosedConsumerError.new(method) if @native_kafka.nil?
     end
   end
 end

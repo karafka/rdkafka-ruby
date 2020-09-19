@@ -663,8 +663,6 @@ describe Rdkafka::Consumer do
       # Check the first 10 messages. Then close the consumer, which
       # should break the each loop.
       consumer.each_with_index do |message, i|
-        puts message
-        puts i
         expect(message).to be_a Rdkafka::Consumer::Message
         break if i == 10
       end
@@ -747,7 +745,6 @@ describe Rdkafka::Consumer do
         :query_watermark_offsets => [ nil, nil ],
     }.each do |method, args|
       it "raises an exception if #{method} is called" do
-        puts method
         expect {
           if args.nil?
             consumer.public_send(method)

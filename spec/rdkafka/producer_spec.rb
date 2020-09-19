@@ -425,7 +425,7 @@ describe Rdkafka::Producer do
           else
             producer.public_send(method, args)
           end
-        }.to raise_exception(Rdkafka::Producer::ClosedProducerError, /#{method.to_s}/)
+        }.to raise_exception(Rdkafka::ClosedProducerError, /#{method.to_s}/)
       end
     end
   end

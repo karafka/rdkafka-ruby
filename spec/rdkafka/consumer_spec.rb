@@ -274,7 +274,7 @@ describe Rdkafka::Consumer do
       consumer.close
       expect {
         consumer.poll(100)
-      }.to raise_error(Rdkafka::Consumer::ClosedConsumerError, /poll/)
+      }.to raise_error(Rdkafka::ClosedConsumerError, /poll/)
     end
   end
 
@@ -751,7 +751,7 @@ describe Rdkafka::Consumer do
           else
             consumer.public_send(method, *args)
           end
-        }.to raise_exception(Rdkafka::Consumer::ClosedConsumerError, /#{method.to_s}/)
+        }.to raise_exception(Rdkafka::ClosedConsumerError, /#{method.to_s}/)
       end
     end
   end

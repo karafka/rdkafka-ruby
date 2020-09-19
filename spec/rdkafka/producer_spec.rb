@@ -420,7 +420,11 @@ describe Rdkafka::Producer do
     }.each do |method, args|
       it "raises an exception if #{method} is called" do
         expect {
-          producer.public_send(method, args)
+          if args.is_a?(Hash)
+            producer.public_send(method, **args)
+          else
+            producer.public_send(method, args)
+          end
         }.to raise_exception(Rdkafka::Producer::ClosedProducerError, /#{method.to_s}/)
       end
     end

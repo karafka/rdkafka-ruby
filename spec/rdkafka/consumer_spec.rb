@@ -727,7 +727,7 @@ describe Rdkafka::Consumer do
     end
   end
 
-  context "methods that should not be called after a producer has been closed" do
+  context "methods that should not be called after a consumer has been closed" do
     before do
       consumer.close
     end

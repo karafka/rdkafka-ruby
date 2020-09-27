@@ -1,6 +1,9 @@
 module Rdkafka
+  # Base error class.
+  class BaseError < RuntimeError; end
+
   # Error returned by the underlying rdkafka library.
-  class RdkafkaError < RuntimeError
+  class RdkafkaError < BaseError
     # The underlying raw error response
     # @return [Integer]
     attr_reader :rdkafka_response
@@ -64,6 +67,20 @@ module Rdkafka
     def initialize(response, topic_partition_list, message_prefix=nil)
       super(response, message_prefix)
       @topic_partition_list = topic_partition_list
+    end
+  end
+
+  # Error class for public consumer method calls on a closed consumer.
+  class ClosedConsumerError < BaseError
+    def initialize(method)
+      super("Illegal call to #{method.to_s} on a closed consumer")
+    end
+  end
+
+  # Error class for public producer method calls on a closed producer.
+  class ClosedProducerError < BaseError
+    def initialize(method)
+      super("Illegal call to #{method.to_s} on a closed producer")
     end
   end
 end

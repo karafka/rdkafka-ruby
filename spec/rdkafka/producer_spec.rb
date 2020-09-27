@@ -407,4 +407,26 @@ describe Rdkafka::Producer do
     # Waiting a second time should work
     handle.wait(max_wait_timeout: 5)
   end
+
+  context "methods that should not be called after a producer has been closed" do
+    before do
+      producer.close
+    end
+
+    # Affected methods and a non-invalid set of parameters for the method
+    {
+        :produce         => { topic: nil },
+        :partition_count => nil,
+    }.each do |method, args|
+      it "raises an exception if #{method} is called" do
+        expect {
+          if args.is_a?(Hash)
+            producer.public_send(method, **args)
+          else
+            producer.public_send(method, args)
+          end
+        }.to raise_exception(Rdkafka::ClosedProducerError, /#{method.to_s}/)
+      end
+    end
+  end
 end

@@ -36,6 +36,8 @@ module Rdkafka
     #
     # @return [nil]
     def subscribe(*topics)
+      closed_consumer_check(__method__)
+
       # Create topic partition list with topics and no partition set
       tpl = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(topics.length)
 
@@ -49,7 +51,7 @@ module Rdkafka
         raise Rdkafka::RdkafkaError.new(response, "Error subscribing to '#{topics.join(', ')}'")
       end
     ensure
-      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl)
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl) unless tpl.nil?
     end
 
     # Unsubscribe from all subscribed topics.
@@ -58,6 +60,8 @@ module Rdkafka
     #
     # @return [nil]
     def unsubscribe
+      closed_consumer_check(__method__)
+
       response = Rdkafka::Bindings.rd_kafka_unsubscribe(@native_kafka)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
@@ -72,6 +76,8 @@ module Rdkafka
     #
     # @return [nil]
     def pause(list)
+      closed_consumer_check(__method__)
+
       unless list.is_a?(TopicPartitionList)
         raise TypeError.new("list has to be a TopicPartitionList")
       end
@@ -98,6 +104,8 @@ module Rdkafka
     #
     # @return [nil]
     def resume(list)
+      closed_consumer_check(__method__)
+
       unless list.is_a?(TopicPartitionList)
         raise TypeError.new("list has to be a TopicPartitionList")
       end
@@ -120,6 +128,8 @@ module Rdkafka
     #
     # @return [TopicPartitionList]
     def subscription
+      closed_consumer_check(__method__)
+
       ptr = FFI::MemoryPointer.new(:pointer)
       response = Rdkafka::Bindings.rd_kafka_subscription(@native_kafka, ptr)
 
@@ -142,6 +152,8 @@ module Rdkafka
     #
     # @raise [RdkafkaError] When assigning fails
     def assign(list)
+      closed_consumer_check(__method__)
+
       unless list.is_a?(TopicPartitionList)
         raise TypeError.new("list has to be a TopicPartitionList")
       end
@@ -164,6 +176,8 @@ module Rdkafka
     #
     # @return [TopicPartitionList]
     def assignment
+      closed_consumer_check(__method__)
+
       ptr = FFI::MemoryPointer.new(:pointer)
       response = Rdkafka::Bindings.rd_kafka_assignment(@native_kafka, ptr)
       if response != 0
@@ -180,7 +194,7 @@ module Rdkafka
         end
       end
     ensure
-      ptr.free
+      ptr.free unless ptr.nil?
     end
 
     # Return the current committed offset per partition for this consumer group.
@@ -193,6 +207,8 @@ module Rdkafka
     #
     # @return [TopicPartitionList]
     def committed(list=nil, timeout_ms=1200)
+      closed_consumer_check(__method__)
+
       if list.nil?
         list = assignment
       elsif !list.is_a?(TopicPartitionList)
@@ -222,6 +238,8 @@ module Rdkafka
     #
     # @return [Integer] The low and high watermark
     def query_watermark_offsets(topic, partition, timeout_ms=200)
+      closed_consumer_check(__method__)
+
       low = FFI::MemoryPointer.new(:int64, 1)
       high = FFI::MemoryPointer.new(:int64, 1)
 
@@ -239,8 +257,8 @@ module Rdkafka
 
       return low.read_array_of_int64(1).first, high.read_array_of_int64(1).first
     ensure
-      low.free
-      high.free
+      low.free   unless low.nil?
+      high.free  unless high.nil?
     end
 
     # Calculate the consumer lag per partition for the provided topic partition list.
@@ -279,6 +297,7 @@ module Rdkafka
     #
     # @return [String, nil]
     def cluster_id
+      closed_consumer_check(__method__)
       Rdkafka::Bindings.rd_kafka_clusterid(@native_kafka)
     end
 
@@ -288,6 +307,7 @@ module Rdkafka
     #
     # @return [String, nil]
     def member_id
+      closed_consumer_check(__method__)
       Rdkafka::Bindings.rd_kafka_memberid(@native_kafka)
     end
 
@@ -301,6 +321,8 @@ module Rdkafka
     #
     # @return [nil]
     def store_offset(message)
+      closed_consumer_check(__method__)
+
       # rd_kafka_offset_store is one of the few calls that does not support
       # a string as the topic, so create a native topic for it.
       native_topic = Rdkafka::Bindings.rd_kafka_topic_new(
@@ -331,6 +353,8 @@ module Rdkafka
     #
     # @return [nil]
     def seek(message)
+      closed_consumer_check(__method__)
+
       # rd_kafka_offset_store is one of the few calls that does not support
       # a string as the topic, so create a native topic for it.
       native_topic = Rdkafka::Bindings.rd_kafka_topic_new(
@@ -369,6 +393,8 @@ module Rdkafka
     #
     # @return [nil]
     def commit(list=nil, async=false)
+      closed_consumer_check(__method__)
+
       if !list.nil? && !list.is_a?(TopicPartitionList)
         raise TypeError.new("list has to be nil or a TopicPartitionList")
       end
@@ -393,7 +419,7 @@ module Rdkafka
     #
     # @return [Message, nil] A message or nil if there was no new message within the timeout
     def poll(timeout_ms)
-      return unless @native_kafka
+      closed_consumer_check(__method__)
 
       message_ptr = Rdkafka::Bindings.rd_kafka_consumer_poll(@native_kafka, timeout_ms)
       if message_ptr.null?
@@ -440,6 +466,10 @@ module Rdkafka
           end
         end
       end
+    end
+
+    def closed_consumer_check(method)
+      raise Rdkafka::ClosedConsumerError.new(method) if @native_kafka.nil?
     end
   end
 end

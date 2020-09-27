@@ -90,6 +90,12 @@ describe Rdkafka::Config do
       }.to raise_error(Rdkafka::Config::ConfigError, "No such configuration property: \"invalid.key\"")
     end
 
+    it "should allow configuring zstd compression" do
+      config = Rdkafka::Config.new('compression.codec' => 'zstd')
+      expect(config.producer).to be_a Rdkafka::Producer
+      config.producer.close
+    end
+
     it "should raise an error when client creation fails for a consumer" do
       config = Rdkafka::Config.new(
         "security.protocol" => "SSL",

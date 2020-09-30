@@ -510,9 +510,9 @@ module Rdkafka
       slice = []
       loop do
         break if @closing
-        start_time = Time.new.to_f
+        start_time = monotonic_now
         end_time = start_time + timeout_ms / 1000.0
-        max_wait = end_time - Time.now.to_f
+        max_wait = end_time - monotonic_now
         max_wait_ms = if max_wait <= 0
                         0   
                       else
@@ -532,11 +532,17 @@ module Rdkafka
           end
         end
         slice << message if message
-        if slice.size == max_items || Time.now.to_f >= end_time - 0.001
+        if slice.size == max_items || monotonic_now >= end_time - 0.001
           yield slice.dup
           slice.clear
         end 
       end 
+    end
+
+    private
+    def monotonic_now
+      # needed because Time.now can go backwards
+      Process.clock_gettime(Process::CLOCK_MONOTONIC)
     end
   end
 end

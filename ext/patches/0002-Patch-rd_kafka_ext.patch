@@ -1,0 +1,37 @@
+diff --git a/rdkafka.c b/rdkafka.c
+index 3fbcfab..a26dcee 100644
+--- a/src/rdkafka.c
++++ b/src/rdkafka.c
+@@ -314,6 +314,16 @@ rd_kafka_oauthbearer_set_token_failure (rd_kafka_t *rk, const char *errstr) {
+ #endif
+ }
+ 
++const char *
++rd_kafka_ext_consumer_get_join_state (rd_kafka_t *rk) {
++        rd_kafka_cgrp_t *rkcg;
++
++        if (!(rkcg = rd_kafka_cgrp_get(rk)))
++                return NULL;
++
++        return rd_kafka_cgrp_join_state_names[rkcg->rkcg_join_state];
++}
++
+ void rd_kafka_log_print(const rd_kafka_t *rk, int level,
+ 	const char *fac, const char *buf) {
+ 	int secs, msecs;
+diff --git a/rdkafka.h b/rdkafka.h
+index 5b116a5..c9fd1e1 100644
+--- a/src/rdkafka.h
++++ b/src/rdkafka.h
+@@ -6211,6 +6211,11 @@ rd_kafka_oauthbearer_set_token_failure (rd_kafka_t *rk, const char *errstr);
+ 
+ /**@}*/
+ 
++/**** Extensions ****/
++RD_EXPORT
++const char *
++rd_kafka_ext_consumer_get_join_state (rd_kafka_t *rk);
++
+ /* @cond NO_DOC */
+ #ifdef __cplusplus
+ }

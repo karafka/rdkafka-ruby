@@ -257,6 +257,11 @@ module Rdkafka
       Rdkafka::Bindings.rd_kafka_memberid(@native_kafka)
     end
 
+    # @return [String, nil]
+    def join_state
+      Rdkafka::Bindings.rd_kafka_ext_consumer_get_join_state(@native_kafka)
+    end
+
     # Store offset of a message to be used in the next commit of this consumer
     #
     # When using this `enable.auto.offset.store` should be set to `false` in the config.

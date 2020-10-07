@@ -538,6 +538,15 @@ describe Rdkafka::Consumer do
     end
   end
 
+  describe '#join_state' do
+    it 'should return the current consumer join state' do
+      expect(consumer.join_state).to eq "init"
+      consumer.subscribe("consume_test_topic")
+      wait_for_assignment(consumer)
+      expect(consumer.join_state).to eq "started"
+    end
+  end
+
   describe "#poll" do
     it "should return nil if there is no subscription" do
       expect(consumer.poll(1000)).to be_nil

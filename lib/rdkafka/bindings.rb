@@ -208,6 +208,7 @@ module Rdkafka
     attach_function :rd_kafka_poll_set_consumer, [:pointer], :void
     attach_function :rd_kafka_consumer_poll, [:pointer, :int], :pointer, blocking: true
     attach_function :rd_kafka_consumer_close, [:pointer], :void, blocking: true
+    attach_function :rd_kafka_ext_consumer_get_join_state, [:pointer], :string
     attach_function :rd_kafka_offset_store, [:pointer, :int32, :int64], :int
     attach_function :rd_kafka_pause_partitions, [:pointer, :pointer], :int
     attach_function :rd_kafka_resume_partitions, [:pointer, :pointer], :int

@@ -108,6 +108,8 @@ module Rdkafka
     attach_function :rd_kafka_conf_set_opaque, [:pointer, :pointer], :void
     callback :stats_cb, [:pointer, :string, :int, :pointer], :int
     attach_function :rd_kafka_conf_set_stats_cb, [:pointer, :stats_cb], :void
+    attach_function :rd_kafka_topic_conf_new, [], :pointer
+    attach_function :rd_kafka_topic_conf_set, [:pointer, :string, :string, :pointer, :int], :kafka_config_response
 
     # Log queue
     attach_function :rd_kafka_set_log_queue, [:pointer, :pointer], :void

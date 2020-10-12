@@ -59,6 +59,9 @@ module Rdkafka
       :"api.version.request" => true
     }.freeze
 
+    DEFAULT_TOPIC_CONFIG = {
+    }.freeze
+
     # Required config that cannot be overwritten.
     REQUIRED_CONFIG = {
       # Enable log queues so we get callbacks in our own Ruby threads
@@ -70,8 +73,9 @@ module Rdkafka
     # @param config_hash [Hash{String,Symbol => String}] The config options for rdkafka
     #
     # @return [Config]
-    def initialize(config_hash = {})
+    def initialize(config_hash = {}, topic_config_hash = {})
       @config_hash = DEFAULT_CONFIG.merge(config_hash)
+      @topic_config_hash = DEFAULT_TOPIC_CONFIG.merge(topic_config_hash)
       @consumer_rebalance_listener = nil
     end
 
@@ -155,6 +159,42 @@ module Rdkafka
       config = native_config(opaque)
       Rdkafka::Bindings.rd_kafka_conf_set_background_event_cb(config, Rdkafka::Callbacks::BackgroundEventCallbackFunction)
       Rdkafka::Admin.new(native_kafka(config, :rd_kafka_producer))
+    end
+
+    def topic_config(opaque=nil)
+      Rdkafka::Bindings.rd_kafka_topic_conf_new.tap do |config|
+        # Create config
+        @topic_config_hash.each do |key, value|
+          error_buffer = FFI::MemoryPointer.from_string(" " * 256)
+          result = Rdkafka::Bindings.rd_kafka_topic_conf_set(
+            config,
+            key.to_s,
+            value.to_s,
+            error_buffer,
+            256
+          )
+          unless result == :config_ok
+            raise ConfigError.new(error_buffer.read_string)
+          end
+        end
+
+        # Set opaque pointer that's used as a proxy for callbacks
+        if opaque
+          pointer = ::FFI::Pointer.new(:pointer, opaque.object_id)
+          Rdkafka::Bindings.rd_kafka_topic_conf_set_opaque(config, pointer)
+
+          # Store opaque with the pointer as key. We use this approach instead
+          # of trying to convert the pointer to a Ruby object because there is
+          # no risk of a segfault this way.
+          Rdkafka::Config.opaques[pointer.to_i] = opaque
+        end
+
+        # Set log callback
+        Rdkafka::Bindings.rd_kafka_topic_conf_set_log_cb(config, Rdkafka::Bindings::LogCallback)
+
+        # Set stats callback
+        Rdkafka::Bindings.rd_kafka_topic_conf_set_stats_cb(config, Rdkafka::Bindings::StatsCallback)
+      end
     end
 
     # Error that is returned by the underlying rdkafka error if an invalid configuration option is present.

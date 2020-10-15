@@ -34,6 +34,7 @@ module Rdkafka
     #
     # @raise [ConfigError] When the partition count or replication factor are out of valid range
     # @raise [RdkafkaError] When the topic name is invalid or the topic already exists
+    # @raise [RdkafkaError] When the topic configuration is invalid
     #
     # @return [CreateTopicHandle] Create topic handle that can be used to wait for the result of creating the topic
     def create_topic(topic_name, partition_count, replication_factor, topic_config={})

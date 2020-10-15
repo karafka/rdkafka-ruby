@@ -36,7 +36,7 @@ module Rdkafka
     # @raise [RdkafkaError] When the topic name is invalid or the topic already exists
     #
     # @return [CreateTopicHandle] Create topic handle that can be used to wait for the result of creating the topic
-    def create_topic(topic_name, partition_count, replication_factor)
+    def create_topic(topic_name, partition_count, replication_factor, topic_config={})
 
       # Create a rd_kafka_NewTopic_t representing the new topic
       error_buffer = FFI::MemoryPointer.from_string(" " * 256)
@@ -49,6 +49,16 @@ module Rdkafka
       )
       if new_topic_ptr.null?
         raise Rdkafka::Config::ConfigError.new(error_buffer.read_string)
+      end
+
+      unless topic_config.empty?
+        topic_config.each do |key, value|
+          Rdkafka::Bindings.rd_kafka_NewTopic_set_config(
+            new_topic_ptr,
+            key.to_s,
+            value.to_s
+          )
+        end
       end
 
       # Note that rd_kafka_CreateTopics can create more than one topic at a time

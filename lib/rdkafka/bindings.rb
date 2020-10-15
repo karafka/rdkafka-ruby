@@ -252,6 +252,7 @@ module Rdkafka
 
     attach_function :rd_kafka_CreateTopics, [:pointer, :pointer, :size_t, :pointer, :pointer], :void
     attach_function :rd_kafka_NewTopic_new, [:pointer, :size_t, :size_t, :pointer, :size_t], :pointer
+    attach_function :rd_kafka_NewTopic_set_config, [:pointer, :string, :string], :int32
     attach_function :rd_kafka_NewTopic_destroy, [:pointer], :void
     attach_function :rd_kafka_event_CreateTopics_result, [:pointer], :pointer
     attach_function :rd_kafka_CreateTopics_result_topics, [:pointer, :pointer], :pointer

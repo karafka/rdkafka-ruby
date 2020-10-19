@@ -170,8 +170,21 @@ describe Rdkafka::Admin do
       expect(create_topic_report.error_string).to be_nil
       expect(create_topic_report.result_name).to eq(topic_name)
 
-      delete_topic_handle = admin.delete_topic(topic_name)
-      delete_topic_report = delete_topic_handle.wait(max_wait_timeout: 15.0)
+      # Retry topic deletion a few times. On CI Kafka seems to not
+      # always be ready for it immediately
+      delete_topic_report = nil
+      10.times do |i|
+        begin
+          delete_topic_handle = admin.delete_topic(topic_name)
+          delete_topic_report = delete_topic_handle.wait(max_wait_timeout: 15.0)
+          break
+        rescue Rdkafka::RdkafkaError => ex
+          if i > 3
+            raise ex
+          end
+        end
+      end
+
       expect(delete_topic_report.error_string).to be_nil
       expect(delete_topic_report.result_name).to eq(topic_name)
     end

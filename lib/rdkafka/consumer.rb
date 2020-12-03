@@ -494,7 +494,18 @@ module Rdkafka
     # TopicPartitionList to {commit}.
     #
     # As with `each`, iteration will end when the consumer is closed.
-    # Exception behavior is also the same as with `each`.
+    #
+    # Exception behavior is more complicated than with `each`, in that if
+    # :yield_on_error is true, and an exception is raised during the
+    # poll, and messages have already been received, they will be yielded to
+    # the caller before the exception is allowed to propogate.
+    #
+    # If you are setting either auto.commit or auto.offset.store to false in
+    # the consumer configuration, then you should let yield_on_error keep its
+    # default value of false because you are gauranteed to see these messages
+    # again. However, if both auto.commit and auto.offset.store are set to
+    # true, you should set yield_on_error to true so you can process messages
+    # that you may or may not see again.
     #
     # @param max_items [Integer] Maximum size of the yielded array of messages
     #
@@ -502,10 +513,13 @@ module Rdkafka
     #
     # @raise [RdkafkaError] When polling fails
     #
-    # @yieldparam message [Batch] An array of received messages
+    # @yield [messages, pending_exception]
+    # @yieldparam messages [Array] An array of received Message
+    # @yieldparam pending_exception [Exception] normally nil, or an exception
+    # which will be propogated after processing of the partial batch is complete.
     #
     # @return [nil]
-    def each_batch(max_items: 100, timeout_ms: 250, &block)
+    def each_batch(max_items: 100, timeout_ms: 250, yield_on_error: false, &block)
       closed_consumer_check(__method__)
       slice = []
       loop do
@@ -522,18 +536,14 @@ module Rdkafka
         begin
           message = poll max_wait_ms
         rescue Rdkafka::RdkafkaError => error
-          # https://docs.confluent.io/2.0.0/clients/librdkafka/rdkafka_8h.html
-          #   RD_KAFKA_RESP_ERR_REBALANCE_IN_PROGRESS = 27,
-          if error.rdkafka_response == 27
-            yield slice.dup
-            return
-          else
-            raise
-          end
+          raise unless yield_on_error
+          raise if slice.empty?
+          yield slice.dup, error
+          raise
         end
         slice << message if message
         if slice.size == max_items || monotonic_now >= end_time - 0.001
-          yield slice.dup
+          yield slice.dup, nil
           slice.clear
         end 
       end 

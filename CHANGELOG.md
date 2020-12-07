@@ -1,3 +1,9 @@
+# 0.8.1
+* Fix topic_flag behaviour and add tests for Metadata (geoff2k)
+* Add topic admin interface (geoff2k)
+* Raise an exception if @native_kafka is nil (geoff2k)
+* Option to use zstd compression (jasonmartens)
+
 # 0.8.0
 * Upgrade librdkafka to 1.4.0
 * Integrate librdkafka metadata API and add partition_key (by Adithya-copart)

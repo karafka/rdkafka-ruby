@@ -17,7 +17,7 @@ blocks:
           commands:
             - sem-version ruby $RUBY_VERSION
             - checkout
-            - bundle install --path vendor/bundl
+            - bundle install --path vendor/bundle
             - cd ext && bundle exec rake && cd ..
             - docker-compose up -d --no-recreate
             - bundle exec rspec

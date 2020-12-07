@@ -73,7 +73,7 @@ delivery_handles.each(&:wait)
 ```
 
 Note that creating a producer consumes some resources that will not be
-released until it `#close` is explicitly called, so be sure to call 
+released until it `#close` is explicitly called, so be sure to call
 `Config#producer` only as necessary.
 
 ## Development

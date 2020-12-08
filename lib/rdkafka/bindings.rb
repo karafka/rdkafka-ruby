@@ -236,13 +236,14 @@ module Rdkafka
 
     # Partitioner
     attach_function :rd_kafka_msg_partitioner_consistent_random, [:pointer, :pointer, :size_t, :int32, :pointer, :pointer], :int32
+    attach_function :rd_kafka_msg_partitioner_murmur2_random, [:pointer, :pointer, :size_t, :int32, :pointer, :pointer], :int32
 
     def self.partitioner(str, partition_count)
       # Return RD_KAFKA_PARTITION_UA(unassigned partition) when partition count is nil/zero.
       return -1 unless partition_count&.nonzero?
 
       str_ptr = FFI::MemoryPointer.from_string(str)
-      rd_kafka_msg_partitioner_consistent_random(nil, str_ptr, str.size, partition_count, nil, nil)
+      rd_kafka_msg_partitioner_murmur2_random(nil, str_ptr, str.size, partition_count, nil, nil)
     end
 
     # Create Topics

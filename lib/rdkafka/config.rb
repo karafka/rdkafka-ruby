@@ -33,11 +33,11 @@ module Rdkafka
     # You can configure if and how often this happens using `statistics.interval.ms`.
     # The callback is called with a hash that's documented here: https://github.com/edenhill/librdkafka/blob/master/STATISTICS.md
     #
-    # @param callback [Proc] The callback
+    # @param callback [Proc, #call] The callback
     #
     # @return [nil]
     def self.statistics_callback=(callback)
-      raise TypeError.new("Callback has to be a proc or lambda") unless callback.is_a? Proc
+      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call)
       @@statistics_callback = callback
     end
 

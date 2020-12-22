@@ -21,16 +21,30 @@ describe Rdkafka::Config do
   end
 
   context "statistics callback" do
-    it "should set the callback" do
-      expect {
-        Rdkafka::Config.statistics_callback = lambda do |stats|
-          puts stats
-        end
-      }.not_to raise_error
-      expect(Rdkafka::Config.statistics_callback).to be_a Proc
+    context "with a proc/lambda" do
+      it "should set the callback" do
+        expect {
+          Rdkafka::Config.statistics_callback = lambda do |stats|
+            puts stats
+          end
+        }.not_to raise_error
+        expect(Rdkafka::Config.statistics_callback).to respond_to :call
+      end
     end
 
-    it "should not accept a callback that's not a proc" do
+    context "with a callable object" do
+      it "should set the callback" do
+        callback = Class.new do
+          def call(stats); end
+        end
+        expect {
+          Rdkafka::Config.statistics_callback = callback.new
+        }.not_to raise_error
+        expect(Rdkafka::Config.statistics_callback).to respond_to :call
+      end
+    end
+
+    it "should not accept a callback that's not callable" do
       expect {
         Rdkafka::Config.statistics_callback = 'a string'
       }.to raise_error(TypeError)

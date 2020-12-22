@@ -31,11 +31,11 @@ module Rdkafka
     # Set a callback that will be called every time a message is successfully produced.
     # The callback is called with a {DeliveryReport}
     #
-    # @param callback [Proc] The callback
+    # @param callback [Proc, #call] The callback
     #
     # @return [nil]
     def delivery_callback=(callback)
-      raise TypeError.new("Callback has to be a proc or lambda") unless callback.is_a? Proc
+      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call)
       @delivery_callback = callback
     end
 

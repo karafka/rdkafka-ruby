@@ -21,27 +21,7 @@ describe Rdkafka::Producer do
         }.not_to raise_error
         expect(producer.delivery_callback).to respond_to :call
       end
-    end
 
-    context "with a callable object" do
-      it "should set the callback" do
-        callback = Class.new do
-          def call(stats); end
-        end
-        expect {
-          producer.delivery_callback = callback.new
-        }.not_to raise_error
-        expect(producer.delivery_callback).to respond_to :call
-      end
-    end
-
-    it "should not accept a callback that's not callable" do
-      expect {
-        producer.delivery_callback = 'a string'
-      }.to raise_error(TypeError)
-    end
-
-    context "with a proc/lambda" do
       it "should call the callback when a message is delivered" do
         @callback_called = false
 
@@ -71,6 +51,16 @@ describe Rdkafka::Producer do
     end
 
     context "with a callable object" do
+      it "should set the callback" do
+        callback = Class.new do
+          def call(stats); end
+        end
+        expect {
+          producer.delivery_callback = callback.new
+        }.not_to raise_error
+        expect(producer.delivery_callback).to respond_to :call
+      end
+
       it "should call the callback when a message is delivered" do
         called_report = []
         callback = Class.new do
@@ -102,6 +92,12 @@ describe Rdkafka::Producer do
         expect(called_report.first.partition).to eq 1
         expect(called_report.first.offset).to be >= 0
       end
+    end
+
+    it "should not accept a callback that's not callable" do
+      expect {
+        producer.delivery_callback = 'a string'
+      }.to raise_error(TypeError)
     end
   end
 

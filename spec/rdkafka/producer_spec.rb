@@ -41,31 +41,67 @@ describe Rdkafka::Producer do
       }.to raise_error(TypeError)
     end
 
-    it "should call the callback when a message is delivered" do
-      @callback_called = false
+    context "with a proc/lambda" do
+      it "should call the callback when a message is delivered" do
+        @callback_called = false
 
-      producer.delivery_callback = lambda do |report|
-        expect(report).not_to be_nil
-        expect(report.partition).to eq 1
-        expect(report.offset).to be >= 0
-        @callback_called = true
+        producer.delivery_callback = lambda do |report|
+          expect(report).not_to be_nil
+          expect(report.partition).to eq 1
+          expect(report.offset).to be >= 0
+          @callback_called = true
+        end
+
+        # Produce a message
+        handle = producer.produce(
+          topic:   "produce_test_topic",
+          payload: "payload",
+          key:     "key"
+        )
+
+        # Wait for it to be delivered
+        handle.wait(max_wait_timeout: 15)
+
+        # Join the producer thread.
+        producer.close
+
+        # Callback should have been called
+        expect(@callback_called).to be true
       end
+    end
 
-      # Produce a message
-      handle = producer.produce(
-        topic:   "produce_test_topic",
-        payload: "payload",
-        key:     "key"
-      )
+    context "with a callable object" do
+      it "should call the callback when a message is delivered" do
+        called_report = []
+        callback = Class.new do
+          def initialize(called_report)
+            @called_report = called_report
+          end
 
-      # Wait for it to be delivered
-      handle.wait(max_wait_timeout: 15)
+          def call(report)
+            @called_report << report
+          end
+        end
+        producer.delivery_callback = callback.new(called_report)
 
-      # Join the producer thread.
-      producer.close
+        # Produce a message
+        handle = producer.produce(
+          topic:   "produce_test_topic",
+          payload: "payload",
+          key:     "key"
+        )
 
-      # Callback should have been called
-      expect(@callback_called).to be true
+        # Wait for it to be delivered
+        handle.wait(max_wait_timeout: 15)
+
+        # Join the producer thread.
+        producer.close
+
+        # Callback should have been called
+        expect(called_report.first).not_to be_nil
+        expect(called_report.first.partition).to eq 1
+        expect(called_report.first.offset).to be >= 0
+      end
     end
   end
 

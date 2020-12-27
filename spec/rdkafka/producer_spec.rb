@@ -12,47 +12,92 @@ describe Rdkafka::Producer do
   end
 
   context "delivery callback" do
-    it "should set the callback" do
-      expect {
-        producer.delivery_callback = lambda do |delivery_handle|
-          puts stats
+    context "with a proc/lambda" do
+      it "should set the callback" do
+        expect {
+          producer.delivery_callback = lambda do |delivery_handle|
+            puts delivery_handle
+          end
+        }.not_to raise_error
+        expect(producer.delivery_callback).to respond_to :call
+      end
+
+      it "should call the callback when a message is delivered" do
+        @callback_called = false
+
+        producer.delivery_callback = lambda do |report|
+          expect(report).not_to be_nil
+          expect(report.partition).to eq 1
+          expect(report.offset).to be >= 0
+          @callback_called = true
         end
-      }.not_to raise_error
-      expect(producer.delivery_callback).to be_a Proc
+
+        # Produce a message
+        handle = producer.produce(
+          topic:   "produce_test_topic",
+          payload: "payload",
+          key:     "key"
+        )
+
+        # Wait for it to be delivered
+        handle.wait(max_wait_timeout: 15)
+
+        # Join the producer thread.
+        producer.close
+
+        # Callback should have been called
+        expect(@callback_called).to be true
+      end
     end
 
-    it "should not accept a callback that's not a proc" do
+    context "with a callable object" do
+      it "should set the callback" do
+        callback = Class.new do
+          def call(stats); end
+        end
+        expect {
+          producer.delivery_callback = callback.new
+        }.not_to raise_error
+        expect(producer.delivery_callback).to respond_to :call
+      end
+
+      it "should call the callback when a message is delivered" do
+        called_report = []
+        callback = Class.new do
+          def initialize(called_report)
+            @called_report = called_report
+          end
+
+          def call(report)
+            @called_report << report
+          end
+        end
+        producer.delivery_callback = callback.new(called_report)
+
+        # Produce a message
+        handle = producer.produce(
+          topic:   "produce_test_topic",
+          payload: "payload",
+          key:     "key"
+        )
+
+        # Wait for it to be delivered
+        handle.wait(max_wait_timeout: 15)
+
+        # Join the producer thread.
+        producer.close
+
+        # Callback should have been called
+        expect(called_report.first).not_to be_nil
+        expect(called_report.first.partition).to eq 1
+        expect(called_report.first.offset).to be >= 0
+      end
+    end
+
+    it "should not accept a callback that's not callable" do
       expect {
         producer.delivery_callback = 'a string'
       }.to raise_error(TypeError)
-    end
-
-    it "should call the callback when a message is delivered" do
-      @callback_called = false
-
-
-      producer.delivery_callback = lambda do |report|
-        expect(report).not_to be_nil
-        expect(report.partition).to eq 1
-        expect(report.offset).to be >= 0
-        @callback_called = true
-      end
-
-      # Produce a message
-      handle = producer.produce(
-        topic:   "produce_test_topic",
-        payload: "payload",
-        key:     "key"
-      )
-
-      # Wait for it to be delivered
-      handle.wait(max_wait_timeout: 15)
-
-      # Join the producer thread.
-      producer.close
-
-      # Callback should have been called
-      expect(@callback_called).to be true
     end
   end
 

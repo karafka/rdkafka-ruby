@@ -1,6 +1,7 @@
 require File.expand_path('../../lib/rdkafka/version', __FILE__)
 require "mini_portile2"
 require "fileutils"
+require "open-uri"
 
 task :default => :clean do
   # MiniPortile#download_file_http is a monkey patch that removes the download

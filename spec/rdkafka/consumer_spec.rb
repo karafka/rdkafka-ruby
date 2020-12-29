@@ -763,49 +763,77 @@ describe Rdkafka::Consumer do
       expect(yields.last.size).to eq 10
     end
 
-    it "should return if the connection is closing" do
-      consumer.subscribe(topic_name)
-      produce_n 10
-      loop_count = 0
-      consumer.close
-      consumer.each_batch(max_items: 10, timeout_ms: 10) do |batch|
-        loop_count = loop_count + 1
-        break if loop_count > 10
+    context "error raised from poll and yield_on_error is true" do
+      it "should yield buffered exceptions on rebalance, then break" do
+        config = rdkafka_config({:"enable.auto.commit" => false,
+                                 :"enable.auto.offset.store" => false })
+        consumer = config.consumer
+        consumer.subscribe(topic_name)
+        wait_for_assignment consumer
+        loop_count = 0
+        batches_yielded = []
+        iterations = 0
+        poll_count = 0
+        expect(Rdkafka::Bindings)
+          .to receive(:rd_kafka_consumer_poll)
+          .exactly(3).times
+          .and_wrap_original do |method, *args| 
+            poll_count = poll_count + 1
+            if poll_count == 3
+              raise Rdkafka::RdkafkaError
+                .new(27, "partitions ... too ... heavy ... must ... rebalance")
+            else
+              method.call *args
+            end
+          end
+        produce_n 3
+        expect {
+          consumer.each_batch(max_items: 30, yield_on_error: true) do |batch|
+            batches_yielded << batch
+            iterations = iterations + 1
+          end
+        }.to raise_error(Rdkafka::RdkafkaError)
+        expect(poll_count).to eq 3
+        expect(iterations).to eq 1
+        expect(batches_yielded.size).to eq 1
+        expect(batches_yielded.first.size).to eq 2
       end
-      expect(loop_count).to eq 0
     end
 
-    it "should yield buffered exceptions on rebalance, then break" do
-      config = rdkafka_config({:"enable.auto.commit" => false,
-                               :"enable.auto.offset.store" => false })
-      consumer = config.consumer
-      consumer.subscribe(topic_name)
-      wait_for_assignment consumer
-      loop_count = 0
-      batches_yielded = []
-      iterations = 0
-      poll_count = 0
-      expect(Rdkafka::Bindings)
-        .to receive(:rd_kafka_consumer_poll)
-        .exactly(3).times
-        .and_wrap_original do |method, *args| 
-          poll_count = poll_count + 1
-          if poll_count == 3
-            raise Rdkafka::RdkafkaError
-              .new(27, "partitions ... too ... heavy ... must ... rebalance")
-          else
-            method.call *args
+    context "error raised from poll and yield_on_error is false" do
+      it "should yield buffered exceptions on rebalance, then break" do
+        config = rdkafka_config({:"enable.auto.commit" => false,
+                                 :"enable.auto.offset.store" => false })
+        consumer = config.consumer
+        consumer.subscribe(topic_name)
+        wait_for_assignment consumer
+        loop_count = 0
+        batches_yielded = []
+        iterations = 0
+        poll_count = 0
+        expect(Rdkafka::Bindings)
+          .to receive(:rd_kafka_consumer_poll)
+          .exactly(3).times
+          .and_wrap_original do |method, *args| 
+            poll_count = poll_count + 1
+            if poll_count == 3
+              raise Rdkafka::RdkafkaError
+                .new(27, "partitions ... too ... heavy ... must ... rebalance")
+            else
+              method.call *args
+            end
           end
-        end
-      produce_n 3
-      consumer.each_batch(max_items: 30) do |batch|
-        batches_yielded << batch
-        iterations = iterations + 1
+        produce_n 3
+        expect {
+          consumer.each_batch(max_items: 30, yield_on_error: false) do |batch|
+            batches_yielded << batch
+            iterations = iterations + 1
+          end
+        }.to raise_error(Rdkafka::RdkafkaError)
+        expect(poll_count).to eq 3
+        expect(iterations).to eq 0
+        expect(batches_yielded.size).to eq 0
       end
-      expect(poll_count).to eq 3
-      expect(iterations).to eq 1
-      expect(batches_yielded.size).to eq 1
-      expect(batches_yielded.first.size).to eq 2
     end
   end
 
@@ -875,6 +903,7 @@ describe Rdkafka::Consumer do
     {
         :subscribe               => [ nil ],
         :unsubscribe             => nil,
+        :each_batch              => nil,
         :pause                   => [ nil ],
         :resume                  => [ nil ],
         :subscription            => nil,

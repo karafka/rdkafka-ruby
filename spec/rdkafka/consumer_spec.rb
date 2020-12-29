@@ -1,5 +1,6 @@
 require "spec_helper"
 require "ostruct"
+require 'securerandom'
 
 describe Rdkafka::Consumer do
   let(:config) { rdkafka_config }
@@ -271,6 +272,14 @@ describe Rdkafka::Consumer do
   describe "#close" do
     it "should close a consumer" do
       consumer.subscribe("consume_test_topic")
+      100.times do |i|
+        report = producer.produce(
+          topic:     "consume_test_topic",
+          payload:   "payload #{i}",
+          key:       "key #{i}",
+          partition: 0
+        ).wait
+      end
       consumer.close
       expect {
         consumer.poll(100)
@@ -667,6 +676,136 @@ describe Rdkafka::Consumer do
         break if i == 10
       end
       consumer.close
+    end
+  end
+
+  describe "#each_batch" do
+    before do
+      @topic = SecureRandom.base64(10).tr('+=/', '')
+    end
+
+    after do
+      @topic = nil
+    end
+
+    def topic_name
+      @topic
+    end
+
+    def produce_n(n)
+      handles = []
+      n.times do |i|
+        handles << producer.produce(
+          topic:     topic_name,
+          payload:   Time.new.to_f.to_s,
+          key:       i.to_s,
+          partition: 0
+        )
+      end
+      handles.each(&:wait)
+    end
+
+    it "should yield arrays of messages" do
+      produce_n 10
+      consumer.subscribe(topic_name)
+      all_yields = []
+      consumer.each_batch(max_items: 10) do |batch|
+        all_yields << batch
+        if batch.any? { |message| message&.key == "9" }
+          break
+        end
+      end
+      expect(all_yields.first).to be_instance_of(Array)
+      expect(all_yields.flatten.size).to eq 10
+      expect(all_yields.flatten.first).to be_a Rdkafka::Consumer::Message
+      non_empty_yields = all_yields.reject { |batch| batch.empty? }
+      expect(non_empty_yields.size).to be < 10
+    end
+
+    it "should yield a partial batch if the timeout is hit with some messages" do
+      consumer.subscribe(topic_name)
+      produce_n 2
+      all_yields = []
+      consumer.each_batch(max_items: 10) do |batch|
+        all_yields << batch
+        if batch.any? { |message| message&.key == "1" }
+          break
+        end
+      end
+      expect(all_yields.flatten.size).to eq 2
+      expect(all_yields.last.size).to eq 2
+    end
+
+    it "should yield [] if nothing is received before the timeout" do
+      consumer.subscribe(topic_name)
+      consumer.each_batch do |batch|
+        expect(batch).to eq([])
+        break
+      end
+    end
+
+    it "should yield sooner than the timeout latency if batch size is reached" do
+      consumer.subscribe(topic_name)
+      produce_n 100
+
+      prev_time = Time.new.to_f
+      yields = []
+      timing = []
+
+      consumer.each_batch(max_items: 10, timeout_ms: 500) do |batch|
+        now = Time.now.to_f
+        yields << batch
+        timing << now - prev_time
+        prev_time = now
+        break if batch&.size > 0
+      end
+      expect(timing.last < 0.5).to be true
+      expect(yields.last.size).to eq 10
+    end
+
+    it "should return if the connection is closing" do
+      consumer.subscribe(topic_name)
+      produce_n 10
+      loop_count = 0
+      consumer.close
+      consumer.each_batch(max_items: 10, timeout_ms: 10) do |batch|
+        loop_count = loop_count + 1
+        break if loop_count > 10
+      end
+      expect(loop_count).to eq 0
+    end
+
+    it "should yield buffered exceptions on rebalance, then break" do
+      config = rdkafka_config({:"enable.auto.commit" => false,
+                               :"enable.auto.offset.store" => false })
+      consumer = config.consumer
+      consumer.subscribe(topic_name)
+      wait_for_assignment consumer
+      loop_count = 0
+      batches_yielded = []
+      iterations = 0
+      poll_count = 0
+      expect(Rdkafka::Bindings)
+        .to receive(:rd_kafka_consumer_poll)
+        .exactly(3).times
+        .and_wrap_original do |method, *args| 
+          poll_count = poll_count + 1
+          if poll_count == 3
+            raise Rdkafka::RdkafkaError
+              .new(27, "partitions ... too ... heavy ... must ... rebalance")
+          else
+            method.call *args
+          end
+        end
+      produce_n 3
+      consumer.each_batch(max_items: 30) do |batch|
+        batches_yielded << batch
+        iterations = iterations + 1
+      end
+      expect(poll_count).to eq 3
+      expect(iterations).to eq 1
+      expect(batches_yielded.size).to eq 1
+      expect(batches_yielded.first.size).to eq 2
     end
   end
 

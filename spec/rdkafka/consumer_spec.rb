@@ -733,7 +733,6 @@ describe Rdkafka::Consumer do
         end
       end
       expect(all_yields.flatten.size).to eq 2
-      expect(all_yields.last.size).to eq 2
     end
 
     it "should yield [] if nothing is received before the timeout" do
@@ -744,23 +743,22 @@ describe Rdkafka::Consumer do
       end
     end
 
-    it "should yield sooner than the timeout latency if batch size is reached" do
-      consumer.subscribe(topic_name)
-      produce_n 100
+    it "should yield batchs of max_items in size if messages are already fetched" do
 
-      prev_time = Time.new.to_f
-      yields = []
-      timing = []
+      yielded_batches = []
+      expect(consumer)
+        .to receive(:poll)
+        .with(anything)
+        .exactly(20).times
+        .and_return(double("Rdkafka::Consumer::Message"))
 
       consumer.each_batch(max_items: 10, timeout_ms: 500) do |batch|
-        now = Time.now.to_f
-        yields << batch
-        timing << now - prev_time
-        prev_time = now
-        break if batch&.size > 0
+        yielded_batches << batch
+        break if yielded_batches.flatten.size >= 20
+        break if yielded_batches.size >= 20 # so failure doesn't hang
       end
-      expect(timing.last < 0.5).to be true
-      expect(yields.last.size).to eq 10
+      expect(yielded_batches.size).to eq 2
+      expect(yielded_batches.map(&:size)).to eq 2.times.map { 10 }
     end
 
     context "error raised from poll and yield_on_error is true" do

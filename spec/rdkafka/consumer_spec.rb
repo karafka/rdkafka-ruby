@@ -1,5 +1,6 @@
 require "spec_helper"
 require "ostruct"
+require 'securerandom'
 
 describe Rdkafka::Consumer do
   let(:config) { rdkafka_config }
@@ -271,6 +272,14 @@ describe Rdkafka::Consumer do
   describe "#close" do
     it "should close a consumer" do
       consumer.subscribe("consume_test_topic")
+      100.times do |i|
+        report = producer.produce(
+          topic:     "consume_test_topic",
+          payload:   "payload #{i}",
+          key:       "key #{i}",
+          partition: 0
+        ).wait
+      end
       consumer.close
       expect {
         consumer.poll(100)
@@ -670,6 +679,176 @@ describe Rdkafka::Consumer do
     end
   end
 
+  describe "#each_batch" do
+    before do
+      @topic = SecureRandom.base64(10).tr('+=/', '')
+    end
+
+    after do
+      @topic = nil
+    end
+
+    def topic_name
+      @topic
+    end
+
+    def produce_n(n)
+      handles = []
+      n.times do |i|
+        handles << producer.produce(
+          topic:     topic_name,
+          payload:   Time.new.to_f.to_s,
+          key:       i.to_s,
+          partition: 0
+        )
+      end
+      handles.each(&:wait)
+    end
+
+    it "should batch poll results and yield arrays of messages" do
+      consumer.subscribe(topic_name)
+      all_yields = []
+      expect(consumer)
+        .to receive(:poll)
+        .exactly(10).times
+        .and_return(double("Rdkafka::Consumer::Message"))
+      consumer.each_batch(max_items: 10) do |batch|
+        all_yields << batch
+        if batch.any? { |message| message&.key == "9" }
+          break
+        end
+      end
+      expect(all_yields.first).to be_instance_of(Array)
+      expect(all_yields.flatten.size).to eq 10
+      expect(all_yields.flatten.first).to be_a Rdkafka::Consumer::Message
+      non_empty_yields = all_yields.reject { |batch| batch.empty? }
+      expect(non_empty_yields.size).to be < 10
+    end
+
+    it "should yield a partial batch if the timeout is hit with some messages" do
+      consumer.subscribe(topic_name)
+      # using produce_n instead of stubbing 'poll' here so at least
+      # one of the each_batch tests will be forced to work with the
+      # fully integrated flow. This will probably catch changes
+      # in the behavior of 'poll' itself. The other rspecs stub
+      # poll so the test suite will be faster and less prone to
+      # transient errors.
+      produce_n 2
+      all_yields = []
+      consumer.each_batch(max_items: 10) do |batch|
+        all_yields << batch
+        if batch.any? { |message| message&.key == "1" }
+          break
+        end
+      end
+      expect(all_yields.flatten.size).to eq 2
+    end
+
+    it "should yield [] if nothing is received before the timeout" do
+      consumer.subscribe(topic_name)
+      consumer.each_batch do |batch|
+        expect(batch).to eq([])
+        break
+      end
+    end
+
+    it "should yield batchs of max_items in size if messages are already fetched" do
+
+      yielded_batches = []
+      expect(consumer)
+        .to receive(:poll)
+        .with(anything)
+        .exactly(20).times
+        .and_return(double("Rdkafka::Consumer::Message"))
+
+      consumer.each_batch(max_items: 10, timeout_ms: 500) do |batch|
+        yielded_batches << batch
+        break if yielded_batches.flatten.size >= 20
+        break if yielded_batches.size >= 20 # so failure doesn't hang
+      end
+      expect(yielded_batches.size).to eq 2
+      expect(yielded_batches.map(&:size)).to eq 2.times.map { 10 }
+    end
+
+    context "error raised from poll and yield_on_error is true" do
+      it "should yield buffered exceptions on rebalance, then break" do
+        config = rdkafka_config({:"enable.auto.commit" => false,
+                                 :"enable.auto.offset.store" => false })
+        consumer = config.consumer
+        consumer.subscribe(topic_name)
+        loop_count = 0
+        batches_yielded = []
+        exceptions_yielded = []
+        each_batch_iterations = 0
+        poll_count = 0
+        expect(consumer)
+          .to receive(:poll)
+          .with(anything)
+          .exactly(3).times
+          .and_wrap_original do |method, *args|
+              poll_count = poll_count + 1
+              if poll_count == 3
+                raise Rdkafka::RdkafkaError.new(27,
+                    "partitions ... too ... heavy ... must ... rebalance")
+              else
+                double("Rdkafka::Consumer::Message")
+              end
+          end
+        expect {
+          consumer.each_batch(max_items: 30, yield_on_error: true) do |batch, pending_error|
+            batches_yielded << batch
+            exceptions_yielded << pending_error
+            each_batch_iterations = each_batch_iterations + 1
+          end
+        }.to raise_error(Rdkafka::RdkafkaError)
+        expect(poll_count).to eq 3
+        expect(each_batch_iterations).to eq 1
+        expect(batches_yielded.size).to eq 1
+        expect(batches_yielded.first.size).to eq 2
+        expect(exceptions_yielded.flatten.size).to eq 1
+        expect(exceptions_yielded.flatten.first).to be_instance_of(Rdkafka::RdkafkaError)
+      end
+    end
+
+    context "error raised from poll and yield_on_error is false" do
+      it "should yield buffered exceptions on rebalance, then break" do
+        config = rdkafka_config({:"enable.auto.commit" => false,
+                                 :"enable.auto.offset.store" => false })
+        consumer = config.consumer
+        consumer.subscribe(topic_name)
+        loop_count = 0
+        batches_yielded = []
+        exceptions_yielded = []
+        each_batch_iterations = 0
+        poll_count = 0
+        expect(consumer)
+          .to receive(:poll)
+          .with(anything)
+          .exactly(3).times
+          .and_wrap_original do |method, *args|
+              poll_count = poll_count + 1
+              if poll_count == 3
+                raise Rdkafka::RdkafkaError.new(27,
+                    "partitions ... too ... heavy ... must ... rebalance")
+              else
+                double("Rdkafka::Consumer::Message")
+              end
+          end
+        expect {
+          consumer.each_batch(max_items: 30, yield_on_error: false) do |batch, pending_error|
+            batches_yielded << batch
+            exceptions_yielded << pending_error
+            each_batch_iterations = each_batch_iterations + 1
+          end
+        }.to raise_error(Rdkafka::RdkafkaError)
+        expect(poll_count).to eq 3
+        expect(each_batch_iterations).to eq 0
+        expect(batches_yielded.size).to eq 0
+        expect(exceptions_yielded.size).to eq 0
+      end
+    end
+  end
+
   describe "a rebalance listener" do
     it "should get notifications" do
       listener = Struct.new(:queue) do
@@ -736,6 +915,7 @@ describe Rdkafka::Consumer do
     {
         :subscribe               => [ nil ],
         :unsubscribe             => nil,
+        :each_batch              => nil,
         :pause                   => [ nil ],
         :resume                  => [ nil ],
         :subscription            => nil,

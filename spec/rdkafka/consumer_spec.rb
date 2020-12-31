@@ -714,13 +714,10 @@ describe Rdkafka::Consumer do
         .and_return(double("Rdkafka::Consumer::Message"))
       consumer.each_batch(max_items: 10) do |batch|
         all_yields << batch
-        if batch.any? { |message| message&.key == "9" }
-          break
-        end
+        break if all_yields.flatten.size >= 10
       end
       expect(all_yields.first).to be_instance_of(Array)
       expect(all_yields.flatten.size).to eq 10
-      expect(all_yields.flatten.first).to be_a Rdkafka::Consumer::Message
       non_empty_yields = all_yields.reject { |batch| batch.empty? }
       expect(non_empty_yields.size).to be < 10
     end
@@ -742,6 +739,7 @@ describe Rdkafka::Consumer do
         end
       end
       expect(all_yields.flatten.size).to eq 2
+      expect(all_yields.flatten.first).to be_a Rdkafka::Consumer::Message
     end
 
     it "should yield [] if nothing is received before the timeout" do

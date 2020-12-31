@@ -509,7 +509,7 @@ module Rdkafka
     #
     # @param max_items [Integer] Maximum size of the yielded array of messages
     #
-    # @param timeout_ms [Integer] Timeout of this poll
+    # @param timeout_ms [Integer] max time to wait for up to max_items
     #
     # @raise [RdkafkaError] When polling fails
     #
@@ -522,16 +522,15 @@ module Rdkafka
     def each_batch(max_items: 100, timeout_ms: 250, yield_on_error: false, &block)
       closed_consumer_check(__method__)
       slice = []
+      end_time = monotonic_now + timeout_ms / 1000.0
       loop do
         break if @closing
-        start_time = monotonic_now
-        end_time = start_time + timeout_ms / 1000.0
         max_wait = end_time - monotonic_now
         max_wait_ms = if max_wait <= 0
-                        0   
+                        0  # should not block, but may retrieve a message
                       else
                         (max_wait * 1000).floor
-                      end 
+                      end
         message = nil
         begin
           message = poll max_wait_ms
@@ -545,6 +544,7 @@ module Rdkafka
         if slice.size == max_items || monotonic_now >= end_time - 0.001
           yield slice.dup, nil
           slice.clear
+          end_time = monotonic_now + timeout_ms / 1000.0
         end 
       end 
     end

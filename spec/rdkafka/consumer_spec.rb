@@ -705,6 +705,30 @@ describe Rdkafka::Consumer do
       handles.each(&:wait)
     end
 
+    it "retrieves messages produced into a topic" do
+      # This is the only each_batch test that actually produces
+      # real messages into a topic in the real kafka of the container.
+      #
+      # The other tests stub 'poll' which makes them faster and
+      # more reliable, but it makes sense to keep a single test
+      # with a fully integrated flow. This will help to catch changes
+      # in the behavior of 'poll', libdrkafka, or Kafka.
+      #
+      # I'm thinking of this as an integration test and the subsequent
+      # specs as unit tests.
+      consumer.subscribe(topic_name)
+      produce_n 42
+      all_yields = []
+      consumer.each_batch(max_items: 10) do |batch|
+        all_yields << batch
+        break if all_yields.flatten.size >= 42
+      end
+      expect(all_yields.flatten.first).to be_a Rdkafka::Consumer::Message
+      expect(all_yields.flatten.size).to eq 42
+      expect(all_yields.size).to be > 4
+      expect(all_yields.flatten.map(&:key)).to eq (0..41).map { |x| x.to_s }
+    end
+
     it "should batch poll results and yield arrays of messages" do
       consumer.subscribe(topic_name)
       all_yields = []
@@ -724,22 +748,24 @@ describe Rdkafka::Consumer do
 
     it "should yield a partial batch if the timeout is hit with some messages" do
       consumer.subscribe(topic_name)
-      # using produce_n instead of stubbing 'poll' here so at least
-      # one of the each_batch tests will be forced to work with the
-      # fully integrated flow. This will probably catch changes
-      # in the behavior of 'poll' itself. The other rspecs stub
-      # poll so the test suite will be faster and less prone to
-      # transient errors.
-      produce_n 2
+      poll_count = 0
+      expect(consumer)
+        .to receive(:poll)
+        .at_least(3).times do
+        poll_count = poll_count + 1
+        if poll_count > 2
+          sleep 0.1
+          nil
+        else
+          double("Rdkafka::Consumer::Message")
+        end
+      end
       all_yields = []
       consumer.each_batch(max_items: 10) do |batch|
         all_yields << batch
-        if batch.any? { |message| message&.key == "1" }
-          break
-        end
+        break if all_yields.flatten.size >= 2
       end
       expect(all_yields.flatten.size).to eq 2
-      expect(all_yields.flatten.first).to be_a Rdkafka::Consumer::Message
     end
 
     it "should yield [] if nothing is received before the timeout" do

@@ -706,16 +706,16 @@ describe Rdkafka::Consumer do
     end
 
     it "retrieves messages produced into a topic" do
-      # This is the only each_batch test that actually produces
-      # real messages into a topic in the real kafka of the container.
+      # This is the only each_batch test that actually produces real messages
+      # into a topic in the real kafka of the container.
       #
-      # The other tests stub 'poll' which makes them faster and
-      # more reliable, but it makes sense to keep a single test
-      # with a fully integrated flow. This will help to catch changes
-      # in the behavior of 'poll', libdrkafka, or Kafka.
+      # The other tests stub 'poll' which makes them faster and more reliable,
+      # but it makes sense to keep a single test with a fully integrated flow.
+      # This will help to catch breaking changes in the behavior of 'poll',
+      # libdrkafka, or Kafka.
       #
-      # I'm thinking of this as an integration test and the subsequent
-      # specs as unit tests.
+      # This is, in effect, an integration test and the subsequent specs are
+      # unit tests.
       consumer.subscribe(topic_name)
       produce_n 42
       all_yields = []

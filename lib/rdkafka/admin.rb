@@ -52,7 +52,7 @@ module Rdkafka
         raise Rdkafka::Config::ConfigError.new(error_buffer.read_string)
       end
 
-      unless topic_config.empty?
+      unless topic_config.nil?
         topic_config.each do |key, value|
           Rdkafka::Bindings.rd_kafka_NewTopic_set_config(
             new_topic_ptr,

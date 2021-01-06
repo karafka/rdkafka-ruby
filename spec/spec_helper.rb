@@ -75,9 +75,9 @@ def wait_for_unassignment(consumer)
 end
 
 def wait_for_log_queue_empty
-  10.times do
+  20.times do
     break if Rdkafka::Config.log_queue.empty?
-    sleep 0.05
+    sleep 0.1
   end
 end
 

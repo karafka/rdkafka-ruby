@@ -20,14 +20,13 @@ describe Rdkafka::Config do
     end
 
     it "supports logging queue" do
-      output = StringIO.new
-      logger = Logger.new(output)
-      Rdkafka::Config.logger = logger
+      log = StringIO.new
+      Rdkafka::Config.logger = Logger.new(log)
 
       Rdkafka::Config.log_queue << [Logger::FATAL, "I love testing"]
-      sleep 0.1
+      wait_for_log_queue_empty
 
-      expect(output.string).to include "FATAL -- : I love testing"
+      expect(log.string).to include "FATAL -- : I love testing"
     end
   end
 

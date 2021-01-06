@@ -74,6 +74,13 @@ def wait_for_unassignment(consumer)
   end
 end
 
+def wait_for_log_queue_empty
+  10.times do
+    break if Rdkafka::Config.log_queue.empty?
+    sleep 0.05
+  end
+end
+
 RSpec.configure do |config|
   config.before(:suite) do
     admin = rdkafka_config.admin

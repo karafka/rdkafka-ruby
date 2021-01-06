@@ -32,31 +32,37 @@ describe Rdkafka::Bindings do
 
     it "should log fatal messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 0, nil, "log line")
+      wait_for_log_queue_empty
       expect(log.string).to include "FATAL -- : rdkafka: log line"
     end
 
     it "should log error messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 3, nil, "log line")
+      wait_for_log_queue_empty
       expect(log.string).to include "ERROR -- : rdkafka: log line"
     end
 
     it "should log warning messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 4, nil, "log line")
+      wait_for_log_queue_empty
       expect(log.string).to include "WARN -- : rdkafka: log line"
     end
 
     it "should log info messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 5, nil, "log line")
+      wait_for_log_queue_empty
       expect(log.string).to include "INFO -- : rdkafka: log line"
     end
 
     it "should log debug messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 7, nil, "log line")
+      wait_for_log_queue_empty
       expect(log.string).to include "DEBUG -- : rdkafka: log line"
     end
 
     it "should log unknown messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 100, nil, "log line")
+      wait_for_log_queue_empty
       expect(log.string).to include "ANY -- : rdkafka: log line"
     end
   end

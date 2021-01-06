@@ -25,39 +25,39 @@ describe Rdkafka::Bindings do
   end
 
   describe "log callback" do
-    let(:log) { StringIO.new }
+    let(:logger) { Rdkafka::Config.logger }
     before do
-      Rdkafka::Config.logger = Logger.new(log)
+      allow(logger).to receive(:add)
     end
 
     it "should log fatal messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 0, nil, "log line")
-      expect(log.string).to include "FATAL -- : rdkafka: log line"
+      expect(logger).to have_received(:add).with(Logger::Severity::FATAL, "rdkafka: log line")
     end
 
     it "should log error messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 3, nil, "log line")
-      expect(log.string).to include "ERROR -- : rdkafka: log line"
+      expect(logger).to have_received(:add).with(Logger::Severity::ERROR, "rdkafka: log line")
     end
 
     it "should log warning messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 4, nil, "log line")
-      expect(log.string).to include "WARN -- : rdkafka: log line"
+      expect(logger).to have_received(:add).with(Logger::Severity::WARN, "rdkafka: log line")
     end
 
     it "should log info messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 5, nil, "log line")
-      expect(log.string).to include "INFO -- : rdkafka: log line"
+      expect(logger).to have_received(:add).with(Logger::Severity::INFO, "rdkafka: log line")
     end
 
     it "should log debug messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 7, nil, "log line")
-      expect(log.string).to include "DEBUG -- : rdkafka: log line"
+      expect(logger).to have_received(:add).with(Logger::Severity::DEBUG, "rdkafka: log line")
     end
 
     it "should log unknown messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 100, nil, "log line")
-      expect(log.string).to include "ANY -- : rdkafka: log line"
+      expect(logger).to have_received(:add).with(Logger::Severity::UNKNOWN, "rdkafka: log line")
     end
   end
 

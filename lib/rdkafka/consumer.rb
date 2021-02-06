@@ -182,65 +182,6 @@ module Rdkafka
       TopicPartitionList.from_native_tpl(tpl)
     end
 
-    # Query broker for low (oldest/beginning) and high (newest/end) offsets for a partition.
-    #
-    # @param topic [String] The topic to query
-    # @param partition [Integer] The partition to query
-    # @param timeout_ms [Integer] The timeout for querying the broker
-    #
-    # @raise [RdkafkaError] When querying the broker fails.
-    #
-    # @return [Integer] The low and high watermark
-    def query_watermark_offsets(topic, partition, timeout_ms=200)
-      low = FFI::MemoryPointer.new(:int64, 1)
-      high = FFI::MemoryPointer.new(:int64, 1)
-
-      response = Rdkafka::Bindings.rd_kafka_query_watermark_offsets(
-        @native_kafka,
-        topic,
-        partition,
-        low,
-        high,
-        timeout_ms
-      )
-      if response != 0
-        raise Rdkafka::RdkafkaError.new(response, "Error querying watermark offsets for partition #{partition} of #{topic}")
-      end
-
-      return low.read_int64, high.read_int64
-    end
-
-    # Calculate the consumer lag per partition for the provided topic partition list.
-    # You can get a suitable list by calling {committed} or {position} (TODO). It is also
-    # possible to create one yourself, in this case you have to provide a list that
-    # already contains all the partitions you need the lag for.
-    #
-    # @param topic_partition_list [TopicPartitionList] The list to calculate lag for.
-    # @param watermark_timeout_ms [Integer] The timeout for each query watermark call.
-    #
-    # @raise [RdkafkaError] When querying the broker fails.
-    #
-    # @return [Hash<String, Hash<Integer, Integer>>] A hash containing all topics with the lag per partition
-    def lag(topic_partition_list, watermark_timeout_ms=100)
-      out = {}
-      topic_partition_list.to_h.each do |topic, partitions|
-        # Query high watermarks for this topic's partitions
-        # and compare to the offset in the list.
-        topic_out = {}
-        partitions.each do |p|
-          next if p.offset.nil?
-          low, high = query_watermark_offsets(
-            topic,
-            p.partition,
-            watermark_timeout_ms
-          )
-          topic_out[p.partition] = high - p.offset
-        end
-        out[topic] = topic_out
-      end
-      out
-    end
-
     # Returns the ClusterId as reported in broker metadata.
     #
     # @return [String, nil]

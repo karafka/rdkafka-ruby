@@ -1,7 +1,10 @@
 require "spec_helper"
 
 describe "AdminOperations" do
-  let(:admin) { rdkafka_config.producer }
+  let(:config) { rdkafka_config }
+  let(:admin) { producer }
+  let(:consumer) { config.consumer }
+  let(:producer) { config.producer }
 
   describe "#create_topic and #delete_topic" do
     context "when topic does not exist" do
@@ -75,6 +78,122 @@ describe "AdminOperations" do
           admin.describe_topic("i_dont_exist", timeout: 2)
         end.to raise_error(Rdkafka::RdkafkaError, /timed_out/)
       end
+    end
+  end
+
+  describe "#query_watermark_offsets" do
+    it "should return the watermark offsets" do
+      # Make sure there's a message
+      producer.produce(
+        topic:     "watermarks_test_topic",
+        payload:   "payload 1",
+        key:       "key 1",
+        partition: 0
+      ).wait
+
+      low, high = consumer.query_watermark_offsets("watermarks_test_topic", 0, 5000)
+      expect(low).to eq 0
+      expect(high).to be > 0
+
+      low, high = producer.query_watermark_offsets("watermarks_test_topic", 0, 5000)
+      expect(low).to eq 0
+      expect(high).to be > 0
+    end
+
+    it "should raise an error when consumer querying offsets fails" do
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_query_watermark_offsets).and_return(20)
+      expect {
+        consumer.query_watermark_offsets("consume_test_topic", 0, 5000)
+      }.to raise_error Rdkafka::RdkafkaError
+    end
+
+    it "should raise an error when producer querying offsets fails" do
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_query_watermark_offsets).and_return(20)
+      expect {
+        producer.query_watermark_offsets("consume_test_topic", 0, 5000)
+      }.to raise_error Rdkafka::RdkafkaError
+    end
+  end
+
+  describe "#lag" do
+    let(:config) { rdkafka_config(:"enable.partition.eof" => true) }
+
+    it "should calculate the consumer lag" do
+      # Make sure there's a message in every partition and
+      # wait for the message to make sure everything is committed.
+      (0..2).each do |i|
+        report = producer.produce(
+          topic:     "consume_test_topic",
+          key:       "key lag #{i}",
+          partition: i
+        ).wait
+      end
+
+      # Consume to the end
+      consumer.subscribe("consume_test_topic")
+      eof_count = 0
+      loop do
+        begin
+          consumer.poll(100)
+        rescue Rdkafka::RdkafkaError => error
+          if error.is_partition_eof?
+            eof_count += 1
+          end
+          break if eof_count == 3
+        end
+      end
+
+      # Commit
+      consumer.commit
+
+      # Create list to fetch lag for. TODO creating the list will not be necessary
+      # after committed uses the subscription.
+      list = consumer.committed(Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
+        l.add_topic("consume_test_topic", (0..2))
+      end)
+
+      # Lag should be 0 now
+      expected_lag = {
+        "consume_test_topic" => {
+          0 => 0,
+          1 => 0,
+          2 => 0
+        }
+      }
+      expect(consumer.lag(list)).to eq(expected_lag)
+      expect(producer.lag(list)).to eq(expected_lag)
+
+      # Produce message on every topic again
+      (0..2).each do |i|
+        report = producer.produce(
+          topic:     "consume_test_topic",
+          key:       "key lag #{i}",
+          partition: i
+        ).wait
+      end
+
+      # Lag should be 1 now
+      expected_lag = {
+        "consume_test_topic" => {
+          0 => 1,
+          1 => 1,
+          2 => 1
+        }
+      }
+      expect(consumer.lag(list)).to eq(expected_lag)
+      expect(producer.lag(list)).to eq(expected_lag)
+    end
+
+    it "returns nil if there are no messages on the topic" do
+      list = consumer.committed(Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
+        l.add_topic("consume_test_topic", (0..2))
+      end)
+
+      expected_lag = {
+        "consume_test_topic" => {}
+      }
+      expect(consumer.lag(list)).to eq(expected_lag)
+      expect(producer.lag(list)).to eq(expected_lag)
     end
   end
 end

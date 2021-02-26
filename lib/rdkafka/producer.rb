@@ -140,16 +140,14 @@ module Rdkafka
         headers.each do |key0, value0|
           key = key0.to_s
           value = value0.to_s
-          args += [
-            :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER,
-            :string, key,
-            :pointer, value,
-            :size_t, value.bytes.size
-          ]
+          args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
+          args << :string << key
+          args << :pointer << value
+          args << :size_t << value.bytes.size
         end
       end
 
-      args += [:int, Rdkafka::Bindings::RD_KAFKA_VTYPE_END]
+      args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_END
 
       # Produce the message
       response = Rdkafka::Bindings.rd_kafka_producev(

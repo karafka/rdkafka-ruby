@@ -14,6 +14,8 @@ describe Rdkafka::Admin do
   let(:topic_name)               { "test-topic-#{Random.new.rand(0..1_000_000)}" }
   let(:topic_partition_count)    { 3 }
   let(:topic_replication_factor) { 1 }
+  let(:topic_config)             { {"cleanup.policy" => "compact", "min.cleanable.dirty.ratio" => 0.8} }
+  let(:invalid_topic_config)     { {"cleeeeenup.policee" => "campact"} }
 
   describe "#create_topic" do
     describe "called with invalid input" do
@@ -68,6 +70,15 @@ describe Rdkafka::Admin do
           }.to raise_error Rdkafka::Config::ConfigError, /replication_factor out of expected range/
         end
       end
+
+      describe "with an invalid topic configuration" do
+        it "doesn't create the topic" do
+          create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor, invalid_topic_config)
+          expect {
+            create_topic_handle.wait(max_wait_timeout: 15.0)
+          }.to raise_error Rdkafka::RdkafkaError, /Broker: Configuration is invalid \(invalid_config\)/
+        end
+      end
     end
 
     context "edge case" do
@@ -97,7 +108,7 @@ describe Rdkafka::Admin do
     end
 
     it "creates a topic" do
-      create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor)
+      create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor, topic_config)
       create_topic_report = create_topic_handle.wait(max_wait_timeout: 15.0)
       expect(create_topic_report.error_string).to be_nil
       expect(create_topic_report.result_name).to eq(topic_name)

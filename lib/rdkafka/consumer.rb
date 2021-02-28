@@ -471,5 +471,88 @@ module Rdkafka
     def closed_consumer_check(method)
       raise Rdkafka::ClosedConsumerError.new(method) if @native_kafka.nil?
     end
+
+    # Poll for new messages and yield them in batches that may contain
+    # messages from more than one partition.
+    #
+    # Rather than yield each message immediately as soon as it is received,
+    # each_batch will attempt to wait for as long as `timeout_ms` in order
+    # to create a batch of up to but no more than `max_items` in size.
+    #
+    # Said differently, if more than `max_items` are available within
+    # `timeout_ms`, then `each_batch` will yield early with `max_items` in the
+    # array, but if `timeout_ms` passes by with fewer messages arriving, it
+    # will yield an array of fewer messages, quite possibly zero.
+    #
+    # In order to prevent wrongly auto committing many messages at once across
+    # possibly many partitions, callers must explicitly indicate which messages
+    # have been successfully processed as some consumed messages may not have
+    # been yielded yet. To do this, the caller should set
+    # `enable.auto.offset.store` to false and pass processed messages to
+    # {store_offset}. It is also possible, though more complex, to set
+    # 'enable.auto.commit' to false and then pass a manually assembled
+    # TopicPartitionList to {commit}.
+    #
+    # As with `each`, iteration will end when the consumer is closed.
+    #
+    # Exception behavior is more complicated than with `each`, in that if
+    # :yield_on_error is true, and an exception is raised during the
+    # poll, and messages have already been received, they will be yielded to
+    # the caller before the exception is allowed to propogate.
+    #
+    # If you are setting either auto.commit or auto.offset.store to false in
+    # the consumer configuration, then you should let yield_on_error keep its
+    # default value of false because you are gauranteed to see these messages
+    # again. However, if both auto.commit and auto.offset.store are set to
+    # true, you should set yield_on_error to true so you can process messages
+    # that you may or may not see again.
+    #
+    # @param max_items [Integer] Maximum size of the yielded array of messages
+    #
+    # @param timeout_ms [Integer] max time to wait for up to max_items
+    #
+    # @raise [RdkafkaError] When polling fails
+    #
+    # @yield [messages, pending_exception]
+    # @yieldparam messages [Array] An array of received Message
+    # @yieldparam pending_exception [Exception] normally nil, or an exception
+    # which will be propogated after processing of the partial batch is complete.
+    #
+    # @return [nil]
+    def each_batch(max_items: 100, timeout_ms: 250, yield_on_error: false, &block)
+      closed_consumer_check(__method__)
+      slice = []
+      end_time = monotonic_now + timeout_ms / 1000.0
+      loop do
+        break if @closing
+        max_wait = end_time - monotonic_now
+        max_wait_ms = if max_wait <= 0
+                        0  # should not block, but may retrieve a message
+                      else
+                        (max_wait * 1000).floor
+                      end
+        message = nil
+        begin
+          message = poll max_wait_ms
+        rescue Rdkafka::RdkafkaError => error
+          raise unless yield_on_error
+          raise if slice.empty?
+          yield slice.dup, error
+          raise
+        end
+        slice << message if message
+        if slice.size == max_items || monotonic_now >= end_time - 0.001
+          yield slice.dup, nil
+          slice.clear
+          end_time = monotonic_now + timeout_ms / 1000.0
+        end 
+      end 
+    end
+
+    private
+    def monotonic_now
+      # needed because Time.now can go backwards
+      Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    end
   end
 end

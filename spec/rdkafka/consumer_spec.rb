@@ -427,7 +427,7 @@ describe Rdkafka::Consumer do
         partition: 0
       ).wait
 
-      low, high = consumer.query_watermark_offsets("watermarks_test_topic", 0, 5000)
+      low, high = consumer.query_watermark_offsets("watermarks_test_topic", 0)
       expect(low).to eq 0
       expect(high).to be > 0
     end
@@ -435,7 +435,7 @@ describe Rdkafka::Consumer do
     it "should raise an error when querying offsets fails" do
       expect(Rdkafka::Bindings).to receive(:rd_kafka_query_watermark_offsets).and_return(20)
       expect {
-        consumer.query_watermark_offsets("consume_test_topic", 0, 5000)
+        consumer.query_watermark_offsets("consume_test_topic", 0)
       }.to raise_error Rdkafka::RdkafkaError
     end
   end

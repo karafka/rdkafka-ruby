@@ -243,29 +243,41 @@ module Rdkafka
     #
     # @param topic [String] The topic to query
     # @param partition [Integer] The partition to query
-    # @param timeout_ms [Integer] The timeout for querying the broker
+    # @param timeout [Integer,5] Optional timeout in seconds for querying the broker. Defaults to 5
     #
     # @raise [RdkafkaError] When querying the broker fails.
     #
     # @return [Integer, Integer] The low and high watermark
-    def query_watermark_offsets(topic, partition, timeout_ms=200)
+    def query_watermark_offsets(topic, partition, timeout: 5)
       low = FFI::MemoryPointer.new(:int64, 1)
       high = FFI::MemoryPointer.new(:int64, 1)
 
-      response = Rdkafka::Bindings.rd_kafka_query_watermark_offsets(
-        @native_kafka,
-        topic,
-        partition,
-        low,
-        high,
-        timeout_ms
-      )
-      if response != 0
-        raise Rdkafka::RdkafkaError.new(response, "Error querying watermark offsets for partition #{partition} of #{topic}")
-      end
+      end_time = Time.now.to_f + timeout
+      begin
+        response = Rdkafka::Bindings.rd_kafka_query_watermark_offsets(
+          @native_kafka,
+          topic,
+          partition,
+          low,
+          high,
+          100 # timeout_ms
+        )
+        if response != 0
+          raise Rdkafka::RdkafkaError.new(response, "Error querying watermark offsets for partition #{partition} of #{topic}")
+        end
 
-      return low.read_int64, high.read_int64
+        return low.read_int64, high.read_int64
+      rescue => e
+        # Retry up to timeout
+        if Time.now.to_f < end_time
+          sleep 0.5 # Ruby sleep seems to allow librdkafka to work
+          retry
+        else
+          raise e
+        end
+      end
     end
+
 
     # Calculate the consumer lag per partition for the provided topic partition list.
     # You can get a suitable list by calling {committed} or {position} (TODO). It is also

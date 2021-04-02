@@ -509,6 +509,8 @@ module Rdkafka
     #
     # @param max_items [Integer] Maximum size of the yielded array of messages
     #
+    # @param bytes_threshold [Integer] Threshold number of total message bytes in the yielded array of messages
+    #
     # @param timeout_ms [Integer] max time to wait for up to max_items
     #
     # @raise [RdkafkaError] When polling fails
@@ -519,9 +521,10 @@ module Rdkafka
     # which will be propogated after processing of the partial batch is complete.
     #
     # @return [nil]
-    def each_batch(max_items: 100, timeout_ms: 250, yield_on_error: false, &block)
+    def each_batch(max_items: 100, bytes_threshold: Float::INFINITY, timeout_ms: 250, yield_on_error: false, &block)
       closed_consumer_check(__method__)
       slice = []
+      bytes = 0
       end_time = monotonic_now + timeout_ms / 1000.0
       loop do
         break if @closing
@@ -540,13 +543,17 @@ module Rdkafka
           yield slice.dup, error
           raise
         end
-        slice << message if message
-        if slice.size == max_items || monotonic_now >= end_time - 0.001
+        if message
+          slice << message
+          bytes += message.payload.bytesize
+        end
+        if slice.size == max_items || bytes >= bytes_threshold || monotonic_now >= end_time - 0.001
           yield slice.dup, nil
           slice.clear
+          bytes = 0
           end_time = monotonic_now + timeout_ms / 1000.0
-        end 
-      end 
+        end
+      end
     end
 
     private

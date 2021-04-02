@@ -680,6 +680,8 @@ describe Rdkafka::Consumer do
   end
 
   describe "#each_batch" do
+    let(:message_payload) { 'a' * 10 }
+
     before do
       @topic = SecureRandom.base64(10).tr('+=/', '')
     end
@@ -703,6 +705,12 @@ describe Rdkafka::Consumer do
         )
       end
       handles.each(&:wait)
+    end
+
+    def new_message
+      instance_double("Rdkafka::Consumer::Message").tap do |message|
+        allow(message).to receive(:payload).and_return(message_payload)
+      end
     end
 
     it "retrieves messages produced into a topic" do
@@ -735,7 +743,7 @@ describe Rdkafka::Consumer do
       expect(consumer)
         .to receive(:poll)
         .exactly(10).times
-        .and_return(double("Rdkafka::Consumer::Message"))
+        .and_return(new_message)
       consumer.each_batch(max_items: 10) do |batch|
         all_yields << batch
         break if all_yields.flatten.size >= 10
@@ -757,7 +765,7 @@ describe Rdkafka::Consumer do
           sleep 0.1
           nil
         else
-          double("Rdkafka::Consumer::Message")
+          new_message
         end
       end
       all_yields = []
@@ -777,13 +785,12 @@ describe Rdkafka::Consumer do
     end
 
     it "should yield batchs of max_items in size if messages are already fetched" do
-
       yielded_batches = []
       expect(consumer)
         .to receive(:poll)
         .with(anything)
         .exactly(20).times
-        .and_return(double("Rdkafka::Consumer::Message"))
+        .and_return(new_message)
 
       consumer.each_batch(max_items: 10, timeout_ms: 500) do |batch|
         yielded_batches << batch
@@ -792,6 +799,23 @@ describe Rdkafka::Consumer do
       end
       expect(yielded_batches.size).to eq 2
       expect(yielded_batches.map(&:size)).to eq 2.times.map { 10 }
+    end
+
+    it "should yield batchs as soon as bytes_threshold is hit" do
+      yielded_batches = []
+      expect(consumer)
+        .to receive(:poll)
+        .with(anything)
+        .exactly(20).times
+        .and_return(new_message)
+
+      consumer.each_batch(bytes_threshold: message_payload.size * 4, timeout_ms: 500) do |batch|
+        yielded_batches << batch
+        break if yielded_batches.flatten.size >= 20
+        break if yielded_batches.size >= 20 # so failure doesn't hang
+      end
+      expect(yielded_batches.size).to eq 5
+      expect(yielded_batches.map(&:size)).to eq 5.times.map { 4 }
     end
 
     context "error raised from poll and yield_on_error is true" do
@@ -815,7 +839,7 @@ describe Rdkafka::Consumer do
                 raise Rdkafka::RdkafkaError.new(27,
                     "partitions ... too ... heavy ... must ... rebalance")
               else
-                double("Rdkafka::Consumer::Message")
+                new_message
               end
           end
         expect {
@@ -855,7 +879,7 @@ describe Rdkafka::Consumer do
                 raise Rdkafka::RdkafkaError.new(27,
                     "partitions ... too ... heavy ... must ... rebalance")
               else
-                double("Rdkafka::Consumer::Message")
+                new_message
               end
           end
         expect {

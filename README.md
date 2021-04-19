@@ -21,6 +21,12 @@ The most important pieces of a Kafka client are implemented. We're
 working towards feature completeness, you can track that here:
 https://github.com/appsignal/rdkafka-ruby/milestone/1
 
+# TODO
+
+- Setup SSL for kafka cluster running on docker using a script to create certs during build.
+- Consume and Produce messages using secure advertised listener. 
+- Enable SASL_SSL authentication.
+
 ## Installation
 
 This gem downloads and compiles librdkafka when it is installed. If you
@@ -76,6 +82,58 @@ released until it `#close` is explicitly called, so be sure to call
 `Config#producer` only as necessary.
 
 ## Development
+
+### SASL_SSL
+
+#### Requirements
+
+- Java Runtime or Development kit(to create java keystores for kafka)
+- openssl (to generate ssl certs)
+
+### Usage
+
+Docker compose file: scripts/docker-compose-sasl.yml can be used to run kafka 
+and zookeeper on SASL_SSL listeners.
+
+This docker-compose file includes a service for kerberos (KDC server) as well.
+To be able to make things work with kerberos, we need to have kerberos principals
+and keytabs created before we start zookeeper or kafka. This is being managed as
+part of script `scripts/start.sh`. This script includes below steps:
+
+- Creates SSL certificates and Java Keystores needed by kafka.
+- Generates Kerberos principals and keytabs
+- Starts kafka and zookeeper. 
+
+#### Starting kafka cluster
+
+- Before running docker-compose you need to run below commands to build kerberos
+    - `cd scripts/kdc-admin`
+    - `docker build -t confluentinc/cp-kerberos:latest .`
+- Execute below commands to start kafka cluster now:
+    - `cd scripts`
+    - `./start.sh`
+
+### Testing SASL_SSL
+
+Rakefile in this project relies on Environment variables for running tasks
+called 'produce_messages' and 'consume_messages". Export below environment
+variables before running these tests:
+
+- `export BOOTSTRAP_SERVERS, SASL_SSL, PRODUCER_KEYTAB, PRODUCER_PRINCIPAL,
+    SSL_CA_LOCATION, CONSUMER_KEYTAB, CONSUMER_PRINCIPAL`
+
+- Examples:
+    - `export BOOTSTRAP_SERVERS=kafka.confluent.io:9094`
+      `Note:` exporting BOOTSTRAP_SERVERS will be required to test PLAINTEXT as well
+    - `export SASL_SSL=True`
+    - `export PRODUCER_KEYTAB=scripts/secrets/producer.keytab`
+    - `export PRODUCER_PRINCIPAL=producer/producer.confluent.io@TEST.CONFLUENT.IO`
+    - `export CONSUMER_KEYTAB=scripts/secrets/consumer.keytab`
+    - `export CONSUMER_PRINCIPAL=consumer/consumer.confluent.io@TEST.CONFLUENT.IO`
+    - `export SSL_CA_LOCATION=scripts/secrets/ca.crt`
+
+
+### Old
 
 A Docker Compose file is included to run Kafka and Zookeeper. To run
 that:

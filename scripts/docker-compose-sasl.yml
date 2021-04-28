@@ -1,0 +1,83 @@
+---
+version: '2'
+
+services:
+  kerberos:
+    image: confluentinc/cp-kerberos:latest
+    container_name: kerberos
+    hostname: 'kerberos.confluent.io'
+    networks:
+      - confluent.io
+    ports:
+      - "88:88/udp"
+    environment:
+      BOOTSTRAP: 0
+    volumes:
+      - ./secrets:/tmp/keytab
+      - /dev/urandom:/dev/random
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    hostname: 'zookeeper.confluent.io'
+    networks:
+      - confluent.io
+    restart: always
+    depends_on:
+      - kerberos
+    environment:
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_AUTH_PROVIDER_SASL: org.apache.zookeeper.server.auth.SASLAuthenticationProvider
+      KAFKA_OPTS: -Djava.security.auth.login.config=/etc/kafka/secrets/zookeeper-jaas.conf
+        -Dsun.security.krb5.debug=true
+    volumes:
+      - ./secrets:/etc/kafka/secrets:rw
+      - ./secrets/krb5.conf:/etc/krb5.conf
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    hostname: 'kafka.confluent.io'
+    container_name: kafka
+    networks:
+      - confluent.io
+    ports:
+      - "9094:9094"
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+      - kerberos
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper.confluent.io:2181
+      KAFKA_ADVERTISED_LISTENERS: SASL_SSL://kafka.confluent.io:9094,PLAINTEXT://kafka.confluent.io:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SASL_SSL:SASL_SSL,PLAINTEXT:PLAINTEXT
+      KAFKA_SSL_KEYSTORE_FILENAME: kafka.confluent.io.keystore.jks
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: kafka.confluent.io_keystore_creds
+      KAFKA_SSL_KEY_CREDENTIALS: kafka.confluent.io_sslkey_creds
+      KAFKA_SSL_TRUSTSTORE_FILENAME: kafka.confluent.io.truststore.jks
+      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: kafka.confluent.io_truststore_creds
+      KAFKA_INTER_BROKER_LISTENER_NAME: SASL_PLAINTEXT
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: GSSAPI
+      KAFKA_SASL_ENABLED_MECHANISMS: GSSAPI
+      KAFKA_SASL_KERBEROS_SERVICE_NAME: kafka
+      KAFKA_LOG4J_ROOT_LOGLEVEL: DEBUG
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_OPTS: -Djava.security.auth.login.config=/etc/kafka/secrets/kafka-jaas.conf
+        -Dsun.security.krb5.debug=true
+    volumes:
+      - ./secrets:/etc/kafka/secrets:rw
+      - ./secrets/krb5.conf:/etc/krb5.conf
+
+networks:
+  confluent.io:
+    name: confluent.io
+
+
+# References
+# Confluent Kafka Docker compose: https://github.com/confluentinc/kafka-images/blob/master/examples/kafka-cluster-sasl/docker-compose.yml
+# References for all supported env vars by these docker images(zookeeper): https://github.com/confluentinc/kafka-images/blob/master/zookeeper/include/etc/confluent/docker/zookeeper.properties.template
+# Troubleshooting client -> kafka communication issues: https://www.confluent.io/blog/kafka-client-cannot-connect-to-broker-on-aws-on-docker-etc/

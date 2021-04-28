@@ -6,3 +6,7 @@ ext/librdkafka.*
 .yardoc
 doc
 coverage
+scripts/secrets/*
+!scripts/secrets/krb5.conf
+!scripts/secrets/zookeeper-jaas.conf
+!scripts/secrets/kafka-jaas.conf

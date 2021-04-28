@@ -3,9 +3,26 @@
 require 'bundler/gem_tasks'
 require "./lib/rdkafka"
 
+bootstrap_servers = ENV["BOOTSTRAP_SERVERS"]
+
 desc 'Generate some message traffic'
 task :produce_messages do
-  config = {:"bootstrap.servers" => "localhost:9092"}
+  protocol = "PLAINTEXT"
+  if ENV["SASL_SSL"]
+    config = {
+      :"bootstrap.servers" => bootstrap_servers,
+      :"security.protocol" => "sasl_ssl",
+      :"sasl.kerberos.keytab" => ENV["PRODUCER_KEYTAB"],
+      :"sasl.kerberos.principal" => ENV["PRODUCER_PRINCIPAL"],
+      :"ssl.ca.location" => ENV["SSL_CA_LOCATION"],
+      :"enable.ssl.certificate.verification" => false
+    }
+    protocol = "SASL_SSL"
+  else
+    config = {
+      :"bootstrap.servers" => bootstrap_servers,
+    }
+  end
   if ENV["DEBUG"]
     config[:debug] = "broker,topic,msg"
   end
@@ -13,7 +30,7 @@ task :produce_messages do
 
   delivery_handles = []
   100.times do |i|
-    puts "Producing message #{i}"
+    puts "Producing message #{i} using #{protocol}"
     delivery_handles << producer.produce(
         topic:   "rake_test_topic",
         payload: "Payload #{i} from Rake",
@@ -27,13 +44,32 @@ end
 
 desc 'Consume some messages'
 task :consume_messages do
-  config = {
-    :"bootstrap.servers" => "localhost:9092",
-    :"group.id" => "rake_test",
-    :"enable.partition.eof" => false,
-    :"auto.offset.reset" => "earliest",
-    :"statistics.interval.ms" => 10_000
-  }
+  protocol = "PLAINTEXT"
+  if ENV["SASL_SSL"]  
+    config = {
+      :"bootstrap.servers" => bootstrap_servers,
+      :"security.protocol" => "sasl_ssl",
+      :"sasl.kerberos.keytab" => ENV["CONSUMER_KEYTAB"],
+      :"sasl.kerberos.principal" => ENV["CONSUMER_PRINCIPAL"],
+      :"ssl.ca.location" => ENV["SSL_CA_LOCATION"],
+      :"sasl.kerberos.min.time.before.relogin" => 50000,
+      :"enable.ssl.certificate.verification" => false,
+      :"group.id" => "rake_test",
+      :"enable.partition.eof" => false,
+      :"auto.offset.reset" => "earliest",
+      :"statistics.interval.ms" => 10_000
+    }
+    protocol = "SASL_SSL"
+  else
+    config = {
+      :"bootstrap.servers" => bootstrap_servers,
+      :"group.id" => "rake_test",
+      :"enable.partition.eof" => false,
+      :"auto.offset.reset" => "earliest",
+      :"statistics.interval.ms" => 10_000
+    }
+  end
+
   if ENV["DEBUG"]
     config[:debug] = "cgrp,topic,fetch"
   end
@@ -44,16 +80,17 @@ task :consume_messages do
   consumer = Rdkafka::Config.new(config).consumer
   consumer.subscribe("rake_test_topic")
   consumer.each do |message|
-    puts "Message received: #{message}"
+    puts "Message received: #{message} using #{protocol}"
   end
 end
+
 
 desc 'Hammer down'
 task :load_test do
   puts "Starting load test"
 
   config = Rdkafka::Config.new(
-    :"bootstrap.servers" => "localhost:9092",
+    :"bootstrap.servers" => bootstrap_servers,
     :"group.id" => "load-test",
     :"enable.partition.eof" => false
   )

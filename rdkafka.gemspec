@@ -17,12 +17,11 @@ Gem::Specification.new do |gem|
   gem.required_ruby_version = '>= 2.4'
   gem.extensions = %w(ext/Rakefile)
 
-  gem.add_dependency 'ffi', '~> 1.9'
-  gem.add_dependency 'mini_portile2', '~> 2.1'
-  gem.add_dependency 'rake', '>= 12.3'
+  gem.add_dependency 'ffi', '~> 1.15'
+  gem.add_dependency 'mini_portile2', '~> 2.5'
+  gem.add_dependency 'rake', '> 12'
 
   gem.add_development_dependency 'pry', '~> 0.10'
   gem.add_development_dependency 'rspec', '~> 3.5'
-  gem.add_development_dependency 'rake', '~> 12.0'
-  gem.add_development_dependency 'simplecov', '~> 0.15'
+  gem.add_development_dependency 'simplecov', '~> 0.2'
 end

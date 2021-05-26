@@ -3,7 +3,7 @@
 * Add each_batch to consumer interface (mgrosso)
 * Ruby 3.0 support (thijsc)
 * Allow passing in topic configuration on create_topic (dezka)
-* use queue as log callback to avoid unsafe calls from trap context (breunigs)
+* Use queue as log callback to avoid unsafe calls from trap context (breunigs)
 * Reduce memory allocations in producer (jturkel)
 * Allow any Callable object for callbacks (gremerritt)
 

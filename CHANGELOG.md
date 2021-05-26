@@ -1,3 +1,12 @@
+# 0.9.0
+* Add byte threshold to each_batch (gremerritt)
+* Add each_batch to consumer interface (mgrosso)
+* Ruby 3.0 support (thijsc)
+* Allow passing in topic configuration on create_topic (dezka)
+* Use queue as log callback to avoid unsafe calls from trap context (breunigs)
+* Reduce memory allocations in producer (jturkel)
+* Allow any Callable object for callbacks (gremerritt)
+
 # 0.8.1
 * Fix topic_flag behaviour and add tests for Metadata (geoff2k)
 * Add topic admin interface (geoff2k)

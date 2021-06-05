@@ -1,3 +1,5 @@
+require "securerandom"
+
 module Rdkafka
   # A producer for Kafka messages. To create a producer set up a {Config} and call {Config#producer producer} on that.
   class Producer
@@ -9,11 +11,12 @@ module Rdkafka
 
     # @private
     def initialize(native_kafka)
+      @id = SecureRandom.uuid
       @closing = false
       @native_kafka = native_kafka
 
       # Makes sure, that the producer gets closed before it gets GCed by Ruby
-      ObjectSpace.define_finalizer(self, proc { close })
+      ObjectSpace.define_finalizer(@id, proc { close })
 
       # Start thread to poll client for delivery callbacks
       @polling_thread = Thread.new do
@@ -41,6 +44,8 @@ module Rdkafka
 
     # Close this producer and wait for the internal poll queue to empty.
     def close
+      ObjectSpace.undefine_finalizer(@id)
+
       return unless @native_kafka
 
       # Indicate to polling thread that we're closing

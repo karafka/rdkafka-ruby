@@ -1,3 +1,11 @@
+# 0.9.0
+* Fixes for Ruby 3.0
+* Allow any callable object for callbacks (gremerritt)
+* Reduce memory allocations in Rdkafka::Producer#produce (jturkel)
+* Use queue as log callback to avoid unsafe calls from trap context (breunigs)
+* Allow passing in topic configuration on create_topic (dezka)
+* Add each_batch method to consumer (mgrosso)
+
 # 0.8.1
 * Fix topic_flag behaviour and add tests for Metadata (geoff2k)
 * Add topic admin interface (geoff2k)

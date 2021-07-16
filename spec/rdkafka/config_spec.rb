@@ -68,8 +68,8 @@ describe Rdkafka::Config do
     context "with a proc/lambda" do
       it "should set the callback" do
         expect {
-          Rdkafka::Config.error_callback = lambda do |stats|
-            puts stats
+          Rdkafka::Config.error_callback = lambda do |error|
+            puts error
           end
         }.not_to raise_error
         expect(Rdkafka::Config.error_callback).to respond_to :call

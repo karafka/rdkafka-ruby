@@ -69,11 +69,21 @@ module Rdkafka
       @@statistics_callback
     end
 
+    # Set a callback that will be called every time the underlying client emits an error.
+    # If this callback is not set, global errors such as brokers becoming unavailable will only be sent to the logger, as defined by librdkafka.
+    # The callback is called with an instance of RdKafka::Error.
+    #
+    # @param callback [Proc, #call] The callback
+    #
+    # @return [nil]
     def self.error_callback=(callback)
       raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call)
       @@error_callback = callback
     end
 
+    # Returns the current error callback, by default this is nil.
+    #
+    # @return [Proc, nil]
     def self.error_callback
       @@error_callback
     end

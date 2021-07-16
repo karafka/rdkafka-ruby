@@ -118,8 +118,9 @@ describe Rdkafka::Bindings do
       end
 
       it "should call the error callback with an Rdkafka::Error" do
-        Rdkafka::Bindings::ErrorCallback.call(nil, 2, "something", nil)
-        expect($received_error).to eq(nil)
+        Rdkafka::Bindings::ErrorCallback.call(nil, 8, "Broker not available", nil)
+        expect($received_error.code).to eq(:broker_not_available)
+        expect($received_error.broker_message).to eq("Broker not available")
       end
     end
   end

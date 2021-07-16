@@ -150,7 +150,7 @@ module Rdkafka
 
     ErrorCallback = FFI::Function.new(
       :void, [:pointer, :int, :string, :pointer]
-    ) do |_client_prr, err_code, reason, _opaque|
+    ) do |_client_ptr, err_code, reason, _opaque|
       if Rdkafka::Config.error_callback
         error = Rdkafka::RdkafkaError.new(err_code, broker_message: reason)
         Rdkafka::Config.error_callback.call(error)

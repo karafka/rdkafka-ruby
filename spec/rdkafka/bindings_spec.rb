@@ -100,4 +100,27 @@ describe Rdkafka::Bindings do
       end
     end
   end
+
+  describe "error callback" do
+    context "without an error callback" do
+      it "should do nothing" do
+        expect {
+          Rdkafka::Bindings::ErrorCallback.call(nil, 1, "error", nil)
+        }.not_to raise_error
+      end
+    end
+
+    context "with an error callback" do
+      before do
+        Rdkafka::Config.error_callback = lambda do |error|
+          $received_error = error
+        end
+      end
+
+      it "should call the error callback with an Rdkafka::Error" do
+        Rdkafka::Bindings::ErrorCallback.call(nil, 2, "something", nil)
+        expect($received_error).to eq(nil)
+      end
+    end
+  end
 end

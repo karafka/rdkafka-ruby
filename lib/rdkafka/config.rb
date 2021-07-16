@@ -10,6 +10,8 @@ module Rdkafka
     # @private
     @@statistics_callback = nil
     # @private
+    @@error_callback = nil
+    # @private
     @@opaques = {}
     # @private
     @@log_queue = Queue.new
@@ -27,6 +29,7 @@ module Rdkafka
     def self.logger
       @@logger
     end
+
 
     # Returns a queue whose contents will be passed to the configured logger. Each entry
     # should follow the format [Logger::Severity, String]. The benefit over calling the
@@ -64,6 +67,15 @@ module Rdkafka
     # @return [Proc, nil]
     def self.statistics_callback
       @@statistics_callback
+    end
+
+    def self.error_callback=(callback)
+      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call)
+      @@error_callback = callback
+    end
+
+    def self.error_callback
+      @@error_callback
     end
 
     # @private
@@ -221,6 +233,9 @@ module Rdkafka
 
         # Set stats callback
         Rdkafka::Bindings.rd_kafka_conf_set_stats_cb(config, Rdkafka::Bindings::StatsCallback)
+
+        # Set error callback
+        Rdkafka::Bindings.rd_kafka_conf_set_error_cb(config, Rdkafka::Bindings::ErrorCallback)
       end
     end
 

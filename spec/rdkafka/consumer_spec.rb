@@ -724,6 +724,8 @@ describe Rdkafka::Consumer do
       #
       # This is, in effect, an integration test and the subsequent specs are
       # unit tests.
+      create_topic_handle = rdkafka_config.admin.create_topic(topic_name, 1, 1)
+      create_topic_handle.wait(max_wait_timeout: 15.0)
       consumer.subscribe(topic_name)
       produce_n 42
       all_yields = []
@@ -777,6 +779,8 @@ describe Rdkafka::Consumer do
     end
 
     it "should yield [] if nothing is received before the timeout" do
+      create_topic_handle = rdkafka_config.admin.create_topic(topic_name, 1, 1)
+      create_topic_handle.wait(max_wait_timeout: 15.0)
       consumer.subscribe(topic_name)
       consumer.each_batch do |batch|
         expect(batch).to eq([])

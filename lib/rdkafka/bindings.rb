@@ -108,6 +108,8 @@ module Rdkafka
     attach_function :rd_kafka_conf_set_opaque, [:pointer, :pointer], :void
     callback :stats_cb, [:pointer, :string, :int, :pointer], :int
     attach_function :rd_kafka_conf_set_stats_cb, [:pointer, :stats_cb], :void
+    callback :error_cb, [:pointer, :int, :string, :pointer], :void
+    attach_function :rd_kafka_conf_set_error_cb, [:pointer, :error_cb], :void
 
     # Log queue
     attach_function :rd_kafka_set_log_queue, [:pointer, :pointer], :void
@@ -144,6 +146,15 @@ module Rdkafka
 
       # Return 0 so librdkafka frees the json string
       0
+    end
+
+    ErrorCallback = FFI::Function.new(
+      :void, [:pointer, :int, :string, :pointer]
+    ) do |_client_prr, err_code, reason, _opaque|
+      if Rdkafka::Config.error_callback
+        error = Rdkafka::RdkafkaError.new(err_code, broker_message: reason)
+        Rdkafka::Config.error_callback.call(error)
+      end
     end
 
     # Handle

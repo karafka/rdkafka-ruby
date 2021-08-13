@@ -498,11 +498,11 @@ module Rdkafka
     # Exception behavior is more complicated than with `each`, in that if
     # :yield_on_error is true, and an exception is raised during the
     # poll, and messages have already been received, they will be yielded to
-    # the caller before the exception is allowed to propogate.
+    # the caller before the exception is allowed to propagate.
     #
     # If you are setting either auto.commit or auto.offset.store to false in
     # the consumer configuration, then you should let yield_on_error keep its
-    # default value of false because you are gauranteed to see these messages
+    # default value of false because you are guaranteed to see these messages
     # again. However, if both auto.commit and auto.offset.store are set to
     # true, you should set yield_on_error to true so you can process messages
     # that you may or may not see again.
@@ -518,7 +518,7 @@ module Rdkafka
     # @yield [messages, pending_exception]
     # @yieldparam messages [Array] An array of received Message
     # @yieldparam pending_exception [Exception] normally nil, or an exception
-    # which will be propogated after processing of the partial batch is complete.
+    # which will be propagated after processing of the partial batch is complete.
     #
     # @return [nil]
     def each_batch(max_items: 100, bytes_threshold: Float::INFINITY, timeout_ms: 250, yield_on_error: false, &block)

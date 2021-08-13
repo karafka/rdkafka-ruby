@@ -1,6 +1,6 @@
 # Ext
 
-This gem dependes on the `librdkafka` C library. It is downloaded when
+This gem depends on the `librdkafka` C library. It is downloaded when
 this gem is installed.
 
 To update the `librdkafka` version follow the following steps:

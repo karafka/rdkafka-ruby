@@ -16,7 +16,8 @@ def rdkafka_config(config_overrides={})
     :"bootstrap.servers" => "localhost:9092",
     :"group.id" => "ruby-test-#{Random.new.rand(0..1_000_000)}",
     :"auto.offset.reset" => "earliest",
-    :"enable.partition.eof" => false
+    :"enable.partition.eof" => false,
+    :"allow.auto.create.topics" => true,
   }
   if ENV["DEBUG_PRODUCER"]
     config[:debug] = "broker,topic,msg"

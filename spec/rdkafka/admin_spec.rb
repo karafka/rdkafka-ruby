@@ -52,7 +52,7 @@ describe Rdkafka::Admin do
       end
 
       describe "with an invalid partition count" do
-        let(:topic_partition_count) { -1 }
+        let(:topic_partition_count) { -200 }
 
         it "raises an exception" do
           expect {

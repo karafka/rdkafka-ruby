@@ -1,25 +1,8 @@
 require File.expand_path('../../lib/rdkafka/version', __FILE__)
 require "mini_portile2"
 require "fileutils"
-require "open-uri"
 
 task :default => :clean do
-  # MiniPortile#download_file_http is a monkey patch that removes the download
-  # progress indicator. This indicator relies on the 'Content Length' response
-  # headers, which is not set by GitHub
-  class MiniPortile
-    def download_file_http(url, full_path, _count)
-      filename = File.basename(full_path)
-      with_tempfile(filename, full_path) do |temp_file|
-        params = { 'Accept-Encoding' => 'identity' }
-        OpenURI.open_uri(url, 'rb', params) do |io|
-          temp_file.write(io.read)
-        end
-        output
-      end
-    end
-  end
-
   # Download and compile librdkafka
   recipe = MiniPortile.new("librdkafka", Rdkafka::LIBRDKAFKA_VERSION)
 

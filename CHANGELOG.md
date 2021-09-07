@@ -1,3 +1,7 @@
+# 0.10.0
+* Upgrade librdkafka to 1.5.0
+* Add error callback config
+
 # 0.9.0
 * Fixes for Ruby 3.0
 * Allow any callable object for callbacks (gremerritt)

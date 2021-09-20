@@ -33,68 +33,6 @@ describe Rdkafka::Config do
     end
   end
 
-  context "statistics callback" do
-    context "with a proc/lambda" do
-      it "should set the callback" do
-        expect {
-          Rdkafka::Config.statistics_callback = lambda do |stats|
-            puts stats
-          end
-        }.not_to raise_error
-        expect(Rdkafka::Config.statistics_callback).to respond_to :call
-      end
-    end
-
-    context "with a callable object" do
-      it "should set the callback" do
-        callback = Class.new do
-          def call(stats); end
-        end
-        expect {
-          Rdkafka::Config.statistics_callback = callback.new
-        }.not_to raise_error
-        expect(Rdkafka::Config.statistics_callback).to respond_to :call
-      end
-    end
-
-    it "should not accept a callback that's not callable" do
-      expect {
-        Rdkafka::Config.statistics_callback = 'a string'
-      }.to raise_error(TypeError)
-    end
-  end
-
-  context "error callback" do
-    context "with a proc/lambda" do
-      it "should set the callback" do
-        expect {
-          Rdkafka::Config.error_callback = lambda do |error|
-            puts error
-          end
-        }.not_to raise_error
-        expect(Rdkafka::Config.error_callback).to respond_to :call
-      end
-    end
-
-    context "with a callable object" do
-      it "should set the callback" do
-        callback = Class.new do
-          def call(stats); end
-        end
-        expect {
-          Rdkafka::Config.error_callback = callback.new
-        }.not_to raise_error
-        expect(Rdkafka::Config.error_callback).to respond_to :call
-      end
-    end
-
-    it "should not accept a callback that's not callable" do
-      expect {
-        Rdkafka::Config.error_callback = 'a string'
-      }.to raise_error(TypeError)
-    end
-  end
-
   context "configuration" do
     it "should store configuration" do
       config = Rdkafka::Config.new
@@ -108,7 +46,7 @@ describe Rdkafka::Config do
     end
 
     it "should create a consumer with valid config" do
-      consumer = rdkafka_config.consumer
+      consumer = rdkafka_consumer_config.consumer
       expect(consumer).to be_a Rdkafka::Consumer
       consumer.close
     end
@@ -136,7 +74,7 @@ describe Rdkafka::Config do
     end
 
     it "should create a producer with valid config" do
-      producer = rdkafka_config.producer
+      producer = rdkafka_consumer_config.producer
       expect(producer).to be_a Rdkafka::Producer
       producer.close
     end
@@ -177,6 +115,82 @@ describe Rdkafka::Config do
       expect {
         config.producer
       }.to raise_error(Rdkafka::Config::ClientCreationError, /ssl.ca.location failed(.*)/)
+    end
+
+    context "statistics callback" do
+      context "with a proc/lambda" do
+        it "should set the callback" do
+          config = Rdkafka::Config.new
+
+          expect {
+            config.statistics_callback = lambda do |stats|
+              puts stats
+            end
+          }.not_to raise_error
+
+          expect(config.statistics_callback).to respond_to :call
+        end
+      end
+
+      context "with a callable object" do
+        it "should set the callback" do
+          config = Rdkafka::Config.new
+
+          callback = Class.new do
+            def call(stats); end
+          end
+          expect {
+            config.statistics_callback = callback.new
+          }.not_to raise_error
+
+          expect(config.statistics_callback).to respond_to :call
+        end
+      end
+
+      it "should not accept a callback that's not callable" do
+        config = Rdkafka::Config.new
+
+        expect {
+          config.statistics_callback = 'a string'
+        }.to raise_error(TypeError)
+      end
+    end
+
+    context "error callback" do
+      context "with a proc/lambda" do
+        it "should set the callback" do
+          config = Rdkafka::Config.new
+
+          expect {
+            config.error_callback = lambda do |error|
+              puts error
+            end
+          }.not_to raise_error
+          expect(config.error_callback).to respond_to :call
+        end
+      end
+
+      context "with a callable object" do
+        it "should set the callback" do
+          config = Rdkafka::Config.new
+
+          callback = Class.new do
+            def call(stats); end
+          end
+          expect {
+            config.error_callback = callback.new
+          }.not_to raise_error
+          expect(config.error_callback).to respond_to :call
+        end
+      end
+
+      it "should not accept a callback that's not callable" do
+        config = Rdkafka::Config.new
+
+        expect {
+          config.error_callback = 'a string'
+        }.to raise_error(TypeError)
+      end
     end
   end
 end

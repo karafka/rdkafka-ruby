@@ -14,15 +14,17 @@ Gem::Specification.new do |gem|
   gem.name = 'rdkafka'
   gem.require_paths = ['lib']
   gem.version = Rdkafka::VERSION
-  gem.required_ruby_version = '>= 2.4'
+  gem.required_ruby_version = '>= 2.6'
   gem.extensions = %w(ext/Rakefile)
 
-  gem.add_dependency 'ffi', '~> 1.9'
-  gem.add_dependency 'mini_portile2', '~> 2.1'
-  gem.add_dependency 'rake', '>= 12.3'
+  gem.add_dependency 'ffi', '~> 1.15'
+  gem.add_dependency 'mini_portile2', '~> 2.6'
+  gem.add_dependency 'rake', '> 12'
 
-  gem.add_development_dependency 'pry', '~> 0.10'
+  gem.add_development_dependency 'pry'
   gem.add_development_dependency 'rspec', '~> 3.5'
-  gem.add_development_dependency 'rake', '~> 12.0'
-  gem.add_development_dependency 'simplecov', '~> 0.15'
+  gem.add_development_dependency 'rake'
+  gem.add_development_dependency 'simplecov'
+  gem.add_development_dependency 'guard'
+  gem.add_development_dependency 'guard-rspec'
 end

@@ -1,3 +1,8 @@
+# 0.11.0
+* Upgrade librdkafka to 1.8.2
+* Bump supported minimum Ruby version to 2.6
+* Better homebrew path detection
+
 # 0.10.0
 * Upgrade librdkafka to 1.5.0
 * Add error callback config
@@ -45,7 +50,7 @@
 * Use default Homebrew openssl location if present
 * Consumer lag handles empty topics
 * End iteration in consumer when it is closed
-* Add suport for storing message offsets
+* Add support for storing message offsets
 * Add missing runtime dependency to rake
 
 # 0.4.1

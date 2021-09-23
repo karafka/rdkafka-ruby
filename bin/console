@@ -1,0 +1,11 @@
+#!/usr/bin/env ruby
+
+# frozen_string_literal: true
+
+ENV["IRBRC"] = File.join(File.dirname(__FILE__), ".irbrc")
+
+require "bundler/setup"
+require "rdkafka"
+
+require "irb"
+IRB.start(__FILE__)

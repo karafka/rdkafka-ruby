@@ -106,6 +106,9 @@ def wait_for_unassignment(consumer)
 end
 
 RSpec.configure do |config|
+  config.filter_run focus: true
+  config.run_all_when_everything_filtered = true
+
   config.before(:suite) do
     admin = rdkafka_config.admin
     {

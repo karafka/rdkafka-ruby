@@ -8,7 +8,6 @@ end
 require "pry"
 require "rspec"
 require "rdkafka"
-require "zlib"
 require "timeout"
 
 def rdkafka_base_config

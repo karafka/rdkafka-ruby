@@ -1,4 +1,4 @@
-require "securerandom"
+require "objspace"
 
 module Rdkafka
   # A producer for Kafka messages. To create a producer set up a {Config} and call {Config#producer producer} on that.
@@ -9,13 +9,30 @@ module Rdkafka
     # @return [Proc, nil]
     attr_reader :delivery_callback
 
+    class ClientFinalizer
+      def initialize(client, polling_thread, reference_destroyer)
+        @client = client
+        @polling_thread = polling_thread
+        @reference_destroyer = reference_destroyer
+      end
+
+      def call(object_id)
+        return unless @client
+
+        # Indicate to polling thread that we're closing
+        @polling_thread[:closing] = true
+        # Wait for the polling thread to finish up
+        @polling_thread.join
+
+        Rdkafka::Bindings.rd_kafka_destroy(@client)
+
+        @reference_destroyer.call
+      end
+    end
+
     # @private
     def initialize(native_kafka)
-      @id = SecureRandom.uuid
       @native_kafka = native_kafka
-
-      # Makes sure, that the producer gets closed before it gets GCed by Ruby
-      ObjectSpace.define_finalizer(@id, proc { close })
 
       # Start thread to poll client for delivery callbacks
       @polling_thread = Thread.new do
@@ -29,6 +46,9 @@ module Rdkafka
       end
       @polling_thread.abort_on_exception = true
       @polling_thread[:closing] = false
+
+      # Makes sure, that the producer gets closed before it gets GCed by Ruby
+      ObjectSpace.define_finalizer(self, ClientFinalizer.new(@native_kafka, @polling_thread, proc { @native_kafka = nil }))
     end
 
     # Set a callback that will be called every time a message is successfully produced.
@@ -44,16 +64,9 @@ module Rdkafka
 
     # Close this producer and wait for the internal poll queue to empty.
     def close
-      ObjectSpace.undefine_finalizer(@id)
+      ObjectSpace.undefine_finalizer(self)
 
-      return unless @native_kafka
-
-      # Indicate to polling thread that we're closing
-      @polling_thread[:closing] = true
-      # Wait for the polling thread to finish up
-      @polling_thread.join
-      Rdkafka::Bindings.rd_kafka_destroy(@native_kafka)
-      @native_kafka = nil
+      ClientFinalizer.new(@native_kafka, @polling_thread, proc { @native_kafka = nil }).call(self.object_id)
     end
 
     # Partition count for a given topic.

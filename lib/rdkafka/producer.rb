@@ -9,27 +9,6 @@ module Rdkafka
     # @return [Proc, nil]
     attr_reader :delivery_callback
 
-    class ClientFinalizer
-      def initialize(client, polling_thread, reference_destroyer)
-        @client = client
-        @polling_thread = polling_thread
-        @reference_destroyer = reference_destroyer
-      end
-
-      def call(object_id)
-        return unless @client
-
-        # Indicate to polling thread that we're closing
-        @polling_thread[:closing] = true
-        # Wait for the polling thread to finish up
-        @polling_thread.join
-
-        Rdkafka::Bindings.rd_kafka_destroy(@client)
-
-        @reference_destroyer.call
-      end
-    end
-
     # @private
     def initialize(native_kafka)
       @native_kafka = native_kafka
@@ -190,5 +169,27 @@ module Rdkafka
     def closed_producer_check(method)
       raise Rdkafka::ClosedProducerError.new(method) if @native_kafka.nil?
     end
+
+    class ClientFinalizer
+      def initialize(client, polling_thread, reference_destroyer)
+        @client = client
+        @polling_thread = polling_thread
+        @reference_destroyer = reference_destroyer
+      end
+
+      def call(object_id)
+        return unless @client
+
+        # Indicate to polling thread that we're closing
+        @polling_thread[:closing] = true
+        # Wait for the polling thread to finish up
+        @polling_thread.join
+
+        Rdkafka::Bindings.rd_kafka_destroy(@client)
+
+        @reference_destroyer.call
+      end
+    end
+
   end
 end

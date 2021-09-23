@@ -12,7 +12,6 @@ module Rdkafka
     # @private
     def initialize(native_kafka)
       @id = SecureRandom.uuid
-      @closing = false
       @native_kafka = native_kafka
 
       # Makes sure, that the producer gets closed before it gets GCed by Ruby
@@ -23,12 +22,13 @@ module Rdkafka
         loop do
           Rdkafka::Bindings.rd_kafka_poll(@native_kafka, 250)
           # Exit thread if closing and the poll queue is empty
-          if @closing && Rdkafka::Bindings.rd_kafka_outq_len(@native_kafka) == 0
+          if Thread.current[:closing] && Rdkafka::Bindings.rd_kafka_outq_len(@native_kafka) == 0
             break
           end
         end
       end
       @polling_thread.abort_on_exception = true
+      @polling_thread[:closing] = false
     end
 
     # Set a callback that will be called every time a message is successfully produced.
@@ -49,7 +49,7 @@ module Rdkafka
       return unless @native_kafka
 
       # Indicate to polling thread that we're closing
-      @closing = true
+      @polling_thread[:closing] = true
       # Wait for the polling thread to finish up
       @polling_thread.join
       Rdkafka::Bindings.rd_kafka_destroy(@native_kafka)

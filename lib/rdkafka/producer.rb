@@ -11,23 +11,51 @@ module Rdkafka
 
     # @private
     def initialize(native_kafka)
-      @native_kafka = native_kafka
-
-      # Start thread to poll client for delivery callbacks
-      @polling_thread = Thread.new do
-        loop do
-          Rdkafka::Bindings.rd_kafka_poll(@native_kafka, 250)
-          # Exit thread if closing and the poll queue is empty
-          if Thread.current[:closing] && Rdkafka::Bindings.rd_kafka_outq_len(@native_kafka) == 0
-            break
-          end
-        end
-      end
-      @polling_thread.abort_on_exception = true
-      @polling_thread[:closing] = false
+      @client = ProducerClient.new(native_kafka)
 
       # Makes sure, that the producer gets closed before it gets GCed by Ruby
-      ObjectSpace.define_finalizer(self, ClientFinalizer.new(@native_kafka, @polling_thread, proc { @native_kafka = nil }))
+      ObjectSpace.define_finalizer(self, @client)
+    end
+
+    class ProducerClient
+      def initialize(native)
+        @native = native
+
+        # Start thread to poll client for delivery callbacks
+        @polling_thread = Thread.new do
+          loop do
+            Rdkafka::Bindings.rd_kafka_poll(native, 250)
+            # Exit thread if closing and the poll queue is empty
+            if Thread.current[:closing] && Rdkafka::Bindings.rd_kafka_outq_len(native) == 0
+              break
+            end
+          end
+        end
+        @polling_thread.abort_on_exception = true
+        @polling_thread[:closing] = false
+      end
+
+      def native
+        @native
+      end
+
+      def closed?
+        @native.nil?
+      end
+
+      def close(object_id=nil)
+        return unless @native
+
+        # Indicate to polling thread that we're closing
+        @polling_thread[:closing] = true
+        # Wait for the polling thread to finish up
+        @polling_thread.join
+
+        Rdkafka::Bindings.rd_kafka_destroy(@native)
+
+        @native = nil
+      end
+      alias call close
     end
 
     # Set a callback that will be called every time a message is successfully produced.
@@ -45,7 +73,7 @@ module Rdkafka
     def close
       ObjectSpace.undefine_finalizer(self)
 
-      ClientFinalizer.new(@native_kafka, @polling_thread, proc { @native_kafka = nil }).call(self.object_id)
+      @client.close
     end
 
     # Partition count for a given topic.
@@ -57,7 +85,7 @@ module Rdkafka
     #
     def partition_count(topic)
       closed_producer_check(__method__)
-      Rdkafka::Metadata.new(@native_kafka, topic).topics&.first[:partition_count]
+      Rdkafka::Metadata.new(@client.native, topic).topics&.first[:partition_count]
     end
 
     # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.
@@ -148,7 +176,7 @@ module Rdkafka
 
       # Produce the message
       response = Rdkafka::Bindings.rd_kafka_producev(
-        @native_kafka,
+        @client.native,
         *args
       )
 
@@ -167,29 +195,7 @@ module Rdkafka
     end
 
     def closed_producer_check(method)
-      raise Rdkafka::ClosedProducerError.new(method) if @native_kafka.nil?
+      raise Rdkafka::ClosedProducerError.new(method) if @client.closed?
     end
-
-    class ClientFinalizer
-      def initialize(client, polling_thread, reference_destroyer)
-        @client = client
-        @polling_thread = polling_thread
-        @reference_destroyer = reference_destroyer
-      end
-
-      def call(object_id)
-        return unless @client
-
-        # Indicate to polling thread that we're closing
-        @polling_thread[:closing] = true
-        # Wait for the polling thread to finish up
-        @polling_thread.join
-
-        Rdkafka::Bindings.rd_kafka_destroy(@client)
-
-        @reference_destroyer.call
-      end
-    end
-
   end
 end

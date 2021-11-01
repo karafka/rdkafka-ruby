@@ -246,14 +246,21 @@ module Rdkafka
     attach_function :rd_kafka_conf_set_dr_msg_cb, [:pointer, :delivery_cb], :void
 
     # Partitioner
-    attach_function :rd_kafka_msg_partitioner_consistent_random, [:pointer, :pointer, :size_t, :int32, :pointer, :pointer], :int32
+    PARTITIONERS = %w(random consistent consistent_random murmur2 murmur2_random fnv1a fnv1a_random).each_with_object({}) do |name, hsh|
+      method_name = "rd_kafka_msg_partitioner_#{name}".to_sym
+      attach_function method_name, [:pointer, :pointer, :size_t, :int32, :pointer, :pointer], :int32
+      hsh[name] = method_name
+    end
 
-    def self.partitioner(str, partition_count)
+    def self.partitioner(str, partition_count, partitioner_name = "consistent_random")
       # Return RD_KAFKA_PARTITION_UA(unassigned partition) when partition count is nil/zero.
       return -1 unless partition_count&.nonzero?
 
       str_ptr = FFI::MemoryPointer.from_string(str)
-      rd_kafka_msg_partitioner_consistent_random(nil, str_ptr, str.size, partition_count, nil, nil)
+      method_name = PARTITIONERS.fetch(partitioner_name) do
+        raise Rdkafka::Config::ConfigError.new("Unknown partitioner: #{partioner_name}")
+      end
+      public_send(method_name, nil, str_ptr, str.size, partition_count, nil, nil)
     end
 
     # Create Topics

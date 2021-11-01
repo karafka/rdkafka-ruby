@@ -76,6 +76,13 @@ describe Rdkafka::Bindings do
       result_2 = (Zlib.crc32(partition_key) % partition_count)
       expect(result_1).to eq(result_2)
     end
+
+    it "should return the partition calculated by the specified partitioner" do
+      result_1 = Rdkafka::Bindings.partitioner(partition_key, partition_count, "murmur2")
+      ptr = FFI::MemoryPointer.from_string(partition_key)
+      result_2 = Rdkafka::Bindings.rd_kafka_msg_partitioner_murmur2(nil, ptr, partition_key.size, partition_count, nil, nil)
+      expect(result_1).to eq(result_2)
+    end
   end
 
   describe "stats callback" do

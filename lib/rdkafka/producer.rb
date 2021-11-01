@@ -10,10 +10,11 @@ module Rdkafka
     attr_reader :delivery_callback
 
     # @private
-    def initialize(native_kafka)
+    def initialize(native_kafka, partitioner_name)
       @id = SecureRandom.uuid
       @closing = false
       @native_kafka = native_kafka
+      @partitioner_name = partitioner_name || "consistent_random"
 
       # Makes sure, that the producer gets closed before it gets GCed by Ruby
       ObjectSpace.define_finalizer(@id, proc { close })
@@ -106,7 +107,7 @@ module Rdkafka
       if partition_key
         partition_count = partition_count(topic)
         # If the topic is not present, set to -1
-        partition = Rdkafka::Bindings.partitioner(partition_key, partition_count) if partition_count
+        partition = Rdkafka::Bindings.partitioner(partition_key, partition_count, @partitioner_name) if partition_count
       end
 
       # If partition is nil, use -1 to let librdafka set the partition randomly or

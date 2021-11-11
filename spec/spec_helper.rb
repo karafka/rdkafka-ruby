@@ -9,6 +9,7 @@ require "pry"
 require "rspec"
 require "rdkafka"
 require "zlib"
+require "timeout"
 
 def rdkafka_base_config
   {
@@ -124,5 +125,13 @@ RSpec.configure do |config|
       end
     end
     admin.close
+  end
+
+  config.around(:each) do |example|
+    # Timeout specs after a minute. If they take longer
+    # they are probably stuck
+    Timeout::timeout(60) do
+      example.run
+    end
   end
 end

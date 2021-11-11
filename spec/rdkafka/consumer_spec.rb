@@ -458,13 +458,13 @@ describe Rdkafka::Consumer do
   end
 
   describe "#lag" do
-    let(:config) { rdkafka_consumer_config(:"enable.partition.eof" => true) }
+    let(:consumer) { rdkafka_consumer_config(:"enable.partition.eof" => true).consumer }
 
     it "should calculate the consumer lag" do
       # Make sure there's a message in every partition and
       # wait for the message to make sure everything is committed.
       (0..2).each do |i|
-        report = producer.produce(
+        producer.produce(
           topic:     "consume_test_topic",
           key:       "key lag #{i}",
           partition: i
@@ -507,7 +507,7 @@ describe Rdkafka::Consumer do
 
       # Produce message on every topic again
       (0..2).each do |i|
-        report = producer.produce(
+        producer.produce(
           topic:     "consume_test_topic",
           key:       "key lag #{i}",
           partition: i

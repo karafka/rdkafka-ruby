@@ -8,27 +8,57 @@ end
 require "pry"
 require "rspec"
 require "rdkafka"
+require "zlib"
 
-def rdkafka_config(config_overrides={})
-  config = {
+def rdkafka_base_config
+  {
     :"api.version.request" => false,
     :"broker.version.fallback" => "1.0",
     :"bootstrap.servers" => "localhost:9092",
-    :"group.id" => "ruby-test-#{Random.new.rand(0..1_000_000)}",
-    :"auto.offset.reset" => "earliest",
-    :"enable.partition.eof" => false
   }
-  if ENV["DEBUG_PRODUCER"]
-    config[:debug] = "broker,topic,msg"
-  elsif ENV["DEBUG_CONSUMER"]
+end
+
+def rdkafka_config(config_overrides={})
+  # Generate the base config
+  config = rdkafka_base_config
+  # Merge overrides
+  config.merge!(config_overrides)
+  # Return it
+  Rdkafka::Config.new(config)
+end
+
+def rdkafka_consumer_config(config_overrides={})
+  # Generate the base config
+  config = rdkafka_base_config
+  # Add consumer specific fields to it
+  config[:"auto.offset.reset"] = "earliest"
+  config[:"enable.partition.eof"] = false
+  config[:"group.id"] = "ruby-test-#{Random.new.rand(0..1_000_000)}"
+  # Enable debug mode if required
+  if ENV["DEBUG_CONSUMER"]
     config[:debug] = "cgrp,topic,fetch"
   end
+  # Merge overrides
   config.merge!(config_overrides)
+  # Return it
+  Rdkafka::Config.new(config)
+end
+
+def rdkafka_producer_config(config_overrides={})
+  # Generate the base config
+  config = rdkafka_base_config
+  # Enable debug mode if required
+  if ENV["DEBUG_PRODUCER"]
+    config[:debug] = "broker,topic,msg"
+  end
+  # Merge overrides
+  config.merge!(config_overrides)
+  # Return it
   Rdkafka::Config.new(config)
 end
 
 def new_native_client
-  config = rdkafka_config
+  config = rdkafka_consumer_config
   config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer)
 end
 
@@ -42,7 +72,7 @@ end
 
 def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, consumer: nil)
   new_consumer = !!consumer
-  consumer ||= rdkafka_config.consumer
+  consumer ||= rdkafka_consumer_config.consumer
   consumer.subscribe(topic)
   timeout = Time.now.to_i + timeout_in_seconds
   loop do

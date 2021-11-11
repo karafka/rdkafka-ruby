@@ -8,6 +8,7 @@ end
 require "pry"
 require "rspec"
 require "rdkafka"
+require "zlib"
 
 def rdkafka_base_config
   {

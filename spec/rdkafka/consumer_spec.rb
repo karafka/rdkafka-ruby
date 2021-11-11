@@ -909,52 +909,64 @@ describe Rdkafka::Consumer do
   end
 
   describe "a rebalance listener" do
-    it "should get notifications" do
-      listener = Struct.new(:queue) do
-        def on_partitions_assigned(consumer, list)
-          collect(:assign, list)
-        end
-
-        def on_partitions_revoked(consumer, list)
-          collect(:revoke, list)
-        end
-
-        def collect(name, list)
-          partitions = list.to_h.map { |key, values| [key, values.map(&:partition)] }.flatten
-          queue << ([name] + partitions)
-        end
-      end.new([])
-
-      notify_listener(listener)
-
-      expect(listener.queue).to eq([
-        [:assign, "consume_test_topic", 0, 1, 2],
-        [:revoke, "consume_test_topic", 0, 1, 2]
-      ])
+    let(:consumer) do
+      config = rdkafka_consumer_config
+      config.consumer_rebalance_listener = listener
+      config.consumer
     end
 
-    it 'should handle callback exceptions' do
-      listener = Struct.new(:queue) do
-        def on_partitions_assigned(consumer, list)
-          queue << :assigned
-          raise 'boom'
-        end
+    context "with a working listener" do
+      let(:listener) do
+        Struct.new(:queue) do
+          def on_partitions_assigned(consumer, list)
+            collect(:assign, list)
+          end
 
-        def on_partitions_revoked(consumer, list)
-          queue << :revoked
-          raise 'boom'
-        end
-      end.new([])
+          def on_partitions_revoked(consumer, list)
+            collect(:revoke, list)
+          end
 
-      notify_listener(listener)
+          def collect(name, list)
+            partitions = list.to_h.map { |key, values| [key, values.map(&:partition)] }.flatten
+            queue << ([name] + partitions)
+          end
+        end.new([])
+      end
 
-      expect(listener.queue).to eq([:assigned, :revoked])
+      it "should get notifications" do
+        notify_listener(listener)
+
+        expect(listener.queue).to eq([
+          [:assign, "consume_test_topic", 0, 1, 2],
+          [:revoke, "consume_test_topic", 0, 1, 2]
+        ])
+      end
+    end
+
+    context "with a broken listener" do
+      let(:listener) do
+        Struct.new(:queue) do
+          def on_partitions_assigned(consumer, list)
+            queue << :assigned
+            raise 'boom'
+          end
+
+          def on_partitions_revoked(consumer, list)
+            queue << :revoked
+            raise 'boom'
+          end
+        end.new([])
+      end
+
+      it 'should handle callback exceptions' do
+        notify_listener(listener)
+
+        expect(listener.queue).to eq([:assigned, :revoked])
+      end
     end
 
     def notify_listener(listener)
       # 1. subscribe and poll
-      config = rdkafka_config
-      config.consumer_rebalance_listener = listener
       consumer.subscribe("consume_test_topic")
       wait_for_assignment(consumer)
       consumer.poll(100)

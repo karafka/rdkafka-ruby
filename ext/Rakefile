@@ -9,9 +9,9 @@ task :default => :clean do
 
   # Use default homebrew openssl if we're on mac and the directory exists
   # and each of flags is not empty
-  if recipe.host&.include?("darwin") && system("which brew &> /dev/null") && Dir.exist?("#{homebrew_prefix = %x(brew --prefix).strip}/opt/openssl")
-    ENV["CPPFLAGS"] = "-I#{homebrew_prefix}/opt/openssl/include" unless ENV["CPPFLAGS"]
-    ENV["LDFLAGS"] = "-L#{homebrew_prefix}/opt/openssl/lib" unless ENV["LDFLAGS"]
+  if recipe.host&.include?("darwin") && system("which brew &> /dev/null") && Dir.exist?("#{homebrew_prefix = %x(brew --prefix openssl).strip}")
+    ENV["CPPFLAGS"] = "-I#{homebrew_prefix}/include" unless ENV["CPPFLAGS"]
+    ENV["LDFLAGS"] = "-L#{homebrew_prefix}/lib" unless ENV["LDFLAGS"]
   end
 
   recipe.files << {

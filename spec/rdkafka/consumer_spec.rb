@@ -3,9 +3,8 @@ require "ostruct"
 require 'securerandom'
 
 describe Rdkafka::Consumer do
-  let(:config) { rdkafka_config }
-  let(:consumer) { config.consumer }
-  let(:producer) { config.producer }
+  let(:consumer) { rdkafka_consumer_config.consumer }
+  let(:producer) { rdkafka_producer_config.producer }
 
   after { consumer.close }
   after { producer.close }
@@ -328,7 +327,7 @@ describe Rdkafka::Consumer do
       before :all do
         # Make sure there are some messages.
         handles = []
-        producer = rdkafka_config.producer
+        producer = rdkafka_producer_config.producer
         10.times do
           (0..2).each do |i|
             handles << producer.produce(
@@ -404,7 +403,7 @@ describe Rdkafka::Consumer do
           config = {}
           config[:'enable.auto.offset.store'] = false
           config[:'enable.auto.commit'] = false
-          @new_consumer = rdkafka_config(config).consumer
+          @new_consumer = rdkafka_consumer_config(config).consumer
           @new_consumer.subscribe("consume_test_topic")
           wait_for_assignment(@new_consumer)
         end
@@ -459,13 +458,13 @@ describe Rdkafka::Consumer do
   end
 
   describe "#lag" do
-    let(:config) { rdkafka_config(:"enable.partition.eof" => true) }
+    let(:consumer) { rdkafka_consumer_config(:"enable.partition.eof" => true).consumer }
 
     it "should calculate the consumer lag" do
       # Make sure there's a message in every partition and
       # wait for the message to make sure everything is committed.
       (0..2).each do |i|
-        report = producer.produce(
+        producer.produce(
           topic:     "consume_test_topic",
           key:       "key lag #{i}",
           partition: i
@@ -508,7 +507,7 @@ describe Rdkafka::Consumer do
 
       # Produce message on every topic again
       (0..2).each do |i|
-        report = producer.produce(
+        producer.produce(
           topic:     "consume_test_topic",
           key:       "key lag #{i}",
           partition: i
@@ -824,8 +823,12 @@ describe Rdkafka::Consumer do
 
     context "error raised from poll and yield_on_error is true" do
       it "should yield buffered exceptions on rebalance, then break" do
-        config = rdkafka_config({:"enable.auto.commit" => false,
-                                 :"enable.auto.offset.store" => false })
+        config = rdkafka_consumer_config(
+          {
+            :"enable.auto.commit" => false,
+            :"enable.auto.offset.store" => false
+          }
+        )
         consumer = config.consumer
         consumer.subscribe(topic_name)
         loop_count = 0
@@ -864,8 +867,12 @@ describe Rdkafka::Consumer do
 
     context "error raised from poll and yield_on_error is false" do
       it "should yield buffered exceptions on rebalance, then break" do
-        config = rdkafka_config({:"enable.auto.commit" => false,
-                                 :"enable.auto.offset.store" => false })
+        config = rdkafka_consumer_config(
+          {
+            :"enable.auto.commit" => false,
+            :"enable.auto.offset.store" => false
+          }
+        )
         consumer = config.consumer
         consumer.subscribe(topic_name)
         loop_count = 0
@@ -946,6 +953,7 @@ describe Rdkafka::Consumer do
 
     def notify_listener(listener)
       # 1. subscribe and poll
+      config = rdkafka_config
       config.consumer_rebalance_listener = listener
       consumer.subscribe("consume_test_topic")
       wait_for_assignment(consumer)

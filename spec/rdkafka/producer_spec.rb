@@ -1,8 +1,8 @@
 require "spec_helper"
 
 describe Rdkafka::Producer do
-  let(:producer) { rdkafka_config.producer }
-  let(:consumer) { rdkafka_config.consumer }
+  let(:producer) { rdkafka_producer_config.producer }
+  let(:consumer) { rdkafka_consumer_config.consumer }
 
   after do
     # Registry should always end up being empty
@@ -388,7 +388,7 @@ describe Rdkafka::Producer do
       reader.close
 
       # Avoids sharing the socket between processes.
-      producer = rdkafka_config.producer
+      producer = rdkafka_producer_config.producer
 
       handle = producer.produce(
         topic:   "produce_test_topic",

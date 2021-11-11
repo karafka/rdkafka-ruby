@@ -111,4 +111,3 @@ describe Rdkafka::AbstractHandle do
     end
   end
 end
-

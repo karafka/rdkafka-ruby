@@ -11,7 +11,7 @@ module Rdkafka
       attr_reader :offset
 
       # Error in case happen during produce.
-      # @return [string]
+      # @return [String]
       attr_reader :error
 
       private

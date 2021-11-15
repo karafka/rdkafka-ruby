@@ -241,7 +241,7 @@ module Rdkafka
         Rdkafka::Bindings.rd_kafka_conf_set_stats_cb(config, Rdkafka::Bindings::StatsCallbackBuilder.call(self))
 
         # Set error callback
-        Rdkafka::Bindings.rd_kafka_conf_set_error_cb(config, Rdkafka::Bindings::ErrorCallback.call(self))
+        Rdkafka::Bindings.rd_kafka_conf_set_error_cb(config, Rdkafka::Bindings::ErrorCallbackBuilder.call(self))
       end
     end
 

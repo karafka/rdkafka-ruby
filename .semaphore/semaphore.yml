@@ -13,7 +13,7 @@ blocks:
         - name: bundle exec rspec
           matrix:
             - env_var: RUBY_VERSION
-              values: [ "2.5.8", "2.6.6", "2.7.2", "3.0.0", "jruby-9.2.13.0" ]
+              values: [ "2.6.8", "2.7.4", "3.0.2", "jruby-9.3.1.0"]
           commands:
             - sem-version ruby $RUBY_VERSION
             - checkout

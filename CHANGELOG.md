@@ -45,7 +45,7 @@
 * Use default Homebrew openssl location if present
 * Consumer lag handles empty topics
 * End iteration in consumer when it is closed
-* Add suport for storing message offsets
+* Add support for storing message offsets
 * Add missing runtime dependency to rake
 
 # 0.4.1

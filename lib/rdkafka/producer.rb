@@ -75,8 +75,9 @@ module Rdkafka
     #
     # @param topic [String] The topic to produce to
     # @param payload [String,nil] The message's payload
-    # @param key [String] The message's key
+    # @param key [String, nil] The message's key
     # @param partition [Integer,nil] Optional partition to produce to
+    # @param partition_key [String, nil] Optional partition key based on which partition assignment can happen
     # @param timestamp [Time,Integer,nil] Optional timestamp of this message. Integer timestamp is in milliseconds since Jan 1 1970.
     # @param headers [Hash<String,String>] Optional message headers
     #

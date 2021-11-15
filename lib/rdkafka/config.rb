@@ -8,8 +8,6 @@ module Rdkafka
     # @private
     @@logger = Logger.new(STDOUT)
     # @private
-    @@error_callback = nil
-    # @private
     @@opaques = {}
     # @private
     @@log_queue = Queue.new
@@ -46,25 +44,6 @@ module Rdkafka
     def self.logger=(logger)
       raise NoLoggerError if logger.nil?
       @@logger=logger
-    end
-
-    # Set a callback that will be called every time the underlying client emits an error.
-    # If this callback is not set, global errors such as brokers becoming unavailable will only be sent to the logger, as defined by librdkafka.
-    # The callback is called with an instance of RdKafka::Error.
-    #
-    # @param callback [Proc, #call] The callback
-    #
-    # @return [nil]
-    def self.error_callback=(callback)
-      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call)
-      @@error_callback = callback
-    end
-
-    # Returns the current error callback, by default this is nil.
-    #
-    # @return [Proc, nil]
-    def self.error_callback
-      @@error_callback
     end
 
     # @private
@@ -137,6 +116,25 @@ module Rdkafka
     # @return [Proc, nil]
     def statistics_callback
       @statistics_callback
+    end
+
+    # Set a callback that will be called every time the underlying client emits an error.
+    # If this callback is not set, global errors such as brokers becoming unavailable will only be sent to the logger, as defined by librdkafka.
+    # The callback is called with an instance of RdKafka::Error.
+    #
+    # @param callback [Proc, #call] The callback
+    #
+    # @return [nil]
+    def error_callback=(callback)
+      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call)
+      @error_callback = callback
+    end
+
+    # Returns the current error callback, by default this is nil.
+    #
+    # @return [Proc, nil]
+    def error_callback
+      @error_callback
     end
 
     # Create a consumer with this configuration.
@@ -243,7 +241,7 @@ module Rdkafka
         Rdkafka::Bindings.rd_kafka_conf_set_stats_cb(config, Rdkafka::Bindings::StatsCallbackBuilder.call(self))
 
         # Set error callback
-        Rdkafka::Bindings.rd_kafka_conf_set_error_cb(config, Rdkafka::Bindings::ErrorCallback)
+        Rdkafka::Bindings.rd_kafka_conf_set_error_cb(config, Rdkafka::Bindings::ErrorCallback.call(self))
       end
     end
 

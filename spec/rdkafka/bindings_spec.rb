@@ -109,22 +109,26 @@ describe Rdkafka::Bindings do
 
   describe "error callback" do
     context "without an error callback" do
+      let(:config) { Rdkafka::Config.new }
+
       it "should do nothing" do
         expect {
-          Rdkafka::Bindings::ErrorCallback.call(nil, 1, "error", nil)
+          Rdkafka::Bindings::ErrorCallbackBuilder.call(config).call(nil, 1, "error", nil)
         }.not_to raise_error
       end
     end
 
     context "with an error callback" do
-      before do
-        Rdkafka::Config.error_callback = lambda do |error|
+      let(:config) do
+        config = Rdkafka::Config.new
+
+        config.error_callback = lambda do |error|
           $received_error = error
         end
       end
 
       it "should call the error callback with an Rdkafka::Error" do
-        Rdkafka::Bindings::ErrorCallback.call(nil, 8, "Broker not available", nil)
+        Rdkafka::Bindings::ErrorCallbackBuilder.call(config).call(nil, 8, "Broker not available", nil)
         expect($received_error.code).to eq(:broker_not_available)
         expect($received_error.broker_message).to eq("Broker not available")
       end

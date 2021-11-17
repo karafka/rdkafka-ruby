@@ -1,4 +1,5 @@
 require "spec_helper"
+require "zlib"
 
 describe Rdkafka::Producer do
   let(:producer) { rdkafka_producer_config.producer }

@@ -1,3 +1,8 @@
+# 0.11.0
+* Upgrade librdkafka to 1.8.2
+* Bump supported minimum Ruby version to 2.6
+* Better homebrew path detection
+
 # 0.10.0
 * Upgrade librdkafka to 1.5.0
 * Add error callback config

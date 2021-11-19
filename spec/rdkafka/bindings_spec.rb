@@ -125,6 +125,8 @@ describe Rdkafka::Bindings do
         config.error_callback = lambda do |error|
           $received_error = error
         end
+
+        config
       end
 
       it "should call the error callback with an Rdkafka::Error" do

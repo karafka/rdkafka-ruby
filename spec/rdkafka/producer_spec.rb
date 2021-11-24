@@ -182,6 +182,10 @@ describe Rdkafka::Producer do
         expect(called_report.first['type']).to eq 'producer'
         expect(called_report.first['txmsgs']).to eq(1)
       end
+
+      it "should not be called when other producer emits stats" do
+        pending
+      end
     end
 
     it "should not accept a callback that's not callable" do

@@ -136,7 +136,7 @@ describe Rdkafka::Producer do
   context 'statistics_callback' do
     let(:config_hash) { { 'statistics.interval.ms' => 100 } }
 
-    context "with a callable object" do
+    context "with a proc/lambda" do
       it "should set the callback" do
         config = rdkafka_producer_config
 

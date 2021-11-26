@@ -135,25 +135,30 @@ module Rdkafka
       Rdkafka::Config.log_queue << [severity, "rdkafka: #{line}"]
     end
 
-    StatsCallback = FFI::Function.new(
-      :int, [:pointer, :string, :int, :pointer]
-    ) do |_client_ptr, json, _json_len, _opaque|
-      # Pass the stats hash to callback in config
-      if Rdkafka::Config.statistics_callback
-        stats = JSON.parse(json)
-        Rdkafka::Config.statistics_callback.call(stats)
-      end
+    # Builds a per instance stats callback emitter
+    StatsCallbackBuilder = lambda do |config|
+      FFI::Function.new(
+        :int, [:pointer, :string, :int, :pointer]
+      ) do |_client_ptr, json, _json_len, _opaque|
+        # Pass the stats hash to callback in config
+        if config.statistics_callback
+          stats = JSON.parse(json)
+          config.statistics_callback.call(stats)
+        end
 
-      # Return 0 so librdkafka frees the json string
-      0
+        # Return 0 so librdkafka frees the json string
+        0
+      end
     end
 
-    ErrorCallback = FFI::Function.new(
-      :void, [:pointer, :int, :string, :pointer]
-    ) do |_client_prr, err_code, reason, _opaque|
-      if Rdkafka::Config.error_callback
-        error = Rdkafka::RdkafkaError.new(err_code, broker_message: reason)
-        Rdkafka::Config.error_callback.call(error)
+    ErrorCallbackBuilder = lambda do |config|
+      FFI::Function.new(
+        :void, [:pointer, :int, :string, :pointer]
+      ) do |_client_prr, err_code, reason, _opaque|
+        if config.error_callback
+          error = Rdkafka::RdkafkaError.new(err_code, broker_message: reason)
+          config.error_callback.call(error)
+        end
       end
     end
 

@@ -26,7 +26,9 @@ describe Rdkafka::Producer do
       it "should call the callback when a message is delivered" do
         @callback_called = false
 
-        producer.delivery_callback = lambda do |report|
+        other_producer = rdkafka_producer_config.producer
+
+        other_producer.delivery_callback = lambda do |report|
           expect(report).not_to be_nil
           expect(report.partition).to eq 1
           expect(report.offset).to be >= 0
@@ -47,7 +49,36 @@ describe Rdkafka::Producer do
         producer.close
 
         # Callback should have been called
-        expect(@callback_called).to be true
+        expect(@callback_called).to be false
+      end
+
+      it "should not call a callback of different producer when a message is delivered" do
+        @callback_called = false
+
+        other_producer = rdkafka_producer_config.producer
+
+        other_producer.delivery_callback = lambda do |report|
+          expect(report).not_to be_nil
+          expect(report.partition).to eq 1
+          expect(report.offset).to be >= 0
+          @callback_called = true
+        end
+
+        # Produce a message
+        handle = producer.produce(
+          topic:   "produce_test_topic",
+          payload: "payload",
+          key:     "key"
+        )
+
+        # Wait for it to be delivered
+        handle.wait(max_wait_timeout: 15)
+
+        # Join the producer thread.
+        producer.close
+
+        # Callback should not have been called
+        expect(@callback_called).to be false
       end
     end
 
@@ -98,6 +129,214 @@ describe Rdkafka::Producer do
     it "should not accept a callback that's not callable" do
       expect {
         producer.delivery_callback = 'a string'
+      }.to raise_error(TypeError)
+    end
+  end
+
+  context 'statistics_callback' do
+    let(:config_hash) { { 'statistics.interval.ms' => 100 } }
+
+    context "with a callable object" do
+      it "should set the callback" do
+        config = rdkafka_producer_config
+
+        expect {
+          config.statistics_callback = lambda do |stats|
+            puts stats
+          end
+        }.not_to raise_error
+        expect(config.statistics_callback).to respond_to :call
+      end
+
+      it "should call the callback with stats that are emitted" do
+        called_report = []
+
+        config = rdkafka_producer_config(config_hash)
+        config.statistics_callback = lambda do |stats|
+          called_report << stats
+        end
+        producer = config.producer
+
+        # Produce a message
+        handle = producer.produce(
+          topic:   "produce_test_topic",
+          payload: "payload",
+          key:     "key"
+        )
+
+        # Wait for it to be delivered
+        handle.wait(max_wait_timeout: 15)
+
+        # Join the producer thread.
+        producer.close
+
+        # Callback should have been called
+        expect(called_report.first).not_to be_nil
+        expect(called_report.first['client_id']).to eq 'rdkafka'
+        expect(called_report.first['type']).to eq 'producer'
+        expect(called_report.first['txmsgs']).to eq(1)
+      end
+
+      it "should not include other producers emitted stats" do
+        called_report = []
+        called_report2 = []
+
+        config = rdkafka_producer_config(config_hash)
+        config.statistics_callback = lambda do |stats|
+          called_report << stats
+        end
+
+        config2 = rdkafka_producer_config(config_hash)
+        config2.statistics_callback = lambda do |stats|
+          called_report2 << stats
+        end
+
+        producer = config.producer
+        producer2 = config2.producer
+
+        # Produce a message
+        handle = producer2.produce(
+          topic:   "produce_test_topic",
+          payload: "payload",
+          key:     "key"
+        )
+
+        # Wait for it to be delivered
+        handle.wait(max_wait_timeout: 15)
+
+        # Join the producer threads.
+        producer.close
+        producer2.close
+
+        # Callback should have been called for both producers as they are time based, but their
+        # data should differ
+        expect(called_report.first['txmsgs']).to eq(0)
+        expect(called_report2.first['txmsgs']).to eq(1)
+      end
+    end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    context "with a callable object" do
+      it "should set the callback" do
+        config = rdkafka_producer_config
+
+        callback = Class.new do
+          def call(stats); end
+        end
+        expect {
+          config.statistics_callback = callback.new
+        }.not_to raise_error
+        expect(config.statistics_callback).to respond_to :call
+      end
+
+      it "should call the callback with stats that are emitted" do
+        called_report = []
+        callback = Class.new do
+          def initialize(called_report)
+            @called_report = called_report
+          end
+
+          def call(report)
+            @called_report << report
+          end
+        end
+
+        config = rdkafka_producer_config(config_hash)
+        config.statistics_callback = callback.new(called_report)
+        producer = config.producer
+
+        # Produce a message
+        handle = producer.produce(
+          topic:   "produce_test_topic",
+          payload: "payload",
+          key:     "key"
+        )
+
+        # Wait for it to be delivered
+        handle.wait(max_wait_timeout: 15)
+
+        # Join the producer thread.
+        producer.close
+
+        # Callback should have been called
+        expect(called_report.first).not_to be_nil
+        expect(called_report.first['client_id']).to eq 'rdkafka'
+        expect(called_report.first['type']).to eq 'producer'
+        expect(called_report.first['txmsgs']).to eq(1)
+      end
+
+      it "should not include other producers emitted stats" do
+        called_report = []
+        called_report2 = []
+
+        callback = Class.new do
+          def initialize(called_report)
+            @called_report = called_report
+          end
+
+          def call(report)
+            @called_report << report
+          end
+        end
+
+        config = rdkafka_producer_config(config_hash)
+        config.statistics_callback = callback.new(called_report)
+
+        config2 = rdkafka_producer_config(config_hash)
+        config2.statistics_callback = callback.new(called_report2)
+
+        producer = config.producer
+        producer2 = config2.producer
+
+        # Produce a message
+        handle = producer2.produce(
+          topic:   "produce_test_topic",
+          payload: "payload",
+          key:     "key"
+        )
+
+        # Wait for it to be delivered
+        handle.wait(max_wait_timeout: 15)
+
+        # Join the producer threads.
+        producer.close
+        producer2.close
+
+        # Callback should have been called for both producers as they are time based, but their
+        # data should differ
+        expect(called_report.first['txmsgs']).to eq(0)
+        expect(called_report2.first['txmsgs']).to eq(1)
+      end
+    end
+
+    it "should not accept a callback that's not callable" do
+      expect {
+        rdkafka_producer_config.statistics_callback = 'a string'
       }.to raise_error(TypeError)
     end
   end

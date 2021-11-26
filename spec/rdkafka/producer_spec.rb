@@ -204,6 +204,9 @@ describe Rdkafka::Producer do
         # Wait for it to be delivered
         handle.wait(max_wait_timeout: 15)
 
+        # Give the producers enough time to emit stats
+        sleep(0.2)
+
         # Join the producer threads.
         producer.close
         producer2.close
@@ -254,6 +257,10 @@ describe Rdkafka::Producer do
         # Wait for it to be delivered
         handle.wait(max_wait_timeout: 15)
 
+
+        # Give the producers enough time to emit stats
+        sleep(0.2)
+
         # Join the producer thread.
         producer.close
 
@@ -296,6 +303,9 @@ describe Rdkafka::Producer do
 
         # Wait for it to be delivered
         handle.wait(max_wait_timeout: 15)
+
+        # Give the producers enough time to emit stats
+        sleep(0.2)
 
         # Join the producer threads.
         producer.close

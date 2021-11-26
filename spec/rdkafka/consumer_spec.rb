@@ -1007,4 +1007,123 @@ describe Rdkafka::Consumer do
       end
     end
   end
+
+  describe 'error callback' do
+    let(:config_hash) { {:"bootstrap.servers" => "localhost:9090"} }
+
+    context "with a proc/lambda" do
+      it "should call the callback upon errors" do
+        errors = []
+
+        config = rdkafka_consumer_config(config_hash)
+        config.error_callback = lambda do |error|
+          errors << error
+        end
+
+        consumer = config.consumer
+
+        consumer.poll(2000)
+
+        consumer.close
+
+        # Callback should have been called
+        expect(errors).not_to be_empty
+        expect(errors[0]).to be_a(Rdkafka::RdkafkaError)
+      end
+
+      it "should not interact with other consumers errors callbacks" do
+        errors = []
+        errors2 = []
+
+        config = rdkafka_consumer_config
+        config.error_callback = lambda do |error|
+          errors << error
+        end
+
+        config2 = rdkafka_consumer_config(config_hash)
+        config2.error_callback = lambda do |error|
+          errors2 << error
+        end
+
+        consumer = config.consumer
+        consumer2 = config2.consumer
+
+        consumer.poll(1000)
+        consumer2.poll(1000)
+
+        consumer.close
+        consumer2.close
+
+        sleep(0.1)
+
+        # Callback should have been called only for consumer with error
+        expect(errors).to be_empty
+        expect(errors2[0]).to be_a(Rdkafka::RdkafkaError)
+      end
+    end
+
+    context "with a callable object" do
+      it "should call the callback upon errors" do
+        errors = []
+        callback = Class.new do
+          def initialize(errors)
+            @errors = errors
+          end
+
+          def call(error)
+            @errors << error
+          end
+        end
+
+        config = rdkafka_consumer_config(config_hash)
+        config.error_callback = callback.new(errors)
+
+        consumer = config.consumer
+
+        consumer.poll(2000)
+
+        consumer.close
+
+        # Callback should have been called
+        expect(errors).not_to be_empty
+        expect(errors[0]).to be_a(Rdkafka::RdkafkaError)
+      end
+
+      it "should not interact with other consumers errors callbacks" do
+        callback = Class.new do
+          def initialize(errors)
+            @errors = errors
+          end
+
+          def call(error)
+            @errors << error
+          end
+        end
+
+        errors = []
+        errors2 = []
+
+        config = rdkafka_consumer_config
+        config.error_callback = callback.new(errors)
+
+        config2 = rdkafka_consumer_config(config_hash)
+        config2.error_callback = callback.new(errors2)
+
+        consumer = config.consumer
+        consumer2 = config2.consumer
+
+        consumer.poll(1000)
+        consumer2.poll(1000)
+
+        consumer.close
+        consumer2.close
+
+        sleep(0.1)
+
+        # Callback should have been called only for consumer with error
+        expect(errors).to be_empty
+        expect(errors2[0]).to be_a(Rdkafka::RdkafkaError)
+      end
+    end
+  end
 end

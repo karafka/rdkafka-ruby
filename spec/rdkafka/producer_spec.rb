@@ -170,6 +170,8 @@ describe Rdkafka::Producer do
         # Join the producer thread.
         producer.close
 
+        slee(0.1)
+
         # Callback should have been called
         expect(called_report.first).not_to be_nil
         expect(called_report.first['client_id']).to eq 'rdkafka'

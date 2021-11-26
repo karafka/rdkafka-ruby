@@ -1033,7 +1033,7 @@ describe Rdkafka::Consumer do
 
         consumer = config.consumer
 
-        consumer.poll(1000)
+        consumer.poll(2000)
 
         consumer.close
 
@@ -1059,10 +1059,13 @@ describe Rdkafka::Consumer do
         consumer = config.consumer
         consumer2 = config2.consumer
 
+        consumer.poll(1000)
         consumer2.poll(1000)
 
         consumer.close
         consumer2.close
+
+        sleep(0.1)
 
         # Callback should have been called only for consumer with error
         expect(errors).to be_empty

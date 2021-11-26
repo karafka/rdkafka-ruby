@@ -1012,17 +1012,6 @@ describe Rdkafka::Consumer do
     let(:config_hash) { {:"bootstrap.servers" => "localhost:9090"} }
 
     context "with a proc/lambda" do
-      it "should set the callback" do
-        config = rdkafka_consumer_config(config_hash)
-
-        expect {
-          config.error_callback = lambda do |error|
-            puts error
-          end
-        }.not_to raise_error
-        expect(config.error_callback).to respond_to :call
-      end
-
       it "should call the callback upon errors" do
         errors = []
 
@@ -1055,6 +1044,70 @@ describe Rdkafka::Consumer do
         config2.error_callback = lambda do |error|
           errors2 << error
         end
+
+        consumer = config.consumer
+        consumer2 = config2.consumer
+
+        consumer.poll(1000)
+        consumer2.poll(1000)
+
+        consumer.close
+        consumer2.close
+
+        sleep(0.1)
+
+        # Callback should have been called only for consumer with error
+        expect(errors).to be_empty
+        expect(errors2[0]).to be_a(Rdkafka::RdkafkaError)
+      end
+    end
+
+    context "with a callable object" do
+      it "should call the callback upon errors" do
+        errors = []
+        callback = Class.new do
+          def initialize(errors)
+            @errors = errors
+          end
+
+          def call(error)
+            @errors << error
+          end
+        end
+
+        config = rdkafka_consumer_config(config_hash)
+        config.error_callback = callback.new(errors)
+
+        consumer = config.consumer
+
+        consumer.poll(2000)
+
+        consumer.close
+
+        # Callback should have been called
+        expect(errors).not_to be_empty
+        expect(errors[0]).to be_a(Rdkafka::RdkafkaError)
+      end
+
+      it "should not interact with other consumers errors callbacks" do
+        callback = Class.new do
+          def initialize(errors)
+            @errors = errors
+          end
+
+          def call(error)
+            @errors << error
+          end
+        end
+
+        errors = []
+        errors2 = []
+
+        config = rdkafka_consumer_config
+        config.error_callback = callback.call(errors)
+
+        config2 = rdkafka_consumer_config(config_hash)
+        config2.error_callback = callback.call(errors2)
 
         consumer = config.consumer
         consumer2 = config2.consumer

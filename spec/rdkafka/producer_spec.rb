@@ -136,17 +136,6 @@ describe Rdkafka::Producer do
     let(:config_hash) { { 'statistics.interval.ms' => 100 } }
 
     context "with a proc/lambda" do
-      it "should set the callback" do
-        config = rdkafka_producer_config
-
-        expect {
-          config.statistics_callback = lambda do |stats|
-            puts stats
-          end
-        }.not_to raise_error
-        expect(config.statistics_callback).to respond_to :call
-      end
-
       it "should call the callback with stats that are emitted" do
         called_report = []
 
@@ -214,18 +203,6 @@ describe Rdkafka::Producer do
     end
 
     context "with a callable object" do
-      it "should set the callback" do
-        config = rdkafka_producer_config
-
-        callback = Class.new do
-          def call(stats); end
-        end
-        expect {
-          config.statistics_callback = callback.new
-        }.not_to raise_error
-        expect(config.statistics_callback).to respond_to :call
-      end
-
       it "should call the callback with stats that are emitted" do
         called_report = []
         callback = Class.new do
@@ -303,12 +280,6 @@ describe Rdkafka::Producer do
         expect(called_report.last['txmsgs']).to eq(0)
         expect(called_report2.last['txmsgs']).to eq(1)
       end
-    end
-
-    it "should not accept a callback that's not callable" do
-      expect {
-        rdkafka_producer_config.statistics_callback = 'a string'
-      }.to raise_error(TypeError)
     end
   end
 

@@ -1104,10 +1104,10 @@ describe Rdkafka::Consumer do
         errors2 = []
 
         config = rdkafka_consumer_config
-        config.error_callback = callback.call(errors)
+        config.error_callback = callback.new(errors)
 
         config2 = rdkafka_consumer_config(config_hash)
-        config2.error_callback = callback.call(errors2)
+        config2.error_callback = callback.new(errors2)
 
         consumer = config.consumer
         consumer2 = config2.consumer

@@ -215,32 +215,6 @@ describe Rdkafka::Producer do
       end
     end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     context "with a callable object" do
       it "should set the callback" do
         config = rdkafka_producer_config

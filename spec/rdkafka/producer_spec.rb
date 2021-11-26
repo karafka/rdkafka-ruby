@@ -120,9 +120,8 @@ describe Rdkafka::Producer do
         producer.close
 
         # Callback should have been called
-        expect(called_report.first).not_to be_nil
-        expect(called_report.first.partition).to eq 1
-        expect(called_report.first.offset).to be >= 0
+        expect(called_report.last.partition).to eq 1
+        expect(called_report.last.offset).to be >= 0
       end
     end
 
@@ -170,13 +169,10 @@ describe Rdkafka::Producer do
         # Join the producer thread.
         producer.close
 
-        slee(0.1)
-
         # Callback should have been called
-        expect(called_report.first).not_to be_nil
-        expect(called_report.first['client_id']).to eq 'rdkafka'
-        expect(called_report.first['type']).to eq 'producer'
-        expect(called_report.first['txmsgs']).to eq(1)
+        expect(called_report.last['client_id']).to eq 'rdkafka'
+        expect(called_report.last['type']).to eq 'producer'
+        expect(called_report.last['txmsgs']).to eq(1)
       end
 
       it "should not include other producers emitted stats" do
@@ -212,8 +208,8 @@ describe Rdkafka::Producer do
 
         # Callback should have been called for both producers as they are time based, but their
         # data should differ
-        expect(called_report.first['txmsgs']).to eq(0)
-        expect(called_report2.first['txmsgs']).to eq(1)
+        expect(called_report.last['txmsgs']).to eq(0)
+        expect(called_report2.last['txmsgs']).to eq(1)
       end
     end
 
@@ -260,10 +256,9 @@ describe Rdkafka::Producer do
         producer.close
 
         # Callback should have been called
-        expect(called_report.first).not_to be_nil
-        expect(called_report.first['client_id']).to eq 'rdkafka'
-        expect(called_report.first['type']).to eq 'producer'
-        expect(called_report.first['txmsgs']).to eq(1)
+        expect(called_report.last['client_id']).to eq 'rdkafka'
+        expect(called_report.last['type']).to eq 'producer'
+        expect(called_report.last['txmsgs']).to eq(1)
       end
 
       it "should not include other producers emitted stats" do
@@ -299,17 +294,14 @@ describe Rdkafka::Producer do
         # Wait for it to be delivered
         handle.wait(max_wait_timeout: 15)
 
-        # Give the producers enough time to emit stats
-        sleep(1)
-
         # Join the producer threads.
         producer.close
         producer2.close
 
         # Callback should have been called for both producers as they are time based, but their
         # data should differ
-        expect(called_report.first['txmsgs']).to eq(0)
-        expect(called_report2.first['txmsgs']).to eq(1)
+        expect(called_report.last['txmsgs']).to eq(0)
+        expect(called_report2.last['txmsgs']).to eq(1)
       end
     end
 

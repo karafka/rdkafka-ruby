@@ -183,8 +183,47 @@ describe Rdkafka::Producer do
         expect(called_report.first['txmsgs']).to eq(1)
       end
 
-      it "should not be called when other producer emits stats" do
-        pending
+      it "should not include other producers emitted stats" do
+        called_report = []
+        called_report2 = []
+
+        callback = Class.new do
+          def initialize(called_report)
+            @called_report = called_report
+          end
+
+          def call(report)
+            @called_report << report
+          end
+        end
+
+        config = rdkafka_producer_config(config_hash)
+        config.statistics_callback = callback.new(called_report)
+
+        config2 = rdkafka_producer_config(config_hash)
+        config2.statistics_callback = callback.new(called_report2)
+
+        producer = config.producer
+        producer2 = config2.producer
+
+        # Produce a message
+        handle = producer2.produce(
+          topic:   "produce_test_topic",
+          payload: "payload",
+          key:     "key"
+        )
+
+        # Wait for it to be delivered
+        handle.wait(max_wait_timeout: 15)
+
+        # Join the producer threads.
+        producer.close
+        producer2.close
+
+        # Callback should have been called for both producers as they are time based, but their
+        # data should differ
+        expect(called_report.first['txmsgs']).to eq(0)
+        expect(called_report2.first['txmsgs']).to eq(1)
       end
     end
 

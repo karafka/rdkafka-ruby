@@ -179,7 +179,7 @@ module Rdkafka
       # Set callback to receive delivery reports on config
       Rdkafka::Bindings.rd_kafka_conf_set_dr_msg_cb(config, Rdkafka::Callbacks::DeliveryCallbackFunction)
       # Return producer with Kafka client
-      Rdkafka::Producer.new(native_kafka(config, :rd_kafka_producer)).tap do |producer|
+      Rdkafka::Producer.new(Rdkafka::Producer::Client.new(native_kafka(config, :rd_kafka_producer))).tap do |producer|
         opaque.producer = producer
       end
     end

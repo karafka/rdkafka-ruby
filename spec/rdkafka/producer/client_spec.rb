@@ -11,6 +11,8 @@ describe Rdkafka::Producer::Client do
     allow(Rdkafka::Bindings).to receive(:rd_kafka_poll).with(native, 250)
     allow(Rdkafka::Bindings).to receive(:rd_kafka_outq_len).with(native).and_return(0)
     allow(Rdkafka::Bindings).to receive(:rd_kafka_destroy)
+    allow(described_class).to receive(:native).and_return(native)
+
     allow(Thread).to receive(:new).and_return(thread)
 
     allow(thread).to receive(:[]=).with(:closing, anything)

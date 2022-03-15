@@ -1,3 +1,4 @@
+
 # Rdkafka
 
 [![Build Status](https://appsignal.semaphoreci.com/badges/rdkafka-ruby/branches/master.svg?style=shields)](https://appsignal.semaphoreci.com/projects/rdkafka-ruby)

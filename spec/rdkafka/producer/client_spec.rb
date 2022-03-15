@@ -1,15 +1,17 @@
 require "spec_helper"
 
 describe Rdkafka::Producer::Client do
-  let(:native) { double }
-  let(:closing) { false }
-  let(:thread) { double(Thread) }
+  let(:thread)        { instance_double('Thread') }
+  let(:closing)       { false }
+  let(:config)        { rdkafka_consumer_config }
+  let(:native_config) { config.send(:native_config) }
+  let(:native_kafka)  { config.send(:native_kafka, native_config, :rd_kafka_consumer).freeze }
 
-  subject(:client) { described_class.new(native) }
+  subject(:client) { described_class.new(native_kafka) }
 
   before do
-    allow(Rdkafka::Bindings).to receive(:rd_kafka_poll).with(native, 250)
-    allow(Rdkafka::Bindings).to receive(:rd_kafka_outq_len).with(native).and_return(0)
+    allow(Rdkafka::Bindings).to receive(:rd_kafka_poll).with(native_kafka, 250)
+    allow(Rdkafka::Bindings).to receive(:rd_kafka_outq_len).with(native_kafka).and_return(0)
     allow(Rdkafka::Bindings).to receive(:rd_kafka_destroy)
     allow(Thread).to receive(:new).and_return(thread)
 
@@ -41,13 +43,13 @@ describe Rdkafka::Producer::Client do
 
     it "polls the native with default 250ms timeout" do
       polling_loop_expects do
-        expect(Rdkafka::Bindings).to receive(:rd_kafka_poll).with(native, 250)
+        expect(Rdkafka::Bindings).to receive(:rd_kafka_poll).with(native_kafka, 250)
       end
     end
 
     it "check the out queue of native client" do
       polling_loop_expects do
-        expect(Rdkafka::Bindings).to receive(:rd_kafka_outq_len).with(native)
+        expect(Rdkafka::Bindings).to receive(:rd_kafka_outq_len).with(native_kafka)
       end
     end
   end
@@ -63,7 +65,7 @@ describe Rdkafka::Producer::Client do
   end
 
   it "exposes `native` client" do
-    expect(client.native).to eq(native)
+    expect(client.native).to eq(native_kafka)
   end
 
   context "when client was not yet closed (`nil`)" do
@@ -73,7 +75,7 @@ describe Rdkafka::Producer::Client do
 
     context "and attempt to close" do
       it "calls the `destroy` binding" do
-        expect(Rdkafka::Bindings).to receive(:rd_kafka_destroy).with(native)
+        expect(Rdkafka::Bindings).to receive(:rd_kafka_destroy).with(native_kafka)
 
         client.close
       end

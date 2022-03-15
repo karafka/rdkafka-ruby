@@ -5,7 +5,7 @@ describe Rdkafka::Producer::Client do
   let(:closing)       { false }
   let(:config)        { rdkafka_consumer_config }
   let(:native_config) { config.send(:native_config) }
-  let(:native_kafka)  { config.send(:native_kafka, native_config, :rd_kafka_consumer) }
+  let(:native_kafka)  { config.send(:native_kafka, native_config, :rd_kafka_consumer).freeze }
 
   subject(:client) { described_class.new(native_kafka) }
 

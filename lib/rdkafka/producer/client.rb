@@ -7,6 +7,7 @@ module Rdkafka
         # Start thread to poll client for delivery callbacks
         @polling_thread = Thread.new do
           loop do
+            break if native.nil?
             Rdkafka::Bindings.rd_kafka_poll(native, 250)
             # Exit thread if closing and the poll queue is empty
             if Thread.current[:closing] && Rdkafka::Bindings.rd_kafka_outq_len(native) == 0

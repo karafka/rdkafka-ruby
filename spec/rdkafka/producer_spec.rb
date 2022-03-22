@@ -376,13 +376,9 @@ describe Rdkafka::Producer do
     end
   end
 
-  it "should produce a message in a forked process" do
+  it "should produce a message in a forked process", skip: defined?(JRUBY_VERSION) && "Kernel#fork is not available" do
     # Fork, produce a message, send the report over a pipe and
     # wait for and check the message in the main process.
-
-    # Kernel#fork is not available in JRuby
-    skip if defined?(JRUBY_VERSION)
-
     reader, writer = IO.pipe
 
     fork do

@@ -241,7 +241,7 @@ describe Rdkafka::Consumer do
 
     it "should return the assignment when subscribed" do
       # Make sure there's a message
-      report = producer.produce(
+      producer.produce(
         topic:     "consume_test_topic",
         payload:   "payload 1",
         key:       "key 1",
@@ -272,7 +272,7 @@ describe Rdkafka::Consumer do
     it "should close a consumer" do
       consumer.subscribe("consume_test_topic")
       100.times do |i|
-        report = producer.produce(
+        producer.produce(
           topic:     "consume_test_topic",
           payload:   "payload #{i}",
           key:       "key #{i}",
@@ -289,7 +289,7 @@ describe Rdkafka::Consumer do
   describe "#commit, #committed and #store_offset" do
     # Make sure there's a stored offset
     let!(:report) do
-      report = producer.produce(
+      producer.produce(
         topic:     "consume_test_topic",
         payload:   "payload 1",
         key:       "key 1",
@@ -831,7 +831,6 @@ describe Rdkafka::Consumer do
         )
         consumer = config.consumer
         consumer.subscribe(topic_name)
-        loop_count = 0
         batches_yielded = []
         exceptions_yielded = []
         each_batch_iterations = 0
@@ -875,7 +874,6 @@ describe Rdkafka::Consumer do
         )
         consumer = config.consumer
         consumer.subscribe(topic_name)
-        loop_count = 0
         batches_yielded = []
         exceptions_yielded = []
         each_batch_iterations = 0

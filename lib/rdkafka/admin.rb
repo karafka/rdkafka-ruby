@@ -90,7 +90,7 @@ module Rdkafka
             admin_options_ptr,
             queue_ptr
         )
-      rescue Exception => err
+      rescue Exception
         CreateTopicHandle.remove(create_topic_handle.to_ptr.address)
         raise
       ensure
@@ -140,7 +140,7 @@ module Rdkafka
             admin_options_ptr,
             queue_ptr
         )
-      rescue Exception => err
+      rescue Exception
         DeleteTopicHandle.remove(delete_topic_handle.to_ptr.address)
         raise
       ensure

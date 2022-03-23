@@ -1,15 +1,16 @@
 require "spec_helper"
 
 describe Rdkafka::Producer::Client do
-  let(:native) { double }
+  let(:config) { rdkafka_producer_config }
+  let(:native) { config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer) }
   let(:closing) { false }
   let(:thread) { double(Thread) }
 
   subject(:client) { described_class.new(native) }
 
   before do
-    allow(Rdkafka::Bindings).to receive(:rd_kafka_poll).with(native, 250)
-    allow(Rdkafka::Bindings).to receive(:rd_kafka_outq_len).with(native).and_return(0)
+    allow(Rdkafka::Bindings).to receive(:rd_kafka_poll).with(instance_of(FFI::Pointer), 250).and_call_original
+    allow(Rdkafka::Bindings).to receive(:rd_kafka_outq_len).with(instance_of(FFI::Pointer)).and_return(0).and_call_original
     allow(Rdkafka::Bindings).to receive(:rd_kafka_destroy)
     allow(Thread).to receive(:new).and_return(thread)
 
@@ -41,7 +42,7 @@ describe Rdkafka::Producer::Client do
 
     it "polls the native with default 250ms timeout" do
       polling_loop_expects do
-        expect(Rdkafka::Bindings).to receive(:rd_kafka_poll).with(native, 250)
+        expect(Rdkafka::Bindings).to receive(:rd_kafka_poll).with(instance_of(FFI::Pointer), 250)
       end
     end
 

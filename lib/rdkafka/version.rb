@@ -1,5 +1,5 @@
 module Rdkafka
-  VERSION = "0.12.0.beta.0"
+  VERSION = "0.12.0.beta.1"
   LIBRDKAFKA_VERSION = "1.9.0-RC1"
   LIBRDKAFKA_SOURCE_SHA256 = "c6aefe22ee14e8d036304bd61a5e5a61e100f0554df911fe107af1375c9f01f5"
 end

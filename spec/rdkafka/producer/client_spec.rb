@@ -42,13 +42,13 @@ describe Rdkafka::Producer::Client do
 
     it "polls the native with default 250ms timeout" do
       polling_loop_expects do
-        expect(Rdkafka::Bindings).to receive(:rd_kafka_poll).with(instance_of(FFI::Pointer), 250)
+        expect(Rdkafka::Bindings).to receive(:rd_kafka_poll).with(instance_of(FFI::Pointer), 250).at_least(:once)
       end
     end
 
     it "check the out queue of native client" do
       polling_loop_expects do
-        expect(Rdkafka::Bindings).to receive(:rd_kafka_outq_len).with(native)
+        expect(Rdkafka::Bindings).to receive(:rd_kafka_outq_len).with(native).at_least(:once)
       end
     end
   end

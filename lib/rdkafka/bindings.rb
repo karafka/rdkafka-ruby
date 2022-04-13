@@ -1,6 +1,7 @@
 require "ffi"
 require "json"
 require "logger"
+require 'librdkafka_path'
 
 module Rdkafka
   # @private
@@ -15,7 +16,7 @@ module Rdkafka
       end
     end
 
-    ffi_lib File.join(File.dirname(__FILE__), "../../ext/librdkafka.#{lib_extension}")
+    ffi_lib "#{LIBRDKAFKA_PATH}/librdkafka.#{lib_extension}"
 
     RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS = -175
     RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS = -174

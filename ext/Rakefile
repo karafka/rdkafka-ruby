@@ -33,7 +33,7 @@ task :default => :clean do
   lib_path = File.join(File.dirname(__FILE__), "ports/#{recipe.host}/librdkafka/#{Rdkafka::LIBRDKAFKA_VERSION}/lib/librdkafka.#{from_extension}")
 
   # Get target dir
-  target_dir = ENV["RUBYARCHDIR"] || File.dirname(__FILE__)
+  target_dir = ENV.fetch("RUBYARCHDIR", File.dirname(__FILE__))
 
   # Move the compliled library there
   FileUtils.mv(lib_path, File.join(target_dir, "librdkafka.#{to_extension}"))
@@ -41,6 +41,13 @@ task :default => :clean do
   # Cleanup files created by miniportile we don't need in the gem
   FileUtils.rm_rf File.join(target_dir, "tmp")
   FileUtils.rm_rf File.join(target_dir, "ports")
+
+  File.open("../lib/librdkafka_path.rb", "w") do |f|
+    f.print(<<~SOURCE
+      LIBRDKAFKA_PATH="#{target_dir}"
+      SOURCE
+    )
+  end
 end
 
 task :clean do

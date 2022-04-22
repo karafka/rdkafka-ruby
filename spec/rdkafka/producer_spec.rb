@@ -49,6 +49,27 @@ describe Rdkafka::Producer do
         # Callback should have been called
         expect(@callback_called).to be true
       end
+
+      it "should provide handle" do
+        @callback_handle = nil
+
+        producer.delivery_callback = lambda { |_, handle| @callback_handle = handle }
+
+        # Produce a message
+        handle = producer.produce(
+          topic:   "produce_test_topic",
+          payload: "payload",
+          key:     "key"
+        )
+
+        # Wait for it to be delivered
+        handle.wait(max_wait_timeout: 15)
+
+        # Join the producer thread.
+        producer.close
+
+        expect(handle).to be @callback_handle
+      end
     end
 
     context "with a callable object" do
@@ -92,6 +113,36 @@ describe Rdkafka::Producer do
         expect(called_report.first).not_to be_nil
         expect(called_report.first.partition).to eq 1
         expect(called_report.first.offset).to be >= 0
+      end
+
+      it "should provide handle" do
+        callback_handle = []
+        callback = Class.new do
+          def initialize(callback_handle)
+            @callback_handle = callback_handle
+          end
+
+          def call(_, handle)
+            @callback_handle << handle
+          end
+        end
+        producer.delivery_callback = callback.new(callback_handle)
+
+        # Produce a message
+        handle = producer.produce(
+          topic:   "produce_test_topic",
+          payload: "payload",
+          key:     "key"
+        )
+
+        # Wait for it to be delivered
+        handle.wait(max_wait_timeout: 15)
+
+        # Join the producer thread.
+        producer.close
+
+        # Callback should have been called
+        expect(handle).to be callback_handle.first
       end
     end
 

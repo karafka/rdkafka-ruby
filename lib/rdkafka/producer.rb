@@ -10,6 +10,12 @@ module Rdkafka
     attr_reader :delivery_callback
 
     # @private
+    # Returns the number of arguments accepted by the callback, by default this is nil.
+    #
+    # @return [Integer, nil]
+    attr_reader :delivery_callback_arity
+
+    # @private
     def initialize(client, partitioner_name)
       @client = client
       @partitioner_name = partitioner_name || "consistent_random"
@@ -19,7 +25,7 @@ module Rdkafka
     end
 
     # Set a callback that will be called every time a message is successfully produced.
-    # The callback is called with a {DeliveryReport}
+    # The callback is called with a {DeliveryReport} and {DeliveryHandle}
     #
     # @param callback [Proc, #call] The callback
     #
@@ -27,6 +33,7 @@ module Rdkafka
     def delivery_callback=(callback)
       raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call)
       @delivery_callback = callback
+      @delivery_callback_arity = arity(callback)
     end
 
     # Close this producer and wait for the internal poll queue to empty.
@@ -151,8 +158,17 @@ module Rdkafka
     end
 
     # @private
-    def call_delivery_callback(delivery_handle)
-      @delivery_callback.call(delivery_handle) if @delivery_callback
+    def call_delivery_callback(delivery_report, delivery_handle)
+      return unless @delivery_callback
+
+      args = [delivery_report, delivery_handle].take(@delivery_callback_arity)
+      @delivery_callback.call(*args)
+    end
+
+    def arity(callback)
+      return callback.arity if callback.respond_to?(:arity)
+
+      callback.method(:call).arity
     end
 
     def closed_producer_check(method)

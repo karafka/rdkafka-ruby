@@ -1,3 +1,6 @@
+# 0.12.0
+* Bumps librdkafka to 1.9.0
+
 # 0.11.0
 * Upgrade librdkafka to 1.8.2
 * Bump supported minimum Ruby version to 2.6

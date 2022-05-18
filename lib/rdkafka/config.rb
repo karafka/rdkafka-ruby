@@ -278,8 +278,8 @@ module Rdkafka
     attr_accessor :producer
     attr_accessor :consumer_rebalance_listener
 
-    def call_delivery_callback(delivery_handle)
-      producer.call_delivery_callback(delivery_handle) if producer
+    def call_delivery_callback(delivery_report, delivery_handle)
+      producer.call_delivery_callback(delivery_report, delivery_handle) if producer
     end
 
     def call_on_partitions_assigned(consumer, list)

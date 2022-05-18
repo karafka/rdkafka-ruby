@@ -116,17 +116,17 @@ describe Rdkafka::Producer do
       end
 
       it "should provide handle" do
-        callback_handle = []
+        callback_handles = []
         callback = Class.new do
-          def initialize(callback_handle)
-            @callback_handle = callback_handle
+          def initialize(callback_handles)
+            @callback_handles = callback_handles
           end
 
           def call(_, handle)
-            @callback_handle << handle
+            @callback_handles << handle
           end
         end
-        producer.delivery_callback = callback.new(callback_handle)
+        producer.delivery_callback = callback.new(callback_handles)
 
         # Produce a message
         handle = producer.produce(
@@ -142,7 +142,7 @@ describe Rdkafka::Producer do
         producer.close
 
         # Callback should have been called
-        expect(handle).to be callback_handle.first
+        expect(handle).to be callback_handles.first
       end
     end
 

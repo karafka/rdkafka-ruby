@@ -97,7 +97,7 @@ module Rdkafka
           delivery_handle[:pending] = false
           # Call delivery callback on opaque
           if opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
-            opaque.call_delivery_callback(Rdkafka::Producer::DeliveryReport.new(message[:partition], message[:offset], message[:err]))
+            opaque.call_delivery_callback(Rdkafka::Producer::DeliveryReport.new(message[:partition], message[:offset], message[:err]), delivery_handle)
           end
         end
       end

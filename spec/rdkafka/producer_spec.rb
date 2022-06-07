@@ -251,6 +251,28 @@ describe Rdkafka::Producer do
     expect(messages[2].key).to eq key
   end
 
+  it "should produce a message with empty string without crashing" do
+    messages = [{key: 'a', partition_key: ''}]
+
+    messages = messages.map do |m|
+      handle = producer.produce(
+        topic:     "partitioner_test_topic",
+        payload:   "payload partition",
+        key:       m[:key],
+        partition_key: m[:partition_key]
+      )
+      report = handle.wait(max_wait_timeout: 5)
+
+      wait_for_message(
+        topic: "partitioner_test_topic",
+        delivery_report: report,
+      )
+    end
+
+    expect(messages[0].partition).to eq 0
+    expect(messages[0].key).to eq 'a'
+  end
+
   it "should produce a message with utf-8 encoding" do
     handle = producer.produce(
       topic:   "produce_test_topic",

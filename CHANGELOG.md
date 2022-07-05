@@ -1,5 +1,7 @@
 # 0.12.0
 * Bumps librdkafka to 1.9.0
+* Fix crash on empty partition key (mensfeld)
+* Pass the delivery handle to the callback (gvisokinskas)
 
 # 0.11.0
 * Upgrade librdkafka to 1.8.2

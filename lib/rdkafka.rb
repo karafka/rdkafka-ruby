@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rdkafka/version"
 
 require "rdkafka/abstract_handle"

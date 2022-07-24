@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rdkafka
   VERSION = "0.12.0"
   LIBRDKAFKA_VERSION = "1.9.0"

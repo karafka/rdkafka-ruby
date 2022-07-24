@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rdkafka
   class Consumer
     # Information about a partition, used in {TopicPartitionList}.

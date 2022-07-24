@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 unless ENV["CI"] == "true"
   require "simplecov"
   SimpleCov.start do

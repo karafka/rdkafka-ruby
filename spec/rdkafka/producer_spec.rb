@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "spec_helper"
 require "zlib"
 
@@ -7,7 +9,7 @@ describe Rdkafka::Producer do
 
   after do
     # Registry should always end up being empty
-    expect(Rdkafka::Producer::DeliveryHandle::REGISTRY).to be_empty
+    expect(Rdkafka::Producer::DeliveryHandle::REGISTRY).to eq({})
     producer.close
     consumer.close
   end

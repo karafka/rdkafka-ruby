@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rdkafka
   class Consumer
     # A message headers

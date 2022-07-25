@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rdkafka
   class Producer
     # Handle to wait for a delivery report which is returned when

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rdkafka
   # Base error class.
   class BaseError < RuntimeError; end

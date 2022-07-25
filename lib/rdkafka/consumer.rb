@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Rdkafka
   # A consumer of Kafka messages. It uses the high-level consumer approach where the Kafka
   # brokers automatically assign partitions and load balance partitions over consumers that

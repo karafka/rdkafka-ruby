@@ -404,9 +404,9 @@ describe Rdkafka::Producer do
 
     expect(message.payload).to eq "payload headers"
     expect(message.key).to eq "key headers"
-    expect(message.headers['foo']).to eq "bar"
-    expect(message.headers['baz']).to eq "foobar"
-    expect(message.headers['foobar']).to be_nil
+    expect(message.headers["foo"]).to eq "bar"
+    expect(message.headers["baz"]).to eq "foobar"
+    expect(message.headers["foobar"]).to be_nil
   end
 
   it "should produce a message with empty headers" do

@@ -53,7 +53,7 @@ module Rdkafka
 
           value = value_ptr.read_string(size)
 
-          headers[name.to_sym] = value
+          headers[name] = value
 
           idx += 1
         end

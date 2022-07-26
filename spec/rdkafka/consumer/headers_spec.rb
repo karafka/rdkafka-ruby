@@ -46,5 +46,15 @@ describe Rdkafka::Consumer::Headers do
     subject { described_class.from_native(native_message) }
 
     it { is_expected.to eq(headers) }
+    it { is_expected.to be_frozen }
+
+    it 'allows String key' do
+      expect(subject['version']).to eq(headers.values[0])
+    end
+
+    it 'raises an exception on Symbol key attempt' do
+      expect { subject[:version] }.to \
+        raise_exception(ArgumentError, "rdkafka headers keys must be Strings; got :version")
+    end
   end
 end

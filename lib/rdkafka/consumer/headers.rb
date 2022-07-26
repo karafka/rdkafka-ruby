@@ -2,11 +2,13 @@
 
 module Rdkafka
   class Consumer
-    # A message headers
+    # Interface to return headers for a consumer message
     module Headers
-      # Reads a native kafka's message header into ruby's hash
+      # Reads a librdkafka native message's headers and returns them as a Ruby Hash
       #
-      # @return [Hash<String, String>] a message headers
+      # @param [librdkakfa message] native_message
+      #
+      # @return [Hash<String, String>] headers Hash for the native_message
       #
       # @raise [Rdkafka::RdkafkaError] when fail to read headers
       #

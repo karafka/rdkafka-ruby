@@ -185,7 +185,7 @@ describe Rdkafka::Producer do
     # Close producer
     producer.close
 
-    # Consume message and verify it's content
+    # Consume message and verify its content
     message = wait_for_message(
       topic: "produce_test_topic",
       delivery_report: report,
@@ -209,7 +209,7 @@ describe Rdkafka::Producer do
     )
     report = handle.wait(max_wait_timeout: 5)
 
-    # Consume message and verify it's content
+    # Consume message and verify its content
     message = wait_for_message(
       topic: "produce_test_topic",
       delivery_report: report,
@@ -283,7 +283,7 @@ describe Rdkafka::Producer do
     )
     report = handle.wait(max_wait_timeout: 5)
 
-    # Consume message and verify it's content
+    # Consume message and verify its content
     message = wait_for_message(
       topic: "produce_test_topic",
       delivery_report: report,
@@ -316,7 +316,7 @@ describe Rdkafka::Producer do
       )
       report = handle.wait(max_wait_timeout: 5)
 
-      # Consume message and verify it's content
+      # Consume message and verify its content
       message = wait_for_message(
         topic: "produce_test_topic",
         delivery_report: report,
@@ -337,7 +337,7 @@ describe Rdkafka::Producer do
       )
       report = handle.wait(max_wait_timeout: 5)
 
-      # Consume message and verify it's content
+      # Consume message and verify its content
       message = wait_for_message(
         topic: "produce_test_topic",
         delivery_report: report,
@@ -357,7 +357,7 @@ describe Rdkafka::Producer do
     )
     report = handle.wait(max_wait_timeout: 5)
 
-    # Consume message and verify it's content
+    # Consume message and verify its content
     message = wait_for_message(
       topic: "produce_test_topic",
       delivery_report: report,
@@ -375,7 +375,7 @@ describe Rdkafka::Producer do
     )
     report = handle.wait(max_wait_timeout: 5)
 
-    # Consume message and verify it's content
+    # Consume message and verify its content
     message = wait_for_message(
       topic: "produce_test_topic",
       delivery_report: report,
@@ -395,7 +395,7 @@ describe Rdkafka::Producer do
     )
     report = handle.wait(max_wait_timeout: 5)
 
-    # Consume message and verify it's content
+    # Consume message and verify its content
     message = wait_for_message(
       topic: "produce_test_topic",
       delivery_report: report,
@@ -404,9 +404,9 @@ describe Rdkafka::Producer do
 
     expect(message.payload).to eq "payload headers"
     expect(message.key).to eq "key headers"
-    expect(message.headers[:foo]).to eq "bar"
-    expect(message.headers[:baz]).to eq "foobar"
-    expect(message.headers[:foobar]).to be_nil
+    expect(message.headers['foo']).to eq "bar"
+    expect(message.headers['baz']).to eq "foobar"
+    expect(message.headers['foobar']).to be_nil
   end
 
   it "should produce a message with empty headers" do
@@ -418,7 +418,7 @@ describe Rdkafka::Producer do
     )
     report = handle.wait(max_wait_timeout: 5)
 
-    # Consume message and verify it's content
+    # Consume message and verify its content
     message = wait_for_message(
       topic: "produce_test_topic",
       delivery_report: report,
@@ -489,7 +489,7 @@ describe Rdkafka::Producer do
 
     reader.close
 
-    # Consume message and verify it's content
+    # Consume message and verify its content
     message = wait_for_message(
       topic: "produce_test_topic",
       delivery_report: report,

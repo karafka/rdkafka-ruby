@@ -3,7 +3,7 @@
 module Rdkafka
   class Consumer
     # A message headers
-    class Headers
+    module Headers
       # Reads a native kafka's message header into ruby's hash
       #
       # @return [Hash<String, String>] a message headers

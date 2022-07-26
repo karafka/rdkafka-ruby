@@ -49,7 +49,7 @@ describe Rdkafka::Consumer::Headers do
     it { is_expected.to be_frozen }
 
     it 'allows String key' do
-      expect(subject['version']).to eq(headers.values[0])
+      expect(subject['version']).to eq("2.1.3")
     end
 
     it 'raises an exception on Symbol key attempt' do

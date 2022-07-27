@@ -595,7 +595,7 @@ describe Rdkafka::Consumer do
   end
 
   describe "#poll with headers" do
-    it "should return message with headers" do
+    it "should return message with headers using string keys (when produced with symbol keys)" do
       report = producer.produce(
         topic:     "consume_test_topic",
         key:       "key headers",
@@ -605,7 +605,20 @@ describe Rdkafka::Consumer do
       message = wait_for_message(topic: "consume_test_topic", consumer: consumer, delivery_report: report)
       expect(message).to be
       expect(message.key).to eq('key headers')
-      expect(message.headers).to include(foo: 'bar')
+      expect(message.headers).to include('foo' => 'bar')
+    end
+
+    it "should return message with headers using string keys (when produced with string keys)" do
+      report = producer.produce(
+        topic:     "consume_test_topic",
+        key:       "key headers",
+        headers:   { 'foo' => 'bar' }
+      ).wait
+
+      message = wait_for_message(topic: "consume_test_topic", consumer: consumer, delivery_report: report)
+      expect(message).to be
+      expect(message.key).to eq('key headers')
+      expect(message.headers).to include('foo' => 'bar')
     end
 
     it "should return message with no headers" do

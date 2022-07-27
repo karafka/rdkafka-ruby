@@ -20,7 +20,7 @@ module Rdkafka
       # @return [String, nil]
       attr_reader :key
 
-      # This message's offset in it's partition
+      # This message's offset in its partition
       # @return [Integer]
       attr_reader :offset
 

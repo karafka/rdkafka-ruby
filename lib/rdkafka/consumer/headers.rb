@@ -4,10 +4,15 @@ module Rdkafka
   class Consumer
     # Interface to return headers for a consumer message
     module Headers
-      class HashWithOnlyStringKeysAllowed < Hash
+      class HashWithSymbolKeysTreatedLikeStrings < Hash
         def [](key)
-          key.is_a?(String) or raise ArgumentError, "rdkafka headers keys must be Strings; got #{key.inspect}"
-          super
+          if key.is_a?(Symbol)
+            Kernel.warn("rdkafka deprecation warning: header access with Symbol key #{key.inspect} treated as a String. " \
+                        "Please change your code to use String keys to avoid this warning. Symbol keys will break in version 1.")
+            super(key.to_s)
+          else
+            super
+          end
         end
       end
 
@@ -36,7 +41,7 @@ module Rdkafka
         value_ptrptr = FFI::MemoryPointer.new(:pointer)
         size_ptr = Rdkafka::Bindings::SizePtr.new
 
-        headers = HashWithOnlyStringKeysAllowed.new
+        headers = HashWithSymbolKeysTreatedLikeStrings.new
 
         idx = 0
         loop do

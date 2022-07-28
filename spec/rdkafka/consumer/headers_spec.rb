@@ -52,9 +52,11 @@ describe Rdkafka::Consumer::Headers do
       expect(subject['version']).to eq("2.1.3")
     end
 
-    it 'raises an exception on Symbol key attempt' do
-      expect { subject[:version] }.to \
-        raise_exception(ArgumentError, "rdkafka headers keys must be Strings; got :version")
+    it 'allows Symbol key, but warns' do
+      expect(Kernel).to \
+        receive(:warn).with("rdkafka deprecation warning: header access with Symbol key :version treated as a String. " \
+                            "Please change your code to use String keys to avoid this warning. Symbol keys will break in version 1.")
+      expect(subject[:version]).to eq("2.1.3")
     end
   end
 end

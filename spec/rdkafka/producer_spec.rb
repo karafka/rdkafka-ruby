@@ -9,7 +9,7 @@ describe Rdkafka::Producer do
 
   after do
     # Registry should always end up being empty
-    expect(Rdkafka::Producer::DeliveryHandle::REGISTRY).to eq({})
+    expect(Rdkafka::Producer::DeliveryHandle::REGISTRY).to be_empty
     producer.close
     consumer.close
   end

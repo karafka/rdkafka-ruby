@@ -9,15 +9,18 @@ agent:
 blocks:
   - name: Run specs
     task:
+      prologue:
+        commands:
+          - sudo apt install -y valgrind
       jobs:
         - name: bundle exec rspec
           matrix:
             - env_var: RUBY_VERSION
-              values: [ "2.6.8", "2.7.4", "3.0.2", "jruby-9.3.1.0"]
+              values: [ "2.6.10", "2.7.6", "3.0.4", "3.1.2", "jruby-9.3.1.0"]
           commands:
             - sem-version ruby $RUBY_VERSION
             - checkout
             - bundle install --path vendor/bundle
             - cd ext && bundle exec rake && cd ..
             - docker-compose up -d --no-recreate
-            - bundle exec rspec
+            - valgrind -v bundle exec rspec

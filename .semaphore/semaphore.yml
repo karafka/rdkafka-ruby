@@ -9,6 +9,9 @@ agent:
 blocks:
   - name: Run specs
     task:
+      prologue:
+        commands:
+          - sudo apt install -y valgrind
       jobs:
         - name: bundle exec rspec
           matrix:
@@ -20,4 +23,4 @@ blocks:
             - bundle install --path vendor/bundle
             - cd ext && bundle exec rake && cd ..
             - docker-compose up -d --no-recreate
-            - bundle exec rspec
+            - valgrind -v bundle exec rspec

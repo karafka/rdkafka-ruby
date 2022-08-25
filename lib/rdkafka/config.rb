@@ -32,7 +32,6 @@ module Rdkafka
       @@logger
     end
 
-
     # Returns a queue whose contents will be passed to the configured logger. Each entry
     # should follow the format [Logger::Severity, String]. The benefit over calling the
     # logger directly is that this is safe to use from trap contexts.
@@ -49,7 +48,7 @@ module Rdkafka
     # @return [nil]
     def self.logger=(logger)
       raise NoLoggerError if logger.nil?
-      @@logger=logger
+      @@logger = logger
     end
 
     # Set a callback that will be called every time the underlying client emits statistics.
@@ -181,7 +180,8 @@ module Rdkafka
       # Set callback to receive delivery reports on config
       Rdkafka::Bindings.rd_kafka_conf_set_dr_msg_cb(config, Rdkafka::Callbacks::DeliveryCallbackFunction)
       # Return producer with Kafka client
-      Rdkafka::Producer.new(Rdkafka::Producer::Client.new(native_kafka(config, :rd_kafka_producer)), self[:partitioner]).tap do |producer|
+      partitioner_name = self[:partitioner] || self["partitioner"]
+      Rdkafka::Producer.new(Rdkafka::Producer::Client.new(native_kafka(config, :rd_kafka_producer)), partitioner_name).tap do |producer|
         opaque.producer = producer
       end
     end
@@ -212,7 +212,7 @@ module Rdkafka
 
     # This method is only intended to be used to create a client,
     # using it in another way will leak memory.
-    def native_config(opaque=nil)
+    def native_config(opaque = nil)
       Rdkafka::Bindings.rd_kafka_conf_new.tap do |config|
         # Create config
         @config_hash.merge(REQUIRED_CONFIG).each do |key, value|

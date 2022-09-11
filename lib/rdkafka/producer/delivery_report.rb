@@ -12,15 +12,20 @@ module Rdkafka
       # @return [Integer]
       attr_reader :offset
 
+      # The name of the topic this message was produced to.
+      # @return [String]
+      attr_reader :topic_name
+
       # Error in case happen during produce.
       # @return [String]
       attr_reader :error
 
       private
 
-      def initialize(partition, offset, error = nil)
+      def initialize(partition, offset, topic_name = nil, error = nil)
         @partition = partition
         @offset = offset
+        @topic_name = topic_name
         @error = error
       end
     end

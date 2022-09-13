@@ -8,7 +8,8 @@ module Rdkafka
       layout :pending, :bool,
              :response, :int,
              :partition, :int,
-             :offset, :int64
+             :offset, :int64,
+             :topic_name, :pointer
 
       # @return [String] the name of the operation (e.g. "delivery")
       def operation_name
@@ -17,7 +18,7 @@ module Rdkafka
 
       # @return [DeliveryReport] a report on the delivery of the message
       def create_result
-        DeliveryReport.new(self[:partition], self[:offset])
+        DeliveryReport.new(self[:partition], self[:offset], self[:topic_name].read_string)
       end
     end
   end

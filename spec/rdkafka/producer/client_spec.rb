@@ -137,7 +137,7 @@ describe Rdkafka::Producer::Client do
     end
   end
 
-  it "provide a finalizer Proc that closes the `native` client" do
+  it "provides a finalizer Proc that closes the `native` client" do
     expect(client.closed?).to eq(false)
 
     client.finalizer.call("some-ignored-object-id")

@@ -16,18 +16,25 @@ module Rdkafka
     # @private
     def initialize(native_kafka)
       @native_kafka = native_kafka
-      @closing = false
+    end
+
+    def finalizer
+      ->(_) { close }
     end
 
     # Close this consumer
     # @return [nil]
     def close
-      return unless @native_kafka
+      return if closed?
 
-      @closing = true
       Rdkafka::Bindings.rd_kafka_consumer_close(@native_kafka)
       Rdkafka::Bindings.rd_kafka_destroy(@native_kafka)
       @native_kafka = nil
+    end
+
+    # Whether this consumer has closed
+    def closed?
+      @native_kafka.nil?
     end
 
     # Subscribe to one or more topics letting Kafka handle partition assignments.
@@ -461,17 +468,13 @@ module Rdkafka
         if message
           yield(message)
         else
-          if @closing
+          if closed?
             break
           else
             next
           end
         end
       end
-    end
-
-    def closed_consumer_check(method)
-      raise Rdkafka::ClosedConsumerError.new(method) if @native_kafka.nil?
     end
 
     # Poll for new messages and yield them in batches that may contain
@@ -529,7 +532,7 @@ module Rdkafka
       bytes = 0
       end_time = monotonic_now + timeout_ms / 1000.0
       loop do
-        break if @closing
+        break if closed?
         max_wait = end_time - monotonic_now
         max_wait_ms = if max_wait <= 0
                         0  # should not block, but may retrieve a message
@@ -562,6 +565,10 @@ module Rdkafka
     def monotonic_now
       # needed because Time.now can go backwards
       Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    end
+
+    def closed_consumer_check(method)
+      raise Rdkafka::ClosedConsumerError.new(method) if closed?
     end
   end
 end

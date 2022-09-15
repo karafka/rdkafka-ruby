@@ -14,20 +14,30 @@ module Rdkafka
     include Enumerable
 
     # @private
-    def initialize(native_kafka)
-      @native_kafka = native_kafka
+    def initialize(native)
+      @native = native
       @closing = false
+    end
+
+    def finalizer
+      ->(_) { close }
     end
 
     # Close this consumer
     # @return [nil]
     def close
-      return unless @native_kafka
+      return unless @native
+
+      Rdkafka::Bindings.rd_kafka_consumer_close(@native)
+      Rdkafka::Bindings.rd_kafka_destroy(@native)
+      @native = nil
 
       @closing = true
-      Rdkafka::Bindings.rd_kafka_consumer_close(@native_kafka)
-      Rdkafka::Bindings.rd_kafka_destroy(@native_kafka)
-      @native_kafka = nil
+    end
+
+    # Whether this consumer has closed
+    def closed?
+      @native.nil?
     end
 
     # Subscribe to one or more topics letting Kafka handle partition assignments.
@@ -471,7 +481,7 @@ module Rdkafka
     end
 
     def closed_consumer_check(method)
-      raise Rdkafka::ClosedConsumerError.new(method) if @native_kafka.nil?
+      raise Rdkafka::ClosedConsumerError.new(method) if closed?
     end
 
     # Poll for new messages and yield them in batches that may contain

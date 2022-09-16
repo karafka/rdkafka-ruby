@@ -201,12 +201,4 @@ describe Rdkafka::Admin do
       expect(delete_topic_report.result_name).to eq(topic_name)
     end
   end
-
-  it "provides a finalizer that closes the native kafka client" do
-    expect(admin.closed?).to eq(false)
-
-    admin.finalizer.call("some-ignored-object-id")
-
-    expect(admin.closed?).to eq(true)
-  end
 end

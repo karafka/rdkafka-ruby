@@ -196,7 +196,7 @@ module Rdkafka
       opaque = Opaque.new
       config = native_config(opaque)
       Rdkafka::Bindings.rd_kafka_conf_set_background_event_cb(config, Rdkafka::Callbacks::BackgroundEventCallbackFunction)
-      Rdkafka::Admin.new(native_kafka(config, :rd_kafka_producer))
+      Rdkafka::Admin.new(Rdkafka::NativeKafka.new(native_kafka(config, :rd_kafka_producer)))
     end
 
     # Error that is returned by the underlying rdkafka error if an invalid configuration option is present.

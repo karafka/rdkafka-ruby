@@ -22,7 +22,7 @@ module Rdkafka
       @native_kafka = native_kafka
       @partitioner_name = partitioner_name || "consistent_random"
 
-      # Makes sure, that the producer gets closed before it gets GCed by Ruby
+      # Makes sure, that native kafka gets closed before it gets GCed by Ruby
       ObjectSpace.define_finalizer(self, native_kafka.finalizer)
     end
 
@@ -51,7 +51,6 @@ module Rdkafka
     # @param topic [String] The topic name.
     #
     # @return partition count [Integer,nil]
-    #
     def partition_count(topic)
       closed_producer_check(__method__)
       Rdkafka::Metadata.new(@native_kafka.inner, topic).topics&.first[:partition_count]

@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-describe Rdkafka::Producer::Client do
+describe Rdkafka::NativeKafka do
   let(:config) { rdkafka_producer_config }
   let(:native) { config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer) }
   let(:closing) { false }
@@ -65,8 +65,8 @@ describe Rdkafka::Producer::Client do
     client
   end
 
-  it "exposes `native` client" do
-    expect(client.native).to eq(native)
+  it "exposes inner client" do
+    expect(client.inner).to eq(native)
   end
 
   context "when client was not yet closed (`nil`)" do
@@ -96,7 +96,7 @@ describe Rdkafka::Producer::Client do
       it "closes and unassign the native client" do
         client.close
 
-        expect(client.native).to eq(nil)
+        expect(client.inner).to eq(nil)
         expect(client.closed?).to eq(true)
       end
     end
@@ -131,7 +131,7 @@ describe Rdkafka::Producer::Client do
       it "does not close and unassign the native client again" do
         client.close
 
-        expect(client.native).to eq(nil)
+        expect(client.inner).to eq(nil)
         expect(client.closed?).to eq(true)
       end
     end

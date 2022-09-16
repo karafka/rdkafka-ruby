@@ -4,8 +4,8 @@ require "spec_helper"
 require "ostruct"
 
 describe Rdkafka::Admin do
-  let(:config)   { rdkafka_config }
-  let(:admin)    { config.admin }
+  let(:config) { rdkafka_config }
+  let(:admin)  { config.admin }
 
   after do
     # Registry should always end up being empty
@@ -176,7 +176,6 @@ describe Rdkafka::Admin do
       end
     end
 
-
     it "deletes a topic that was newly created" do
       create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor)
       create_topic_report = create_topic_handle.wait(max_wait_timeout: 15.0)
@@ -201,5 +200,13 @@ describe Rdkafka::Admin do
       expect(delete_topic_report.error_string).to be_nil
       expect(delete_topic_report.result_name).to eq(topic_name)
     end
+  end
+
+  it "provides a finalizer that closes the native kafka client" do
+    expect(admin.closed?).to eq(false)
+
+    admin.finalizer.call("some-ignored-object-id")
+
+    expect(admin.closed?).to eq(true)
   end
 end

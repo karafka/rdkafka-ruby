@@ -85,4 +85,11 @@ module Rdkafka
       super("Illegal call to #{method.to_s} on a closed producer")
     end
   end
+
+  # Error class for public consumer method calls on a closed admin.
+  class ClosedAdminError < BaseError
+    def initialize(method)
+      super("Illegal call to #{method.to_s} on a closed admin")
+    end
+  end
 end

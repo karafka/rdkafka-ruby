@@ -159,7 +159,6 @@ module Rdkafka
       delivery_handle
     end
 
-    # @private
     def call_delivery_callback(delivery_report, delivery_handle)
       return unless @delivery_callback
 
@@ -173,6 +172,7 @@ module Rdkafka
       callback.method(:call).arity
     end
 
+    private
     def closed_producer_check(method)
       raise Rdkafka::ClosedProducerError.new(method) if @client.closed?
     end

@@ -4,8 +4,8 @@ require "spec_helper"
 require "ostruct"
 
 describe Rdkafka::Admin do
-  let(:config)   { rdkafka_config }
-  let(:admin)    { config.admin }
+  let(:config) { rdkafka_config }
+  let(:admin)  { config.admin }
 
   after do
     # Registry should always end up being empty
@@ -175,7 +175,6 @@ describe Rdkafka::Admin do
         end
       end
     end
-
 
     it "deletes a topic that was newly created" do
       create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor)

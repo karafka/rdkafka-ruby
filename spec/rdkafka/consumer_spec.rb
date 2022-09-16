@@ -1007,4 +1007,12 @@ describe Rdkafka::Consumer do
       end
     end
   end
+
+  it "provides a finalizer that closes the native kafka client" do
+    expect(consumer.closed?).to eq(false)
+
+    consumer.finalizer.call("some-ignored-object-id")
+
+    expect(consumer.closed?).to eq(true)
+  end
 end

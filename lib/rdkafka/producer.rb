@@ -159,7 +159,7 @@ module Rdkafka
       delivery_handle
     end
 
-    # @private
+    private
     def call_delivery_callback(delivery_report, delivery_handle)
       return unless @delivery_callback
 

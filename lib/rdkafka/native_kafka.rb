@@ -36,6 +36,9 @@ module Rdkafka
     def close(object_id=nil)
       return if closed?
 
+      # Flush outstanding activity
+      Rdkafka::Bindings.rd_kafka_flush(@inner, 5 * 1000)
+
       # Indicate to polling thread that we're closing
       @polling_thread[:closing] = true
       # Wait for the polling thread to finish up

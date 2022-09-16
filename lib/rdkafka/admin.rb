@@ -20,9 +20,13 @@ module Rdkafka
       @polling_thread.abort_on_exception = true
     end
 
+    def finalizer
+      ->(_) { close }
+    end
+
     # Close this admin instance
     def close
-      return unless @native_kafka
+      return if closed?
 
       # Indicate to polling thread that we're closing
       @closing = true
@@ -30,6 +34,11 @@ module Rdkafka
       @polling_thread.join
       Rdkafka::Bindings.rd_kafka_destroy(@native_kafka)
       @native_kafka = nil
+    end
+
+    # Whether this admin has closed
+    def closed?
+      @native_kafka.nil?
     end
 
     # Create a topic with the given partition count and replication factor
@@ -40,6 +49,7 @@ module Rdkafka
     #
     # @return [CreateTopicHandle] Create topic handle that can be used to wait for the result of creating the topic
     def create_topic(topic_name, partition_count, replication_factor, topic_config={})
+      closed_admin_check(__method__)
 
       # Create a rd_kafka_NewTopic_t representing the new topic
       error_buffer = FFI::MemoryPointer.from_string(" " * 256)
@@ -110,6 +120,7 @@ module Rdkafka
     #
     # @return [DeleteTopicHandle] Delete topic handle that can be used to wait for the result of deleting the topic
     def delete_topic(topic_name)
+      closed_admin_check(__method__)
 
       # Create a rd_kafka_DeleteTopic_t representing the topic to be deleted
       delete_topic_ptr = Rdkafka::Bindings.rd_kafka_DeleteTopic_new(FFI::MemoryPointer.from_string(topic_name))
@@ -152,6 +163,11 @@ module Rdkafka
       end
 
       delete_topic_handle
+    end
+
+    private
+    def closed_admin_check(method)
+      raise Rdkafka::ClosedAdminError.new(method) if closed?
     end
   end
 end

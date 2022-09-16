@@ -18,12 +18,12 @@ module Rdkafka
     attr_reader :delivery_callback_arity
 
     # @private
-    def initialize(client, partitioner_name)
-      @client = client
+    def initialize(native_kafka, partitioner_name)
+      @native_kafka = native_kafka
       @partitioner_name = partitioner_name || "consistent_random"
 
       # Makes sure, that the producer gets closed before it gets GCed by Ruby
-      ObjectSpace.define_finalizer(self, client.finalizer)
+      ObjectSpace.define_finalizer(self, native_kafka.finalizer)
     end
 
     # Set a callback that will be called every time a message is successfully produced.
@@ -42,7 +42,7 @@ module Rdkafka
     def close
       ObjectSpace.undefine_finalizer(self)
 
-      @client.close
+      @native_kafka.close
     end
 
     # Partition count for a given topic.
@@ -54,7 +54,7 @@ module Rdkafka
     #
     def partition_count(topic)
       closed_producer_check(__method__)
-      Rdkafka::Metadata.new(@client.native, topic).topics&.first[:partition_count]
+      Rdkafka::Metadata.new(@native_kafka.inner, topic).topics&.first[:partition_count]
     end
 
     # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.
@@ -146,7 +146,7 @@ module Rdkafka
 
       # Produce the message
       response = Rdkafka::Bindings.rd_kafka_producev(
-        @client.native,
+        @native_kafka.inner,
         *args
       )
 
@@ -174,7 +174,7 @@ module Rdkafka
 
     private
     def closed_producer_check(method)
-      raise Rdkafka::ClosedProducerError.new(method) if @client.closed?
+      raise Rdkafka::ClosedProducerError.new(method) if @native_kafka.closed?
     end
   end
 end

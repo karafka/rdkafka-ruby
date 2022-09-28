@@ -74,7 +74,7 @@ describe Rdkafka::Consumer do
         consumer.commit
 
         # 4. send a second message
-        send_one_message
+        send_tombstone_event
 
         # 5. pause the subscription
         tpl = Rdkafka::Consumer::TopicPartitionList.new
@@ -124,6 +124,14 @@ describe Rdkafka::Consumer do
       producer.produce(
         topic:     "consume_test_topic",
         payload:   "payload 1",
+        key:       "key 1"
+      ).wait
+    end
+
+    def send_tombstone_event
+      producer.produce(
+        topic:     "consume_test_topic",
+        payload:   nil,
         key:       "key 1"
       ).wait
     end

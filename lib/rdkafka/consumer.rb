@@ -547,7 +547,7 @@ module Rdkafka
         end
         if message
           slice << message
-          bytes += message.payload.bytesize
+          bytes += message.payload.bytesize if message.payload
         end
         if slice.size == max_items || bytes >= bytes_threshold || monotonic_now >= end_time - 0.001
           yield slice.dup, nil

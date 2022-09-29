@@ -17,7 +17,7 @@ module Rdkafka
       attr_reader :topic_name
 
       # Error in case happen during produce.
-      # @return [String]
+      # @return [Integer]
       attr_reader :error
 
       private

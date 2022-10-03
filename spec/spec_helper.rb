@@ -106,6 +106,20 @@ def wait_for_unassignment(consumer)
   end
 end
 
+def notify_listener(listener, &block)
+  # 1. subscribe and poll
+  consumer.subscribe("consume_test_topic")
+  wait_for_assignment(consumer)
+  consumer.poll(100)
+
+  block.call if block
+
+  # 2. unsubscribe
+  consumer.unsubscribe
+  wait_for_unassignment(consumer)
+  consumer.close
+end
+
 RSpec.configure do |config|
   config.filter_run focus: true
   config.run_all_when_everything_filtered = true

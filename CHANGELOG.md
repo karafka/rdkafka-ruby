@@ -1,3 +1,6 @@
+# 0.13.0
+* Supports cooperative sticky partition assignment in the rebalance callback (methodmissing)
+
 # 0.12.0
 * Bumps librdkafka to 1.9.0
 * Fix crash on empty partition key (mensfeld)

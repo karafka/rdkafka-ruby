@@ -112,6 +112,7 @@ module Rdkafka
     attach_function :rd_kafka_conf_set_stats_cb, [:pointer, :stats_cb], :void
     callback :error_cb, [:pointer, :int, :string, :pointer], :void
     attach_function :rd_kafka_conf_set_error_cb, [:pointer, :error_cb], :void
+    attach_function :rd_kafka_rebalance_protocol, [:pointer], :string
 
     # Log queue
     attach_function :rd_kafka_set_log_queue, [:pointer, :pointer], :void
@@ -175,6 +176,8 @@ module Rdkafka
     attach_function :rd_kafka_unsubscribe, [:pointer], :int
     attach_function :rd_kafka_subscription, [:pointer, :pointer], :int
     attach_function :rd_kafka_assign, [:pointer, :pointer], :int
+    attach_function :rd_kafka_incremental_assign, [:pointer, :pointer], :int
+    attach_function :rd_kafka_incremental_unassign, [:pointer, :pointer], :int
     attach_function :rd_kafka_assignment, [:pointer, :pointer], :int
     attach_function :rd_kafka_committed, [:pointer, :pointer, :int], :int
     attach_function :rd_kafka_commit, [:pointer, :pointer, :bool], :int, blocking: true
@@ -200,9 +203,17 @@ module Rdkafka
     ) do |client_ptr, code, partitions_ptr, opaque_ptr|
       case code
       when RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS
-        Rdkafka::Bindings.rd_kafka_assign(client_ptr, partitions_ptr)
+        if Rdkafka::Bindings.rd_kafka_rebalance_protocol(client_ptr) == "COOPERATIVE"
+          Rdkafka::Bindings.rd_kafka_incremental_assign(client_ptr, partitions_ptr)
+        else
+          Rdkafka::Bindings.rd_kafka_assign(client_ptr, partitions_ptr)
+        end
       else # RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS or errors
-        Rdkafka::Bindings.rd_kafka_assign(client_ptr, FFI::Pointer::NULL)
+        if Rdkafka::Bindings.rd_kafka_rebalance_protocol(client_ptr) == "COOPERATIVE"
+          Rdkafka::Bindings.rd_kafka_incremental_unassign(client_ptr, partitions_ptr)
+        else
+          Rdkafka::Bindings.rd_kafka_assign(client_ptr, FFI::Pointer::NULL)
+        end
       end
 
       opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]

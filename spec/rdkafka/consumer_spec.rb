@@ -964,18 +964,6 @@ describe Rdkafka::Consumer do
         expect(listener.queue).to eq([:assigned, :revoked])
       end
     end
-
-    def notify_listener(listener)
-      # 1. subscribe and poll
-      consumer.subscribe("consume_test_topic")
-      wait_for_assignment(consumer)
-      consumer.poll(100)
-
-      # 2. unsubscribe
-      consumer.unsubscribe
-      wait_for_unassignment(consumer)
-      consumer.close
-    end
   end
 
   context "methods that should not be called after a consumer has been closed" do
@@ -1005,6 +993,64 @@ describe Rdkafka::Consumer do
           end
         }.to raise_exception(Rdkafka::ClosedConsumerError, /#{method.to_s}/)
       end
+    end
+  end
+
+  context "when the rebalance protocol is cooperative" do
+    let(:consumer) do
+      config = rdkafka_consumer_config(
+        {
+          :"partition.assignment.strategy" => "cooperative-sticky",
+          :"debug" => "consumer",
+        }
+      )
+      config.consumer_rebalance_listener = listener
+      config.consumer
+    end
+
+    let(:listener) do
+      Struct.new(:queue) do
+        def on_partitions_assigned(consumer, list)
+          collect(:assign, list)
+        end
+
+        def on_partitions_revoked(consumer, list)
+          collect(:revoke, list)
+        end
+
+        def collect(name, list)
+          partitions = list.to_h.map { |key, values| [key, values.map(&:partition)] }.flatten
+          queue << ([name] + partitions)
+        end
+      end.new([])
+    end
+
+    it "should be able to assign and unassign partitions using the cooperative partition assignment APIs" do
+      notify_listener(listener) do
+        handles = []
+        10.times do
+          handles << producer.produce(
+            topic:     "consume_test_topic",
+            payload:   "payload 1",
+            key:       "key 1",
+            partition: 0
+          )
+        end
+        handles.each(&:wait)
+
+        consumer.subscribe("consume_test_topic")
+        # Check the first 10 messages. Then close the consumer, which
+        # should break the each loop.
+        consumer.each_with_index do |message, i|
+          expect(message).to be_a Rdkafka::Consumer::Message
+          break if i == 10
+        end
+      end
+
+      expect(listener.queue).to eq([
+        [:assign, "consume_test_topic", 0, 1, 2],
+        [:revoke, "consume_test_topic", 0, 1, 2]
+      ])
     end
   end
 end

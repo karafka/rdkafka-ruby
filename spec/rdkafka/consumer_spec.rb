@@ -700,7 +700,7 @@ describe Rdkafka::Consumer do
       n.times do |i|
         handles << producer.produce(
           topic:     topic_name,
-          payload:   Time.new.to_f.to_s,
+          payload:   i % 10 == 0 ? nil : Time.new.to_f.to_s,
           key:       i.to_s,
           partition: 0
         )

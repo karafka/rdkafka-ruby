@@ -1,5 +1,12 @@
+# 0.13.0
+* Add topic name to delivery report (maeve)
+* Allow string partitioner config (mollyegibson)
+* Fix documented type for DeliveryReport#error (jimmydo)
+* Bump librdkafka to 1.9.2 (thijsc)
+* Use finalizers to cleanly exit producer and admin (thijsc)
+
 # 0.12.0
-* Bumps librdkafka to 1.9.0
+* Bump librdkafka to 1.9.0
 * Fix crash on empty partition key (mensfeld)
 * Pass the delivery handle to the callback (gvisokinskas)
 

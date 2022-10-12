@@ -1,4 +1,5 @@
 # 0.13.0
+* Supports cooperative sticky partition assignment in the rebalance callback (methodmissing)
 * Add topic name to delivery report (maeve)
 * Allow string partitioner config (mollyegibson)
 * Fix documented type for DeliveryReport#error (jimmydo)
@@ -6,7 +7,7 @@
 * Use finalizers to cleanly exit producer and admin (thijsc)
 
 # 0.12.0
-* Bump librdkafka to 1.9.0
+* Bumps librdkafka to 1.9.0
 * Fix crash on empty partition key (mensfeld)
 * Pass the delivery handle to the callback (gvisokinskas)
 

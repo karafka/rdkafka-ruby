@@ -1,5 +1,7 @@
 # 0.13.0
-* Supports cooperative sticky partition assignment in the rebalance callback (methodmissing)
+* Support cooperative sticky partition assignment in the rebalance callback (methodmissing)
+* Support both string and symbol header keys (ColinDKelley)
+* Handle tombstone messages properly (kgalieva)
 * Add topic name to delivery report (maeve)
 * Allow string partitioner config (mollyegibson)
 * Fix documented type for DeliveryReport#error (jimmydo)

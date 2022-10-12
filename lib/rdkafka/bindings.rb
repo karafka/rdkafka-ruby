@@ -17,7 +17,7 @@ module Rdkafka
       end
     end
 
-    ffi_lib File.join(File.dirname(__FILE__), "../../ext/librdkafka.#{lib_extension}")
+    ffi_lib File.join(__dir__, "../../ext/librdkafka.#{lib_extension}")
 
     RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS = -175
     RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS = -174

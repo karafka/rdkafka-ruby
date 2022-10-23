@@ -30,22 +30,22 @@ module Rdkafka
     end
 
     def closed?
-      @inner.nil?
+      @closing || @inner.nil?
     end
 
     def close(object_id=nil)
       return if closed?
 
-      # Flush outstanding activity
-      Rdkafka::Bindings.rd_kafka_flush(@inner, 30 * 1000)
+      # Indicate to the outside world that we are closing
+      @closing = true
 
       # Indicate to polling thread that we're closing
       @polling_thread[:closing] = true
       # Wait for the polling thread to finish up
       @polling_thread.join
 
+      # Destroy the client
       Rdkafka::Bindings.rd_kafka_destroy(@inner)
-
       @inner = nil
     end
   end

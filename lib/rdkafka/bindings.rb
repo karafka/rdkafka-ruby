@@ -62,6 +62,9 @@ module Rdkafka
 
     attach_function :rd_kafka_message_destroy, [:pointer], :void
     attach_function :rd_kafka_message_timestamp, [:pointer, :pointer], :int64
+
+    # Topics
+
     attach_function :rd_kafka_topic_new, [:pointer, :string, :pointer], :pointer
     attach_function :rd_kafka_topic_destroy, [:pointer], :pointer
     attach_function :rd_kafka_topic_name, [:pointer], :string
@@ -183,7 +186,7 @@ module Rdkafka
     attach_function :rd_kafka_committed, [:pointer, :pointer, :int], :int
     attach_function :rd_kafka_commit, [:pointer, :pointer, :bool], :int, blocking: true
     attach_function :rd_kafka_poll_set_consumer, [:pointer], :void
-    attach_function :rd_kafka_consumer_poll, [:pointer, :int], :pointer, blocking: true
+    attach_function :rd_kafka_consumer_poll, [:pointer, :int], Message.by_ref, blocking: true
     attach_function :rd_kafka_consumer_close, [:pointer], :void, blocking: true
     attach_function :rd_kafka_offset_store, [:pointer, :int32, :int64], :int
     attach_function :rd_kafka_pause_partitions, [:pointer, :pointer], :int

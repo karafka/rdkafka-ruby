@@ -26,15 +26,14 @@ module Rdkafka
     # @return [nil]
     def close
       return if closed?
-
-      Rdkafka::Bindings.rd_kafka_consumer_close(@native_kafka)
-      Rdkafka::Bindings.rd_kafka_destroy(@native_kafka)
-      @native_kafka = nil
+      ObjectSpace.undefine_finalizer(self)
+      Rdkafka::Bindings.rd_kafka_consumer_close(@native_kafka.inner)
+      @native_kafka.close
     end
 
     # Whether this consumer has closed
     def closed?
-      @native_kafka.nil?
+      @native_kafka.closed?
     end
 
     # Subscribe to one or more topics letting Kafka handle partition assignments.
@@ -55,7 +54,7 @@ module Rdkafka
       end
 
       # Subscribe to topic partition list and check this was successful
-      response = Rdkafka::Bindings.rd_kafka_subscribe(@native_kafka, tpl)
+      response = Rdkafka::Bindings.rd_kafka_subscribe(@native_kafka.inner, tpl)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response, "Error subscribing to '#{topics.join(', ')}'")
       end
@@ -71,7 +70,7 @@ module Rdkafka
     def unsubscribe
       closed_consumer_check(__method__)
 
-      response = Rdkafka::Bindings.rd_kafka_unsubscribe(@native_kafka)
+      response = Rdkafka::Bindings.rd_kafka_unsubscribe(@native_kafka.inner)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
@@ -94,7 +93,7 @@ module Rdkafka
       tpl = list.to_native_tpl
 
       begin
-        response = Rdkafka::Bindings.rd_kafka_pause_partitions(@native_kafka, tpl)
+        response = Rdkafka::Bindings.rd_kafka_pause_partitions(@native_kafka.inner, tpl)
 
         if response != 0
           list = TopicPartitionList.from_native_tpl(tpl)
@@ -122,7 +121,7 @@ module Rdkafka
       tpl = list.to_native_tpl
 
       begin
-        response = Rdkafka::Bindings.rd_kafka_resume_partitions(@native_kafka, tpl)
+        response = Rdkafka::Bindings.rd_kafka_resume_partitions(@native_kafka.inner, tpl)
         if response != 0
           raise Rdkafka::RdkafkaError.new(response, "Error resume '#{list.to_h}'")
         end
@@ -140,7 +139,7 @@ module Rdkafka
       closed_consumer_check(__method__)
 
       ptr = FFI::MemoryPointer.new(:pointer)
-      response = Rdkafka::Bindings.rd_kafka_subscription(@native_kafka, ptr)
+      response = Rdkafka::Bindings.rd_kafka_subscription(@native_kafka.inner, ptr)
 
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
@@ -170,7 +169,7 @@ module Rdkafka
       tpl = list.to_native_tpl
 
       begin
-        response = Rdkafka::Bindings.rd_kafka_assign(@native_kafka, tpl)
+        response = Rdkafka::Bindings.rd_kafka_assign(@native_kafka.inner, tpl)
         if response != 0
           raise Rdkafka::RdkafkaError.new(response, "Error assigning '#{list.to_h}'")
         end
@@ -188,7 +187,7 @@ module Rdkafka
       closed_consumer_check(__method__)
 
       ptr = FFI::MemoryPointer.new(:pointer)
-      response = Rdkafka::Bindings.rd_kafka_assignment(@native_kafka, ptr)
+      response = Rdkafka::Bindings.rd_kafka_assignment(@native_kafka.inner, ptr)
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)
       end
@@ -227,7 +226,7 @@ module Rdkafka
       tpl = list.to_native_tpl
 
       begin
-        response = Rdkafka::Bindings.rd_kafka_committed(@native_kafka, tpl, timeout_ms)
+        response = Rdkafka::Bindings.rd_kafka_committed(@native_kafka.inner, tpl, timeout_ms)
         if response != 0
           raise Rdkafka::RdkafkaError.new(response)
         end
@@ -253,7 +252,7 @@ module Rdkafka
       high = FFI::MemoryPointer.new(:int64, 1)
 
       response = Rdkafka::Bindings.rd_kafka_query_watermark_offsets(
-        @native_kafka,
+        @native_kafka.inner,
         topic,
         partition,
         low,
@@ -307,7 +306,7 @@ module Rdkafka
     # @return [String, nil]
     def cluster_id
       closed_consumer_check(__method__)
-      Rdkafka::Bindings.rd_kafka_clusterid(@native_kafka)
+      Rdkafka::Bindings.rd_kafka_clusterid(@native_kafka.inner)
     end
 
     # Returns this client's broker-assigned group member id
@@ -317,7 +316,7 @@ module Rdkafka
     # @return [String, nil]
     def member_id
       closed_consumer_check(__method__)
-      Rdkafka::Bindings.rd_kafka_memberid(@native_kafka)
+      Rdkafka::Bindings.rd_kafka_memberid(@native_kafka.inner)
     end
 
     # Store offset of a message to be used in the next commit of this consumer
@@ -335,7 +334,7 @@ module Rdkafka
       # rd_kafka_offset_store is one of the few calls that does not support
       # a string as the topic, so create a native topic for it.
       native_topic = Rdkafka::Bindings.rd_kafka_topic_new(
-        @native_kafka,
+        @native_kafka.inner,
         message.topic,
         nil
       )
@@ -367,7 +366,7 @@ module Rdkafka
       # rd_kafka_offset_store is one of the few calls that does not support
       # a string as the topic, so create a native topic for it.
       native_topic = Rdkafka::Bindings.rd_kafka_topic_new(
-        @native_kafka,
+        @native_kafka.inner,
         message.topic,
         nil
       )
@@ -411,7 +410,7 @@ module Rdkafka
       tpl = list ? list.to_native_tpl : nil
 
       begin
-        response = Rdkafka::Bindings.rd_kafka_commit(@native_kafka, tpl, async)
+        response = Rdkafka::Bindings.rd_kafka_commit(@native_kafka.inner, tpl, async)
         if response != 0
           raise Rdkafka::RdkafkaError.new(response)
         end
@@ -430,7 +429,7 @@ module Rdkafka
     def poll(timeout_ms)
       closed_consumer_check(__method__)
 
-      message_ptr = Rdkafka::Bindings.rd_kafka_consumer_poll(@native_kafka, timeout_ms)
+      message_ptr = Rdkafka::Bindings.rd_kafka_consumer_poll(@native_kafka.inner, timeout_ms)
       if message_ptr.null?
         nil
       else
@@ -445,9 +444,7 @@ module Rdkafka
       end
     ensure
       # Clean up rdkafka message if there is one
-      if !message_ptr.nil? && !message_ptr.null?
-        Rdkafka::Bindings.rd_kafka_message_destroy(message_ptr)
-      end
+      Rdkafka::Bindings.rd_kafka_message_destroy(message_ptr) if !message_ptr.null?
     end
 
     # Poll for new messages and yield for each received one. Iteration

@@ -47,7 +47,7 @@ module Rdkafka
       @polling_thread.join
 
       # Destroy the client
-      Rdkafka::Bindings.rd_kafka_destroy(@inner)
+      #Rdkafka::Bindings.rd_kafka_destroy(@inner)
       @inner = nil
     end
   end

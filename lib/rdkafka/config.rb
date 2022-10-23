@@ -15,30 +15,12 @@ module Rdkafka
     @@error_callback = nil
     # @private
     @@opaques = {}
-    # @private
-    @@log_queue = Queue.new
-
-    Thread.start do
-      loop do
-        severity, msg = @@log_queue.pop
-        @@logger.add(severity, msg)
-      end
-    end
 
     # Returns the current logger, by default this is a logger to stdout.
     #
     # @return [Logger]
     def self.logger
       @@logger
-    end
-
-    # Returns a queue whose contents will be passed to the configured logger. Each entry
-    # should follow the format [Logger::Severity, String]. The benefit over calling the
-    # logger directly is that this is safe to use from trap contexts.
-    #
-    # @return [Queue]
-    def self.log_queue
-      @@log_queue
     end
 
     # Set the logger that will be used for all logging output by this library.

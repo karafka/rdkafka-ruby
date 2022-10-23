@@ -163,7 +163,7 @@ module Rdkafka
       Rdkafka::Bindings.rd_kafka_poll_set_consumer(kafka)
 
       # Return consumer with Kafka client
-      Rdkafka::Consumer.new(kafka)
+      Rdkafka::Consumer.new(Rdkafka::NativeKafka.new(kafka))
     end
 
     # Create a producer with this configuration.

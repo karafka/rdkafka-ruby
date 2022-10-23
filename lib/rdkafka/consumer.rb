@@ -429,12 +429,10 @@ module Rdkafka
     def poll(timeout_ms)
       closed_consumer_check(__method__)
 
-      message_ptr = Rdkafka::Bindings.rd_kafka_consumer_poll(@native_kafka.inner, timeout_ms)
-      if message_ptr.null?
+      native_message = Rdkafka::Bindings.rd_kafka_consumer_poll(@native_kafka.inner, timeout_ms)
+      if native_message.nil?
         nil
       else
-        # Create struct wrapper
-        native_message = Rdkafka::Bindings::Message.new(message_ptr)
         # Raise error if needed
         if native_message[:err] != 0
           raise Rdkafka::RdkafkaError.new(native_message[:err])
@@ -444,7 +442,7 @@ module Rdkafka
       end
     ensure
       # Clean up rdkafka message if there is one
-      Rdkafka::Bindings.rd_kafka_message_destroy(message_ptr) unless message_ptr.null?
+      Rdkafka::Bindings.rd_kafka_message_destroy(native_message) unless native_message.null?
     end
 
     # Poll for new messages and yield for each received one. Iteration

@@ -11,6 +11,7 @@ describe Rdkafka::Producer do
     # Registry should always end up being empty
     registry = Rdkafka::Producer::DeliveryHandle::REGISTRY
     expect(registry).to be_empty, registry.inspect
+    producer.flush
     producer.close
     consumer.close
   end
@@ -481,6 +482,7 @@ describe Rdkafka::Producer do
 
       writer.write(report_json)
       writer.close
+      producer.flush
       producer.close
     end
 

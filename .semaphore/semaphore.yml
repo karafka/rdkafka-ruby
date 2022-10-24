@@ -25,3 +25,7 @@ blocks:
             - docker-compose up -d --no-recreate
             - ulimit -c unlimited
             - valgrind -v bundle exec rspec
+      epilogue:
+        always:
+          commands:
+            - artifact push job core

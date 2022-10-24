@@ -482,6 +482,7 @@ describe Rdkafka::Producer do
 
       writer.write(report_json)
       writer.close
+      producer.flush
       producer.close
     end
 

@@ -22,7 +22,9 @@ describe "creating lots of producers and consumers" do
       tpl = Rdkafka::Consumer::TopicPartitionList.new
       tpl.add_topic("create_destroy", 1)
       consumer.assign(tpl)
-      consumer.poll(100)
+      10.times do
+        consumer.poll(10)
+      end
 
       producer.close
       consumer.close

@@ -180,4 +180,27 @@ describe Rdkafka::Config do
       }.to raise_error(Rdkafka::Config::ClientCreationError, /ssl.ca.location failed(.*)/)
     end
   end
+
+  context "creating lots of producers and consumers in threads" do
+    # See if we get a segfault when creating and closing lots
+    # of clients in different threads.
+
+    threads = []
+
+    config = Rdkafka::Config.new
+
+    100.times do
+      threads << Thread.new do
+        producer = config.producer
+        consumer = config.consumer
+        admin = config.admin
+
+        producer.close
+        consumer.close
+        admin.close
+      end
+    end
+
+    threads.each(&:join)
+  end
 end

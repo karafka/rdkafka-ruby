@@ -40,9 +40,21 @@ module Rdkafka
 
     # Close this producer and wait for the internal poll queue to empty.
     def close
+      return if closed?
       ObjectSpace.undefine_finalizer(self)
-
       @native_kafka.close
+    end
+
+    # Whether this producer has closed
+    def closed?
+      @native_kafka.closed?
+    end
+
+    # Wait until all outstanding producer requests are completed, with the given timeout
+    # in seconds. Call this before closing a producer to ensure delivery of all messages.
+    def flush(timeout_ms=5_000)
+      closed_producer_check(__method__)
+      Rdkafka::Bindings.rd_kafka_flush(@native_kafka.inner, timeout_ms)
     end
 
     # Partition count for a given topic.
@@ -173,7 +185,7 @@ module Rdkafka
 
     private
     def closed_producer_check(method)
-      raise Rdkafka::ClosedProducerError.new(method) if @native_kafka.closed?
+      raise Rdkafka::ClosedProducerError.new(method) if closed?
     end
   end
 end

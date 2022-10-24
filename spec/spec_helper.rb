@@ -127,14 +127,14 @@ RSpec.configure do |config|
   config.before(:suite) do
     admin = rdkafka_config.admin
     {
-        consume_test_topic:      3,
-        empty_test_topic:        3,
-        load_test_topic:         3,
-        produce_test_topic:      3,
-        rake_test_topic:         3,
-        watermarks_test_topic:   3,
-        partitioner_test_topic: 25,
-        load_test_topic:         3,
+      consume_test_topic:      3,
+      empty_test_topic:        3,
+      load_test_topic:         3,
+      create_destroy:          1,
+      produce_test_topic:      3,
+      rake_test_topic:         3,
+      watermarks_test_topic:   3,
+      partitioner_test_topic: 25,
     }.each do |topic, partitions|
       create_topic_handle = admin.create_topic(topic.to_s, partitions, 1)
       begin

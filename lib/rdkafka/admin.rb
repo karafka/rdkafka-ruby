@@ -18,9 +18,14 @@ module Rdkafka
 
     # Close this admin instance
     def close
+      return if closed?
       ObjectSpace.undefine_finalizer(self)
-
       @native_kafka.close
+    end
+
+    # Whether this admin has closed
+    def closed?
+      @native_kafka.closed?
     end
 
     # Create a topic with the given partition count and replication factor
@@ -149,7 +154,7 @@ module Rdkafka
 
     private
     def closed_admin_check(method)
-      raise Rdkafka::ClosedAdminError.new(method) if @native_kafka.closed?
+      raise Rdkafka::ClosedAdminError.new(method) if closed?
     end
   end
 end

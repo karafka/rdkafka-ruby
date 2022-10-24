@@ -27,39 +27,39 @@ describe Rdkafka::Bindings do
   end
 
   describe "log callback" do
-    let(:log_queue) { Rdkafka::Config.log_queue }
+    let(:logger) { Rdkafka::Config.logger }
     before do
-      allow(log_queue).to receive(:<<)
+      allow(logger).to receive(:add)
     end
 
     it "should log fatal messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 0, nil, "log line")
-      expect(log_queue).to have_received(:<<).with([Logger::FATAL, "rdkafka: log line"])
+      expect(logger).to have_received(:add).with(Logger::FATAL, "rdkafka: log line")
     end
 
     it "should log error messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 3, nil, "log line")
-      expect(log_queue).to have_received(:<<).with([Logger::ERROR, "rdkafka: log line"])
+      expect(logger).to have_received(:add).with(Logger::ERROR, "rdkafka: log line")
     end
 
     it "should log warning messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 4, nil, "log line")
-      expect(log_queue).to have_received(:<<).with([Logger::WARN, "rdkafka: log line"])
+      expect(logger).to have_received(:add).with(Logger::WARN, "rdkafka: log line")
     end
 
     it "should log info messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 5, nil, "log line")
-      expect(log_queue).to have_received(:<<).with([Logger::INFO, "rdkafka: log line"])
+      expect(logger).to have_received(:add).with(Logger::INFO, "rdkafka: log line")
     end
 
     it "should log debug messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 7, nil, "log line")
-      expect(log_queue).to have_received(:<<).with([Logger::DEBUG, "rdkafka: log line"])
+      expect(logger).to have_received(:add).with(Logger::DEBUG, "rdkafka: log line")
     end
 
     it "should log unknown messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 100, nil, "log line")
-      expect(log_queue).to have_received(:<<).with([Logger::UNKNOWN, "rdkafka: log line"])
+      expect(logger).to have_received(:add).with(Logger::UNKNOWN, "rdkafka: log line")
     end
   end
 

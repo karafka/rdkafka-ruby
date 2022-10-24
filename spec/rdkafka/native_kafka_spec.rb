@@ -8,7 +8,7 @@ describe Rdkafka::NativeKafka do
   let(:closing) { false }
   let(:thread) { double(Thread) }
 
-  subject(:client) { described_class.new(native) }
+  subject(:client) { described_class.new(native, run_polling_thread: true) }
 
   before do
     allow(Rdkafka::Bindings).to receive(:rd_kafka_poll).with(instance_of(FFI::Pointer), 250).and_call_original
@@ -51,6 +51,16 @@ describe Rdkafka::NativeKafka do
     it "check the out queue of native client" do
       polling_loop_expects do
         expect(Rdkafka::Bindings).to receive(:rd_kafka_outq_len).with(native).at_least(:once)
+      end
+    end
+
+    context "if not enabled" do
+      subject(:client) { described_class.new(native, run_polling_thread: false) }
+
+      it "is not created" do
+        expect(Thread).not_to receive(:new)
+
+        client
       end
     end
   end

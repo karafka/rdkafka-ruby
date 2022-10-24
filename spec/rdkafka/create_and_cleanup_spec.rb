@@ -5,29 +5,25 @@ require "spec_helper"
 # See if we get a segfault when creating, using and closing lots
 # of clients in different threads.
 
-describe "creating lots of producers and consumers in threads" do
+describe "creating lots of producers and consumers" do
   it "should not segfault" do
-    threads = []
+    25.times do |i|
+      producer = rdkafka_producer_config.producer
+      consumer = rdkafka_consumer_config(
+        :"group.id" => "load_test"
+      ).consumer
 
-    100.times do |i|
-      threads << Thread.new do
-        producer = rdkafka_producer_config.producer
-        consumer = rdkafka_consumer_config.consumer
+      producer.produce(
+        topic: "load_test_topic",
+        payload: "payload",
+        key: "key"
+      ).wait
 
-        producer.produce(
-          topic: "load_test_topic",
-          payload: "payload",
-          key: "key"
-        ).wait
+      consumer.subscribe("load_test_topic")
+      consumer.poll(100)
 
-        consumer.subscribe("load_test_topic")
-        consumer.poll(1000)
-
-        producer.close
-        consumer.close
-      end
+      producer.close
+      consumer.close
     end
-
-    threads.each(&:join)
   end
 end

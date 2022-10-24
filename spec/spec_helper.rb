@@ -134,6 +134,7 @@ RSpec.configure do |config|
         rake_test_topic:         3,
         watermarks_test_topic:   3,
         partitioner_test_topic: 25,
+        load_test_topic:         3,
     }.each do |topic, partitions|
       create_topic_handle = admin.create_topic(topic.to_s, partitions, 1)
       begin

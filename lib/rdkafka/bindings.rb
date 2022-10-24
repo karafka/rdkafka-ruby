@@ -136,7 +136,7 @@ module Rdkafka
                  else
                    Logger::UNKNOWN
                  end
-      Rdkafka::Config.log_queue << [severity, "rdkafka: #{line}"]
+      Rdkafka::Config.logger.add(severity, "rdkafka: #{line}")
     end
 
     StatsCallback = FFI::Function.new(

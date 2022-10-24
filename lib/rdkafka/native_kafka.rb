@@ -52,7 +52,10 @@ module Rdkafka
       end
 
       # Destroy the client
-      Rdkafka::Bindings.rd_kafka_destroy(@inner)
+      Rdkafka::Bindings.rd_kafka_destroy_flags(
+        @inner,
+        Rdkafka::Bindings::RD_KAFKA_DESTROY_F_IMMEDIATE
+      )
       @inner = nil
     end
   end

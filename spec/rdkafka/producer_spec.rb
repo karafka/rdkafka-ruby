@@ -460,10 +460,10 @@ describe Rdkafka::Producer do
     # wait for and check the message in the main process.
     reader, writer = IO.pipe
 
-    fork do
+    pid = fork do
       reader.close
 
-      # Avoids sharing the socket between processes.
+      # Avoid sharing the client between processes.
       producer = rdkafka_producer_config.producer
 
       handle = producer.produce(
@@ -482,8 +482,10 @@ describe Rdkafka::Producer do
 
       writer.write(report_json)
       writer.close
+      producer.flush
       producer.close
     end
+    Process.wait(pid)
 
     writer.close
     report_hash = JSON.parse(reader.read)

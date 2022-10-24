@@ -13,7 +13,7 @@ describe Rdkafka::NativeKafka do
   before do
     allow(Rdkafka::Bindings).to receive(:rd_kafka_poll).with(instance_of(FFI::Pointer), 250).and_call_original
     allow(Rdkafka::Bindings).to receive(:rd_kafka_outq_len).with(instance_of(FFI::Pointer)).and_return(0).and_call_original
-    allow(Rdkafka::Bindings).to receive(:rd_kafka_destroy)
+    allow(Rdkafka::Bindings).to receive(:rd_kafka_destroy_flags)
     allow(Thread).to receive(:new).and_return(thread)
 
     allow(thread).to receive(:[]=).with(:closing, anything)
@@ -86,7 +86,7 @@ describe Rdkafka::NativeKafka do
 
     context "and attempt to close" do
       it "calls the `destroy` binding" do
-        expect(Rdkafka::Bindings).to receive(:rd_kafka_destroy).with(native)
+        expect(Rdkafka::Bindings).to receive(:rd_kafka_destroy_flags).with(native, Rdkafka::Bindings::RD_KAFKA_DESTROY_F_IMMEDIATE)
 
         client.close
       end
@@ -121,7 +121,7 @@ describe Rdkafka::NativeKafka do
 
     context "and attempt to close again" do
       it "does not call the `destroy` binding" do
-        expect(Rdkafka::Bindings).not_to receive(:rd_kafka_destroy)
+        expect(Rdkafka::Bindings).not_to receive(:rd_kafka_destroy_flags)
 
         client.close
       end

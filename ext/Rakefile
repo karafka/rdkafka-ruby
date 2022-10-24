@@ -20,7 +20,7 @@ task :default => :clean do
     :url => "https://codeload.github.com/edenhill/librdkafka/tar.gz/v#{Rdkafka::LIBRDKAFKA_VERSION}",
     :sha256 => Rdkafka::LIBRDKAFKA_SOURCE_SHA256
   }
-  recipe.configure_options = ["--host=#{recipe.host}"]
+  recipe.configure_options = ["--host=#{recipe.host}", "--enable-devel", "--disable-optimization"]
   recipe.cook
   # Move dynamic library we're interested in
   if recipe.host.include?('darwin')
@@ -52,7 +52,7 @@ namespace :build do
 
     recipe = MiniPortile.new("librdkafka", version)
     recipe.files << "https://github.com/edenhill/librdkafka/archive/#{ref}.tar.gz"
-    recipe.configure_options = ["--host=#{recipe.host}","--enable-static", "--enable-zstd", "-enable-devel", "--disable-optimization"]
+    recipe.configure_options = ["--host=#{recipe.host}","--enable-static", "--enable-zstd", "--enable-devel", "--disable-optimization"]
     recipe.cook
 
     ext = recipe.host.include?("darwin") ? "dylib" : "so"

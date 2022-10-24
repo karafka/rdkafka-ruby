@@ -7,27 +7,33 @@ require "spec_helper"
 
 describe "creating lots of producers and consumers" do
   it "should not segfault" do
-    100.times do |i|
-      producer = rdkafka_producer_config.producer
-      consumer = rdkafka_consumer_config(
-        :"group.id" => "create_destroy"
-      ).consumer
+    threads = []
 
-      producer.produce(
-        topic: "create_destroy",
-        payload: "payload",
-        key: "key"
-      ).wait
+    50.times do |i|
+      threads << Thread.new do
+        producer = rdkafka_producer_config.producer
+        consumer = rdkafka_consumer_config(
+          :"group.id" => "create_destroy"
+        ).consumer
 
-      tpl = Rdkafka::Consumer::TopicPartitionList.new
-      tpl.add_topic("create_destroy", 1)
-      consumer.assign(tpl)
-      10.times do
-        consumer.poll(10)
+        producer.produce(
+          topic: "create_destroy",
+          payload: "payload",
+          key: "key"
+        ).wait
+
+        tpl = Rdkafka::Consumer::TopicPartitionList.new
+        tpl.add_topic("create_destroy", 1)
+        consumer.assign(tpl)
+        10.times do
+          consumer.poll(10)
+        end
+
+        producer.close
+        consumer.close
       end
-
-      producer.close
-      consumer.close
     end
+
+    threads.each(&:join)
   end
 end

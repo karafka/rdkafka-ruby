@@ -169,7 +169,9 @@ module Rdkafka
     ]
 
     attach_function :rd_kafka_new, [:kafka_type, :pointer, :pointer, :int], :pointer
-    attach_function :rd_kafka_destroy, [:pointer], :void
+
+    RD_KAFKA_DESTROY_F_IMMEDIATE = 0x4
+    attach_function :rd_kafka_destroy_flags, [:pointer, :int], :void
 
     # Consumer
 

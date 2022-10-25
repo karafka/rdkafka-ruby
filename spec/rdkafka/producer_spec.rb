@@ -185,7 +185,8 @@ describe Rdkafka::Producer do
     expect(report.partition).to eq 1
     expect(report.offset).to be >= 0
 
-    # Close producer
+    # Flush and close producer
+    producer.flush
     producer.close
 
     # Consume message and verify its content
@@ -459,10 +460,10 @@ describe Rdkafka::Producer do
     # wait for and check the message in the main process.
     reader, writer = IO.pipe
 
-    fork do
+    pid = fork do
       reader.close
 
-      # Avoids sharing the socket between processes.
+      # Avoid sharing the client between processes.
       producer = rdkafka_producer_config.producer
 
       handle = producer.produce(
@@ -481,8 +482,10 @@ describe Rdkafka::Producer do
 
       writer.write(report_json)
       writer.close
+      producer.flush
       producer.close
     end
+    Process.wait(pid)
 
     writer.close
     report_hash = JSON.parse(reader.read)

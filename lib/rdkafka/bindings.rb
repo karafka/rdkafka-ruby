@@ -35,9 +35,9 @@ module Rdkafka
 
     # Polling
 
-    attach_function :rd_kafka_flush, [:pointer, :int], :void, blocking: true
-    attach_function :rd_kafka_poll, [:pointer, :int], :void, blocking: true
-    attach_function :rd_kafka_outq_len, [:pointer], :int, blocking: true
+    attach_function :rd_kafka_flush, [:pointer, :int], :void
+    attach_function :rd_kafka_poll, [:pointer, :int], :void
+    attach_function :rd_kafka_outq_len, [:pointer], :int
 
     # Metadata
 
@@ -169,7 +169,9 @@ module Rdkafka
     ]
 
     attach_function :rd_kafka_new, [:kafka_type, :pointer, :pointer, :int], :pointer
-    attach_function :rd_kafka_destroy, [:pointer], :void
+
+    RD_KAFKA_DESTROY_F_IMMEDIATE = 0x4
+    attach_function :rd_kafka_destroy_flags , [:pointer, :int], :void
 
     # Consumer
 
@@ -181,10 +183,10 @@ module Rdkafka
     attach_function :rd_kafka_incremental_unassign, [:pointer, :pointer], :int
     attach_function :rd_kafka_assignment, [:pointer, :pointer], :int
     attach_function :rd_kafka_committed, [:pointer, :pointer, :int], :int
-    attach_function :rd_kafka_commit, [:pointer, :pointer, :bool], :int, blocking: true
+    attach_function :rd_kafka_commit, [:pointer, :pointer, :bool], :int
     attach_function :rd_kafka_poll_set_consumer, [:pointer], :void
-    attach_function :rd_kafka_consumer_poll, [:pointer, :int], :pointer, blocking: true
-    attach_function :rd_kafka_consumer_close, [:pointer], :void, blocking: true
+    attach_function :rd_kafka_consumer_poll, [:pointer, :int], :pointer
+    attach_function :rd_kafka_consumer_close, [:pointer], :void
     attach_function :rd_kafka_offset_store, [:pointer, :int32, :int64], :int
     attach_function :rd_kafka_pause_partitions, [:pointer, :pointer], :int
     attach_function :rd_kafka_resume_partitions, [:pointer, :pointer], :int

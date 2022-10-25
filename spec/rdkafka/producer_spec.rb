@@ -185,7 +185,8 @@ describe Rdkafka::Producer do
     expect(report.partition).to eq 1
     expect(report.offset).to be >= 0
 
-    # Close producer
+    # Flush and close producer
+    producer.flush
     producer.close
 
     # Consume message and verify its content

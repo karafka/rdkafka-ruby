@@ -28,8 +28,8 @@ module Rdkafka
       return if closed?
       ObjectSpace.undefine_finalizer(self)
       Rdkafka::Bindings.rd_kafka_consumer_close(@native_kafka.inner)
-      @native_kafka.close
     end
+      @native_kafka.close
 
     # Whether this consumer has closed
     def closed?

@@ -154,7 +154,10 @@ module Rdkafka
 
       if @consumer_rebalance_listener
         opaque.consumer_rebalance_listener = @consumer_rebalance_listener
-        Rdkafka::Bindings.rd_kafka_conf_set_rebalance_cb(config, Rdkafka::Bindings::RebalanceCallback)
+        Rdkafka::Bindings.rd_kafka_conf_set_rebalance_cb(
+          config,
+          Rdkafka::Bindings::RebalanceCallback
+        )
       end
 
       # Create native client

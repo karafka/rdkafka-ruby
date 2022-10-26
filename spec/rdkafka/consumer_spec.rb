@@ -937,11 +937,11 @@ describe Rdkafka::Consumer do
     context "with a working listener" do
       let(:listener) do
         Struct.new(:queue) do
-          def on_partitions_assigned(consumer, list)
+          def on_partitions_assigned(list)
             collect(:assign, list)
           end
 
-          def on_partitions_revoked(consumer, list)
+          def on_partitions_revoked(list)
             collect(:revoke, list)
           end
 
@@ -965,12 +965,12 @@ describe Rdkafka::Consumer do
     context "with a broken listener" do
       let(:listener) do
         Struct.new(:queue) do
-          def on_partitions_assigned(consumer, list)
+          def on_partitions_assigned(list)
             queue << :assigned
             raise 'boom'
           end
 
-          def on_partitions_revoked(consumer, list)
+          def on_partitions_revoked(list)
             queue << :revoked
             raise 'boom'
           end
@@ -1037,11 +1037,11 @@ describe Rdkafka::Consumer do
 
     let(:listener) do
       Struct.new(:queue) do
-        def on_partitions_assigned(consumer, list)
+        def on_partitions_assigned(list)
           collect(:assign, list)
         end
 
-        def on_partitions_revoked(consumer, list)
+        def on_partitions_revoked(list)
           collect(:revoke, list)
         end
 

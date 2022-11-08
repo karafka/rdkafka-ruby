@@ -185,7 +185,6 @@ module Rdkafka
       Rdkafka::Producer.new(Rdkafka::NativeKafka.new(
         native_kafka(config, :rd_kafka_producer),
         run_polling_thread: true,
-        lock_around_inner: false
       ), partitioner_name).tap do |producer|
         opaque.producer = producer
       end

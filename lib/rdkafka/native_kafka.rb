@@ -2,10 +2,12 @@
 
 module Rdkafka
   # @private
-  # A wrapper around a native kafka that polls and cleanly exits
+  # A wrapper around a native kafka that handles all access
   class NativeKafka
-    def initialize(inner, run_polling_thread:)
+    def initialize(inner, run_polling_thread:, lock_around_inner: true)
       @inner = inner
+      @lock_around_inner = lock_around_inner
+      @mutex = Mutex.new if lock_around_inner
 
       if run_polling_thread
         # Start thread to poll client for delivery callbacks,
@@ -26,8 +28,15 @@ module Rdkafka
       @closing = false
     end
 
-    def inner
-      @inner
+    def with_inner
+      return if @inner.nil?
+      if @lock_around_inner
+        @mutex.synchronize do
+          yield @inner
+        end
+      else
+        yield @inner
+      end
     end
 
     def finalizer

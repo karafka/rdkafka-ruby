@@ -54,7 +54,9 @@ module Rdkafka
     # in seconds. Call this before closing a producer to ensure delivery of all messages.
     def flush(timeout_ms=5_000)
       closed_producer_check(__method__)
-      Rdkafka::Bindings.rd_kafka_flush(@native_kafka.inner, timeout_ms)
+      @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_flush(inner, timeout_ms)
+      end
     end
 
     # Partition count for a given topic.
@@ -65,7 +67,9 @@ module Rdkafka
     # @return partition count [Integer,nil]
     def partition_count(topic)
       closed_producer_check(__method__)
-      Rdkafka::Metadata.new(@native_kafka.inner, topic).topics&.first[:partition_count]
+      @native_kafka.with_inner do |inner|
+        Rdkafka::Metadata.new(inner, topic).topics&.first[:partition_count]
+      end
     end
 
     # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.
@@ -156,10 +160,12 @@ module Rdkafka
       args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_END
 
       # Produce the message
-      response = Rdkafka::Bindings.rd_kafka_producev(
-        @native_kafka.inner,
-        *args
-      )
+      response = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_producev(
+          inner,
+          *args
+        )
+      end
 
       # Raise error if the produce call was not successful
       if response != 0

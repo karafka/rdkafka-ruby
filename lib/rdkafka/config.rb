@@ -182,7 +182,10 @@ module Rdkafka
       Rdkafka::Bindings.rd_kafka_conf_set_dr_msg_cb(config, Rdkafka::Callbacks::DeliveryCallbackFunction)
       # Return producer with Kafka client
       partitioner_name = self[:partitioner] || self["partitioner"]
-      Rdkafka::Producer.new(Rdkafka::NativeKafka.new(native_kafka(config, :rd_kafka_producer), run_polling_thread: true), partitioner_name).tap do |producer|
+      Rdkafka::Producer.new(Rdkafka::NativeKafka.new(
+        native_kafka(config, :rd_kafka_producer),
+        run_polling_thread: true,
+      ), partitioner_name).tap do |producer|
         opaque.producer = producer
       end
     end

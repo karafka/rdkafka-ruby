@@ -76,7 +76,9 @@ describe Rdkafka::NativeKafka do
   end
 
   it "exposes inner client" do
-    expect(client.inner).to eq(native)
+    client.with_inner do |inner|
+      expect(inner).to eq(native)
+    end
   end
 
   context "when client was not yet closed (`nil`)" do
@@ -106,7 +108,6 @@ describe Rdkafka::NativeKafka do
       it "closes and unassign the native client" do
         client.close
 
-        expect(client.inner).to eq(nil)
         expect(client.closed?).to eq(true)
       end
     end
@@ -141,7 +142,6 @@ describe Rdkafka::NativeKafka do
       it "does not close and unassign the native client again" do
         client.close
 
-        expect(client.inner).to eq(nil)
         expect(client.closed?).to eq(true)
       end
     end

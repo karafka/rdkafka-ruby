@@ -67,7 +67,9 @@ module Rdkafka
       topics_array_ptr.write_array_of_pointer(pointer_array)
 
       # Get a pointer to the queue that our request will be enqueued on
-      queue_ptr = Rdkafka::Bindings.rd_kafka_queue_get_background(@native_kafka.inner)
+      queue_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+      end
       if queue_ptr.null?
         Rdkafka::Bindings.rd_kafka_NewTopic_destroy(new_topic_ptr)
         raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
@@ -78,17 +80,21 @@ module Rdkafka
       create_topic_handle[:pending] = true
       create_topic_handle[:response] = -1
       CreateTopicHandle.register(create_topic_handle)
-      admin_options_ptr = Rdkafka::Bindings.rd_kafka_AdminOptions_new(@native_kafka.inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATETOPICS)
+      admin_options_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATETOPICS)
+      end
       Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, create_topic_handle.to_ptr)
 
       begin
-        Rdkafka::Bindings.rd_kafka_CreateTopics(
-          @native_kafka.inner,
-          topics_array_ptr,
-          1,
-          admin_options_ptr,
-          queue_ptr
-        )
+        @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_CreateTopics(
+            inner,
+            topics_array_ptr,
+            1,
+            admin_options_ptr,
+            queue_ptr
+          )
+        end
       rescue Exception
         CreateTopicHandle.remove(create_topic_handle.to_ptr.address)
         raise
@@ -118,7 +124,9 @@ module Rdkafka
       topics_array_ptr.write_array_of_pointer(pointer_array)
 
       # Get a pointer to the queue that our request will be enqueued on
-      queue_ptr = Rdkafka::Bindings.rd_kafka_queue_get_background(@native_kafka.inner)
+      queue_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+      end
       if queue_ptr.null?
         Rdkafka::Bindings.rd_kafka_DeleteTopic_destroy(delete_topic_ptr)
         raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
@@ -129,17 +137,21 @@ module Rdkafka
       delete_topic_handle[:pending] = true
       delete_topic_handle[:response] = -1
       DeleteTopicHandle.register(delete_topic_handle)
-      admin_options_ptr = Rdkafka::Bindings.rd_kafka_AdminOptions_new(@native_kafka.inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DELETETOPICS)
+      admin_options_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DELETETOPICS)
+      end
       Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, delete_topic_handle.to_ptr)
 
       begin
-        Rdkafka::Bindings.rd_kafka_DeleteTopics(
-          @native_kafka.inner,
-          topics_array_ptr,
-          1,
-          admin_options_ptr,
-          queue_ptr
-        )
+        @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_DeleteTopics(
+            inner,
+            topics_array_ptr,
+            1,
+            admin_options_ptr,
+            queue_ptr
+          )
+        end
       rescue Exception
         DeleteTopicHandle.remove(delete_topic_handle.to_ptr.address)
         raise

@@ -2,20 +2,23 @@
 
 module Rdkafka
   # @private
-  # A wrapper around a native kafka that polls and cleanly exits
+  # A wrapper around a native kafka that handles all access
   class NativeKafka
     def initialize(inner, run_polling_thread:)
       @inner = inner
+      @mutex = Mutex.new
 
       if run_polling_thread
         # Start thread to poll client for delivery callbacks,
         # not used in consumer.
         @polling_thread = Thread.new do
           loop do
-            Rdkafka::Bindings.rd_kafka_poll(inner, 250)
-            # Exit thread if closing and the poll queue is empty
-            if Thread.current[:closing] && Rdkafka::Bindings.rd_kafka_outq_len(inner) == 0
-              break
+            @mutex.synchronize do
+              Rdkafka::Bindings.rd_kafka_poll(inner, 250)
+              # Exit thread if closing and the poll queue is empty
+              if Thread.current[:closing] && Rdkafka::Bindings.rd_kafka_outq_len(inner) == 0
+                break
+              end
             end
           end
         end
@@ -26,8 +29,11 @@ module Rdkafka
       @closing = false
     end
 
-    def inner
-      @inner
+    def with_inner
+      return if @inner.nil?
+      @mutex.synchronize do
+        yield @inner
+      end
     end
 
     def finalizer

@@ -111,6 +111,28 @@ describe Rdkafka::Consumer::Message do
     end
   end
 
+  describe "#raw_timestamp" do
+    context "without a timestamp" do
+      before do
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_message_timestamp).and_return(-1)
+      end
+
+      it "should have a -1 raw_timestamp if not present" do
+        expect(subject.raw_timestamp).to eq -1
+      end
+    end
+
+    context "with a timestamp" do
+      before do
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_message_timestamp).and_return(1505069646250)
+      end
+
+      it "should have raw_timestamp if present" do
+        expect(subject.raw_timestamp).to eq 1505069646250
+      end
+    end
+  end
+
   describe "#to_s" do
     before do
       allow(subject).to receive(:timestamp).and_return(1000)

@@ -392,7 +392,7 @@ module Rdkafka
     # @raise [RdKafkaError] When the OffsetForTimes lookup fails
     #
     # @return [TopicPartitionList]
-    def offsets_for_times(list)
+    def offsets_for_times(list, timeout_ms = 1000)
       closed_consumer_check(__method__)
 
       if !list.is_a?(TopicPartitionList)
@@ -404,7 +404,7 @@ module Rdkafka
       response = Rdkafka::Bindings.rd_kafka_offsets_for_times(
         @native_kafka.inner,
         tpl,
-        -1 # timeout
+        timeout_ms # timeout
       )
 
       if response != 0

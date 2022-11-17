@@ -28,6 +28,10 @@ module Rdkafka
       # @return [Time, nil]
       attr_reader :timestamp
 
+      # This message's raw timestamp, if provided by the broker
+      # @return [Time, nil]
+      attr_reader :raw_timestamp
+
       # @return [Hash<String, String>] a message headers
       attr_reader :headers
 
@@ -50,11 +54,11 @@ module Rdkafka
         # Set offset
         @offset = native_message[:offset]
         # Set timestamp
-        raw_timestamp = Rdkafka::Bindings.rd_kafka_message_timestamp(native_message, nil)
-        @timestamp = if raw_timestamp && raw_timestamp > -1
+        @raw_timestamp = Rdkafka::Bindings.rd_kafka_message_timestamp(native_message, nil)
+        @timestamp = if @raw_timestamp && @raw_timestamp > -1
                        # Calculate seconds and microseconds
-                       seconds = raw_timestamp / 1000
-                       milliseconds = (raw_timestamp - seconds * 1000) * 1000
+                       seconds = @raw_timestamp / 1000
+                       milliseconds = (@raw_timestamp - seconds * 1000) * 1000
                        Time.at(seconds, milliseconds)
                      else
                        nil

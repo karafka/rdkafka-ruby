@@ -65,7 +65,11 @@ module Rdkafka
     # @return partition count [Integer,nil]
     def partition_count(topic)
       closed_producer_check(__method__)
-      Rdkafka::Metadata.new(@native_kafka.inner, topic).topics&.first[:partition_count]
+      if (topic_metadata = Rdkafka::Metadata.topic_metadata_from_cache(@native_kafka.inner, topic))
+        topic_metadata[:partition_count]
+      else
+        Rdkafka::Metadata.new(@native_kafka.inner, topic).topics&.first[:partition_count]
+      end
     end
 
     # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.

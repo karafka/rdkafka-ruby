@@ -77,4 +77,39 @@ describe Rdkafka::Metadata do
       }.to raise_error(Rdkafka::RdkafkaError, /Local: Required feature not supported by broker \(unsupported_feature\)/)
     end
   end
+
+  describe "topic_metadata_from_cache" do
+    subject { described_class.topic_metadata_from_cache(native_kafka, topic_name) }
+    context "when metadata has been initialized" do
+      before do
+        described_class.new(native_kafka)
+      end
+
+      context "with a non-existing topic" do
+        let(:topic_name) { SecureRandom.uuid.to_s }
+
+        it "returns nil" do
+          expect(subject).to be_nil
+        end
+      end
+
+      context "with a topic that already exists" do
+        let(:topic_name) { "partitioner_test_topic" }
+
+        it "returns a hash of the topic metadata" do
+          expect(subject[:partition_count]).to eq(25)
+          expect(subject[:partitions].length).to eq(25)
+          expect(subject[:topic_name]).to eq(topic_name)
+        end
+      end
+    end
+
+    context "when metadata has not been initialized" do
+      let(:topic_name) { "partitioner_test_topic" }
+
+      it "returns nil, even for an existing topic" do
+        expect(subject).to be_nil
+      end
+    end
+  end
 end

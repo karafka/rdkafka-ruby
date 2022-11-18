@@ -45,6 +45,7 @@ module Rdkafka
     attach_function :rd_kafka_clusterid, [:pointer], :string
     attach_function :rd_kafka_metadata, [:pointer, :int, :pointer, :pointer, :int], :int
     attach_function :rd_kafka_metadata_destroy, [:pointer], :void
+    attach_function :rd_kafka_metadata_cache_topic_get, [:pointer, :string, :int], :pointer
 
     # Message struct
 

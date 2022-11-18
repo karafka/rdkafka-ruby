@@ -4,6 +4,37 @@ module Rdkafka
   class Metadata
     attr_reader :brokers, :topics
 
+    class << self
+      # Topic metadata pulled from the metadata cache for a given topic.
+      # Note: Will return nil in the following scenarios:
+      #   1. Metadata has not been initialized.
+      #   2. Topic could not be found in the cache.
+      #
+      # @param native_client [FFI::Pointer] Pointer to the native kafka client
+      # @param topic_name [String] The topic name.
+      #
+      # @return topic metadata [Hash, nil]
+      #
+      def topic_metadata_from_cache(native_client, topic_name)
+        metadata_ptr = Rdkafka::Bindings.rd_kafka_metadata_cache_topic_get(native_client, topic_name, 0)
+        unless metadata_ptr.null?
+          topic_metadata_from_pointer(metadata_ptr)
+        end
+      end
+
+      # @private
+      def topic_metadata_from_pointer(ptr)
+        topic = Rdkafka::Metadata::TopicMetadata.new(ptr)
+        raise Rdkafka::RdkafkaError.new(topic[:rd_kafka_resp_err]) unless topic[:rd_kafka_resp_err].zero?
+        partitions = Array.new(topic[:partition_count]) do |i|
+          partition = PartitionMetadata.new(topic[:partitions_metadata] + (i * PartitionMetadata.size))
+          raise Rdkafka::RdkafkaError.new(partition[:rd_kafka_resp_err]) unless partition[:rd_kafka_resp_err].zero?
+          partition.to_h
+        end
+        topic.to_h.merge!(partitions: partitions)
+      end
+    end
+
     def initialize(native_client, topic_name = nil)
       native_topic = if topic_name
         Rdkafka::Bindings.rd_kafka_topic_new(native_client, topic_name, nil)
@@ -36,15 +67,7 @@ module Rdkafka
       end
 
       @topics = Array.new(metadata[:topics_count]) do |i|
-        topic = TopicMetadata.new(metadata[:topics_metadata] + (i * TopicMetadata.size))
-        raise Rdkafka::RdkafkaError.new(topic[:rd_kafka_resp_err]) unless topic[:rd_kafka_resp_err].zero?
-
-        partitions = Array.new(topic[:partition_count]) do |j|
-          partition = PartitionMetadata.new(topic[:partitions_metadata] + (j * PartitionMetadata.size))
-          raise Rdkafka::RdkafkaError.new(partition[:rd_kafka_resp_err]) unless partition[:rd_kafka_resp_err].zero?
-          partition.to_h
-        end
-        topic.to_h.merge!(partitions: partitions)
+        self.class.topic_metadata_from_pointer(metadata[:topics_metadata] + (i * TopicMetadata.size))
       end
     end
 

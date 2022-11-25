@@ -142,11 +142,13 @@ module Rdkafka
               )
 
               if p.offset
+                offset = p.offset.is_a?(Time) ? p.offset.to_f * 1_000 : p.offset
+
                 Rdkafka::Bindings.rd_kafka_topic_partition_list_set_offset(
                   tpl,
                   topic,
                   p.partition,
-                  p.offset
+                  offset
                 )
               end
             end

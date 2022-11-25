@@ -972,7 +972,7 @@ describe Rdkafka::Consumer do
           list.add_topic_and_partitions_with_offsets(
             "consume_test_topic",
             [
-              [0, message.raw_timestamp]
+              [0, message.timestamp.to_f / 1000]
             ]
           )
         end

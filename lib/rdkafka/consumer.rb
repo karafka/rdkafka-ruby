@@ -387,7 +387,7 @@ module Rdkafka
 
     # Lookup offset for the given partitions by timestamp.
     #
-    # @param list [TopicPartitionList] The TopicPartitionList with timestamps instead of offets
+    # @param list [TopicPartitionList] The TopicPartitionList with timestamps instead of offsets
     #
     # @raise [RdKafkaError] When the OffsetForTimes lookup fails
     #

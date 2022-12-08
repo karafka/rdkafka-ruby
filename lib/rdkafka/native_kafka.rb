@@ -14,7 +14,7 @@ module Rdkafka
         @polling_thread = Thread.new do
           loop do
             @mutex.synchronize do
-              Rdkafka::Bindings.rd_kafka_poll(inner, 250)
+              Rdkafka::Bindings.rd_kafka_poll(inner, 100)
               # Exit thread if closing and the poll queue is empty
               if Thread.current[:closing] && Rdkafka::Bindings.rd_kafka_outq_len(inner) == 0
                 break
@@ -57,12 +57,14 @@ module Rdkafka
         @polling_thread.join
       end
 
-      # Destroy the client
-      Rdkafka::Bindings.rd_kafka_destroy_flags(
-        @inner,
-        Rdkafka::Bindings::RD_KAFKA_DESTROY_F_IMMEDIATE
-      )
-      @inner = nil
+      @mutex.synchronize do
+        # Destroy the client
+        Rdkafka::Bindings.rd_kafka_destroy_flags(
+          @inner,
+          Rdkafka::Bindings::RD_KAFKA_DESTROY_F_IMMEDIATE
+        )
+        @inner = nil
+      end
     end
   end
 end

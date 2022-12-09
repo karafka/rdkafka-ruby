@@ -2,20 +2,26 @@
 
 module Rdkafka
   # @private
-  # A wrapper around a native kafka that polls and cleanly exits
+  # A wrapper around a native kafka that handles all access
   class NativeKafka
+    attr_reader :inner, :poll_mutex, :method_mutex
+
     def initialize(inner, run_polling_thread:)
       @inner = inner
+      @poll_mutex = Mutex.new
+      @method_mutex = Mutex.new
 
       if run_polling_thread
         # Start thread to poll client for delivery callbacks,
         # not used in consumer.
         @polling_thread = Thread.new do
           loop do
-            Rdkafka::Bindings.rd_kafka_poll(inner, 250)
-            # Exit thread if closing and the poll queue is empty
-            if Thread.current[:closing] && Rdkafka::Bindings.rd_kafka_outq_len(inner) == 0
-              break
+            poll_mutex.synchronize do
+              Rdkafka::Bindings.rd_kafka_poll(inner, 250)
+              # Exit thread if closing and the poll queue is empty
+              if Thread.current[:closing] && Rdkafka::Bindings.rd_kafka_outq_len(inner) == 0
+                Thread.exit
+              end
             end
           end
         end
@@ -26,8 +32,18 @@ module Rdkafka
       @closing = false
     end
 
-    def inner
-      @inner
+    def with_inner_for_poll
+      return if @inner.nil?
+      @poll_mutex.synchronize do
+        yield @inner
+      end
+    end
+
+    def with_inner
+      return if @inner.nil?
+      @method_mutex.synchronize do
+        yield @inner
+      end
     end
 
     def finalizer
@@ -51,11 +67,19 @@ module Rdkafka
         @polling_thread.join
       end
 
-      # Destroy the client
-      Rdkafka::Bindings.rd_kafka_destroy_flags(
-        @inner,
-        Rdkafka::Bindings::RD_KAFKA_DESTROY_F_IMMEDIATE
-      )
+      # Run in a thread because this could be called
+      # in a trap context
+      Thread.new do
+        # Lock the mutexes for polling and method access
+        # to make sure we are not destroying during an
+        # ongoing operation
+        @method_mutex.lock
+        @poll_mutex.lock
+
+        # Destroy the client
+        Rdkafka::Bindings.rd_kafka_destroy(@inner)
+      end.join
+
       @inner = nil
     end
   end

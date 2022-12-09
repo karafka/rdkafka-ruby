@@ -68,15 +68,24 @@ describe Rdkafka::NativeKafka do
   def polling_loop_expects(&block)
     Thread.current[:closing] = true # this forces the loop break with line #12
 
-    allow(Thread).to receive(:new).and_yield do |_|
+    allow(Thread).to receive(:new).and_yield do |object|
+      allow(object).to receive(:poll_mutex).and_return(Mutex.new)
       block.call
     end.and_return(thread)
 
     client
   end
 
+  it "exposes inner client for polling" do
+    client.with_inner_for_poll do |inner|
+      expect(inner).to eq(native)
+    end
+  end
+
   it "exposes inner client" do
-    expect(client.inner).to eq(native)
+    client.with_inner do |inner|
+      expect(inner).to eq(native)
+    end
   end
 
   context "when client was not yet closed (`nil`)" do
@@ -86,7 +95,7 @@ describe Rdkafka::NativeKafka do
 
     context "and attempt to close" do
       it "calls the `destroy` binding" do
-        expect(Rdkafka::Bindings).to receive(:rd_kafka_destroy_flags).with(native, Rdkafka::Bindings::RD_KAFKA_DESTROY_F_IMMEDIATE)
+        expect(Rdkafka::Bindings).to receive(:rd_kafka_destroy).with(native)
 
         client.close
       end
@@ -106,7 +115,6 @@ describe Rdkafka::NativeKafka do
       it "closes and unassign the native client" do
         client.close
 
-        expect(client.inner).to eq(nil)
         expect(client.closed?).to eq(true)
       end
     end
@@ -141,7 +149,6 @@ describe Rdkafka::NativeKafka do
       it "does not close and unassign the native client again" do
         client.close
 
-        expect(client.inner).to eq(nil)
         expect(client.closed?).to eq(true)
       end
     end

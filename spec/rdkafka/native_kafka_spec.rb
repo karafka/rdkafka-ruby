@@ -8,7 +8,7 @@ describe Rdkafka::NativeKafka do
   let(:closing) { false }
   let(:thread) { double(Thread) }
 
-  subject(:client) { described_class.new(native, run_polling_thread: true) }
+  subject(:client) { described_class.new(native) }
 
   before do
     allow(Rdkafka::Bindings).to receive(:rd_kafka_poll).with(instance_of(FFI::Pointer), 250).and_call_original
@@ -41,48 +41,9 @@ describe Rdkafka::NativeKafka do
 
       client
     end
-
-    it "polls the native with default 250ms timeout" do
-      polling_loop_expects do
-        expect(Rdkafka::Bindings).to receive(:rd_kafka_poll).with(instance_of(FFI::Pointer), 250).at_least(:once)
-      end
-    end
-
-    it "check the out queue of native client" do
-      polling_loop_expects do
-        expect(Rdkafka::Bindings).to receive(:rd_kafka_outq_len).with(native).at_least(:once)
-      end
-    end
-
-    context "if not enabled" do
-      subject(:client) { described_class.new(native, run_polling_thread: false) }
-
-      it "is not created" do
-        expect(Thread).not_to receive(:new)
-
-        client
-      end
-    end
   end
 
-  def polling_loop_expects(&block)
-    Thread.current[:closing] = true # this forces the loop break with line #12
-
-    allow(Thread).to receive(:new).and_yield do |object|
-      allow(object).to receive(:poll_mutex).and_return(Mutex.new)
-      block.call
-    end.and_return(thread)
-
-    client
-  end
-
-  it "exposes inner client for polling" do
-    client.with_inner_for_poll do |inner|
-      expect(inner).to eq(native)
-    end
-  end
-
-  it "exposes inner client" do
+  it "exposes the inner client" do
     client.with_inner do |inner|
       expect(inner).to eq(native)
     end
@@ -94,12 +55,6 @@ describe Rdkafka::NativeKafka do
     end
 
     context "and attempt to close" do
-      it "calls the `destroy` binding" do
-        expect(Rdkafka::Bindings).to receive(:rd_kafka_destroy).with(native)
-
-        client.close
-      end
-
       it "indicates to the polling thread that it is closing" do
         expect(thread).to receive(:[]=).with(:closing, true)
 

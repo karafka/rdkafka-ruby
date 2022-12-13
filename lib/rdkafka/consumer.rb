@@ -459,7 +459,7 @@ module Rdkafka
     def poll(timeout_ms)
       closed_consumer_check(__method__)
 
-      message_ptr = @native_kafka.with_inner_for_poll do |inner|
+      message_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_consumer_poll(inner, timeout_ms)
       end
       if message_ptr.null?

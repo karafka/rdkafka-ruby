@@ -198,7 +198,7 @@ module Rdkafka
     # Rebalance
 
     callback :rebalance_cb_function, [:pointer, :int, :pointer, :pointer], :void
-    attach_function :rd_kafka_conf_set_rebalance_cb, [:pointer, :rebalance_cb_function], :void
+    attach_function :rd_kafka_conf_set_rebalance_cb, [:pointer, :rebalance_cb_function], :void, blocking: true
 
     RebalanceCallback = FFI::Function.new(
       :void, [:pointer, :int, :pointer, :pointer]

@@ -41,9 +41,9 @@ module Rdkafka
 
     # Metadata
 
-    attach_function :rd_kafka_memberid, [:pointer], :string
-    attach_function :rd_kafka_clusterid, [:pointer], :string
-    attach_function :rd_kafka_metadata, [:pointer, :int, :pointer, :pointer, :int], :int
+    attach_function :rd_kafka_memberid, [:pointer], :string, blocking: true
+    attach_function :rd_kafka_clusterid, [:pointer], :string, blocking: true
+    attach_function :rd_kafka_metadata, [:pointer, :int, :pointer, :pointer, :int], :int, blocking: true
     attach_function :rd_kafka_metadata_destroy, [:pointer], :void
 
     # Message struct
@@ -170,27 +170,26 @@ module Rdkafka
 
     attach_function :rd_kafka_new, [:kafka_type, :pointer, :pointer, :int], :pointer
 
-    RD_KAFKA_DESTROY_F_IMMEDIATE = 0x4
-    attach_function :rd_kafka_destroy_flags, [:pointer, :int], :void
+    attach_function :rd_kafka_destroy, [:pointer], :void
 
     # Consumer
 
-    attach_function :rd_kafka_subscribe, [:pointer, :pointer], :int
-    attach_function :rd_kafka_unsubscribe, [:pointer], :int
-    attach_function :rd_kafka_subscription, [:pointer, :pointer], :int
-    attach_function :rd_kafka_assign, [:pointer, :pointer], :int
-    attach_function :rd_kafka_incremental_assign, [:pointer, :pointer], :int
-    attach_function :rd_kafka_incremental_unassign, [:pointer, :pointer], :int
-    attach_function :rd_kafka_assignment, [:pointer, :pointer], :int
-    attach_function :rd_kafka_committed, [:pointer, :pointer, :int], :int
+    attach_function :rd_kafka_subscribe, [:pointer, :pointer], :int, blocking: true
+    attach_function :rd_kafka_unsubscribe, [:pointer], :int, blocking: true
+    attach_function :rd_kafka_subscription, [:pointer, :pointer], :int, blocking: true
+    attach_function :rd_kafka_assign, [:pointer, :pointer], :int, blocking: true
+    attach_function :rd_kafka_incremental_assign, [:pointer, :pointer], :int, blocking: true
+    attach_function :rd_kafka_incremental_unassign, [:pointer, :pointer], :int, blocking: true
+    attach_function :rd_kafka_assignment, [:pointer, :pointer], :int, blocking: true
+    attach_function :rd_kafka_committed, [:pointer, :pointer, :int], :int, blocking: true
     attach_function :rd_kafka_commit, [:pointer, :pointer, :bool], :int, blocking: true
-    attach_function :rd_kafka_poll_set_consumer, [:pointer], :void
+    attach_function :rd_kafka_poll_set_consumer, [:pointer], :void, blocking: true
     attach_function :rd_kafka_consumer_poll, [:pointer, :int], :pointer, blocking: true
     attach_function :rd_kafka_consumer_close, [:pointer], :void, blocking: true
-    attach_function :rd_kafka_offset_store, [:pointer, :int32, :int64], :int
-    attach_function :rd_kafka_pause_partitions, [:pointer, :pointer], :int
-    attach_function :rd_kafka_resume_partitions, [:pointer, :pointer], :int
-    attach_function :rd_kafka_seek, [:pointer, :int32, :int64, :int], :int
+    attach_function :rd_kafka_offset_store, [:pointer, :int32, :int64], :int, blocking: true
+    attach_function :rd_kafka_pause_partitions, [:pointer, :pointer], :int, blocking: true
+    attach_function :rd_kafka_resume_partitions, [:pointer, :pointer], :int, blocking: true
+    attach_function :rd_kafka_seek, [:pointer, :int32, :int64, :int], :int, blocking: true
 
     # Headers
     attach_function :rd_kafka_header_get_all, [:pointer, :size_t, :pointer, :pointer, SizePtr], :int
@@ -199,7 +198,7 @@ module Rdkafka
     # Rebalance
 
     callback :rebalance_cb_function, [:pointer, :int, :pointer, :pointer], :void
-    attach_function :rd_kafka_conf_set_rebalance_cb, [:pointer, :rebalance_cb_function], :void
+    attach_function :rd_kafka_conf_set_rebalance_cb, [:pointer, :rebalance_cb_function], :void, blocking: true
 
     RebalanceCallback = FFI::Function.new(
       :void, [:pointer, :int, :pointer, :pointer]
@@ -239,7 +238,7 @@ module Rdkafka
 
     # Stats
 
-    attach_function :rd_kafka_query_watermark_offsets, [:pointer, :string, :int, :pointer, :pointer, :int], :int
+    attach_function :rd_kafka_query_watermark_offsets, [:pointer, :string, :int, :pointer, :pointer, :int], :int, blocking: true
 
     # Producer
 
@@ -257,7 +256,7 @@ module Rdkafka
 
     RD_KAFKA_MSG_F_COPY = 0x2
 
-    attach_function :rd_kafka_producev, [:pointer, :varargs], :int
+    attach_function :rd_kafka_producev, [:pointer, :varargs], :int, blocking: true
     callback :delivery_cb, [:pointer, :pointer, :pointer], :void
     attach_function :rd_kafka_conf_set_dr_msg_cb, [:pointer, :delivery_cb], :void
 
@@ -284,23 +283,23 @@ module Rdkafka
     RD_KAFKA_ADMIN_OP_CREATETOPICS     = 1   # rd_kafka_admin_op_t
     RD_KAFKA_EVENT_CREATETOPICS_RESULT = 100 # rd_kafka_event_type_t
 
-    attach_function :rd_kafka_CreateTopics, [:pointer, :pointer, :size_t, :pointer, :pointer], :void
-    attach_function :rd_kafka_NewTopic_new, [:pointer, :size_t, :size_t, :pointer, :size_t], :pointer
-    attach_function :rd_kafka_NewTopic_set_config, [:pointer, :string, :string], :int32
-    attach_function :rd_kafka_NewTopic_destroy, [:pointer], :void
-    attach_function :rd_kafka_event_CreateTopics_result, [:pointer], :pointer
-    attach_function :rd_kafka_CreateTopics_result_topics, [:pointer, :pointer], :pointer
+    attach_function :rd_kafka_CreateTopics, [:pointer, :pointer, :size_t, :pointer, :pointer], :void, blocking: true
+    attach_function :rd_kafka_NewTopic_new, [:pointer, :size_t, :size_t, :pointer, :size_t], :pointer, blocking: true
+    attach_function :rd_kafka_NewTopic_set_config, [:pointer, :string, :string], :int32, blocking: true
+    attach_function :rd_kafka_NewTopic_destroy, [:pointer], :void, blocking: true
+    attach_function :rd_kafka_event_CreateTopics_result, [:pointer], :pointer, blocking: true
+    attach_function :rd_kafka_CreateTopics_result_topics, [:pointer, :pointer], :pointer, blocking: true
 
     # Delete Topics
 
     RD_KAFKA_ADMIN_OP_DELETETOPICS     = 2   # rd_kafka_admin_op_t
     RD_KAFKA_EVENT_DELETETOPICS_RESULT = 101 # rd_kafka_event_type_t
 
-    attach_function :rd_kafka_DeleteTopics, [:pointer, :pointer, :size_t, :pointer, :pointer], :int32
-    attach_function :rd_kafka_DeleteTopic_new, [:pointer], :pointer
-    attach_function :rd_kafka_DeleteTopic_destroy, [:pointer], :void
-    attach_function :rd_kafka_event_DeleteTopics_result, [:pointer], :pointer
-    attach_function :rd_kafka_DeleteTopics_result_topics, [:pointer, :pointer], :pointer
+    attach_function :rd_kafka_DeleteTopics, [:pointer, :pointer, :size_t, :pointer, :pointer], :int32, blocking: true
+    attach_function :rd_kafka_DeleteTopic_new, [:pointer], :pointer, blocking: true
+    attach_function :rd_kafka_DeleteTopic_destroy, [:pointer], :void, blocking: true
+    attach_function :rd_kafka_event_DeleteTopics_result, [:pointer], :pointer, blocking: true
+    attach_function :rd_kafka_DeleteTopics_result_topics, [:pointer, :pointer], :pointer, blocking: true
 
     # Background Queue and Callback
 

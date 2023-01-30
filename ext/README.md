@@ -5,7 +5,7 @@ this gem is installed.
 
 To update the `librdkafka` version follow the following steps:
 
-* Download the new version `tar.gz` from  https://github.com/edenhill/librdkafka/
+* Download the new version `zip` from  https://github.com/confluentinc/librdkafka/
 * Generate a `sha256` with (if using MacOS) `shasum -a 256 <file>`
 * Change the `sha256` in `lib/rdkafka/version.rb`
 * Change the version in `lib/rdkafka/version.rb`

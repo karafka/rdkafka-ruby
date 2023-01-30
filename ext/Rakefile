@@ -29,7 +29,7 @@ task :default => :clean do
   end
 
   recipe.files << {
-    :url => "https://codeload.github.com/edenhill/librdkafka/tar.gz/v#{Rdkafka::LIBRDKAFKA_VERSION}",
+    :url => "https://codeload.github.com/confluentinc/librdkafka/zip/v#{Rdkafka::LIBRDKAFKA_VERSION}",
     :sha256 => Rdkafka::LIBRDKAFKA_SOURCE_SHA256
   }
   recipe.patch_files.concat Dir[File.join(File.dirname(__FILE__), "patches/*")]

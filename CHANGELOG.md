@@ -7,6 +7,7 @@
 * Fix documented type for DeliveryReport#error (jimmydo)
 * Bump librdkafka to 1.9.2 (thijsc)
 * Use finalizers to cleanly exit producer and admin (thijsc)
+* Lock access to the native kafka client (thijsc)
 
 # 0.12.0
 * Bumps librdkafka to 1.9.0

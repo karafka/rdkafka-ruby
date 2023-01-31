@@ -4,7 +4,7 @@ module Rdkafka
   class Metadata
     attr_reader :brokers, :topics
 
-    def initialize(native_client, topic_name = nil)
+    def initialize(native_client, topic_name = nil, timeout_ms = 250)
       native_topic = if topic_name
         Rdkafka::Bindings.rd_kafka_topic_new(native_client, topic_name, nil)
       end
@@ -16,7 +16,7 @@ module Rdkafka
       topic_flag = topic_name.nil? ? 1 : 0
 
       # Retrieve the Metadata
-      result = Rdkafka::Bindings.rd_kafka_metadata(native_client, topic_flag, native_topic, ptr, 250)
+      result = Rdkafka::Bindings.rd_kafka_metadata(native_client, topic_flag, native_topic, ptr, timeout_ms)
 
       # Error Handling
       raise Rdkafka::RdkafkaError.new(result) unless result.zero?

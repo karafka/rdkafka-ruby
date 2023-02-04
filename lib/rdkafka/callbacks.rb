@@ -23,6 +23,26 @@ module Rdkafka
       end
     end
 
+    # Extracts attributes of rd_kafka_acl_result_t
+    #
+    # @private
+    class AclResult
+      attr_reader :result_error, :error_string
+
+      def initialize(acl_result_pointer)
+        rd_kafka_error_pointer = Bindings.rd_kafka_acl_result_error(acl_result_pointer)
+        @result_error = Rdkafka::Bindings.rd_kafka_error_code(rd_kafka_error_pointer)
+        @error_string = Rdkafka::Bindings.rd_kafka_error_string(rd_kafka_error_pointer)
+      end
+
+      def self.create_acl_results_from_array(count, array_pointer)
+        (1..count).map do |index|
+          result_pointer = (array_pointer + (index - 1)).read_pointer
+          new(result_pointer)
+        end
+      end
+    end
+
     # FFI Function used for Create Topic and Delete Topic callbacks
     BackgroundEventCallbackFunction = FFI::Function.new(
         :void, [:pointer, :pointer, :pointer]
@@ -38,6 +58,8 @@ module Rdkafka
           process_create_topic(event_ptr)
         elsif event_type == Rdkafka::Bindings::RD_KAFKA_EVENT_DELETETOPICS_RESULT
           process_delete_topic(event_ptr)
+        elsif event_type == Rdkafka::Bindings::RD_KAFKA_EVENT_CREATEACLS_RESULT
+          process_create_acl(event_ptr)
         end
       end
 
@@ -76,6 +98,22 @@ module Rdkafka
           delete_topic_handle[:pending] = false
         end
       end
+
+      def self.process_create_acl(event_ptr)
+        create_acls_result = Rdkafka::Bindings.rd_kafka_event_CreateAcls_result(event_ptr)
+
+        # Get the number of topic results
+        pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+        create_acl_result_array = Rdkafka::Bindings.rd_kafka_CreateAcls_result_acls(create_acls_result, pointer_to_size_t)
+        create_acl_results = AclResult.create_acl_results_from_array(pointer_to_size_t.read_int, create_acl_result_array)
+        create_acl_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
+
+        if create_acl_handle = Rdkafka::Admin::CreateAclHandle.remove(create_acl_handle_ptr.address)
+          create_acl_handle[:response] = create_acl_results[0].result_error
+          create_acl_handle[:error_string] = create_acl_results[0].error_string
+          create_acl_handle[:pending] = false
+        end
+      end
     end
 
     # FFI Function used for Message Delivery callbacks
@@ -108,5 +146,6 @@ module Rdkafka
         end
       end
     end
+
   end
 end

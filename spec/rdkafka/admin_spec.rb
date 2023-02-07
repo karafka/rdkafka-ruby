@@ -219,8 +219,8 @@ describe Rdkafka::Admin do
       expect(create_topic_report.error_string).to be_nil
       expect(create_topic_report.result_name).to eq(acl_topic_name)
       resource_name = acl_topic_name
-      create_acl_handle = admin.create_acl(resource_type, resource_name, resource_pattern_type, principal, host, operation, permission_type)
-      create_acl_report = create_acl_handle.wait(max_wait_timeout: 25.0)
+      create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
+      create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
       expect(create_acl_report.error_string).to eq("")
       expect(create_acl_handle[:response]).to eq(0)
     end

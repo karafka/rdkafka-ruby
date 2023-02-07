@@ -157,7 +157,7 @@ module Rdkafka
     # @raise [RdkafkaError]
     #
     # @return [CreateAclHandle] Create acl handle that can be used to wait for the result of creating the acl
-    def create_acl(resource_type, resource_name, resource_pattern_type, principal, host, operation, permission_type)
+    def create_acl(resource_type:, resource_name:, resource_pattern_type:, principal:, host:, operation:, permission_type:)
       closed_admin_check(__method__)
 
       # Create a rd_kafka_AclBinding_t representing the new acl

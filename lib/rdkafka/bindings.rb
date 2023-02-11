@@ -334,6 +334,23 @@ module Rdkafka
     attach_function :rd_kafka_event_CreateAcls_result, [:pointer], :pointer
     attach_function :rd_kafka_CreateAcls_result_acls, [:pointer, :pointer], :pointer
 
+    # Delete Acls
+
+    RD_KAFKA_ADMIN_OP_DELETEACLS     = 11
+    RD_KAFKA_EVENT_DELETEACLS_RESULT = 4096
+
+    attach_function :rd_kafka_DeleteAcls, [:pointer, :pointer, :size_t, :pointer, :pointer], :void
+    attach_function :rd_kafka_event_DeleteAcls_result, [:pointer], :pointer
+    attach_function :rd_kafka_DeleteAcls_result_responses, [:pointer, :pointer], :pointer
+    attach_function :rd_kafka_DeleteAcls_result_response_error, [:pointer], :pointer
+    attach_function :rd_kafka_DeleteAcls_result_response_matching_acls, [:pointer, :pointer], :pointer
+    attach_function :rd_kafka_AclBinding_restype, [:pointer], :int32
+    attach_function :rd_kafka_AclBinding_name, [:pointer], :pointer
+    attach_function :rd_kafka_AclBinding_resource_pattern_type, [:pointer], :int32
+    attach_function :rd_kafka_AclBinding_principal, [:pointer], :pointer
+    attach_function :rd_kafka_AclBinding_host, [:pointer], :pointer
+    attach_function :rd_kafka_AclBinding_operation, [:pointer], :int32
+    attach_function :rd_kafka_AclBinding_permission_type, [:pointer], :int32
 
     # Acl Bindings
 
@@ -370,5 +387,6 @@ module Rdkafka
     attach_function :rd_kafka_acl_result_error, [:pointer], :pointer
     attach_function :rd_kafka_error_code, [:pointer], :int32
     attach_function :rd_kafka_error_string, [:pointer], :pointer
+    attach_function :rd_kafka_AclBinding_error, [:pointer], :pointer
   end
 end

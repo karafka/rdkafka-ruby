@@ -279,6 +279,59 @@ module Rdkafka
       public_send(method_name, nil, str_ptr, str.size > 0 ? str.size : 1, partition_count, nil, nil)
     end
 
+    # Create ACLs
+    enum :kafka_acl_operation, [
+      :unknown,          # Unknown
+      :any,              # In a filter, matches any AclOperation
+      :all,              # ALL operation
+      :read,             # READ operation
+      :write,            # WRITE operation
+      :create,           # CREATE operation
+      :delete,           # DELETE operation
+      :alter,            # ALTER operation
+      :describe,         # DESCRIBE operation
+      :cluster_action,   # CLUSTER_ACTION operation */
+      :describe_configs, # DESCRIBE_CONFIGS operation */
+      :alter_configs,    # ALTER_CONFIGS  operation */
+      :idempotent_write  # IDEMPOTENT_WRITE operation */
+    ]
+
+    enum :rd_kafka_acl_permission_type, [
+      :unknown, # Unknown
+      :any,     # In a filter, matches any AclPermissionType
+      :deny,    # Disallows access
+      :allow,   # Grants access.
+    ]
+
+    enum :rd_kafka_resource_pattern_type, [
+      :unknown, # Unknown
+      :any,     # Any (used for lookups)
+      :match,   # Match: will perform pattern matching
+      :literal, # Literal: A literal resource name
+      :prefixed # Prefixed: A prefixed resource name
+    ]
+
+    enum :rd_kafka_resource_type, [
+      :unknown, # Unknown
+      :any,     # Any (used for lookups)
+      :topic,   # Topic
+      :group,   # Group
+      :broker   # Broker
+    ]
+
+    RD_KAFKA_ADMIN_OP_CREATEACLS     = 9     # rd_kafka_admin_op_t
+    RD_KAFKA_EVENT_CREATEACLS_RESULT = 0x400 # rd_kafka_event_type_t
+
+    attach_function :rd_kafka_AclBinding_new,
+      [:rd_kafka_resource_type, :pointer, :rd_kafka_resource_pattern_type, :pointer, :pointer,
+       :kafka_acl_operation, :rd_kafka_acl_permission_type, :pointer, :size_t],
+       :pointer,
+       blocking: true
+    attach_function :rd_kafka_CreateAcls, [:pointer, :pointer, :size_t, :pointer, :pointer], :void, blocking: true
+    attach_function :rd_kafka_event_CreateAcls_result, [:pointer], :pointer
+    attach_function :rd_kafka_CreateAcls_result_acls, [:pointer, :pointer], :pointer
+    attach_function :rd_kafka_AclBinding_destroy_array, [:pointer, :size_t], :void
+
     # Create Topics
 
     RD_KAFKA_ADMIN_OP_CREATETOPICS     = 1   # rd_kafka_admin_op_t
@@ -318,11 +371,17 @@ module Rdkafka
 
     attach_function :rd_kafka_event_type, [:pointer], :int32
     attach_function :rd_kafka_event_opaque, [:pointer], :pointer
+    attach_function :rd_kafka_event_error_string, [:pointer], :string
 
     # Extracting data from topic results
 
     attach_function :rd_kafka_topic_result_error, [:pointer], :int32
     attach_function :rd_kafka_topic_result_error_string, [:pointer], :pointer
     attach_function :rd_kafka_topic_result_name, [:pointer], :pointer
+
+    # Extracting data from acl results
+    attach_function :rd_kafka_acl_result_error, [:pointer], :pointer
+    attach_function :rd_kafka_error_string, [:pointer], :string
+    attach_function :rd_kafka_error_code, [:pointer], :int32
   end
 end

@@ -201,4 +201,38 @@ describe Rdkafka::Admin do
       expect(delete_topic_report.result_name).to eq(topic_name)
     end
   end
+
+  context "#create_acl" do
+    let(:acl_options) do
+      {
+        resource_type: :topic,
+        pattern_type: :literal,
+        acl_operation: :all,
+        permission_type: :allow
+      }
+    end
+
+    describe "called with invalid input" do
+      describe "with an invalid principal" do
+        let(:principal) { '___!X' }
+
+        it "raises an exception" do
+          create_acl_handle = admin.create_acl("sup", "___!X", "*", acl_options)
+          expect do
+            create_acl_handle.wait(max_wait_timeout: 15.0)
+          end.to raise_exception { |ex|
+            expect(ex).to be_a(Rdkafka::RdkafkaError)
+            expect(ex.message).to match(/Broker: Invalid request \(invalid_request\)/)
+            expect(ex.message_prefix).to match(/expected a string in format principalType:principalName/)
+          }
+        end
+      end
+    end
+
+    it "creates an ACL" do
+      create_acl_handle = admin.create_acl("sup", "User:*", "*", acl_options)
+      create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+      expect(create_acl_report.error_string).to eq('')
+    end
+  end
 end

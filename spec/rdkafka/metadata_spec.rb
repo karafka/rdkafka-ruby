@@ -32,7 +32,7 @@ describe Rdkafka::Metadata do
         expect(subject.brokers.length).to eq(1)
         expect(subject.brokers[0][:broker_id]).to eq(1)
         expect(subject.brokers[0][:broker_name]).to eq("localhost")
-        expect(subject.brokers[0][:broker_port]).to eq(9092)
+        expect(subject.brokers[0][:broker_port]).to eq(9093)
       end
 
       it "#topics returns data on our test topic" do
@@ -55,7 +55,7 @@ describe Rdkafka::Metadata do
       expect(subject.brokers.length).to eq(1)
       expect(subject.brokers[0][:broker_id]).to eq(1)
       expect(subject.brokers[0][:broker_name]).to eq("localhost")
-      expect(subject.brokers[0][:broker_port]).to eq(9092)
+      expect(subject.brokers[0][:broker_port]).to eq(9093)
     end
 
     it "#topics returns data about all of our test topics" do

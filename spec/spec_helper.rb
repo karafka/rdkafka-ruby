@@ -16,7 +16,11 @@ def rdkafka_base_config
   {
     :"api.version.request" => false,
     :"broker.version.fallback" => "1.0",
-    :"bootstrap.servers" => "localhost:9092",
+    :"bootstrap.servers" => "localhost:9093",
+    :"security.protocol" => "SASL_PLAINTEXT",
+    :"sasl.username" => "adminscram",
+    :"sasl.password" => "admin-secret-512",
+    :"sasl.mechanisms" => "SCRAM-SHA-512"
   }
 end
 

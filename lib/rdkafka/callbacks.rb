@@ -23,6 +23,27 @@ module Rdkafka
       end
     end
 
+    # Extracts attributes of a rd_kafka_CreateAcls_result_t
+    #
+    # @private
+    class ACLResult
+      attr_reader :error_code, :error_string
+
+      def initialize(acl_result_pointer)
+        result_error = Rdkafka::Bindings.rd_kafka_acl_result_error(acl_result_pointer)
+
+        @error_string = Rdkafka::Bindings.rd_kafka_error_string(result_error)
+        @error_code = Rdkafka::Bindings.rd_kafka_error_code(result_error)
+      end
+
+      def self.create_acl_results_from_array(count, array_pointer)
+        (1..count).map do |index|
+          result_pointer = (array_pointer + (index - 1)).read_pointer
+          new(result_pointer)
+        end
+      end
+    end
+
     # FFI Function used for Create Topic and Delete Topic callbacks
     BackgroundEventCallbackFunction = FFI::Function.new(
         :void, [:pointer, :pointer, :pointer]
@@ -38,10 +59,29 @@ module Rdkafka
           process_create_topic(event_ptr)
         elsif event_type == Rdkafka::Bindings::RD_KAFKA_EVENT_DELETETOPICS_RESULT
           process_delete_topic(event_ptr)
+        elsif event_type == Rdkafka::Bindings::RD_KAFKA_EVENT_CREATEACLS_RESULT
+          process_create_acl(event_ptr)
         end
       end
 
       private
+
+      def self.process_create_acl(event_ptr)
+        create_acls_result = Rdkafka::Bindings.rd_kafka_event_CreateAcls_result(event_ptr)
+
+        # Get the number of create ACL results
+        pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+        create_acl_result_array = Rdkafka::Bindings.rd_kafka_CreateAcls_result_acls(create_acls_result, pointer_to_size_t)
+        create_acl_results = ACLResult.create_acl_results_from_array(pointer_to_size_t.read_int, create_acl_result_array)
+        create_acl_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
+
+        if create_acl_handle = Rdkafka::Admin::CreateACLHandle.remove(create_acl_handle_ptr.address)
+          create_acl_handle[:response] = create_acl_results[0].error_code
+          create_acl_handle[:error_string] = FFI::MemoryPointer.from_string(create_acl_results[0].error_string)
+          create_acl_handle[:error_code] = create_acl_results[0].error_code
+          create_acl_handle[:pending] = false
+        end
+      end
 
       def self.process_create_topic(event_ptr)
         create_topics_result = Rdkafka::Bindings.rd_kafka_event_CreateTopics_result(event_ptr)

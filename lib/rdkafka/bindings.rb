@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require "ffi"
-require "json"
-require "logger"
+require 'ffi'
+require 'json'
+require 'logger'
 
 module Rdkafka
   # @private
@@ -35,15 +35,15 @@ module Rdkafka
 
     # Polling
 
-    attach_function :rd_kafka_flush, [:pointer, :int], :void, blocking: true
-    attach_function :rd_kafka_poll, [:pointer, :int], :void, blocking: true
+    attach_function :rd_kafka_flush, %i[pointer int], :void, blocking: true
+    attach_function :rd_kafka_poll, %i[pointer int], :void, blocking: true
     attach_function :rd_kafka_outq_len, [:pointer], :int, blocking: true
 
     # Metadata
 
     attach_function :rd_kafka_memberid, [:pointer], :string
     attach_function :rd_kafka_clusterid, [:pointer], :string
-    attach_function :rd_kafka_metadata, [:pointer, :int, :pointer, :pointer, :int], :int
+    attach_function :rd_kafka_metadata, %i[pointer int pointer pointer int], :int
     attach_function :rd_kafka_metadata_destroy, [:pointer], :void
 
     # Message struct
@@ -61,8 +61,8 @@ module Rdkafka
     end
 
     attach_function :rd_kafka_message_destroy, [:pointer], :void
-    attach_function :rd_kafka_message_timestamp, [:pointer, :pointer], :int64
-    attach_function :rd_kafka_topic_new, [:pointer, :string, :pointer], :pointer
+    attach_function :rd_kafka_message_timestamp, %i[pointer pointer], :int64
+    attach_function :rd_kafka_topic_new, %i[pointer string pointer], :pointer
     attach_function :rd_kafka_topic_destroy, [:pointer], :pointer
     attach_function :rd_kafka_topic_name, [:pointer], :string
 
@@ -86,8 +86,8 @@ module Rdkafka
     end
 
     attach_function :rd_kafka_topic_partition_list_new, [:int32], :pointer
-    attach_function :rd_kafka_topic_partition_list_add, [:pointer, :string, :int32], :void
-    attach_function :rd_kafka_topic_partition_list_set_offset, [:pointer, :string, :int32, :int64], :void
+    attach_function :rd_kafka_topic_partition_list_add, %i[pointer string int32], :void
+    attach_function :rd_kafka_topic_partition_list_set_offset, %i[pointer string int32 int64], :void
     attach_function :rd_kafka_topic_partition_list_destroy, [:pointer], :void
     attach_function :rd_kafka_topic_partition_list_copy, [:pointer], :pointer
 
@@ -105,22 +105,22 @@ module Rdkafka
     ]
 
     attach_function :rd_kafka_conf_new, [], :pointer
-    attach_function :rd_kafka_conf_set, [:pointer, :string, :string, :pointer, :int], :kafka_config_response
-    callback :log_cb, [:pointer, :int, :string, :string], :void
-    attach_function :rd_kafka_conf_set_log_cb, [:pointer, :log_cb], :void
-    attach_function :rd_kafka_conf_set_opaque, [:pointer, :pointer], :void
-    callback :stats_cb, [:pointer, :string, :int, :pointer], :int
-    attach_function :rd_kafka_conf_set_stats_cb, [:pointer, :stats_cb], :void
-    callback :error_cb, [:pointer, :int, :string, :pointer], :void
-    attach_function :rd_kafka_conf_set_error_cb, [:pointer, :error_cb], :void
+    attach_function :rd_kafka_conf_set, %i[pointer string string pointer int], :kafka_config_response
+    callback :log_cb, %i[pointer int string string], :void
+    attach_function :rd_kafka_conf_set_log_cb, %i[pointer log_cb], :void
+    attach_function :rd_kafka_conf_set_opaque, %i[pointer pointer], :void
+    callback :stats_cb, %i[pointer string int pointer], :int
+    attach_function :rd_kafka_conf_set_stats_cb, %i[pointer stats_cb], :void
+    callback :error_cb, %i[pointer int string pointer], :void
+    attach_function :rd_kafka_conf_set_error_cb, %i[pointer error_cb], :void
     attach_function :rd_kafka_rebalance_protocol, [:pointer], :string
 
     # Log queue
-    attach_function :rd_kafka_set_log_queue, [:pointer, :pointer], :void
+    attach_function :rd_kafka_set_log_queue, %i[pointer pointer], :void
     attach_function :rd_kafka_queue_get_main, [:pointer], :pointer
 
     LogCallback = FFI::Function.new(
-      :void, [:pointer, :int, :string, :string]
+      :void, %i[pointer int string string]
     ) do |_client_ptr, level, _level_string, line|
       severity = case level
                  when 0 || 1 || 2
@@ -140,7 +140,7 @@ module Rdkafka
     end
 
     StatsCallback = FFI::Function.new(
-      :int, [:pointer, :string, :int, :pointer]
+      :int, %i[pointer string int pointer]
     ) do |_client_ptr, json, _json_len, _opaque|
       # Pass the stats hash to callback in config
       if Rdkafka::Config.statistics_callback
@@ -153,7 +153,7 @@ module Rdkafka
     end
 
     ErrorCallback = FFI::Function.new(
-      :void, [:pointer, :int, :string, :pointer]
+      :void, %i[pointer int string pointer]
     ) do |_client_prr, err_code, reason, _opaque|
       if Rdkafka::Config.error_callback
         error = Rdkafka::RdkafkaError.new(err_code, broker_message: reason)
@@ -163,56 +163,56 @@ module Rdkafka
 
     # Handle
 
-    enum :kafka_type, [
-      :rd_kafka_producer,
-      :rd_kafka_consumer
+    enum :kafka_type, %i[
+      rd_kafka_producer
+      rd_kafka_consumer
     ]
 
-    attach_function :rd_kafka_new, [:kafka_type, :pointer, :pointer, :int], :pointer
+    attach_function :rd_kafka_new, %i[kafka_type pointer pointer int], :pointer
 
     RD_KAFKA_DESTROY_F_IMMEDIATE = 0x4
-    attach_function :rd_kafka_destroy_flags, [:pointer, :int], :void
+    attach_function :rd_kafka_destroy_flags, %i[pointer int], :void
 
     # Consumer
 
-    attach_function :rd_kafka_subscribe, [:pointer, :pointer], :int
+    attach_function :rd_kafka_subscribe, %i[pointer pointer], :int
     attach_function :rd_kafka_unsubscribe, [:pointer], :int
-    attach_function :rd_kafka_subscription, [:pointer, :pointer], :int
-    attach_function :rd_kafka_assign, [:pointer, :pointer], :int
-    attach_function :rd_kafka_incremental_assign, [:pointer, :pointer], :int
-    attach_function :rd_kafka_incremental_unassign, [:pointer, :pointer], :int
-    attach_function :rd_kafka_assignment, [:pointer, :pointer], :int
-    attach_function :rd_kafka_committed, [:pointer, :pointer, :int], :int
-    attach_function :rd_kafka_commit, [:pointer, :pointer, :bool], :int, blocking: true
+    attach_function :rd_kafka_subscription, %i[pointer pointer], :int
+    attach_function :rd_kafka_assign, %i[pointer pointer], :int
+    attach_function :rd_kafka_incremental_assign, %i[pointer pointer], :int
+    attach_function :rd_kafka_incremental_unassign, %i[pointer pointer], :int
+    attach_function :rd_kafka_assignment, %i[pointer pointer], :int
+    attach_function :rd_kafka_committed, %i[pointer pointer int], :int
+    attach_function :rd_kafka_commit, %i[pointer pointer bool], :int, blocking: true
     attach_function :rd_kafka_poll_set_consumer, [:pointer], :void
-    attach_function :rd_kafka_consumer_poll, [:pointer, :int], :pointer, blocking: true
+    attach_function :rd_kafka_consumer_poll, %i[pointer int], :pointer, blocking: true
     attach_function :rd_kafka_consumer_close, [:pointer], :void, blocking: true
-    attach_function :rd_kafka_offset_store, [:pointer, :int32, :int64], :int
-    attach_function :rd_kafka_pause_partitions, [:pointer, :pointer], :int
-    attach_function :rd_kafka_resume_partitions, [:pointer, :pointer], :int
-    attach_function :rd_kafka_seek, [:pointer, :int32, :int64, :int], :int
+    attach_function :rd_kafka_offset_store, %i[pointer int32 int64], :int
+    attach_function :rd_kafka_pause_partitions, %i[pointer pointer], :int
+    attach_function :rd_kafka_resume_partitions, %i[pointer pointer], :int
+    attach_function :rd_kafka_seek, %i[pointer int32 int64 int], :int
 
     # Headers
     attach_function :rd_kafka_header_get_all, [:pointer, :size_t, :pointer, :pointer, SizePtr], :int
-    attach_function :rd_kafka_message_headers, [:pointer, :pointer], :int
+    attach_function :rd_kafka_message_headers, %i[pointer pointer], :int
 
     # Rebalance
 
-    callback :rebalance_cb_function, [:pointer, :int, :pointer, :pointer], :void
-    attach_function :rd_kafka_conf_set_rebalance_cb, [:pointer, :rebalance_cb_function], :void
+    callback :rebalance_cb_function, %i[pointer int pointer pointer], :void
+    attach_function :rd_kafka_conf_set_rebalance_cb, %i[pointer rebalance_cb_function], :void
 
     RebalanceCallback = FFI::Function.new(
-      :void, [:pointer, :int, :pointer, :pointer]
+      :void, %i[pointer int pointer pointer]
     ) do |client_ptr, code, partitions_ptr, opaque_ptr|
       case code
       when RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS
-        if Rdkafka::Bindings.rd_kafka_rebalance_protocol(client_ptr) == "COOPERATIVE"
+        if Rdkafka::Bindings.rd_kafka_rebalance_protocol(client_ptr) == 'COOPERATIVE'
           Rdkafka::Bindings.rd_kafka_incremental_assign(client_ptr, partitions_ptr)
         else
           Rdkafka::Bindings.rd_kafka_assign(client_ptr, partitions_ptr)
         end
       else # RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS or errors
-        if Rdkafka::Bindings.rd_kafka_rebalance_protocol(client_ptr) == "COOPERATIVE"
+        if Rdkafka::Bindings.rd_kafka_rebalance_protocol(client_ptr) == 'COOPERATIVE'
           Rdkafka::Bindings.rd_kafka_incremental_unassign(client_ptr, partitions_ptr)
         else
           Rdkafka::Bindings.rd_kafka_assign(client_ptr, FFI::Pointer::NULL)
@@ -232,14 +232,14 @@ module Rdkafka
         when RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS
           opaque.call_on_partitions_revoked(consumer, tpl)
         end
-      rescue Exception => err
-        Rdkafka::Config.logger.error("Unhandled exception: #{err.class} - #{err.message}")
+      rescue Exception => e
+        Rdkafka::Config.logger.error("Unhandled exception: #{e.class} - #{e.message}")
       end
     end
 
     # Stats
 
-    attach_function :rd_kafka_query_watermark_offsets, [:pointer, :string, :int, :pointer, :pointer, :int], :int
+    attach_function :rd_kafka_query_watermark_offsets, %i[pointer string int pointer pointer int], :int
 
     # Producer
 
@@ -257,72 +257,132 @@ module Rdkafka
 
     RD_KAFKA_MSG_F_COPY = 0x2
 
-    attach_function :rd_kafka_producev, [:pointer, :varargs], :int
-    callback :delivery_cb, [:pointer, :pointer, :pointer], :void
-    attach_function :rd_kafka_conf_set_dr_msg_cb, [:pointer, :delivery_cb], :void
+    attach_function :rd_kafka_producev, %i[pointer varargs], :int
+    callback :delivery_cb, %i[pointer pointer pointer], :void
+    attach_function :rd_kafka_conf_set_dr_msg_cb, %i[pointer delivery_cb], :void
 
     # Partitioner
-    PARTITIONERS = %w(random consistent consistent_random murmur2 murmur2_random fnv1a fnv1a_random).each_with_object({}) do |name, hsh|
+    PARTITIONERS = %w[random consistent consistent_random murmur2 murmur2_random fnv1a
+                      fnv1a_random].each_with_object({}) do |name, hsh|
       method_name = "rd_kafka_msg_partitioner_#{name}".to_sym
-      attach_function method_name, [:pointer, :pointer, :size_t, :int32, :pointer, :pointer], :int32
+      attach_function method_name, %i[pointer pointer size_t int32 pointer pointer], :int32
       hsh[name] = method_name
     end
 
-    def self.partitioner(str, partition_count, partitioner_name = "consistent_random")
+    def self.partitioner(str, partition_count, partitioner_name = 'consistent_random')
       # Return RD_KAFKA_PARTITION_UA(unassigned partition) when partition count is nil/zero.
       return -1 unless partition_count&.nonzero?
 
       str_ptr = str.empty? ? FFI::MemoryPointer::NULL : FFI::MemoryPointer.from_string(str)
       method_name = PARTITIONERS.fetch(partitioner_name) do
-        raise Rdkafka::Config::ConfigError.new("Unknown partitioner: #{partitioner_name}")
+        raise Rdkafka::Config::ConfigError, "Unknown partitioner: #{partitioner_name}"
       end
       public_send(method_name, nil, str_ptr, str.size > 0 ? str.size : 1, partition_count, nil, nil)
     end
+
+    # Create ACLs
+    enum :kafka_acl_operation, [
+      :unknown,          # Unknown
+      :any,              # In a filter, matches any AclOperation
+      :all,              # ALL operation
+      :read,             # READ operation
+      :write,            # WRITE operation
+      :create,           # CREATE operation
+      :delete,           # DELETE operation
+      :alter,            # ALTER operation
+      :describe,         # DESCRIBE operation
+      :cluster_action,   # CLUSTER_ACTION operation */
+      :describe_configs, # DESCRIBE_CONFIGS operation */
+      :alter_configs,    # ALTER_CONFIGS  operation */
+      :idempotent_write  # IDEMPOTENT_WRITE operation */
+    ]
+
+    enum :rd_kafka_acl_permission_type, [
+      :unknown, # Unknown
+      :any,     # In a filter, matches any AclPermissionType
+      :deny,    # Disallows access
+      :allow # Grants access.
+    ]
+
+    enum :rd_kafka_resource_pattern_type, [
+      :unknown, # Unknown
+      :any,     # Any (used for lookups)
+      :match,   # Match: will perform pattern matching
+      :literal, # Literal: A literal resource name
+      :prefixed # Prefixed: A prefixed resource name
+    ]
+
+    enum :rd_kafka_resource_type, [
+      :unknown, # Unknown
+      :any,     # Any (used for lookups)
+      :topic,   # Topic
+      :group,   # Group
+      :broker   # Broker
+    ]
+
+    RD_KAFKA_ADMIN_OP_CREATEACLS     = 9     # rd_kafka_admin_op_t
+    RD_KAFKA_EVENT_CREATEACLS_RESULT = 0x400 # rd_kafka_event_type_t
+
+    attach_function :rd_kafka_AclBinding_new,
+                    %i[rd_kafka_resource_type pointer rd_kafka_resource_pattern_type pointer pointer
+                       kafka_acl_operation rd_kafka_acl_permission_type pointer size_t],
+                    :pointer,
+                    blocking: true
+    attach_function :rd_kafka_CreateAcls, %i[pointer pointer size_t pointer pointer], :void, blocking: true
+    attach_function :rd_kafka_event_CreateAcls_result, [:pointer], :pointer
+    attach_function :rd_kafka_CreateAcls_result_acls, %i[pointer pointer], :pointer
+    attach_function :rd_kafka_AclBinding_destroy_array, %i[pointer size_t], :void
 
     # Create Topics
 
     RD_KAFKA_ADMIN_OP_CREATETOPICS     = 1   # rd_kafka_admin_op_t
     RD_KAFKA_EVENT_CREATETOPICS_RESULT = 100 # rd_kafka_event_type_t
 
-    attach_function :rd_kafka_CreateTopics, [:pointer, :pointer, :size_t, :pointer, :pointer], :void
-    attach_function :rd_kafka_NewTopic_new, [:pointer, :size_t, :size_t, :pointer, :size_t], :pointer
-    attach_function :rd_kafka_NewTopic_set_config, [:pointer, :string, :string], :int32
+    attach_function :rd_kafka_CreateTopics, %i[pointer pointer size_t pointer pointer], :void
+    attach_function :rd_kafka_NewTopic_new, %i[pointer size_t size_t pointer size_t], :pointer
+    attach_function :rd_kafka_NewTopic_set_config, %i[pointer string string], :int32
     attach_function :rd_kafka_NewTopic_destroy, [:pointer], :void
     attach_function :rd_kafka_event_CreateTopics_result, [:pointer], :pointer
-    attach_function :rd_kafka_CreateTopics_result_topics, [:pointer, :pointer], :pointer
+    attach_function :rd_kafka_CreateTopics_result_topics, %i[pointer pointer], :pointer
 
     # Delete Topics
 
     RD_KAFKA_ADMIN_OP_DELETETOPICS     = 2   # rd_kafka_admin_op_t
     RD_KAFKA_EVENT_DELETETOPICS_RESULT = 101 # rd_kafka_event_type_t
 
-    attach_function :rd_kafka_DeleteTopics, [:pointer, :pointer, :size_t, :pointer, :pointer], :int32
+    attach_function :rd_kafka_DeleteTopics, %i[pointer pointer size_t pointer pointer], :int32
     attach_function :rd_kafka_DeleteTopic_new, [:pointer], :pointer
     attach_function :rd_kafka_DeleteTopic_destroy, [:pointer], :void
     attach_function :rd_kafka_event_DeleteTopics_result, [:pointer], :pointer
-    attach_function :rd_kafka_DeleteTopics_result_topics, [:pointer, :pointer], :pointer
+    attach_function :rd_kafka_DeleteTopics_result_topics, %i[pointer pointer], :pointer
 
     # Background Queue and Callback
 
     attach_function :rd_kafka_queue_get_background, [:pointer], :pointer
-    attach_function :rd_kafka_conf_set_background_event_cb, [:pointer, :pointer], :void
+    attach_function :rd_kafka_conf_set_background_event_cb, %i[pointer pointer], :void
     attach_function :rd_kafka_queue_destroy, [:pointer], :void
 
     # Admin Options
 
-    attach_function :rd_kafka_AdminOptions_new, [:pointer, :int32], :pointer
-    attach_function :rd_kafka_AdminOptions_set_opaque, [:pointer, :pointer], :void
+    attach_function :rd_kafka_AdminOptions_new, %i[pointer int32], :pointer
+    attach_function :rd_kafka_AdminOptions_set_opaque, %i[pointer pointer], :void
     attach_function :rd_kafka_AdminOptions_destroy, [:pointer], :void
 
     # Extracting data from event types
 
     attach_function :rd_kafka_event_type, [:pointer], :int32
     attach_function :rd_kafka_event_opaque, [:pointer], :pointer
+    attach_function :rd_kafka_event_error_string, [:pointer], :string
 
     # Extracting data from topic results
 
     attach_function :rd_kafka_topic_result_error, [:pointer], :int32
     attach_function :rd_kafka_topic_result_error_string, [:pointer], :pointer
     attach_function :rd_kafka_topic_result_name, [:pointer], :pointer
+
+    # Extracting data from acl results
+    attach_function :rd_kafka_acl_result_error, [:pointer], :pointer
+    attach_function :rd_kafka_error_string, [:pointer], :string
+    attach_function :rd_kafka_error_code, [:pointer], :int32
   end
 end

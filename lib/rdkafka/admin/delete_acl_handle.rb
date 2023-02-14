@@ -6,13 +6,7 @@ module Rdkafka
       layout :pending, :bool,
              :response, :int,
              :error_string, :pointer,
-             :matching_acls_resource_type, :int,
-             :matching_acls_resource_name, :pointer,
-             :matching_acls_pattern_type, :int,
-             :matching_acls_principal, :pointer,
-             :matching_acls_host, :pointer,
-             :matching_acls_operation, :int,
-             :matching_acls_permission_type, :int
+             :matching_acls, :pointer
 
       # @return [String] the name of the operation
       def operation_name
@@ -21,7 +15,7 @@ module Rdkafka
 
       # @return [Boolean] whether the delete acl was successful
       def create_result
-        DeleteAclReport.new(error_string: self[:error_string], matching_acls_resource_type: self[:matching_acls_resource_type], matching_acls_resource_name: self[:matching_acls_resource_name], matching_acls_pattern_type: self[:matching_acls_pattern_type], matching_acls_principal: self[:matching_acls_principal], matching_acls_host: self[:matching_acls_host], matching_acls_operation: self[:matching_acls_operation], matching_acls_permission_type: self[:matching_acls_permission_type])
+        DeleteAclReport.new(error_string: self[:error_string], matching_acls: self[:matching_acls])
       end
 
       def raise_error

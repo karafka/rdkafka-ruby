@@ -338,6 +338,7 @@ module Rdkafka
 
     RD_KAFKA_ADMIN_OP_DELETEACLS     = 11
     RD_KAFKA_EVENT_DELETEACLS_RESULT = 4096
+    NOT_ALL_MATCHING_ACLS_DELETED_SUCCESSFULLY = 1001
 
     attach_function :rd_kafka_DeleteAcls, [:pointer, :pointer, :size_t, :pointer, :pointer], :void
     attach_function :rd_kafka_event_DeleteAcls_result, [:pointer], :pointer

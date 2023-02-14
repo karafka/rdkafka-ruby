@@ -262,7 +262,6 @@ module Rdkafka
       admin_options_ptr = Rdkafka::Bindings.rd_kafka_AdminOptions_new(@native_kafka.inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DELETEACLS)
       Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, delete_acl_handle.to_ptr)
 
-      puts("calling deleteAcl")
       begin
         Rdkafka::Bindings.rd_kafka_DeleteAcls(
           @native_kafka.inner,

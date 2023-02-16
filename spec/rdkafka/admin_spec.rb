@@ -213,6 +213,7 @@ describe Rdkafka::Admin do
 
   describe "#create_acl" do
     it "creates a acl for topic that was newly created" do
+      #create topic for testing acl
       acl_topic_name = "acl-test-topic"
       create_topic_handle = admin.create_topic(acl_topic_name, topic_partition_count, topic_replication_factor)
       create_topic_report = create_topic_handle.wait(max_wait_timeout: 15.0)
@@ -228,8 +229,15 @@ describe Rdkafka::Admin do
       delete_acl_handle = admin.delete_acl(resource_type: resource_type, resource_name: resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
       delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
       puts(delete_acl_report.error_string)
-#      expect(delete_acl_report.error_string).to eq("")
-#      expect(delete_acl_handle[:response]).to eq(0)
+      expect(delete_acl_report.error_string).to eq("")
+      expect(delete_acl_handle[:response]).to eq(0)
+
+      #delete topic that was created for testing acl
+      delete_topic_handle = admin.delete_topic(acl_topic_name)
+      delete_topic_report = delete_topic_handle.wait(max_wait_timeout: 15.0)
+      expect(delete_topic_report.error_string).to be_nil
+      expect(delete_topic_report.result_name).to eq(acl_topic_name)
+
     end
   end
 end

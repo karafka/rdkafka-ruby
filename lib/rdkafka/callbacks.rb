@@ -61,10 +61,6 @@ module Rdkafka
            matching_acls_count = pointer_to_size_t.read_int
            (1..matching_acls_count).map do |matching_acl_index|
              acl_binding_result = AclBindingResult.new(matching_acls_array[matching_acl_index - 1])
-             if acl_binding_result.result_error != 0
-               @result_error = Rdkafka::Bindings::NOT_ALL_MATCHING_ACLS_DELETED_SUCCESSFULLY
-               @error_string = "Not All Matching Acls Were Deleted Successfully"
-             end
              matching_acls << acl_binding_result
            end
         end

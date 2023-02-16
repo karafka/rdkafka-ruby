@@ -152,6 +152,136 @@ module Rdkafka
       delete_topic_handle
     end
 
+    # Create acl
+    #
+    # @raise [RdkafkaError]
+    #
+    # @return [CreateAclHandle] Create acl handle that can be used to wait for the result of creating the acl
+    def create_acl(resource_type:, resource_name:, resource_pattern_type:, principal:, host:, operation:, permission_type:)
+      closed_admin_check(__method__)
+
+      # Create a rd_kafka_AclBinding_t representing the new acl
+      error_buffer = FFI::MemoryPointer.from_string(" " * 256)
+      new_acl_ptr = Rdkafka::Bindings.rd_kafka_AclBinding_new(
+        resource_type,
+        FFI::MemoryPointer.from_string(resource_name),
+        resource_pattern_type,
+        FFI::MemoryPointer.from_string(principal),
+        FFI::MemoryPointer.from_string(host),
+        operation,
+        permission_type,
+        error_buffer,
+        256
+      )
+      if new_acl_ptr.null?
+        raise Rdkafka::Config::ConfigError.new(error_buffer.read_string)
+      end
+
+      # Note that rd_kafka_CreateAcls can create more than one acl at a time
+      pointer_array = [new_acl_ptr]
+      acls_array_ptr = FFI::MemoryPointer.new(:pointer)
+      acls_array_ptr.write_array_of_pointer(pointer_array)
+
+      # Get a pointer to the queue that our request will be enqueued on
+      queue_ptr = Rdkafka::Bindings.rd_kafka_queue_get_background(@native_kafka.inner)
+      if queue_ptr.null?
+        Rdkafka::Bindings.rd_kafka_AclBinding_destroy(new_acl_ptr)
+        raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
+      end
+
+      # Create and register the handle that we will return to the caller
+      create_acl_handle = CreateAclHandle.new
+      create_acl_handle[:pending] = true
+      create_acl_handle[:response] = -1
+      CreateAclHandle.register(create_acl_handle)
+      admin_options_ptr = Rdkafka::Bindings.rd_kafka_AdminOptions_new(@native_kafka.inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATEACLS)
+      Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, create_acl_handle.to_ptr)
+
+      begin
+        Rdkafka::Bindings.rd_kafka_CreateAcls(
+          @native_kafka.inner,
+          acls_array_ptr,
+          1,
+          admin_options_ptr,
+          queue_ptr
+        )
+      rescue Exception
+        CreateAclHandle.remove(create_acl_handle.to_ptr.address)
+        raise
+      ensure
+        Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
+        Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr)
+        Rdkafka::Bindings.rd_kafka_AclBinding_destroy(new_acl_ptr)
+      end
+
+      create_acl_handle
+    end
+
+    # Delete acl
+    #
+    # @raise [RdkafkaError]
+    #
+    # @return [DeleteAclHandle] Delete acl handle that can be used to wait for the result of deleting the acl
+    def delete_acl(resource_type:, resource_name:, resource_pattern_type:, principal:, host:, operation:, permission_type:)
+      closed_admin_check(__method__)
+
+      # Create a rd_kafka_AclBinding_t representing the acl to be deleted
+      error_buffer = FFI::MemoryPointer.from_string(" " * 256)
+      delete_acl_ptr = Rdkafka::Bindings.rd_kafka_AclBinding_new(
+        resource_type,
+        FFI::MemoryPointer.from_string(resource_name),
+        resource_pattern_type,
+        FFI::MemoryPointer.from_string(principal),
+        FFI::MemoryPointer.from_string(host),
+        operation,
+        permission_type,
+        error_buffer,
+        256
+      )
+      if delete_acl_ptr.null?
+        raise Rdkafka::Config::ConfigError.new(error_buffer.read_string)
+      end
+
+      # Note that rd_kafka_DeleteAcls can delete more than one acl at a time
+      pointer_array = [delete_acl_ptr]
+      acls_array_ptr = FFI::MemoryPointer.new(:pointer)
+      acls_array_ptr.write_array_of_pointer(pointer_array)
+
+      # Get a pointer to the queue that our request will be enqueued on
+      queue_ptr = Rdkafka::Bindings.rd_kafka_queue_get_background(@native_kafka.inner)
+      if queue_ptr.null?
+        Rdkafka::Bindings.rd_kafka_AclBinding_destroy(new_acl_ptr)
+        raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
+      end
+
+      # Create and register the handle that we will return to the caller
+      delete_acl_handle = DeleteAclHandle.new
+      delete_acl_handle[:pending] = true
+      delete_acl_handle[:response] = -1
+      DeleteAclHandle.register(delete_acl_handle)
+      admin_options_ptr = Rdkafka::Bindings.rd_kafka_AdminOptions_new(@native_kafka.inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DELETEACLS)
+      Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, delete_acl_handle.to_ptr)
+
+      begin
+        Rdkafka::Bindings.rd_kafka_DeleteAcls(
+          @native_kafka.inner,
+          acls_array_ptr,
+          1,
+          admin_options_ptr,
+          queue_ptr
+        )
+      rescue Exception
+        DeleteAclHandle.remove(delete_acl_handle.to_ptr.address)
+        raise
+      ensure
+        Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
+        Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr)
+        Rdkafka::Bindings.rd_kafka_AclBinding_destroy(delete_acl_ptr)
+      end
+
+      delete_acl_handle
+    end
+
     private
     def closed_admin_check(method)
       raise Rdkafka::ClosedAdminError.new(method) if closed?

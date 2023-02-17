@@ -5,7 +5,7 @@ module Rdkafka
     class DeleteAclHandle < AbstractHandle
       layout :pending, :bool,
              :response, :int,
-             :error_string, :pointer,
+             :response_string, :pointer,
              :matching_acls, :pointer
 
       # @return [String] the name of the operation
@@ -13,15 +13,15 @@ module Rdkafka
         "delete acl"
       end
 
-      # @return [Boolean] whether the delete acl was successful
+      # @return [DeleteAclReport] instance with an array of mathcing_acls
       def create_result
-        DeleteAclReport.new(error_string: self[:error_string], matching_acls: self[:matching_acls])
+        DeleteAclReport.new(matching_acls: self[:matching_acls])
       end
 
       def raise_error
         raise RdkafkaError.new(
             self[:response],
-            broker_message: DeleteAclReport.new(self[:error_string]).error_string
+            broker_message: self[:response_string].read_string
         )
       end
     end

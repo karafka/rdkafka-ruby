@@ -163,7 +163,7 @@ module Rdkafka
 
         if create_acl_handle = Rdkafka::Admin::CreateAclHandle.remove(create_acl_handle_ptr.address)
           create_acl_handle[:response] = create_acl_results[0].result_error
-          create_acl_handle[:error_string] = create_acl_results[0].error_string
+          create_acl_handle[:response_string] = create_acl_results[0].error_string
           create_acl_handle[:pending] = false
         end
       end
@@ -179,7 +179,7 @@ module Rdkafka
 
         if delete_acl_handle = Rdkafka::Admin::DeleteAclHandle.remove(delete_acl_handle_ptr.address)
           delete_acl_handle[:response] = delete_acl_results[0].result_error
-          delete_acl_handle[:error_string] = delete_acl_results[0].error_string
+          delete_acl_handle[:response_string] = delete_acl_results[0].error_string
           delete_acl_handle[:pending] = false
           if delete_acl_results[0].result_error == 0
              delete_acl_handle[:matching_acls] = delete_acl_results[0].matching_acls

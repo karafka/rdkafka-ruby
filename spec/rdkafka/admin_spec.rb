@@ -222,15 +222,14 @@ describe Rdkafka::Admin do
       resource_name = acl_topic_name
       create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
       create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
-      expect(create_acl_report.error_string).to eq("")
-      expect(create_acl_handle[:response]).to eq(0)
+      expect(create_acl_report.rdkafka_response).to eq(0)
+      expect(create_acl_report.rdkafka_response_string).to eq("")
 
       #Delete Acl test
       delete_acl_handle = admin.delete_acl(resource_type: resource_type, resource_name: resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
       delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
-      puts(delete_acl_report.error_string)
-      expect(delete_acl_report.error_string).to eq("")
       expect(delete_acl_handle[:response]).to eq(0)
+      expect(delete_acl_handle[:response_string].read_string).to eq("")
 
       #delete topic that was created for testing acl
       delete_topic_handle = admin.delete_topic(acl_topic_name)

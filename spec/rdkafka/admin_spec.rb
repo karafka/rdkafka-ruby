@@ -19,6 +19,15 @@ describe Rdkafka::Admin do
   let(:topic_config)             { {"cleanup.policy" => "compact", "min.cleanable.dirty.ratio" => 0.8} }
   let(:invalid_topic_config)     { {"cleeeeenup.policee" => "campact"} }
 
+
+  let(:resource_type)         {2}
+  let(:resource_name)         {"acl-test-topic"}
+  let(:resource_pattern_type) {3}
+  let(:principal)             {"User:anonymous"}
+  let(:host)                  {"*"}
+  let(:operation)             {3}
+  let(:permission_type)       {3}
+
   describe "#create_topic" do
     describe "called with invalid input" do
       describe "with an invalid topic name" do
@@ -199,6 +208,35 @@ describe Rdkafka::Admin do
 
       expect(delete_topic_report.error_string).to be_nil
       expect(delete_topic_report.result_name).to eq(topic_name)
+    end
+  end
+
+  describe "#create_acl" do
+    it "creates a acl for topic that was newly created" do
+      #create topic for testing acl
+      acl_topic_name = "acl-test-topic"
+      create_topic_handle = admin.create_topic(acl_topic_name, topic_partition_count, topic_replication_factor)
+      create_topic_report = create_topic_handle.wait(max_wait_timeout: 15.0)
+      expect(create_topic_report.error_string).to be_nil
+      expect(create_topic_report.result_name).to eq(acl_topic_name)
+      resource_name = acl_topic_name
+      create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
+      create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+      expect(create_acl_report.rdkafka_response).to eq(0)
+      expect(create_acl_report.rdkafka_response_string).to eq("")
+
+      #Delete Acl test
+      delete_acl_handle = admin.delete_acl(resource_type: resource_type, resource_name: resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
+      delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
+      expect(delete_acl_handle[:response]).to eq(0)
+      expect(delete_acl_handle[:response_string].read_string).to eq("")
+
+      #delete topic that was created for testing acl
+      delete_topic_handle = admin.delete_topic(acl_topic_name)
+      delete_topic_report = delete_topic_handle.wait(max_wait_timeout: 15.0)
+      expect(delete_topic_report.error_string).to be_nil
+      expect(delete_topic_report.result_name).to eq(acl_topic_name)
+
     end
   end
 end

@@ -2,20 +2,20 @@
 
 module Rdkafka
   class Admin
-    class DeleteAclHandle < AbstractHandle
+    class DescribeAclHandle < AbstractHandle
       layout :pending, :bool,
              :response, :int,
              :response_string, :pointer,
-             :matching_acls, :pointer
+             :acls, :pointer
 
       # @return [String] the name of the operation
       def operation_name
-        "delete acl"
+        "describe acl"
       end
 
-      # @return [DeleteAclReport] instance with an array of matching_acls
+      # @return [DescribeAclReport] instance with resource_type, resource_name, resource_pattern_type and an array of acls
       def create_result
-        DeleteAclReport.new(matching_acls: self[:matching_acls])
+        DescribeAclReport.new(acls: self[:acls])
       end
 
       def raise_error

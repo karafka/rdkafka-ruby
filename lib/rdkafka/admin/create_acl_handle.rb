@@ -12,7 +12,7 @@ module Rdkafka
         "create acl"
       end
 
-      # @return [Boolean] whether the create topic was successful
+      # @return [CreateAclReport] instance with rdkafka_response value as 0 and rdkafka_response_string value as empty string if the acl creation was successful
       def create_result
         CreateAclReport.new(rdkafka_response: self[:response], rdkafka_response_string: self[:response_string])
       end

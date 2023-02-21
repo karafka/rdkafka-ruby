@@ -9,7 +9,7 @@ module Rdkafka
       attr_reader :rdkafka_response
 
 
-      # Upon successful creation of Acl emtpy string will be returned as rdkafka_response_string
+      # Upon successful creation of Acl empty string will be returned as rdkafka_response_string
       # @return [String]
       attr_reader :rdkafka_response_string
 

@@ -4,8 +4,8 @@ module Rdkafka
   class Admin
     class DescribeAclReport
 
-      # acls that exists in the cluster for the resource_type, resource_name and pattern_type of this instance.
-      # @return [Rdkafka::Bindings::AclBindingResult]
+      # acls that exists in the cluster for the resource_type, resource_name and pattern_type filters provided in the request.
+      # @return [Rdkafka::Bindings::AclBindingResult] array of matching acls
       attr_reader :acls
 
       def initialize(acls:)

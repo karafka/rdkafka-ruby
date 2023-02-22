@@ -13,7 +13,7 @@ module Rdkafka
         "describe acl"
       end
 
-      # @return [DescribeAclReport] instance with resource_type, resource_name, resource_pattern_type and an array of acls
+      # @return [DescribeAclReport] instance with an array of acls that matches the request filters
       def create_result
         DescribeAclReport.new(acls: self[:acls])
       end

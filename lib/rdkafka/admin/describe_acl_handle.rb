@@ -8,12 +8,12 @@ module Rdkafka
              :response_string, :pointer,
              :acls, :pointer
 
-      # @return [String] the name of the operation
+      # @return [String] the name of the operation.
       def operation_name
         "describe acl"
       end
 
-      # @return [DescribeAclReport] instance with an array of acls that matches the request filters
+      # @return [DescribeAclReport] instance with an array of acls that matches the request filters.
       def create_result
         DescribeAclReport.new(acls: self[:acls])
       end

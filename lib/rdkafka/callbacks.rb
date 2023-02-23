@@ -47,7 +47,7 @@ module Rdkafka
     #
     # @private
     class DeleteAclResult
-      attr_reader :result_error, :error_string, :matching_acls
+      attr_reader :result_error, :error_string, :matching_acls, :matching_acls_count
 
       def initialize(acl_result_pointer)
         @matching_acls=[]
@@ -57,13 +57,8 @@ module Rdkafka
         if @result_error == 0
            # Get the number of matching acls
            pointer_to_size_t = FFI::MemoryPointer.new(:int32)
-           matching_acls_array = Rdkafka::Bindings.rd_kafka_DeleteAcls_result_response_matching_acls(acl_result_pointer, pointer_to_size_t)
-           matching_acls_count = pointer_to_size_t.read_int
-           (1..matching_acls_count).map do |matching_acl_index|
-             acl_binding_result_pointer = (matching_acls_array + (matching_acl_index - 1)).read_pointer
-             acl_binding_result = AclBindingResult.new(acl_binding_result_pointer, true)
-             @matching_acls << acl_binding_result
-           end
+           @matching_acls = Rdkafka::Bindings.rd_kafka_DeleteAcls_result_response_matching_acls(acl_result_pointer, pointer_to_size_t)
+           @matching_acls_count = pointer_to_size_t.read_int
         end
       end
 
@@ -79,46 +74,19 @@ module Rdkafka
     #
     # @private
     class DescribeAclResult
-      attr_reader :result_error, :error_string, :matching_acls
+      attr_reader :result_error, :error_string, :matching_acls, :matching_acls_count
 
       def initialize(event_ptr)
         @matching_acls=[]
         @result_error = Rdkafka::Bindings.rd_kafka_event_error(event_ptr)
         @error_string = Rdkafka::Bindings.rd_kafka_event_error_string(event_ptr)
         if @result_error == 0
-           acl_describe_result = Rdkafka::Bindings.rd_kafka_event_DescribeAcls_result(event_ptr)
-           # Get the number of matching acls
-           pointer_to_size_t = FFI::MemoryPointer.new(:int32)
-           matching_acls_array = Rdkafka::Bindings.rd_kafka_DescribeAcls_result_acls(acl_describe_result, pointer_to_size_t)
-           matching_acls_count = pointer_to_size_t.read_int
-           (1..matching_acls_count).map do |matching_acl_index|
-             acl_binding_result_pointer = (matching_acls_array + (matching_acl_index - 1)).read_pointer
-             acl_binding_result = AclBindingResult.new(acl_binding_result_pointer, false)
-             @matching_acls << acl_binding_result
-           end
+          acl_describe_result = Rdkafka::Bindings.rd_kafka_event_DescribeAcls_result(event_ptr)
+          # Get the number of matching acls
+          pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+          @matching_acls = Rdkafka::Bindings.rd_kafka_DescribeAcls_result_acls(acl_describe_result, pointer_to_size_t)
+          @matching_acls_count = pointer_to_size_t.read_int
         end
-      end
-    end
-
-    # Extracts attributes of rd_kafka_AclBinding_t
-    #
-    # @private
-    class AclBindingResult
-      attr_reader :result_error, :error_string, :matching_acl_resource_type, :matching_acl_resource_name, :matching_acl_pattern_type, :matching_acl_principal, :matching_acl_host, :matching_acl_operation, :matching_acl_permission_type
-
-      def initialize(matching_acl, isDeleteAcl)
-        if isDeleteAcl
-          rd_kafka_error_pointer = Rdkafka::Bindings.rd_kafka_AclBinding_error(matching_acl)
-          @result_error = Rdkafka::Bindings.rd_kafka_error_code(rd_kafka_error_pointer)
-          @error_string = Rdkafka::Bindings.rd_kafka_error_string(rd_kafka_error_pointer)
-        end
-        @matching_acl_resource_type   = Rdkafka::Bindings.rd_kafka_AclBinding_restype(matching_acl)
-        @matching_acl_resource_name   = Rdkafka::Bindings.rd_kafka_AclBinding_name(matching_acl)
-        @matching_acl_pattern_type    = Rdkafka::Bindings.rd_kafka_AclBinding_resource_pattern_type(matching_acl)
-        @matching_acl_principal       = Rdkafka::Bindings.rd_kafka_AclBinding_principal(matching_acl)
-        @matching_acl_host            = Rdkafka::Bindings.rd_kafka_AclBinding_host(matching_acl)
-        @matching_acl_operation       = Rdkafka::Bindings.rd_kafka_AclBinding_operation(matching_acl)
-        @matching_acl_permission_type = Rdkafka::Bindings.rd_kafka_AclBinding_permission_type(matching_acl)
       end
     end
 
@@ -212,7 +180,8 @@ module Rdkafka
           delete_acl_handle[:response_string] = delete_acl_results[0].error_string
           delete_acl_handle[:pending] = false
           if delete_acl_results[0].result_error == 0
-             delete_acl_handle[:matching_acls] = delete_acl_results[0].matching_acls
+            delete_acl_handle[:matching_acls] = delete_acl_results[0].matching_acls
+            delete_acl_handle[:matching_acls_count] = delete_acl_results[0].matching_acls_count
           end
         end
       end
@@ -226,7 +195,8 @@ module Rdkafka
           describe_acl_handle[:response_string] = describe_acl.error_string
           describe_acl_handle[:pending] = false
           if describe_acl.result_error == 0
-            describe_acl_handle[:acls] = describe_acl.matching_acls
+            describe_acl_handle[:acls]       = describe_acl.matching_acls
+            describe_acl_handle[:acls_count] = describe_acl.matching_acls_count
           end
         end
       end

@@ -6,7 +6,8 @@ module Rdkafka
       layout :pending, :bool,
              :response, :int,
              :response_string, :pointer,
-             :acls, :pointer
+             :acls, :pointer,
+             :acls_count, :int
 
       # @return [String] the name of the operation.
       def operation_name
@@ -15,7 +16,7 @@ module Rdkafka
 
       # @return [DescribeAclReport] instance with an array of acls that matches the request filters.
       def create_result
-        DescribeAclReport.new(acls: self[:acls])
+        DescribeAclReport.new(acls: self[:acls], acls_count: self[:acls_count])
       end
 
       def raise_error

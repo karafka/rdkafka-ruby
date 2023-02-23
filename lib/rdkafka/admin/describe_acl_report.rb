@@ -8,9 +8,14 @@ module Rdkafka
       # @return [Rdkafka::Bindings::AclBindingResult] array of matching acls.
       attr_reader :acls
 
-      def initialize(acls:)
+      def initialize(acls:, acls_count:)
+        @acls=[]
         if acls != FFI::Pointer::NULL
-          @acls = acls
+          (1..acls_count).map do |acl_index|
+            acl_binding_result_pointer = (acls + (acl_index - 1)).read_pointer
+            acl_binding_result = AclBindingResult.new(acl_binding_result_pointer)
+            @acls << acl_binding_result
+          end
         end
       end
     end

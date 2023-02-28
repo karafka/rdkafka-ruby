@@ -11,6 +11,7 @@ describe Rdkafka::Admin::DescribeAclReport do
   let(:host)                  {"*"}
   let(:operation)             {Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ}
   let(:permission_type)       {Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW}
+  let(:describe_acl_ptr)      {FFI::Pointer::NULL}
 
   subject do
     error_buffer = FFI::MemoryPointer.from_string(" " * 256)
@@ -25,11 +26,21 @@ describe Rdkafka::Admin::DescribeAclReport do
       error_buffer,
       256
     )
+    if describe_acl_ptr.null?
+       raise Rdkafka::Config::ConfigError.new(error_buffer.read_string)
+    end
     pointer_array = [describe_acl_ptr]
     describe_acls_array_ptr = FFI::MemoryPointer.new(:pointer)
     describe_acls_array_ptr.write_array_of_pointer(pointer_array)
     Rdkafka::Admin::DescribeAclReport.new(acls: describe_acls_array_ptr, acls_count: 1)
   end
+
+  after do
+    if describe_acl_ptr != FFI::Pointer::NULL
+      Rdkafka::Bindings.rd_kafka_AclBinding_destroy(describe_acl_ptr)
+    end
+  end
+
 
   it "should get matching acl resource type as Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC" do
     expect(subject.acls[0].matching_acl_resource_type).to eq(Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC)

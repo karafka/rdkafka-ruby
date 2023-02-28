@@ -11,6 +11,7 @@ describe Rdkafka::Admin::DescribeAclHandle do
   let(:host)                  {"*"}
   let(:operation)             {Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ}
   let(:permission_type)       {Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW}
+  let(:describe_acl_ptr)      {FFI::Pointer::NULL}
 
   subject do
     error_buffer = FFI::MemoryPointer.from_string(" " * 256)
@@ -25,6 +26,9 @@ describe Rdkafka::Admin::DescribeAclHandle do
       error_buffer,
       256
     )
+    if describe_acl_ptr.null?
+       raise Rdkafka::Config::ConfigError.new(error_buffer.read_string)
+    end
     pointer_array = [describe_acl_ptr]
     describe_acls_array_ptr = FFI::MemoryPointer.new(:pointer)
     describe_acls_array_ptr.write_array_of_pointer(pointer_array)
@@ -34,6 +38,12 @@ describe Rdkafka::Admin::DescribeAclHandle do
       handle[:response_string] = FFI::MemoryPointer.from_string("")
       handle[:acls] = describe_acls_array_ptr
       handle[:acls_count] = 1
+    end
+  end
+
+  after do
+    if describe_acl_ptr != FFI::Pointer::NULL
+      Rdkafka::Bindings.rd_kafka_AclBinding_destroy(describe_acl_ptr)
     end
   end
 

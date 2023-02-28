@@ -10,6 +10,9 @@ describe Rdkafka::Admin do
   after do
     # Registry should always end up being empty
     expect(Rdkafka::Admin::CreateTopicHandle::REGISTRY).to be_empty
+    expect(Rdkafka::Admin::DescribeAclHandle::REGISTRY).to be_empty
+    expect(Rdkafka::Admin::CreateAclHandle::REGISTRY).to be_empty
+    expect(Rdkafka::Admin::DeleteAclHandle::REGISTRY).to be_empty
     admin.close
   end
 

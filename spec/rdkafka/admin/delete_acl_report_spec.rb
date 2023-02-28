@@ -11,6 +11,7 @@ describe Rdkafka::Admin::DeleteAclReport do
   let(:host)                  {"*"}
   let(:operation)             {Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ}
   let(:permission_type)       {Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW}
+  let(:delete_acl_ptr)        {FFI::Pointer::NULL}
 
   subject do
     error_buffer = FFI::MemoryPointer.from_string(" " * 256)
@@ -25,10 +26,19 @@ describe Rdkafka::Admin::DeleteAclReport do
       error_buffer,
       256
     )
+    if delete_acl_ptr.null?
+      raise Rdkafka::Config::ConfigError.new(error_buffer.read_string)
+    end
     pointer_array = [delete_acl_ptr]
     delete_acls_array_ptr = FFI::MemoryPointer.new(:pointer)
     delete_acls_array_ptr.write_array_of_pointer(pointer_array)
     Rdkafka::Admin::DeleteAclReport.new(matching_acls: delete_acls_array_ptr, matching_acls_count: 1)
+  end
+
+  after do
+    if delete_acl_ptr != FFI::Pointer::NULL
+      Rdkafka::Bindings.rd_kafka_AclBinding_destroy(delete_acl_ptr)
+    end
   end
 
   it "should get matching acl resource type as Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC" do

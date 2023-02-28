@@ -11,6 +11,7 @@ describe Rdkafka::Admin::DeleteAclHandle do
   let(:host)                  {"*"}
   let(:operation)             {Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ}
   let(:permission_type)       {Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW}
+  let(:delete_acl_ptr)        {FFI::Pointer::NULL}
 
   subject do
     error_buffer = FFI::MemoryPointer.from_string(" " * 256)
@@ -25,6 +26,9 @@ describe Rdkafka::Admin::DeleteAclHandle do
       error_buffer,
       256
     )
+    if delete_acl_ptr.null?
+      raise Rdkafka::Config::ConfigError.new(error_buffer.read_string)
+    end
     pointer_array = [delete_acl_ptr]
     delete_acls_array_ptr = FFI::MemoryPointer.new(:pointer)
     delete_acls_array_ptr.write_array_of_pointer(pointer_array)
@@ -34,6 +38,12 @@ describe Rdkafka::Admin::DeleteAclHandle do
       handle[:response_string] = FFI::MemoryPointer.from_string("")
       handle[:matching_acls] = delete_acls_array_ptr
       handle[:matching_acls_count] = 1
+    end
+  end
+
+  after do
+    if delete_acl_ptr != FFI::Pointer::NULL
+      Rdkafka::Bindings.rd_kafka_AclBinding_destroy(delete_acl_ptr)
     end
   end
 

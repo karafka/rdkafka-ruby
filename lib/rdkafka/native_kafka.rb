@@ -18,7 +18,7 @@ module Rdkafka
           loop do
             @poll_mutex.synchronize do
               Rdkafka::Bindings.rd_kafka_poll(inner, 100)
-            end
+            end unless Thread.current[:closing]
             # Exit thread if closing and the poll queue is empty
             if Thread.current[:closing] && Rdkafka::Bindings.rd_kafka_outq_len(inner) == 0
               break

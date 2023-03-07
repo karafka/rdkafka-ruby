@@ -232,6 +232,20 @@ describe Rdkafka::Admin do
     end
 
     describe "#create_acl" do
+      it "create acl for a topic that does not exist" do
+        # acl creation for resources that does not exist will still get created successfully.
+        create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: non_existing_resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
+        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        expect(create_acl_report.rdkafka_response).to eq(0)
+        expect(create_acl_report.rdkafka_response_string).to eq("")
+
+        # delete the acl that was created for a non existing topic"
+        delete_acl_handle = admin.delete_acl(resource_type: resource_type, resource_name: non_existing_resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
+        delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
+        expect(delete_acl_handle[:response]).to eq(0)
+        expect(delete_acl_report.matching_acls.size).to eq(1)
+      end
+
       it "creates a acl for topic that was newly created" do
         create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
         create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)

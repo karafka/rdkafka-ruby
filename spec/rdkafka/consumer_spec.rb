@@ -738,7 +738,7 @@ describe Rdkafka::Consumer do
       #
       # This is, in effect, an integration test and the subsequent specs are
       # unit tests.
-      admin = dkafka_config.admin
+      admin = rdkafka_config.admin
       create_topic_handle = admin.create_topic(topic_name, 1, 1)
       create_topic_handle.wait(max_wait_timeout: 15.0)
       consumer.subscribe(topic_name)

@@ -20,8 +20,8 @@ blocks:
           commands:
             - sem-version ruby $RUBY_VERSION
             - checkout
+            - docker-compose up -d --no-recreate
             - bundle install --path vendor/bundle
             - cd ext && bundle exec rake && cd ..
-            - docker-compose up -d --no-recreate
             - ulimit -c unlimited
             - valgrind -v bundle exec rspec

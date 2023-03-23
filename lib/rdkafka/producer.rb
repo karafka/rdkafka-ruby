@@ -52,8 +52,11 @@ module Rdkafka
 
     # Wait until all outstanding producer requests are completed, with the given timeout
     # in seconds. Call this before closing a producer to ensure delivery of all messages.
+    #
+    # @param timeout_ms [Integer] how long should we wait for flush of all messages
     def flush(timeout_ms=5_000)
       closed_producer_check(__method__)
+
       @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_flush(inner, timeout_ms)
       end

@@ -10,7 +10,7 @@ describe Rdkafka::Metadata do
 
   after do
     Rdkafka::Bindings.rd_kafka_consumer_close(native_kafka)
-    Rdkafka::Bindings.rd_kafka_destroy_flags(native_kafka, Rdkafka::Bindings::RD_KAFKA_DESTROY_F_IMMEDIATE)
+    Rdkafka::Bindings.rd_kafka_destroy(native_kafka)
   end
 
   context "passing in a topic name" do

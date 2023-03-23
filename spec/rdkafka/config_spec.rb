@@ -165,8 +165,9 @@ describe Rdkafka::Config do
     it "should allow configuring zstd compression" do
       config = Rdkafka::Config.new('compression.codec' => 'zstd')
       begin
-        expect(config.producer).to be_a Rdkafka::Producer
-        config.producer.close
+        producer = config.producer
+        expect(producer).to be_a Rdkafka::Producer
+        producer.close
       rescue Rdkafka::Config::ConfigError => ex
         pending "Zstd compression not supported on this machine"
         raise ex

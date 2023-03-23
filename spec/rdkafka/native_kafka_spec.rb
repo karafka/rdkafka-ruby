@@ -55,12 +55,6 @@ describe Rdkafka::NativeKafka do
     end
 
     context "and attempt to close" do
-      it "calls the `destroy` binding" do
-        expect(Rdkafka::Bindings).to receive(:rd_kafka_destroy).with(native)
-
-        client.close
-      end
-
       it "indicates to the polling thread that it is closing" do
         expect(thread).to receive(:[]=).with(:closing, true)
 

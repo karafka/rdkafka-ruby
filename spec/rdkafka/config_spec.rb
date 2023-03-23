@@ -151,22 +151,23 @@ describe Rdkafka::Config do
     end
 
     it "allows string partitioner key" do
-      expect(Rdkafka::Producer).to receive(:new).with(kind_of(Rdkafka::NativeKafka), "murmur2")
+      expect(Rdkafka::Producer).to receive(:new).with(kind_of(Rdkafka::NativeKafka), "murmur2").and_call_original
       config = Rdkafka::Config.new("partitioner" => "murmur2")
-      config.producer
+      config.producer.close
     end
 
     it "allows symbol partitioner key" do
-      expect(Rdkafka::Producer).to receive(:new).with(kind_of(Rdkafka::NativeKafka), "murmur2")
+      expect(Rdkafka::Producer).to receive(:new).with(kind_of(Rdkafka::NativeKafka), "murmur2").and_call_original
       config = Rdkafka::Config.new(:partitioner => "murmur2")
-      config.producer
+      config.producer.close
     end
 
     it "should allow configuring zstd compression" do
       config = Rdkafka::Config.new('compression.codec' => 'zstd')
       begin
-        expect(config.producer).to be_a Rdkafka::Producer
-        config.producer.close
+        producer = config.producer
+        expect(producer).to be_a Rdkafka::Producer
+        producer.close
       rescue Rdkafka::Config::ConfigError => ex
         pending "Zstd compression not supported on this machine"
         raise ex

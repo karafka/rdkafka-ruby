@@ -8,6 +8,9 @@
 * Bump librdkafka to 1.9.2 (thijsc)
 * Use finalizers to cleanly exit producer and admin (thijsc)
 * Lock access to the native kafka client (thijsc)
+- Fix potential race condition in multi-threaded producer (mensfeld)
+- Fix leaking FFI resources in specs (mensfeld)
+- Improve specs stability (mensfeld)
 
 # 0.12.0
 * Bumps librdkafka to 1.9.0

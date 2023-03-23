@@ -153,13 +153,13 @@ describe Rdkafka::Config do
     it "allows string partitioner key" do
       expect(Rdkafka::Producer).to receive(:new).with(kind_of(Rdkafka::NativeKafka), "murmur2")
       config = Rdkafka::Config.new("partitioner" => "murmur2")
-      config.producer
+      config.producer.close
     end
 
     it "allows symbol partitioner key" do
       expect(Rdkafka::Producer).to receive(:new).with(kind_of(Rdkafka::NativeKafka), "murmur2")
       config = Rdkafka::Config.new(:partitioner => "murmur2")
-      config.producer
+      config.producer.close
     end
 
     it "should allow configuring zstd compression" do

@@ -26,6 +26,7 @@ module Rdkafka
             end
           end
         end
+
         @polling_thread.abort_on_exception = true
         @polling_thread[:closing] = false
       end
@@ -52,9 +53,10 @@ module Rdkafka
     def close(object_id=nil)
       return if closed?
 
+      @access_mutex.lock
+
       # Indicate to the outside world that we are closing
       @closing = true
-      @access_mutex.lock
 
       if @polling_thread
         # Indicate to polling thread that we're closing
@@ -68,6 +70,11 @@ module Rdkafka
 
       # Destroy the client after locking both mutexes
       @poll_mutex.lock
+
+      # This check prevents a race condition, where we would enter the close in two threads
+      # and after unlocking the primary one that hold the lock but finished, ours would be unlocked
+      # and would continue to run, trying to destroy inner twice
+      return unless @inner
 
       Rdkafka::Bindings.rd_kafka_destroy(@inner)
       @inner = nil

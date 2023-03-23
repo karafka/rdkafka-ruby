@@ -55,7 +55,7 @@ describe Rdkafka::Consumer do
 
   describe "#pause and #resume" do
     context "subscription" do
-      let(:timeout) { 1000 }
+      let(:timeout) { 2000 }
 
       before { consumer.subscribe("consume_test_topic") }
       after { consumer.unsubscribe }

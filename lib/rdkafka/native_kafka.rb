@@ -16,24 +16,16 @@ module Rdkafka
         # not used in consumer.
         @polling_thread = Thread.new do
           loop do
-            # The moment we start shutting down, no one else should be able to access inner
-            # We handle all the locking in this thread, because if closing would happen in a
-            # trap context, locks cannot be used and any librdkafka logging may also cause problems
-            @access_mutex.lock if Thread.current[:closing] && !@access_mutex.owned?
-
             @poll_mutex.synchronize do
               Rdkafka::Bindings.rd_kafka_poll(inner, 100)
             end
 
             # Exit thread if closing and the poll queue is empty
             if Thread.current[:closing] && Rdkafka::Bindings.rd_kafka_outq_len(inner) == 0
-              Rdkafka::Bindings.rd_kafka_destroy(@inner)
-
               break
             end
           end
         end
-
         @polling_thread.abort_on_exception = true
         @polling_thread[:closing] = false
       end
@@ -62,6 +54,7 @@ module Rdkafka
 
       # Indicate to the outside world that we are closing
       @closing = true
+      @access_mutex.lock
 
       if @polling_thread
         # Indicate to polling thread that we're closing
@@ -73,6 +66,10 @@ module Rdkafka
         @polling_thread.join
       end
 
+      # Destroy the client after locking both mutexes
+      @poll_mutex.lock
+
+      Rdkafka::Bindings.rd_kafka_destroy(@inner)
       @inner = nil
     end
   end

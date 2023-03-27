@@ -17,8 +17,12 @@ module Rdkafka
       end
     end
 
-    ffi_lib File.join(__dir__, "../../ext/librdkafka.#{lib_extension}")
-
+    if Gem.win_platform?
+      ffi_lib 'librdkafka'
+    else
+      ffi_lib File.join(__dir__, "../../ext/librdkafka.#{lib_extension}")
+    end
+      
     RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS = -175
     RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS = -174
     RD_KAFKA_RESP_ERR__NOENT = -156

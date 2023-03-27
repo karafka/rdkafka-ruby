@@ -17,7 +17,7 @@ Gem::Specification.new do |gem|
   gem.require_paths = ['lib']
   gem.version = Rdkafka::VERSION
   gem.required_ruby_version = '>= 2.6'
-  gem.extensions = %w(ext/Rakefile)
+  gem.extensions = %w(ext/Rakefile) unless Gem.win_platform?
 
   gem.add_dependency 'ffi', '~> 1.15'
   gem.add_dependency 'mini_portile2', '~> 2.6'
@@ -29,4 +29,6 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency 'simplecov'
   gem.add_development_dependency 'guard'
   gem.add_development_dependency 'guard-rspec'
+
+  gem.metadata['msys2_mingw_dependencies'] = 'librdkafka' if Gem.win_platform?
 end

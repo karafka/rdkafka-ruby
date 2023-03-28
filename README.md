@@ -23,6 +23,19 @@ The most important pieces of a Kafka client are implemented. We're
 working towards feature completeness, you can track that here:
 https://github.com/appsignal/rdkafka-ruby/milestone/1
 
+## Table of content
+
+- [Installation](#installation)
+- [Usage](#usage)
+  * [Consuming messages](#consuming-messages)
+  * [Producing messages](#producing-messages)
+- [Higher level libraries](#higher-level-libraries)
+  * [Message processing frameworks](#message-processing-frameworks)
+  * [Message publishing libraries](#message-publishing-libraries)
+- [Development](#development)
+- [Example](#example)
+
+
 ## Installation
 
 This gem downloads and compiles librdkafka when it is installed. If you
@@ -76,6 +89,19 @@ delivery_handles.each(&:wait)
 Note that creating a producer consumes some resources that will not be
 released until it `#close` is explicitly called, so be sure to call
 `Config#producer` only as necessary.
+
+## Higher level libraries
+
+Currently, there are two actively developed frameworks based on rdkafka-ruby, that provide higher level API that can be used to work with Kafka messages and one library for publishing messages.
+
+### Message processing frameworks
+
+* [Karafka](https://github.com/karafka/karafka) - Ruby and Rails efficient Kafka processing framework.
+* [Racecar](https://github.com/zendesk/racecar) - A simple framework for Kafka consumers in Ruby 
+
+### Message publishing libraries
+
+* [WaterDrop](https://github.com/karafka/waterdrop) – Standalone Karafka library for producing Kafka messages.
 
 ## Development
 

@@ -7,6 +7,7 @@
 * Fix documented type for DeliveryReport#error (jimmydo)
 * Bump librdkafka to 1.9.2 (thijsc)
 * Use finalizers to cleanly exit producer and admin (thijsc)
+* call_on_partitions_assigned and call_on_partitions_revoked only get a tpl passed in (thijsc)
 * Lock access to the native kafka client (thijsc)
 
 # 0.12.0

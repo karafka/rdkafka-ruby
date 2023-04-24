@@ -1,3 +1,6 @@
+# 0.14.0
+* call_on_partitions_assigned and call_on_partitions_revoked only get a tpl passed in (thijsc)
+
 # 0.13.0
 * Support cooperative sticky partition assignment in the rebalance callback (methodmissing)
 * Support both string and symbol header keys (ColinDKelley)

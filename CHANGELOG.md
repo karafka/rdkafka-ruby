@@ -12,6 +12,7 @@
 * Fix leaking FFI resources in specs (mensfeld)
 * Improve specs stability (mensfeld)
 * call_on_partitions_assigned and call_on_partitions_revoked only get a tpl passed in (thijsc)
+* Make metadata request timeout configurable (mensfeld)
 
 # 0.12.0
 * Bumps librdkafka to 1.9.0

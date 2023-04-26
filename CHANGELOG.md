@@ -11,6 +11,7 @@
 * Fix potential race condition in multi-threaded producer (mensfeld)
 * Fix leaking FFI resources in specs (mensfeld)
 * Improve specs stability (mensfeld)
+* Make metadata request timeout configurable (mensfeld)
 
 # 0.12.0
 * Bumps librdkafka to 1.9.0

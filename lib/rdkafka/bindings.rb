@@ -222,14 +222,12 @@ module Rdkafka
       return unless opaque
 
       tpl = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(partitions_ptr).freeze
-      consumer = Rdkafka::Consumer.new(client_ptr)
-
       begin
         case code
         when RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS
-          opaque.call_on_partitions_assigned(consumer, tpl)
+          opaque.call_on_partitions_assigned(tpl)
         when RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS
-          opaque.call_on_partitions_revoked(consumer, tpl)
+          opaque.call_on_partitions_revoked(tpl)
         end
       rescue Exception => err
         Rdkafka::Config.logger.error("Unhandled exception: #{err.class} - #{err.message}")

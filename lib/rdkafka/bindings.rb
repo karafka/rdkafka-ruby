@@ -368,11 +368,14 @@ module Rdkafka
 
     # rd_kafka_ResourceType_t - https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L7307
 
+    RD_KAFKA_RESOURCE_ANY   = 1
     RD_KAFKA_RESOURCE_TOPIC = 2
     RD_KAFKA_RESOURCE_GROUP = 3
 
     # rd_kafka_ResourcePatternType_t - https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L7320
 
+    RD_KAFKA_RESOURCE_PATTERN_ANY      = 1
+    RD_KAFKA_RESOURCE_PATTERN_MATCH    = 2
     RD_KAFKA_RESOURCE_PATTERN_LITERAL  = 3
     RD_KAFKA_RESOURCE_PATTERN_PREFIXED = 4
 

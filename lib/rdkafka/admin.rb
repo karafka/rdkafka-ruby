@@ -384,12 +384,12 @@ module Rdkafka
 
       # Create a rd_kafka_AclBinding_t with the filters to fetch existing acls
       error_buffer = FFI::MemoryPointer.from_string(" " * 256)
-      describe_acl_ptr = Rdkafka::Bindings.rd_kafka_AclBinding_new(
+      describe_acl_ptr = Rdkafka::Bindings.rd_kafka_AclBindingFilter_new(
         resource_type,
-        FFI::MemoryPointer.from_string(resource_name),
+        resource_name ? FFI::MemoryPointer.from_string(resource_name) : nil,
         resource_pattern_type,
-        FFI::MemoryPointer.from_string(principal),
-        FFI::MemoryPointer.from_string(host),
+        principal ? FFI::MemoryPointer.from_string(principal) : nil,
+        host ? FFI::MemoryPointer.from_string(host) : nil,
         operation,
         permission_type,
         error_buffer,

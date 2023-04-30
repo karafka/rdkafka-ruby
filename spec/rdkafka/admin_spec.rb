@@ -270,7 +270,7 @@ describe Rdkafka::Admin do
         expect(create_acl_report.rdkafka_response_string).to eq("")
 
         #describe_acl
-        describe_acl_handle = admin.describe_acl(resource_type: resource_type, resource_name: resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
+        describe_acl_handle = admin.describe_acl(resource_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_ANY, resource_name: nil, resource_pattern_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_ANY, principal: nil, host: nil, operation: Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_ANY, permission_type: Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ANY)
         describe_acl_report = describe_acl_handle.wait(max_wait_timeout: 15.0)
         expect(describe_acl_handle[:response]).to eq(0)
         expect(describe_acl_report.acls[0].matching_acl_resource_type).to eq(Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC)

@@ -11,9 +11,9 @@ module Rdkafka
       def initialize(acls:, acls_count:)
         @acls=[]
         if acls != FFI::Pointer::NULL
+          acl_binding_result_pointers  = acls.read_array_of_pointer(acls_count)
           (1..acls_count).map do |acl_index|
-            acl_binding_result_pointer = (acls + (acl_index - 1)).read_pointer
-            acl_binding_result = AclBindingResult.new(acl_binding_result_pointer)
+            acl_binding_result = AclBindingResult.new(acl_binding_result_pointers[acl_index - 1])
             @acls << acl_binding_result
           end
         end

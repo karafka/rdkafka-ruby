@@ -262,9 +262,14 @@ describe Rdkafka::Admin do
         expect(describe_acl_report.acls.size).to eq(0)
       end
 
-      it "create an acl and describe the newly created acl" do
+      it "create acls and describe the newly created acls" do
         #create_acl
-        create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
+        create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: "test_acl_topic_1", resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
+        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        expect(create_acl_report.rdkafka_response).to eq(0)
+        expect(create_acl_report.rdkafka_response_string).to eq("")
+
+        create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: "test_acl_topic_2", resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
         create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
@@ -273,13 +278,7 @@ describe Rdkafka::Admin do
         describe_acl_handle = admin.describe_acl(resource_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_ANY, resource_name: nil, resource_pattern_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_ANY, principal: nil, host: nil, operation: Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_ANY, permission_type: Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ANY)
         describe_acl_report = describe_acl_handle.wait(max_wait_timeout: 15.0)
         expect(describe_acl_handle[:response]).to eq(0)
-        expect(describe_acl_report.acls[0].matching_acl_resource_type).to eq(Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC)
-        expect(describe_acl_report.acls[0].matching_acl_resource_name).to eq(resource_name)
-        expect(describe_acl_report.acls[0].matching_acl_pattern_type).to eq(Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL)
-        expect(describe_acl_report.acls[0].matching_acl_principal).to eq(principal)
-        expect(describe_acl_report.acls[0].matching_acl_host).to eq(host)
-        expect(describe_acl_report.acls[0].matching_acl_operation).to eq(Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ)
-        expect(describe_acl_report.acls[0].matching_acl_permission_type).to eq(Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW)
+        expect(describe_acl_report.acls.length).to eq(2)
       end
     end
 

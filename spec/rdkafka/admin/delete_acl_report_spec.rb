@@ -41,31 +41,31 @@ describe Rdkafka::Admin::DeleteAclReport do
     end
   end
 
-  it "should get matching acl resource type as Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC" do
-    expect(subject.matching_acls[0].matching_acl_resource_type).to eq(Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC)
+  it "should get deleted acl resource type as Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC" do
+    expect(subject.deleted_acls[0].matching_acl_resource_type).to eq(Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC)
   end
 
-  it "should get matching acl resource name as acl-test-topic" do
-    expect(subject.matching_acls[0].matching_acl_resource_name).to eq(resource_name)
+  it "should get deleted acl resource name as acl-test-topic" do
+    expect(subject.deleted_acls[0].matching_acl_resource_name).to eq(resource_name)
   end
 
-  it "should get matching acl resource pattern type as Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL" do
-    expect(subject.matching_acls[0].matching_acl_pattern_type).to eq(Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL)
+  it "should get deleted acl resource pattern type as Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL" do
+    expect(subject.deleted_acls[0].matching_acl_pattern_type).to eq(Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL)
   end
 
-  it "should get matching acl principal as User:anonymous" do
-    expect(subject.matching_acls[0].matching_acl_principal).to eq("User:anonymous")
+  it "should get deleted acl principal as User:anonymous" do
+    expect(subject.deleted_acls[0].matching_acl_principal).to eq("User:anonymous")
   end
 
-  it "should get matching acl host as * " do
-    expect(subject.matching_acls[0].matching_acl_host).to eq("*")
+  it "should get deleted  acl host as * " do
+    expect(subject.deleted_acls[0].matching_acl_host).to eq("*")
   end
 
-  it "should get matching acl operation as Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ" do
-    expect(subject.matching_acls[0].matching_acl_operation).to eq(Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ)
+  it "should get deleted acl operation as Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ" do
+    expect(subject.deleted_acls[0].matching_acl_operation).to eq(Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ)
   end
 
-  it "should get matching acl permission_type as Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW" do
-    expect(subject.matching_acls[0].matching_acl_permission_type).to eq(Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW)
+  it "should get deleted acl permission_type as Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW" do
+    expect(subject.deleted_acls[0].matching_acl_permission_type).to eq(Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW)
   end
 end

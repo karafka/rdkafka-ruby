@@ -288,17 +288,19 @@ module Rdkafka
 
       # Create a rd_kafka_AclBinding_t representing the acl to be deleted
       error_buffer = FFI::MemoryPointer.from_string(" " * 256)
-      delete_acl_ptr = Rdkafka::Bindings.rd_kafka_AclBinding_new(
+
+      delete_acl_ptr = Rdkafka::Bindings.rd_kafka_AclBindingFilter_new(
         resource_type,
-        FFI::MemoryPointer.from_string(resource_name),
+        resource_name ? FFI::MemoryPointer.from_string(resource_name) : nil,
         resource_pattern_type,
-        FFI::MemoryPointer.from_string(principal),
-        FFI::MemoryPointer.from_string(host),
+        principal ? FFI::MemoryPointer.from_string(principal) : nil,
+        host ? FFI::MemoryPointer.from_string(host) : nil,
         operation,
         permission_type,
         error_buffer,
         256
       )
+
       if delete_acl_ptr.null?
         raise Rdkafka::Config::ConfigError.new(error_buffer.read_string)
       end

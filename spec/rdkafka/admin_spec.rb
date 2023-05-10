@@ -243,7 +243,7 @@ describe Rdkafka::Admin do
         delete_acl_handle = admin.delete_acl(resource_type: resource_type, resource_name: non_existing_resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
         delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
         expect(delete_acl_handle[:response]).to eq(0)
-        expect(delete_acl_report.matching_acls.size).to eq(1)
+        expect(delete_acl_report.deleted_acls.size).to eq(1)
       end
 
       it "creates a acl for topic that was newly created" do
@@ -287,27 +287,26 @@ describe Rdkafka::Admin do
         delete_acl_handle = admin.delete_acl(resource_type: resource_type, resource_name: non_existing_resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
         delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
         expect(delete_acl_handle[:response]).to eq(0)
-        expect(delete_acl_report.matching_acls.size).to eq(0)
+        expect(delete_acl_report.deleted_acls.size).to eq(0)
       end
 
       it "create an acl and delete the newly created acl" do
         #create_acl
-        create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
+        create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: "test_acl_topic_1", resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
         create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
 
-        #delete_acl
-        delete_acl_handle = admin.delete_acl(resource_type: resource_type, resource_name: resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
+        create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: "test_acl_topic_2", resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
+        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        expect(create_acl_report.rdkafka_response).to eq(0)
+        expect(create_acl_report.rdkafka_response_string).to eq("")
+
+        #delete_acl - resource_name nil - to delete all acls with any resource name and matching all other filters.
+        delete_acl_handle = admin.delete_acl(resource_type: resource_type, resource_name: nil, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
         delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
         expect(delete_acl_handle[:response]).to eq(0)
-        expect(delete_acl_report.matching_acls[0].matching_acl_resource_type).to eq(Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC)
-        expect(delete_acl_report.matching_acls[0].matching_acl_resource_name).to eq(resource_name)
-        expect(delete_acl_report.matching_acls[0].matching_acl_pattern_type).to eq(Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL)
-        expect(delete_acl_report.matching_acls[0].matching_acl_principal).to eq(principal)
-        expect(delete_acl_report.matching_acls[0].matching_acl_host).to eq(host)
-        expect(delete_acl_report.matching_acls[0].matching_acl_operation).to eq(Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ)
-        expect(delete_acl_report.matching_acls[0].matching_acl_permission_type).to eq(Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW)
+        expect(delete_acl_report.deleted_acls.length).to eq(2)
       end
     end
   end

@@ -62,13 +62,13 @@ describe Rdkafka::Admin::DeleteAclHandle do
       it "should return a delete acl report" do
         report = subject.wait
 
-        expect(report.matching_acls.length).to eq(1)
+        expect(report.deleted_acls.length).to eq(1)
       end
 
       it "should wait without a timeout" do
         report = subject.wait(max_wait_timeout: nil)
 
-        expect(report.matching_acls[0].matching_acl_resource_name).to eq(resource_name)
+        expect(report.deleted_acls[0].matching_acl_resource_name).to eq(resource_name)
       end
     end
   end

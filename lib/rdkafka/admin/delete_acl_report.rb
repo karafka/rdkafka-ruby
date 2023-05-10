@@ -4,17 +4,17 @@ module Rdkafka
   class Admin
     class DeleteAclReport
 
-      # matching acls
+      # deleted acls
       # @return [Rdkafka::Bindings::AclBindingResult]
-      attr_reader :matching_acls
+      attr_reader :deleted_acls
 
       def initialize(matching_acls:, matching_acls_count:)
-        @matching_acls=[]
+        @deleted_acls=[]
         if matching_acls != FFI::Pointer::NULL
+          acl_binding_result_pointers  = matching_acls.read_array_of_pointer(matching_acls_count)
           (1..matching_acls_count).map do |matching_acl_index|
-            acl_binding_result_pointer = (matching_acls + (matching_acl_index - 1)).read_pointer
-            acl_binding_result = AclBindingResult.new(acl_binding_result_pointer)
-            @matching_acls << acl_binding_result
+            acl_binding_result = AclBindingResult.new(acl_binding_result_pointers[matching_acl_index - 1])
+            @deleted_acls << acl_binding_result
           end
         end
       end

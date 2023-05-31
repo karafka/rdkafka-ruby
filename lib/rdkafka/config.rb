@@ -285,18 +285,18 @@ module Rdkafka
       producer.call_delivery_callback(delivery_report, delivery_handle) if producer
     end
 
-    def call_on_partitions_assigned(consumer, list)
+    def call_on_partitions_assigned(list)
       return unless consumer_rebalance_listener
       return unless consumer_rebalance_listener.respond_to?(:on_partitions_assigned)
 
-      consumer_rebalance_listener.on_partitions_assigned(consumer, list)
+      consumer_rebalance_listener.on_partitions_assigned(list)
     end
 
-    def call_on_partitions_revoked(consumer, list)
+    def call_on_partitions_revoked(list)
       return unless consumer_rebalance_listener
       return unless consumer_rebalance_listener.respond_to?(:on_partitions_revoked)
 
-      consumer_rebalance_listener.on_partitions_revoked(consumer, list)
+      consumer_rebalance_listener.on_partitions_revoked(list)
     end
   end
 end

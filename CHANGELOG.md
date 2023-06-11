@@ -5,7 +5,7 @@
 * Add topic name to delivery report (maeve)
 * Allow string partitioner config (mollyegibson)
 * Fix documented type for DeliveryReport#error (jimmydo)
-* Bump librdkafka to 1.9.2 (thijsc)
+* Bump librdkafka to 2.0.2 (lmaia)
 * Use finalizers to cleanly exit producer and admin (thijsc)
 * Lock access to the native kafka client (thijsc)
 * Fix potential race condition in multi-threaded producer (mensfeld)

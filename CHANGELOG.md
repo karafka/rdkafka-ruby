@@ -8,6 +8,11 @@
 * Bump librdkafka to 2.0.2 (lmaia)
 * Use finalizers to cleanly exit producer and admin (thijsc)
 * Lock access to the native kafka client (thijsc)
+* Fix potential race condition in multi-threaded producer (mensfeld)
+* Fix leaking FFI resources in specs (mensfeld)
+* Improve specs stability (mensfeld)
+* Make metadata request timeout configurable (mensfeld)
+* call_on_partitions_assigned and call_on_partitions_revoked only get a tpl passed in (thijsc)
 
 # 0.12.0
 * Bumps librdkafka to 1.9.0

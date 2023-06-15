@@ -47,7 +47,7 @@ jobs:
           GITHUB_COVERAGE: ${{matrix.coverage}}
 
         run: |
+          docker-compose up -d --no-recreate
           bundle install --path vendor/bundle
           cd ext && bundle exec rake && cd ..
-          docker-compose up -d --no-recreate
           bundle exec rspec

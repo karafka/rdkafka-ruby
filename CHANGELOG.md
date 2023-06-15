@@ -13,6 +13,10 @@
 * Improve specs stability (mensfeld)
 * Make metadata request timeout configurable (mensfeld)
 * call_on_partitions_assigned and call_on_partitions_revoked only get a tpl passed in (thijsc)
+* Support `#assignment_lost?` on a consumer to check for involuntary assignment revocation (mensfeld)
+* Expose `#name` on the consumer and producer (mensfeld)
+* Introduce producer partitions count metadata cache (mensfeld)
+* Retry metadta fetches on certain errors with a backoff (mensfeld)
 
 # 0.12.3
 - Include backtrace in non-raised binded errors.

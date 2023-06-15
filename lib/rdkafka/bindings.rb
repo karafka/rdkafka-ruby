@@ -41,6 +41,7 @@ module Rdkafka
 
     # Metadata
 
+    attach_function :rd_kafka_name, [:pointer], :string, blocking: true
     attach_function :rd_kafka_memberid, [:pointer], :string, blocking: true
     attach_function :rd_kafka_clusterid, [:pointer], :string, blocking: true
     attach_function :rd_kafka_metadata, [:pointer, :int, :pointer, :pointer, :int], :int, blocking: true
@@ -182,6 +183,7 @@ module Rdkafka
     attach_function :rd_kafka_incremental_assign, [:pointer, :pointer], :int, blocking: true
     attach_function :rd_kafka_incremental_unassign, [:pointer, :pointer], :int, blocking: true
     attach_function :rd_kafka_assignment, [:pointer, :pointer], :int, blocking: true
+    attach_function :rd_kafka_assignment_lost, [:pointer], :int, blocking: true
     attach_function :rd_kafka_committed, [:pointer, :pointer, :int], :int, blocking: true
     attach_function :rd_kafka_commit, [:pointer, :pointer, :bool], :int, blocking: true
     attach_function :rd_kafka_poll_set_consumer, [:pointer], :void, blocking: true

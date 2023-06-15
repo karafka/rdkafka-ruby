@@ -11,6 +11,10 @@ describe Rdkafka::Consumer do
   after { consumer.close }
   after { producer.close }
 
+  describe '#name' do
+    it { expect(consumer.name).to include('rdkafka#consumer-') }
+  end
+
   describe "#subscribe, #unsubscribe and #subscription" do
     it "should subscribe, unsubscribe and return the subscription" do
       expect(consumer.subscription).to be_empty
@@ -267,6 +271,28 @@ describe Rdkafka::Consumer do
       expect {
         consumer.assignment
       }.to raise_error Rdkafka::RdkafkaError
+    end
+  end
+
+  describe '#assignment_lost?' do
+    it "should not return true as we do have an assignment" do
+      consumer.subscribe("consume_test_topic")
+      expected_subscription = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+        list.add_topic("consume_test_topic")
+      end
+
+      expect(consumer.assignment_lost?).to eq false
+      consumer.unsubscribe
+    end
+
+    it "should not return true after voluntary unsubscribing" do
+      consumer.subscribe("consume_test_topic")
+      expected_subscription = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+        list.add_topic("consume_test_topic")
+      end
+
+      consumer.unsubscribe
+      expect(consumer.assignment_lost?).to eq false
     end
   end
 
@@ -1002,6 +1028,7 @@ describe Rdkafka::Consumer do
         :assignment              => nil,
         :committed               => [],
         :query_watermark_offsets => [ nil, nil ],
+        :assignment_lost?        => []
     }.each do |method, args|
       it "raises an exception if #{method} is called" do
         expect {

@@ -18,6 +18,13 @@ module Rdkafka
       @native_kafka = native_kafka
     end
 
+    # @return [String] consumer name
+    def name
+      @name ||= @native_kafka.with_inner do |inner|
+        ::Rdkafka::Bindings.rd_kafka_name(inner)
+      end
+    end
+
     def finalizer
       ->(_) { close }
     end
@@ -219,6 +226,15 @@ module Rdkafka
       end
     ensure
       ptr.free unless ptr.nil?
+    end
+
+    # @return [Boolean] true if our current assignment has been lost involuntarily.
+    def assignment_lost?
+      closed_consumer_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        !Rdkafka::Bindings.rd_kafka_assignment_lost(inner).zero?
+      end
     end
 
     # Return the current committed offset per partition for this consumer group.

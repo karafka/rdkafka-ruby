@@ -15,6 +15,10 @@ describe Rdkafka::Producer do
     consumer.close
   end
 
+  describe '#name' do
+    it { expect(producer.name).to include('rdkafka#producer-') }
+  end
+
   context "delivery callback" do
     context "with a proc/lambda" do
       it "should set the callback" do
@@ -551,6 +555,48 @@ describe Rdkafka::Producer do
             producer.public_send(method, args)
           end
         }.to raise_exception(Rdkafka::ClosedProducerError, /#{method.to_s}/)
+      end
+    end
+  end
+
+  describe '#partition_count' do
+    it { expect(producer.partition_count('example_topic')).to eq(1) }
+
+    context 'when the partition count value is already cached' do
+      before do
+        producer.partition_count('example_topic')
+        allow(::Rdkafka::Metadata).to receive(:new).and_call_original
+      end
+
+      it 'expect not to query it again' do
+        producer.partition_count('example_topic')
+        expect(::Rdkafka::Metadata).not_to have_received(:new)
+      end
+    end
+
+    context 'when the partition count value was cached but time expired' do
+      before do
+        allow(::Process).to receive(:clock_gettime).and_return(0, 30.02)
+        producer.partition_count('example_topic')
+        allow(::Rdkafka::Metadata).to receive(:new).and_call_original
+      end
+
+      it 'expect not to query it again' do
+        producer.partition_count('example_topic')
+        expect(::Rdkafka::Metadata).to have_received(:new)
+      end
+    end
+
+    context 'when the partition count value was cached and time did not expire' do
+      before do
+        allow(::Process).to receive(:clock_gettime).and_return(0, 29.001)
+        producer.partition_count('example_topic')
+        allow(::Rdkafka::Metadata).to receive(:new).and_call_original
+      end
+
+      it 'expect not to query it again' do
+        producer.partition_count('example_topic')
+        expect(::Rdkafka::Metadata).not_to have_received(:new)
       end
     end
   end

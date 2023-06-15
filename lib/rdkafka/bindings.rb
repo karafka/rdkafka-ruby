@@ -299,6 +299,16 @@ module Rdkafka
     attach_function :rd_kafka_event_DeleteTopics_result, [:pointer], :pointer, blocking: true
     attach_function :rd_kafka_DeleteTopics_result_topics, [:pointer, :pointer], :pointer, blocking: true
 
+    # Create partitions
+    RD_KAFKA_ADMIN_OP_CREATEPARTITIONS = 3
+    RD_KAFKA_ADMIN_OP_CREATEPARTITIONS_RESULT = 102
+
+    attach_function :rd_kafka_CreatePartitions, [:pointer, :pointer, :size_t, :pointer, :pointer], :void
+    attach_function :rd_kafka_NewPartitions_new, %i[pointer size_t pointer size_t], :pointer
+    attach_function :rd_kafka_NewPartitions_destroy, [:pointer], :void
+    attach_function :rd_kafka_event_CreatePartitions_result, [:pointer], :pointer
+    attach_function :rd_kafka_CreatePartitions_result_topics, [:pointer, :pointer], :pointer
+
     # Background Queue and Callback
 
     attach_function :rd_kafka_queue_get_background, [:pointer], :pointer

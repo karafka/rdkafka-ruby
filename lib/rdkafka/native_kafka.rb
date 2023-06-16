@@ -37,9 +37,7 @@ module Rdkafka
     def with_inner
       return if @inner.nil?
 
-      @access_mutex.synchronize do
-        yield @inner
-      end
+      yield @inner
     end
 
     def finalizer

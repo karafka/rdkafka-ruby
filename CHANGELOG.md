@@ -17,6 +17,7 @@
 * Expose `#name` on the consumer and producer (mensfeld)
 * Introduce producer partitions count metadata cache (mensfeld)
 * Retry metadta fetches on certain errors with a backoff (mensfeld)
+* Do not lock access to underlying native kafka client and rely on Karafka granular locking (mensfeld)
 
 # 0.12.3
 - Include backtrace in non-raised binded errors.

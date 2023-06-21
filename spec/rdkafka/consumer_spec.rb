@@ -286,6 +286,29 @@ describe Rdkafka::Consumer do
         consumer.poll(100)
       }.to raise_error(Rdkafka::ClosedConsumerError, /poll/)
     end
+
+    context 'when there are outgoing operations in other threads' do
+      it 'should wait and not crash' do
+        times = []
+
+        # Run a long running poll
+        thread = Thread.new do
+          times << Time.now
+          consumer.subscribe("empty_test_topic")
+          times << Time.now
+          consumer.poll(1_000)
+          times << Time.now
+        end
+
+        # Make sure it starts before we close
+        sleep(0.1)
+        consumer.close
+        close_time = Time.now
+        thread.join
+
+        times.each { |op_time| expect(op_time).to be < close_time }
+      end
+    end
   end
 
   describe "#commit, #committed and #store_offset" do

@@ -10,6 +10,8 @@ module Rdkafka
       @access_mutex = Mutex.new
       # Lock around internal polling
       @poll_mutex = Mutex.new
+      # counter for operations in progress using inner
+      @operations_in_progress = 0
 
       if run_polling_thread
         # Start thread to poll client for delivery callbacks,
@@ -35,10 +37,26 @@ module Rdkafka
     end
 
     def with_inner
-      return if @inner.nil?
+      if @access_mutex.owned?
+        @operations_in_progress += 1
+      else
+        @access_mutex.synchronize { @operations_in_progress += 1 }
+      end
 
+      @inner.nil? ? raise(ClosedInnerError) : yield(@inner)
+    ensure
+      @operations_in_progress -= 1
+    end
+
+    def synchronize(&block)
       @access_mutex.synchronize do
-        yield @inner
+        # Wait for any commands using the inner to finish
+        # This can take a while on blocking operations like polling but is essential not to proceed
+        # with certain types of operations like resources destruction as it can cause the process
+        # to hang or crash
+        sleep(0.01) until @operations_in_progress.zero?
+
+        with_inner(&block)
       end
     end
 
@@ -53,31 +71,31 @@ module Rdkafka
     def close(object_id=nil)
       return if closed?
 
-      @access_mutex.lock
+      synchronize do
+        # Indicate to the outside world that we are closing
+        @closing = true
 
-      # Indicate to the outside world that we are closing
-      @closing = true
+        if @polling_thread
+          # Indicate to polling thread that we're closing
+          @polling_thread[:closing] = true
 
-      if @polling_thread
-        # Indicate to polling thread that we're closing
-        @polling_thread[:closing] = true
+          # Wait for the polling thread to finish up,
+          # this can be aborted in practice if this
+          # code runs from a finalizer.
+          @polling_thread.join
+        end
 
-        # Wait for the polling thread to finish up,
-        # this can be aborted in practice if this
-        # code runs from a finalizer.
-        @polling_thread.join
+        # Destroy the client after locking both mutexes
+        @poll_mutex.lock
+
+        # This check prevents a race condition, where we would enter the close in two threads
+        # and after unlocking the primary one that hold the lock but finished, ours would be unlocked
+        # and would continue to run, trying to destroy inner twice
+        return unless @inner
+
+        Rdkafka::Bindings.rd_kafka_destroy(@inner)
+        @inner = nil
       end
-
-      # Destroy the client after locking both mutexes
-      @poll_mutex.lock
-
-      # This check prevents a race condition, where we would enter the close in two threads
-      # and after unlocking the primary one that hold the lock but finished, ours would be unlocked
-      # and would continue to run, trying to destroy inner twice
-      return unless @inner
-
-      Rdkafka::Bindings.rd_kafka_destroy(@inner)
-      @inner = nil
     end
   end
 end

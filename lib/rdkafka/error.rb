@@ -92,4 +92,10 @@ module Rdkafka
       super("Illegal call to #{method.to_s} on a closed admin")
     end
   end
+
+  class ClosedInnerError < BaseError
+    def initialize
+      super("Illegal call to a closed inner librdkafka instance")
+    end
+  end
 end

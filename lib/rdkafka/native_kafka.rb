@@ -52,8 +52,8 @@ module Rdkafka
       @access_mutex.synchronize do
         # Wait for any commands using the inner to finish
         # This can take a while on blocking operations like polling but is essential not to proceed
-        # with the destroy until all the outgoing operations are finished. Otherwise the process
-        # will either hand or crash
+        # with certain types of operations like resources destruction as it can cause the process
+        # to hang or crash
         sleep(0.01) until @operations_in_progress.zero?
 
         with_inner(&block)

@@ -431,11 +431,13 @@ module Rdkafka
 
       tpl = list.to_native_tpl
 
-      response = Rdkafka::Bindings.rd_kafka_offsets_for_times(
-        @native_kafka.inner,
-        tpl,
-        timeout_ms # timeout
-      )
+      response = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_offsets_for_times(
+          inner,
+          tpl,
+          timeout_ms # timeout
+        )
+      end
 
       if response != 0
         raise Rdkafka::RdkafkaError.new(response)

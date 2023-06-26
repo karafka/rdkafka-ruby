@@ -1,3 +1,6 @@
+# 0.13.1
+* Add offsets_for_times method on consumer (timflapper)
+
 # 0.13.0
 * Support cooperative sticky partition assignment in the rebalance callback (methodmissing)
 * Support both string and symbol header keys (ColinDKelley)

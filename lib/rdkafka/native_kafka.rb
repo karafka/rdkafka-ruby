@@ -10,6 +10,20 @@ module Rdkafka
       @access_mutex = Mutex.new
       # Lock around internal polling
       @poll_mutex = Mutex.new
+      # Lock around decrementing the operations in progress counter
+      # We have two mutexes - one for increment (`@access_mutex`) and one for decrement mutex
+      # because they serve different purposes:
+      #
+      #   - `@access_mutex` allows us to lock the execution and make sure that any operation within
+      #      the `#synchronize` is the only one running and that there are no other running
+      #      operations.
+      #   - `@decrement_mutex` ensures, that our decrement operation is thread-safe for any Ruby
+      #     implementation.
+      #
+      # We do not use the same mutex, because it could create a deadlock when an already
+      # incremented operation cannot decrement because `@access_lock` is now owned by a different
+      # thread in a synchronized mode and the synchronized mode is waiting on the decrement.
+      @decrement_mutex = Mutex.new
       # counter for operations in progress using inner
       @operations_in_progress = 0
 
@@ -45,7 +59,7 @@ module Rdkafka
 
       @inner.nil? ? raise(ClosedInnerError) : yield(@inner)
     ensure
-      @operations_in_progress -= 1
+      @decrement_mutex.synchronize { @operations_in_progress -= 1 }
     end
 
     def synchronize(&block)

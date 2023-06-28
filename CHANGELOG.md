@@ -1,5 +1,6 @@
 # 0.13.2
 * Ensure operations counter decrement is fully thread-safe
+* Bump librdkafka to 2.1.1
 
 # 0.13.1
 * Add offsets_for_times method on consumer (timflapper)

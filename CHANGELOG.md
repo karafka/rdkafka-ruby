@@ -1,3 +1,6 @@
+## 0.13.3
+* Bump librdkafka to 2.2.0
+
 # 0.13.2
 * Ensure operations counter decrement is fully thread-safe
 * Bump librdkafka to 2.1.1

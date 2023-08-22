@@ -27,6 +27,9 @@ module Rdkafka
       # counter for operations in progress using inner
       @operations_in_progress = 0
 
+      # Trigger initial poll to make sure oauthbearer cb and other initial cb are handled
+      Rdkafka::Bindings.rd_kafka_poll(inner, 0)
+
       if run_polling_thread
         # Start thread to poll client for delivery callbacks,
         # not used in consumer.

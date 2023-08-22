@@ -1,3 +1,6 @@
+# 0.13.4
+* Always call initial poll on librdkafka to make sure oauth bearer cb is handled pre-operations.
+
 # 0.13.3
 * Bump librdkafka to 2.2.0
 

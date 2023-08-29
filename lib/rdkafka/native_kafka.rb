@@ -83,9 +83,9 @@ module Rdkafka
     end
 
     def close(object_id=nil)
-      return if closed?
-
       synchronize do
+        return if closed?
+
         # Indicate to the outside world that we are closing
         @closing = true
 

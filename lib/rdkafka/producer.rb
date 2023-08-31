@@ -5,6 +5,11 @@ require "objspace"
 module Rdkafka
   # A producer for Kafka messages. To create a producer set up a {Config} and call {Config#producer producer} on that.
   class Producer
+    # Cache partitions count for 30 seconds
+    PARTITIONS_COUNT_TTL = 30
+
+    private_constant :PARTITIONS_COUNT_TTL
+
     # @private
     # Returns the current delivery callback, by default this is nil.
     #
@@ -24,6 +29,19 @@ module Rdkafka
 
       # Makes sure, that native kafka gets closed before it gets GCed by Ruby
       ObjectSpace.define_finalizer(self, native_kafka.finalizer)
+
+      @_partitions_count_cache = Hash.new do |cache, topic|
+        topic_metadata = nil
+
+        @native_kafka.with_inner do |inner|
+          topic_metadata = ::Rdkafka::Metadata.new(inner, topic).topics&.first
+        end
+
+        cache[topic] = [
+          monotonic_now,
+          topic_metadata ? topic_metadata[:partition_count] : nil
+        ]
+      end
     end
 
     # Set a callback that will be called every time a message is successfully produced.
@@ -68,11 +86,21 @@ module Rdkafka
     # @param topic [String] The topic name.
     #
     # @return partition count [Integer,nil]
+    #
+    # We cache the partition count for a given topic for given time
+    # This prevents us in case someone uses `partition_key` from querying for the count with
+    # each message. Instead we query once every 30 seconds at most
+    #
+    # @param topic [String] topic name
+    # @return [Integer] partition count for a given topic
     def partition_count(topic)
       closed_producer_check(__method__)
-      @native_kafka.with_inner do |inner|
-        Rdkafka::Metadata.new(inner, topic).topics&.first[:partition_count]
+
+      @_partitions_count_cache.delete_if do |_, cached|
+        monotonic_now - cached.first > PARTITIONS_COUNT_TTL
       end
+
+      @_partitions_count_cache[topic].last
     end
 
     # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.
@@ -193,6 +221,12 @@ module Rdkafka
     end
 
     private
+
+    def monotonic_now
+      # needed because Time.now can go backwards
+      Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    end
+
     def closed_producer_check(method)
       raise Rdkafka::ClosedProducerError.new(method) if closed?
     end

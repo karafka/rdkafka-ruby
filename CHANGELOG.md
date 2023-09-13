@@ -1,3 +1,6 @@
+# 0.13.5
+* Fix DeliveryReport `create_result#error` being nil despite an error being associated with it
+
 # 0.13.4
 * Always call initial poll on librdkafka to make sure oauth bearer cb is handled pre-operations.
 

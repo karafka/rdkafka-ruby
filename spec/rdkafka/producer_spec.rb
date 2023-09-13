@@ -627,4 +627,20 @@ describe Rdkafka::Producer do
       end
     end
   end
+
+  context "when not being able to deliver the message" do
+    let(:producer) do
+      rdkafka_producer_config(
+        "bootstrap.servers": "localhost:9093",
+        "message.timeout.ms": 100
+      ).producer
+    end
+
+    it "should contain the error in the response when not deliverable" do
+      handler = producer.produce(topic: 'produce_test_topic', payload: nil)
+      # Wait for the async callbacks and delivery registry to update
+      sleep(2)
+      expect(handler.create_result.error).to be_a(Rdkafka::RdkafkaError)
+    end
+  end
 end

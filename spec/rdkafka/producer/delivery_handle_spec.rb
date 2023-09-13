@@ -44,4 +44,19 @@ describe Rdkafka::Producer::DeliveryHandle do
       end
     end
   end
+
+  describe '#create_result' do
+    let(:pending_handle) { false }
+    let(:report) { subject.create_result }
+
+    context 'when response is 0' do
+      it { expect(report.error).to eq(nil) }
+    end
+
+    context 'when response is not 0' do
+      let(:response) { 1 }
+
+      it { expect(report.error).to eq(Rdkafka::RdkafkaError.new(response)) }
+    end
+  end
 end

@@ -36,6 +36,10 @@ jobs:
       - name: Install package dependencies
         run: "[ -e $APT_DEPS ] || sudo apt-get install -y --no-install-recommends $APT_DEPS"
 
+      - name: Start Kafka with docker-compose
+        run: |
+          docker-compose up -d || (sleep 5 && docker-compose up -d)
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -47,7 +51,6 @@ jobs:
           GITHUB_COVERAGE: ${{matrix.coverage}}
 
         run: |
-          docker-compose up -d --no-recreate
           bundle install --path vendor/bundle
           cd ext && bundle exec rake && cd ..
           bundle exec rspec

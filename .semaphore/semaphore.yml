@@ -16,7 +16,7 @@ blocks:
         - name: bundle exec rspec
           matrix:
             - env_var: RUBY_VERSION
-              values: [ "2.6.10", "2.7.6", "3.0.4", "3.1.2"]
+              values: [ "2.6.10", "2.7.8", "3.0.6", "3.1.4", "3.2.2", "3.3.0-preview2"]
           commands:
             - sem-version ruby $RUBY_VERSION
             - checkout

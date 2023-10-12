@@ -1,3 +1,6 @@
+# 0.13.6
+* Fix `#flush` does not handle the timeouts errors by making it return true if all flushed or false if failed. We do **not** raise an exception here to keep it backwards compatible.
+
 # 0.13.5
 * Fix DeliveryReport `create_result#error` being nil despite an error being associated with it
 

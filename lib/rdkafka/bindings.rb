@@ -35,7 +35,7 @@ module Rdkafka
 
     # Polling
 
-    attach_function :rd_kafka_flush, [:pointer, :int], :void, blocking: true
+    attach_function :rd_kafka_flush, [:pointer, :int], :int, blocking: true
     attach_function :rd_kafka_poll, [:pointer, :int], :void, blocking: true
     attach_function :rd_kafka_outq_len, [:pointer], :int, blocking: true
 

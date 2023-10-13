@@ -25,6 +25,7 @@ module Rdkafka
     # Close this consumer
     # @return [nil]
     def close
+      stop
       return if closed?
       ObjectSpace.undefine_finalizer(self)
 
@@ -33,6 +34,14 @@ module Rdkafka
       end
 
       @native_kafka.close
+    end
+
+    def stop
+      @stop_requested = true
+    end
+
+    def stopped?
+      closed? || @stop_requested
     end
 
     # Whether this consumer has closed
@@ -496,12 +505,13 @@ module Rdkafka
     #
     # @return [nil]
     def each
+      @stop_requested = false
       loop do
         message = poll(250)
         if message
           yield(message)
         else
-          if closed?
+          if stopped?
             break
           else
             next
@@ -561,11 +571,12 @@ module Rdkafka
     # @return [nil]
     def each_batch(max_items: 100, bytes_threshold: Float::INFINITY, timeout_ms: 250, yield_on_error: false, &block)
       closed_consumer_check(__method__)
+      @stop_requested = false
       slice = []
       bytes = 0
       end_time = monotonic_now + timeout_ms / 1000.0
       loop do
-        break if closed?
+        break if stopped?
         max_wait = end_time - monotonic_now
         max_wait_ms = if max_wait <= 0
                         0  # should not block, but may retrieve a message

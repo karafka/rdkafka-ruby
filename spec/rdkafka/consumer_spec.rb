@@ -692,6 +692,32 @@ describe Rdkafka::Consumer do
     end
   end
 
+  describe "#stop" do
+    it "should stop polling with #each" do
+      consumer.subscribe("consume_test_topic")
+      # Check the first 10 messages. Then +stop+ the consumer, which
+      # should break the +each+ loop.
+      consumer.each do
+        consumer.stop
+      end
+      expect(consumer.stopped?).to eq(true)
+      expect(consumer.closed?).to eq(false)
+      consumer.close
+    end
+
+    it "should stop polling with #each_batch" do
+      consumer.subscribe("consume_test_topic")
+      # Check the first 10 messages. Then +stop+ the consumer, which
+      # should break the +each_batch+ loop.
+      consumer.each_batch do
+        consumer.stop
+      end
+      expect(consumer.stopped?).to eq(true)
+      expect(consumer.closed?).to eq(false)
+      consumer.close
+    end
+  end
+
   describe "#each" do
     it "should yield messages" do
       handles = []

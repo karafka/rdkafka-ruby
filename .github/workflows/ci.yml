@@ -1,0 +1,57 @@
+name: ci
+
+concurrency: ci-${{ github.ref }}
+
+on:
+  pull_request:
+  push:
+  schedule:
+    - cron:  '0 1 * * *'
+
+env:
+  BUNDLE_RETRY: 6
+  BUNDLE_JOBS: 4
+
+jobs:
+  specs:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+          - '3.3.0-preview2'
+          - '3.2'
+          - '3.1'
+          - '3.1.0'
+          - '3.0'
+          - '3.0.0'
+          - '2.7'
+          - '2.7.0'
+          - '2.6.8'
+        include:
+          - ruby: '3.2'
+            coverage: 'true'
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install package dependencies
+        run: "[ -e $APT_DEPS ] || sudo apt-get install -y --no-install-recommends $APT_DEPS"
+
+      - name: Start Kafka with docker-compose
+        run: |
+          docker-compose up -d || (sleep 5 && docker-compose up -d)
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{matrix.ruby}}
+          bundler-cache: true
+
+      - name: Run all specs
+        env:
+          GITHUB_COVERAGE: ${{matrix.coverage}}
+
+        run: |
+          bundle install --path vendor/bundle
+          cd ext && bundle exec rake && cd ..
+          bundle exec rspec

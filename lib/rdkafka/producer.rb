@@ -95,6 +95,15 @@ module Rdkafka
       end
     end
 
+    def abort_transaction(timeout_ms = -1)
+      closed_producer_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        response_ptr = Rdkafka::Bindings.rd_kafka_abort_transaction(inner, timeout_ms)
+        Rdkafka::RdkafkaError.validate!(response_ptr)
+      end
+    end
+
     # Close this producer and wait for the internal poll queue to empty.
     def close
       return if closed?

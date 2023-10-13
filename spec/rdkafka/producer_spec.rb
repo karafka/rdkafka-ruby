@@ -758,18 +758,22 @@ describe Rdkafka::Producer do
   context 'when working with transactions' do
     let(:producer) do
       rdkafka_producer_config(
-        'transactional.id': 'example'
+        'transactional.id': 'example222222',
+        'transaction.timeout.ms': 1_000
       ).producer
     end
 
     it do
       producer.init_transactions
+
       producer.begin_transaction
-      producer.produce(
+      10.times { producer.produce(
         topic:     "produce_test_topic",
         payload:   "payload headers"
-      )
-      producer.commit_transaction
+      ) }
+
+      producer.abort_transaction
+      #producer.commit_transaction
     end
   end
 end

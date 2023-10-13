@@ -279,9 +279,9 @@ module Rdkafka
     callback :delivery_cb, [:pointer, :pointer, :pointer], :void
     attach_function :rd_kafka_conf_set_dr_msg_cb, [:pointer, :delivery_cb], :void
     attach_function :rd_kafka_init_transactions, [:pointer, :int], :pointer
-    attach_function :rd_kafka_begin_transaction, [:pointer], :pointer
-    attach_function :rd_kafka_abort_transaction, [:pointer, :int], :pointer
-    attach_function :rd_kafka_commit_transaction, [:pointer, :int], :pointer
+    attach_function :rd_kafka_begin_transaction, [:pointer], :pointer, blocking: true
+    attach_function :rd_kafka_abort_transaction, [:pointer, :int], :pointer, blocking: true
+    attach_function :rd_kafka_commit_transaction, [:pointer, :int], :pointer, blocking: true
 
     # Partitioner
     PARTITIONERS = %w(random consistent consistent_random murmur2 murmur2_random fnv1a fnv1a_random).each_with_object({}) do |name, hsh|

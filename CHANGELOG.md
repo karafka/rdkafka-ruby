@@ -1,4 +1,5 @@
-# 0.13.6
+# 0.13.6 (Unreleased)
+* Support transactions API in the producer
 * Provide `#purge` to remove any outstanding requests from the producer.
 * Fix `#flush` does not handle the timeouts errors by making it return true if all flushed or false if failed. We do **not** raise an exception here to keep it backwards compatible.
 

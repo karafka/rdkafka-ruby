@@ -31,7 +31,7 @@ module Rdkafka
             # For part of errors, we will not get a topic name reference and in cases like this
             # we should not return it
             self[:topic_name].null? ? nil : self[:topic_name].read_string,
-            RdkafkaError.new(self[:response])
+            Rdkafka::RdkafkaError.build(self[:response])
           )
         end
       end

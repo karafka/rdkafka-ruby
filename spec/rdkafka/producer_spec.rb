@@ -754,4 +754,22 @@ describe Rdkafka::Producer do
       end
     end
   end
+
+  context 'when working with transactions' do
+    let(:producer) do
+      rdkafka_producer_config(
+        'transactional.id': 'example'
+      ).producer
+    end
+
+    it do
+      producer.init_transactions
+      producer.begin_transaction
+      producer.produce(
+        topic:     "produce_test_topic",
+        payload:   "payload headers"
+      )
+      producer.commit_transaction
+    end
+  end
 end

@@ -68,9 +68,8 @@ module Rdkafka
       response = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_subscribe(inner, tpl)
       end
-      if response != 0
-        raise Rdkafka::RdkafkaError.new(response, "Error subscribing to '#{topics.join(', ')}'")
-      end
+
+      Rdkafka::RdkafkaError.validate!(response, "Error subscribing to '#{topics.join(', ')}'")
     ensure
       Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl) unless tpl.nil?
     end
@@ -86,9 +85,10 @@ module Rdkafka
       response = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_unsubscribe(inner)
       end
-      if response != 0
-        raise Rdkafka::RdkafkaError.new(response)
-      end
+
+      Rdkafka::RdkafkaError.validate!(response)
+
+      nil
     end
 
     # Pause producing or consumption for the provided list of partitions
@@ -141,9 +141,10 @@ module Rdkafka
         response = @native_kafka.with_inner do |inner|
           Rdkafka::Bindings.rd_kafka_resume_partitions(inner, tpl)
         end
-        if response != 0
-          raise Rdkafka::RdkafkaError.new(response, "Error resume '#{list.to_h}'")
-        end
+
+        Rdkafka::RdkafkaError.validate!(response, "Error resume '#{list.to_h}'")
+
+        nil
       ensure
         Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl)
       end
@@ -162,9 +163,7 @@ module Rdkafka
         Rdkafka::Bindings.rd_kafka_subscription(inner, ptr)
       end
 
-      if response != 0
-        raise Rdkafka::RdkafkaError.new(response)
-      end
+      Rdkafka::RdkafkaError.validate!(response)
 
       native = ptr.read_pointer
 
@@ -193,9 +192,8 @@ module Rdkafka
         response = @native_kafka.with_inner do |inner|
           Rdkafka::Bindings.rd_kafka_assign(inner, tpl)
         end
-        if response != 0
-          raise Rdkafka::RdkafkaError.new(response, "Error assigning '#{list.to_h}'")
-        end
+
+        Rdkafka::RdkafkaError.validate!(response, "Error assigning '#{list.to_h}'")
       ensure
         Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl)
       end
@@ -213,9 +211,8 @@ module Rdkafka
       response = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_assignment(inner, ptr)
       end
-      if response != 0
-        raise Rdkafka::RdkafkaError.new(response)
-      end
+
+      Rdkafka::RdkafkaError.validate!(response)
 
       tpl = ptr.read_pointer
 
@@ -263,9 +260,9 @@ module Rdkafka
         response = @native_kafka.with_inner do |inner|
           Rdkafka::Bindings.rd_kafka_committed(inner, tpl, timeout_ms)
         end
-        if response != 0
-          raise Rdkafka::RdkafkaError.new(response)
-        end
+
+        Rdkafka::RdkafkaError.validate!(response)
+
         TopicPartitionList.from_native_tpl(tpl)
       ensure
         Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl)
@@ -297,9 +294,8 @@ module Rdkafka
           timeout_ms,
         )
       end
-      if response != 0
-        raise Rdkafka::RdkafkaError.new(response, "Error querying watermark offsets for partition #{partition} of #{topic}")
-      end
+
+      Rdkafka::RdkafkaError.validate!(response, "Error querying watermark offsets for partition #{partition} of #{topic}")
 
       return low.read_array_of_int64(1).first, high.read_array_of_int64(1).first
     ensure
@@ -387,9 +383,10 @@ module Rdkafka
         message.partition,
         message.offset
       )
-      if response != 0
-        raise Rdkafka::RdkafkaError.new(response)
-      end
+
+      Rdkafka::RdkafkaError.validate!(response)
+
+      nil
     ensure
       if native_topic && !native_topic.null?
         Rdkafka::Bindings.rd_kafka_topic_destroy(native_topic)
@@ -422,9 +419,9 @@ module Rdkafka
         message.offset,
         0 # timeout
       )
-      if response != 0
-        raise Rdkafka::RdkafkaError.new(response)
-      end
+      Rdkafka::RdkafkaError.validate!(response)
+
+      nil
     ensure
       if native_topic && !native_topic.null?
         Rdkafka::Bindings.rd_kafka_topic_destroy(native_topic)
@@ -455,9 +452,7 @@ module Rdkafka
         )
       end
 
-      if response != 0
-        raise Rdkafka::RdkafkaError.new(response)
-      end
+      Rdkafka::RdkafkaError.validate!(response)
 
       TopicPartitionList.from_native_tpl(tpl)
     ensure
@@ -492,9 +487,10 @@ module Rdkafka
         response = @native_kafka.with_inner do |inner|
           Rdkafka::Bindings.rd_kafka_commit(inner, tpl, async)
         end
-        if response != 0
-          raise Rdkafka::RdkafkaError.new(response)
-        end
+
+        Rdkafka::RdkafkaError.validate!(response)
+
+        nil
       ensure
         Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl) if tpl
       end
@@ -519,9 +515,9 @@ module Rdkafka
         # Create struct wrapper
         native_message = Rdkafka::Bindings::Message.new(message_ptr)
         # Raise error if needed
-        if native_message[:err] != 0
-          raise Rdkafka::RdkafkaError.new(native_message[:err])
-        end
+
+        Rdkafka::RdkafkaError.validate!(native_message[:err])
+
         # Create a message to pass out
         Rdkafka::Consumer::Message.new(native_message)
       end

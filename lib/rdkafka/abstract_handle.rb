@@ -74,7 +74,7 @@ module Rdkafka
 
     # Allow subclasses to override
     def raise_error
-      raise RdkafkaError.new(self[:response])
+      RdkafkaError.validate!(self[:response])
     end
 
     # Error that is raised when waiting for the handle to complete

@@ -63,6 +63,47 @@ module Rdkafka
       @delivery_callback_arity = arity(callback)
     end
 
+    # Init transactions
+    # Run once per producer
+    def init_transactions
+      closed_producer_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        response_ptr = Rdkafka::Bindings.rd_kafka_init_transactions(inner, -1)
+
+        Rdkafka::RdkafkaError.validate!(response_ptr) || true
+      end
+    end
+
+    def begin_transaction
+      closed_producer_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        response_ptr = Rdkafka::Bindings.rd_kafka_begin_transaction(inner)
+
+        Rdkafka::RdkafkaError.validate!(response_ptr)
+      end
+    end
+
+    def commit_transaction(timeout_ms = -1)
+      closed_producer_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        response_ptr = Rdkafka::Bindings.rd_kafka_commit_transaction(inner, timeout_ms)
+
+        Rdkafka::RdkafkaError.validate!(response_ptr)
+      end
+    end
+
+    def abort_transaction(timeout_ms = -1)
+      closed_producer_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        response_ptr = Rdkafka::Bindings.rd_kafka_abort_transaction(inner, timeout_ms)
+        Rdkafka::RdkafkaError.validate!(response_ptr)
+      end
+    end
+
     # Close this producer and wait for the internal poll queue to empty.
     def close
       return if closed?
@@ -89,17 +130,13 @@ module Rdkafka
     def flush(timeout_ms=5_000)
       closed_producer_check(__method__)
 
-      code = nil
-
-      @native_kafka.with_inner do |inner|
-        code = Rdkafka::Bindings.rd_kafka_flush(inner, timeout_ms)
+      error = @native_kafka.with_inner do |inner|
+        response = Rdkafka::Bindings.rd_kafka_flush(inner, timeout_ms)
+        Rdkafka::RdkafkaError.build(response)
       end
 
       # Early skip not to build the error message
-      return true if code.zero?
-
-      error = Rdkafka::RdkafkaError.new(code)
-
+      return true unless error
       return false if error.code == :timed_out
 
       raise(error)
@@ -114,16 +151,14 @@ module Rdkafka
     def purge
       closed_producer_check(__method__)
 
-      code = nil
-
       @native_kafka.with_inner do |inner|
-        code = Bindings.rd_kafka_purge(
+        response = Bindings.rd_kafka_purge(
           inner,
           Bindings::RD_KAFKA_PURGE_F_QUEUE | Bindings::RD_KAFKA_PURGE_F_INFLIGHT
         )
-      end
 
-      code.zero? || raise(Rdkafka::RdkafkaError.new(code))
+        Rdkafka::RdkafkaError.validate!(response)
+      end
 
       # Wait for the purge to affect everything
       sleep(0.001) until flush(100)
@@ -252,7 +287,7 @@ module Rdkafka
       # Raise error if the produce call was not successful
       if response != 0
         DeliveryHandle.remove(delivery_handle.to_ptr.address)
-        raise RdkafkaError.new(response)
+        Rdkafka::RdkafkaError.validate!(response)
       end
 
       delivery_handle

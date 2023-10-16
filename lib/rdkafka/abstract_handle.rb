@@ -37,12 +37,13 @@ module Rdkafka
     #
     # @param max_wait_timeout [Numeric, nil] Amount of time to wait before timing out. If this is nil it does not time out.
     # @param wait_timeout [Numeric] Amount of time we should wait before we recheck if the operation has completed
+    # @param raise_response_error [Boolean] should we raise error when waiting finishes
     #
     # @raise [RdkafkaError] When the operation failed
     # @raise [WaitTimeoutError] When the timeout has been reached and the handle is still pending
     #
     # @return [Object] Operation-specific result
-    def wait(max_wait_timeout: 60, wait_timeout: 0.1)
+    def wait(max_wait_timeout: 60, wait_timeout: 0.1, raise_response_error: true)
       timeout = if max_wait_timeout
                   CURRENT_TIME.call + max_wait_timeout
                 else
@@ -54,7 +55,7 @@ module Rdkafka
             raise WaitTimeoutError.new("Waiting for #{operation_name} timed out after #{max_wait_timeout} seconds")
           end
           sleep wait_timeout
-        elsif self[:response] != 0
+        elsif self[:response] != 0 && raise_response_error
           raise_error
         else
           return create_result
@@ -74,7 +75,7 @@ module Rdkafka
 
     # Allow subclasses to override
     def raise_error
-      raise RdkafkaError.new(self[:response])
+      RdkafkaError.validate!(self[:response])
     end
 
     # Error that is raised when waiting for the handle to complete

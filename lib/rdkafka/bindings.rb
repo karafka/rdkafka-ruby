@@ -6,6 +6,15 @@ require "logger"
 
 module Rdkafka
   # @private
+  #
+  # @note
+  #   There are two types of responses related to errors:
+  #     - rd_kafka_error_t - a C object that we need to remap into an error or null when no error
+  #     - rd_kafka_resp_err_t - response error code (numeric) that we can use directly
+  #
+  #   It is critical to ensure, that we handle them correctly. The result type should be:
+  #     - rd_kafka_error_t - :pointer
+  #     - rd_kafka_resp_err_t - :int
   module Bindings
     extend FFI::Library
 
@@ -96,6 +105,11 @@ module Rdkafka
 
     attach_function :rd_kafka_err2name, [:int], :string
     attach_function :rd_kafka_err2str, [:int], :string
+    attach_function :rd_kafka_error_is_fatal, [:pointer], :int
+    attach_function :rd_kafka_error_is_retriable, [:pointer], :int
+    attach_function :rd_kafka_error_txn_requires_abort, [:pointer], :int
+    attach_function :rd_kafka_error_destroy, [:pointer], :void
+    attach_function :rd_kafka_error_code, [:pointer], :int
 
     # Configuration
 
@@ -157,7 +171,7 @@ module Rdkafka
       :void, [:pointer, :int, :string, :pointer]
     ) do |_client_prr, err_code, reason, _opaque|
       if Rdkafka::Config.error_callback
-        error = Rdkafka::RdkafkaError.new(err_code, broker_message: reason)
+        error = Rdkafka::RdkafkaError.build(err_code, broker_message: reason)
         error.set_backtrace(caller)
         Rdkafka::Config.error_callback.call(error)
       end
@@ -264,6 +278,10 @@ module Rdkafka
     attach_function :rd_kafka_purge, [:pointer, :int], :int, blocking: true
     callback :delivery_cb, [:pointer, :pointer, :pointer], :void
     attach_function :rd_kafka_conf_set_dr_msg_cb, [:pointer, :delivery_cb], :void
+    attach_function :rd_kafka_init_transactions, [:pointer, :int], :pointer, blocking: true
+    attach_function :rd_kafka_begin_transaction, [:pointer], :pointer, blocking: true
+    attach_function :rd_kafka_abort_transaction, [:pointer, :int], :pointer, blocking: true
+    attach_function :rd_kafka_commit_transaction, [:pointer, :int], :pointer, blocking: true
 
     # Partitioner
     PARTITIONERS = %w(random consistent consistent_random murmur2 murmur2_random fnv1a fnv1a_random).each_with_object({}) do |name, hsh|

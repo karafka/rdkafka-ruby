@@ -1,7 +1,8 @@
-# 0.13.6 (Unreleased)
-* Support transactions API in the producer
-* Provide `#purge` to remove any outstanding requests from the producer.
-* Fix `#flush` does not handle the timeouts errors by making it return true if all flushed or false if failed. We do **not** raise an exception here to keep it backwards compatible.
+# 0.13.6 (2023-10-17)
+* **[Feature]** Support transactions API in the producer
+* [Enhancement] Add `raise_response_error` flag to the `Rdkafka::AbstractHandle`.
+* [Enhancement] Provide `#purge` to remove any outstanding requests from the producer.
+* [Enhancement] Fix `#flush` does not handle the timeouts errors by making it return true if all flushed or false if failed. We do **not** raise an exception here to keep it backwards compatible.
 
 # 0.13.5
 * Fix DeliveryReport `create_result#error` being nil despite an error being associated with it

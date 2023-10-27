@@ -1,8 +1,13 @@
 # Rdkafka
 
-[![Build Status](https://appsignal.semaphoreci.com/badges/rdkafka-ruby/branches/master.svg?style=shields)](https://appsignal.semaphoreci.com/projects/rdkafka-ruby)
+[![Build Status](https://github.com/karafka/rdkafka-ruby/actions/workflows/ci.yml/badge.svg)](https://github.com/karafka/rdkafka-ruby/actions/workflows/ci.yml)
 [![Gem Version](https://badge.fury.io/rb/rdkafka.svg)](https://badge.fury.io/rb/rdkafka)
-[![Maintainability](https://api.codeclimate.com/v1/badges/ecb1765f81571cccdb0e/maintainability)](https://codeclimate.com/github/appsignal/rdkafka-ruby/maintainability)
+[![Join the chat at https://slack.karafka.io](https://raw.githubusercontent.com/karafka/misc/master/slack.svg)](https://slack.karafka.io)
+
+> [!NOTE]
+> The `rdkafka-ruby` gem was created and developed by [AppSignal](https://www.appsignal.com/). Their impactful contributions have significantly shaped the Ruby Kafka and Karafka ecosystems. For robust monitoring, we highly recommend AppSignal.
+
+---
 
 The `rdkafka` gem is a modern Kafka client library for Ruby based on
 [librdkafka](https://github.com/edenhill/librdkafka/).
@@ -11,9 +16,7 @@ gem and targets Kafka 1.0+ and Ruby versions that are under security or
 active maintenance. We remove Ruby version from our CI builds if they 
 become EOL.
 
-`rdkafka` was written because we needed a reliable Ruby client for
-Kafka that supports modern Kafka at [AppSignal](https://appsignal.com).
-We run it in production on very high traffic systems.
+`rdkafka` was written because of the need for a reliable Ruby client for Kafka that supports modern Kafka at [AppSignal](https://appsignal.com). AppSignal runs it in production on very high-traffic systems.
 
 This gem only provides a high-level Kafka consumer. If you are running
 an older version of Kafka and/or need the legacy simple consumer we

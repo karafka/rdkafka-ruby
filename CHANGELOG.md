@@ -1,3 +1,6 @@
+# 0.14.0 (Unreleased)
+* [Change] Remove support for Ruby 2.6 due to it being EOL and WeakMap incompatibilities.
+
 # 0.13.0
 * Support cooperative sticky partition assignment in the rebalance callback (methodmissing)
 * Support both string and symbol header keys (ColinDKelley)

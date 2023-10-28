@@ -16,7 +16,7 @@ Gem::Specification.new do |gem|
   gem.name = 'rdkafka'
   gem.require_paths = ['lib']
   gem.version = Rdkafka::VERSION
-  gem.required_ruby_version = '>= 2.6'
+  gem.required_ruby_version = '>= 2.7'
   gem.extensions = %w(ext/Rakefile)
 
   gem.add_dependency 'ffi', '~> 1.15'

@@ -844,21 +844,28 @@ describe Rdkafka::Producer do
         ).producer
       end
 
-      it 'expect to allow to produce within a transaction, finalize and ship data' do
+      it 'expect to allow to produce within a transaction, finalize and not ship data' do
         producer.init_transactions
         producer.begin_transaction
 
+        sleep(5)
+
         handle1 = producer.produce(topic: 'produce_test_topic', payload: 'data1', partition: 1)
         handle2 = producer.produce(topic: 'example_topic', payload: 'data2', partition: 0)
-
-        sleep(1)
 
         begin
           producer.commit_transaction(15_000)
         rescue Rdkafka::RdkafkaError => e
           next unless e.abortable?
 
-          producer.abort_transaction
+          begin
+            producer.abort_transaction(15_000)
+          rescue Rdkafka::RdkafkaError => e
+            nil
+          end
+
+          p handle1.create_result
+          p handle2.create_result
 
           expect { handle1.wait(max_wait_timeout: 15) }.to raise_error(Rdkafka::RdkafkaError)
           expect { handle2.wait(max_wait_timeout: 15) }.to raise_error(Rdkafka::RdkafkaError)

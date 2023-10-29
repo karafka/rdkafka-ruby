@@ -851,8 +851,10 @@ describe Rdkafka::Producer do
         handle1 = producer.produce(topic: 'produce_test_topic', payload: 'data1', partition: 1)
         handle2 = producer.produce(topic: 'example_topic', payload: 'data2', partition: 0)
 
+        sleep(1)
+
         begin
-          producer.commit_transaction
+          producer.commit_transaction(15_000)
         rescue Rdkafka::RdkafkaError => e
           next unless e.abortable?
 

@@ -1,3 +1,7 @@
+# 0.14.0 (Unreleased)
+- [Change] Drop support for Ruby 2.6 due to incompatibilities in usage of `ObjectSpace::WeakMap`
+- [Fix] Fix dangling Opaque references.
+
 # 0.13.6 (2023-10-17)
 * **[Feature]** Support transactions API in the producer
 * [Enhancement] Add `raise_response_error` flag to the `Rdkafka::AbstractHandle`.

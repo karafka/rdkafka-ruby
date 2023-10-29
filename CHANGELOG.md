@@ -1,5 +1,7 @@
 # 0.14.0 (Unreleased)
-* [Change] Remove support for Ruby 2.6 due to it being EOL and WeakMap incompatibilities.
+* [Enhancement] Introduce producer partitions count metadata cache (mensfeld)
+* [Enhancement] Increase metadata timeout request from `250 ms` to `2000 ms` default to allow for remote cluster operations via `rdkafka-ruby` (mensfeld)
+* [Change] Remove support for Ruby 2.6 due to it being EOL and WeakMap incompatibilities (mensfeld)
 
 # 0.13.0
 * Support cooperative sticky partition assignment in the rebalance callback (methodmissing)

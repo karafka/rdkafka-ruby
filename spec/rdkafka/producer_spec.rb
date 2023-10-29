@@ -559,6 +559,7 @@ describe Rdkafka::Producer do
     end
   end
 
+<<<<<<< HEAD
   context "when not being able to deliver the message" do
     let(:producer) do
       rdkafka_producer_config(
@@ -581,11 +582,23 @@ describe Rdkafka::Producer do
     context 'when the partition count value is already cached' do
       before do
         producer.partition_count('example_topic')
+=======
+  describe '#partition_count' do
+    it { expect(producer.partition_count('consume_test_topic')).to eq(3) }
+
+    context 'when the partition count value is already cached' do
+      before do
+        producer.partition_count('consume_test_topic')
+>>>>>>> e2b92c698e500b0ae49066487fa7bb7df120e299
         allow(::Rdkafka::Metadata).to receive(:new).and_call_original
       end
 
       it 'expect not to query it again' do
+<<<<<<< HEAD
         producer.partition_count('example_topic')
+=======
+        producer.partition_count('consume_test_topic')
+>>>>>>> e2b92c698e500b0ae49066487fa7bb7df120e299
         expect(::Rdkafka::Metadata).not_to have_received(:new)
       end
     end
@@ -593,12 +606,20 @@ describe Rdkafka::Producer do
     context 'when the partition count value was cached but time expired' do
       before do
         allow(::Process).to receive(:clock_gettime).and_return(0, 30.02)
+<<<<<<< HEAD
         producer.partition_count('example_topic')
+=======
+        producer.partition_count('consume_test_topic')
+>>>>>>> e2b92c698e500b0ae49066487fa7bb7df120e299
         allow(::Rdkafka::Metadata).to receive(:new).and_call_original
       end
 
       it 'expect not to query it again' do
+<<<<<<< HEAD
         producer.partition_count('example_topic')
+=======
+        producer.partition_count('consume_test_topic')
+>>>>>>> e2b92c698e500b0ae49066487fa7bb7df120e299
         expect(::Rdkafka::Metadata).to have_received(:new)
       end
     end
@@ -606,16 +627,25 @@ describe Rdkafka::Producer do
     context 'when the partition count value was cached and time did not expire' do
       before do
         allow(::Process).to receive(:clock_gettime).and_return(0, 29.001)
+<<<<<<< HEAD
         producer.partition_count('example_topic')
+=======
+        producer.partition_count('consume_test_topic')
+>>>>>>> e2b92c698e500b0ae49066487fa7bb7df120e299
         allow(::Rdkafka::Metadata).to receive(:new).and_call_original
       end
 
       it 'expect not to query it again' do
+<<<<<<< HEAD
         producer.partition_count('example_topic')
+=======
+        producer.partition_count('consume_test_topic')
+>>>>>>> e2b92c698e500b0ae49066487fa7bb7df120e299
         expect(::Rdkafka::Metadata).not_to have_received(:new)
       end
     end
   end
+<<<<<<< HEAD
 
   describe 'metadata fetch request recovery' do
     subject(:partition_count) { producer.partition_count('example_topic') }

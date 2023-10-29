@@ -4,7 +4,7 @@ require File.expand_path('lib/rdkafka/version', __dir__)
 
 Gem::Specification.new do |gem|
   gem.authors = ['Thijs Cadier']
-  gem.email = ["thijs@appsignal.com"]
+  gem.email = ["contact@karafka.io"]
   gem.description = "Modern Kafka client library for Ruby based on librdkafka"
   gem.summary = "The rdkafka gem is a modern Kafka client library for Ruby based on librdkafka. It wraps the production-ready C client using the ffi gem and targets Kafka 1.0+ and Ruby 2.4+."
   gem.license = 'MIT'
@@ -15,7 +15,7 @@ Gem::Specification.new do |gem|
   gem.name = 'karafka-rdkafka'
   gem.require_paths = ['lib']
   gem.version = Rdkafka::VERSION
-  gem.required_ruby_version = '>= 2.6'
+  gem.required_ruby_version = '>= 2.7'
   gem.extensions = %w(ext/Rakefile)
   gem.cert_chain = %w[certs/cert_chain.pem]
 

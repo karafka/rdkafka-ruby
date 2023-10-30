@@ -55,7 +55,7 @@ describe Rdkafka::Consumer do
 
   describe "#pause and #resume" do
     context "subscription" do
-      let(:timeout) { 1000 }
+      let(:timeout) { 2000 }
 
       before { consumer.subscribe("consume_test_topic") }
       after { consumer.unsubscribe }
@@ -285,6 +285,29 @@ describe Rdkafka::Consumer do
       expect {
         consumer.poll(100)
       }.to raise_error(Rdkafka::ClosedConsumerError, /poll/)
+    end
+
+    context 'when there are outgoing operations in other threads' do
+      it 'should wait and not crash' do
+        times = []
+
+        # Run a long running poll
+        thread = Thread.new do
+          times << Time.now
+          consumer.subscribe("empty_test_topic")
+          times << Time.now
+          consumer.poll(1_000)
+          times << Time.now
+        end
+
+        # Make sure it starts before we close
+        sleep(0.1)
+        consumer.close
+        close_time = Time.now
+        thread.join
+
+        times.each { |op_time| expect(op_time).to be < close_time }
+      end
     end
   end
 
@@ -738,7 +761,8 @@ describe Rdkafka::Consumer do
       #
       # This is, in effect, an integration test and the subsequent specs are
       # unit tests.
-      create_topic_handle = rdkafka_config.admin.create_topic(topic_name, 1, 1)
+      admin = rdkafka_config.admin
+      create_topic_handle = admin.create_topic(topic_name, 1, 1)
       create_topic_handle.wait(max_wait_timeout: 15.0)
       consumer.subscribe(topic_name)
       produce_n 42
@@ -751,6 +775,7 @@ describe Rdkafka::Consumer do
       expect(all_yields.flatten.size).to eq 42
       expect(all_yields.size).to be > 4
       expect(all_yields.flatten.map(&:key)).to eq (0..41).map { |x| x.to_s }
+      admin.close
     end
 
     it "should batch poll results and yield arrays of messages" do
@@ -793,13 +818,15 @@ describe Rdkafka::Consumer do
     end
 
     it "should yield [] if nothing is received before the timeout" do
-      create_topic_handle = rdkafka_config.admin.create_topic(topic_name, 1, 1)
+      admin = rdkafka_config.admin
+      create_topic_handle = admin.create_topic(topic_name, 1, 1)
       create_topic_handle.wait(max_wait_timeout: 15.0)
       consumer.subscribe(topic_name)
       consumer.each_batch do |batch|
         expect(batch).to eq([])
         break
       end
+      admin.close
     end
 
     it "should yield batchs of max_items in size if messages are already fetched" do
@@ -876,6 +903,7 @@ describe Rdkafka::Consumer do
         expect(batches_yielded.first.size).to eq 2
         expect(exceptions_yielded.flatten.size).to eq 1
         expect(exceptions_yielded.flatten.first).to be_instance_of(Rdkafka::RdkafkaError)
+        consumer.close
       end
     end
 
@@ -917,6 +945,7 @@ describe Rdkafka::Consumer do
         expect(each_batch_iterations).to eq 0
         expect(batches_yielded.size).to eq 0
         expect(exceptions_yielded.size).to eq 0
+        consumer.close
       end
     end
   end
@@ -931,11 +960,11 @@ describe Rdkafka::Consumer do
     context "with a working listener" do
       let(:listener) do
         Struct.new(:queue) do
-          def on_partitions_assigned(consumer, list)
+          def on_partitions_assigned(list)
             collect(:assign, list)
           end
 
-          def on_partitions_revoked(consumer, list)
+          def on_partitions_revoked(list)
             collect(:revoke, list)
           end
 
@@ -959,12 +988,12 @@ describe Rdkafka::Consumer do
     context "with a broken listener" do
       let(:listener) do
         Struct.new(:queue) do
-          def on_partitions_assigned(consumer, list)
+          def on_partitions_assigned(list)
             queue << :assigned
             raise 'boom'
           end
 
-          def on_partitions_revoked(consumer, list)
+          def on_partitions_revoked(list)
             queue << :revoked
             raise 'boom'
           end
@@ -1031,11 +1060,11 @@ describe Rdkafka::Consumer do
 
     let(:listener) do
       Struct.new(:queue) do
-        def on_partitions_assigned(consumer, list)
+        def on_partitions_assigned(list)
           collect(:assign, list)
         end
 
-        def on_partitions_revoked(consumer, list)
+        def on_partitions_revoked(list)
           collect(:revoke, list)
         end
 

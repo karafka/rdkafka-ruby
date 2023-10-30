@@ -1,3 +1,9 @@
+# 0.14.0 (Unreleased)
+* [Enhancement] Introduce producer partitions count metadata cache (mensfeld)
+* [Enhancement] Increase metadata timeout request from `250 ms` to `2000 ms` default to allow for remote cluster operations via `rdkafka-ruby` (mensfeld)
+* [Fix] `#flush` does not handle the timeouts errors by making it return `true` if all flushed or `false` if failed. We do **not** raise an exception here to keep it backwards compatible.
+* [Change] Remove support for Ruby 2.6 due to it being EOL and WeakMap incompatibilities (mensfeld)
+
 # 0.13.0
 * Support cooperative sticky partition assignment in the rebalance callback (methodmissing)
 * Support both string and symbol header keys (ColinDKelley)
@@ -5,9 +11,14 @@
 * Add topic name to delivery report (maeve)
 * Allow string partitioner config (mollyegibson)
 * Fix documented type for DeliveryReport#error (jimmydo)
-* Bump librdkafka to 1.9.2 (thijsc)
+* Bump librdkafka to 2.0.2 (lmaia)
 * Use finalizers to cleanly exit producer and admin (thijsc)
 * Lock access to the native kafka client (thijsc)
+* Fix potential race condition in multi-threaded producer (mensfeld)
+* Fix leaking FFI resources in specs (mensfeld)
+* Improve specs stability (mensfeld)
+* Make metadata request timeout configurable (mensfeld)
+* call_on_partitions_assigned and call_on_partitions_revoked only get a tpl passed in (thijsc)
 
 # 0.12.0
 * Bumps librdkafka to 1.9.0

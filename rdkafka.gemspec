@@ -4,7 +4,7 @@ require File.expand_path('lib/rdkafka/version', __dir__)
 
 Gem::Specification.new do |gem|
   gem.authors = ['Thijs Cadier']
-  gem.email = ["thijs@appsignal.com"]
+  gem.email = ["contact@karafka.io"]
   gem.description = "Modern Kafka client library for Ruby based on librdkafka"
   gem.summary = "The rdkafka gem is a modern Kafka client library for Ruby based on librdkafka. It wraps the production-ready C client using the ffi gem and targets Kafka 1.0+ and Ruby 2.4+."
   gem.license = 'MIT'
@@ -16,7 +16,7 @@ Gem::Specification.new do |gem|
   gem.name = 'rdkafka'
   gem.require_paths = ['lib']
   gem.version = Rdkafka::VERSION
-  gem.required_ruby_version = '>= 2.6'
+  gem.required_ruby_version = '>= 2.7'
   gem.extensions = %w(ext/Rakefile)
 
   gem.add_dependency 'ffi', '~> 1.15'
@@ -29,4 +29,14 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency 'simplecov'
   gem.add_development_dependency 'guard'
   gem.add_development_dependency 'guard-rspec'
+
+  gem.metadata = {
+    'funding_uri' => 'https://karafka.io/#become-pro',
+    'homepage_uri' => 'https://karafka.io',
+    'changelog_uri' => 'https://github.com/karafka/rdkafka-ruby/blob/main/CHANGELOG.md',
+    'bug_tracker_uri' => 'https://github.com/karafka/rdkafka-ruby/issues',
+    'source_code_uri' => 'https://github.com/karafka/rdkafka-ruby',
+    'documentation_uri' => 'https://github.com/karafka/rdkafka-ruby/blob/main/README.md',
+    'rubygems_mfa_required' => 'true'
+  }
 end

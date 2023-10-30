@@ -4,7 +4,18 @@ module Rdkafka
   class Metadata
     attr_reader :brokers, :topics
 
-    def initialize(native_client, topic_name = nil)
+    # Errors upon which we retry the metadata fetch
+    RETRIED_ERRORS = %i[
+      timed_out
+      leader_not_available
+    ].freeze
+
+    private_constant :RETRIED_ERRORS
+
+    def initialize(native_client, topic_name = nil, timeout_ms = 2_000)
+      attempt ||= 0
+      attempt += 1
+
       native_topic = if topic_name
         Rdkafka::Bindings.rd_kafka_topic_new(native_client, topic_name, nil)
       end
@@ -16,12 +27,22 @@ module Rdkafka
       topic_flag = topic_name.nil? ? 1 : 0
 
       # Retrieve the Metadata
-      result = Rdkafka::Bindings.rd_kafka_metadata(native_client, topic_flag, native_topic, ptr, 250)
+      result = Rdkafka::Bindings.rd_kafka_metadata(native_client, topic_flag, native_topic, ptr, timeout_ms)
 
       # Error Handling
       raise Rdkafka::RdkafkaError.new(result) unless result.zero?
 
       metadata_from_native(ptr.read_pointer)
+    rescue ::Rdkafka::RdkafkaError => e
+      raise unless RETRIED_ERRORS.include?(e.code)
+      raise if attempt > 10
+
+      backoff_factor = 2**attempt
+      timeout = backoff_factor * 0.1
+
+      sleep(timeout)
+
+      retry
     ensure
       Rdkafka::Bindings.rd_kafka_topic_destroy(native_topic) if topic_name
       Rdkafka::Bindings.rd_kafka_metadata_destroy(ptr.read_pointer)

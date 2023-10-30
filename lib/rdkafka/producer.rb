@@ -5,6 +5,11 @@ require "objspace"
 module Rdkafka
   # A producer for Kafka messages. To create a producer set up a {Config} and call {Config#producer producer} on that.
   class Producer
+    # Cache partitions count for 30 seconds
+    PARTITIONS_COUNT_TTL = 30
+
+    private_constant :PARTITIONS_COUNT_TTL
+
     # @private
     # Returns the current delivery callback, by default this is nil.
     #
@@ -24,6 +29,19 @@ module Rdkafka
 
       # Makes sure, that native kafka gets closed before it gets GCed by Ruby
       ObjectSpace.define_finalizer(self, native_kafka.finalizer)
+
+      @_partitions_count_cache = Hash.new do |cache, topic|
+        topic_metadata = nil
+
+        @native_kafka.with_inner do |inner|
+          topic_metadata = ::Rdkafka::Metadata.new(inner, topic).topics&.first
+        end
+
+        cache[topic] = [
+          monotonic_now,
+          topic_metadata ? topic_metadata[:partition_count] : nil
+        ]
+      end
     end
 
     # Set a callback that will be called every time a message is successfully produced.
@@ -52,9 +70,32 @@ module Rdkafka
 
     # Wait until all outstanding producer requests are completed, with the given timeout
     # in seconds. Call this before closing a producer to ensure delivery of all messages.
+    #
+    # @param timeout_ms [Integer] how long should we wait for flush of all messages
+    # @return [Boolean] true if no more data and all was flushed, false in case there are still
+    #   outgoing messages after the timeout
+    #
+    # @note We raise an exception for other errors because based on the librdkafka docs, there
+    #   should be no other errors.
+    #
+    # @note For `timed_out` we do not raise an error to keep it backwards compatible
     def flush(timeout_ms=5_000)
       closed_producer_check(__method__)
-      Rdkafka::Bindings.rd_kafka_flush(@native_kafka.inner, timeout_ms)
+
+      code = nil
+
+      @native_kafka.with_inner do |inner|
+        code = Rdkafka::Bindings.rd_kafka_flush(inner, timeout_ms)
+      end
+
+      # Early skip not to build the error message
+      return true if code.zero?
+
+      error = Rdkafka::RdkafkaError.new(code)
+
+      return false if error.code == :timed_out
+
+      raise(error)
     end
 
     # Partition count for a given topic.
@@ -63,9 +104,21 @@ module Rdkafka
     # @param topic [String] The topic name.
     #
     # @return partition count [Integer,nil]
+    #
+    # We cache the partition count for a given topic for given time
+    # This prevents us in case someone uses `partition_key` from querying for the count with
+    # each message. Instead we query once every 30 seconds at most
+    #
+    # @param topic [String] topic name
+    # @return [Integer] partition count for a given topic
     def partition_count(topic)
       closed_producer_check(__method__)
-      Rdkafka::Metadata.new(@native_kafka.inner, topic).topics&.first[:partition_count]
+
+      @_partitions_count_cache.delete_if do |_, cached|
+        monotonic_now - cached.first > PARTITIONS_COUNT_TTL
+      end
+
+      @_partitions_count_cache[topic].last
     end
 
     # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.
@@ -156,10 +209,12 @@ module Rdkafka
       args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_END
 
       # Produce the message
-      response = Rdkafka::Bindings.rd_kafka_producev(
-        @native_kafka.inner,
-        *args
-      )
+      response = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_producev(
+          inner,
+          *args
+        )
+      end
 
       # Raise error if the produce call was not successful
       if response != 0
@@ -184,6 +239,12 @@ module Rdkafka
     end
 
     private
+
+    def monotonic_now
+      # needed because Time.now can go backwards
+      Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    end
+
     def closed_producer_check(method)
       raise Rdkafka::ClosedProducerError.new(method) if closed?
     end

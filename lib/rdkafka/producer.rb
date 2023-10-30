@@ -72,12 +72,30 @@ module Rdkafka
     # in seconds. Call this before closing a producer to ensure delivery of all messages.
     #
     # @param timeout_ms [Integer] how long should we wait for flush of all messages
+    # @return [Boolean] true if no more data and all was flushed, false in case there are still
+    #   outgoing messages after the timeout
+    #
+    # @note We raise an exception for other errors because based on the librdkafka docs, there
+    #   should be no other errors.
+    #
+    # @note For `timed_out` we do not raise an error to keep it backwards compatible
     def flush(timeout_ms=5_000)
       closed_producer_check(__method__)
 
+      code = nil
+
       @native_kafka.with_inner do |inner|
-        Rdkafka::Bindings.rd_kafka_flush(inner, timeout_ms)
+        code = Rdkafka::Bindings.rd_kafka_flush(inner, timeout_ms)
       end
+
+      # Early skip not to build the error message
+      return true if code.zero?
+
+      error = Rdkafka::RdkafkaError.new(code)
+
+      return false if error.code == :timed_out
+
+      raise(error)
     end
 
     # Partition count for a given topic.

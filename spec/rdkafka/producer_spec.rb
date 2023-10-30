@@ -596,4 +596,50 @@ describe Rdkafka::Producer do
       end
     end
   end
+
+  describe '#flush' do
+    it "should return flush when it can flush all outstanding messages or when no messages" do
+      producer.produce(
+        topic:     "produce_test_topic",
+        payload:   "payload headers",
+        key:       "key headers",
+        headers:   {}
+      )
+
+      expect(producer.flush(5_000)).to eq(true)
+    end
+
+    context 'when it cannot flush due to a timeout' do
+      let(:producer) do
+        rdkafka_producer_config(
+          "bootstrap.servers": "localhost:9093",
+          "message.timeout.ms": 2_000
+        ).producer
+      end
+
+      after do
+        # Allow rdkafka to evict message preventing memory-leak
+        sleep(2)
+      end
+
+      it "should return false on flush when cannot deliver and beyond timeout" do
+        producer.produce(
+          topic:     "produce_test_topic",
+          payload:   "payload headers",
+          key:       "key headers",
+          headers:   {}
+        )
+
+        expect(producer.flush(1_000)).to eq(false)
+      end
+    end
+
+    context 'when there is a different error' do
+      before { allow(Rdkafka::Bindings).to receive(:rd_kafka_flush).and_return(-199) }
+
+      it 'should raise it' do
+        expect { producer.flush }.to raise_error(Rdkafka::RdkafkaError)
+      end
+    end
+  end
 end

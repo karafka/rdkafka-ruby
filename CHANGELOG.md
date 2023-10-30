@@ -1,6 +1,7 @@
 # 0.14.0 (Unreleased)
 * [Enhancement] Introduce producer partitions count metadata cache (mensfeld)
 * [Enhancement] Increase metadata timeout request from `250 ms` to `2000 ms` default to allow for remote cluster operations via `rdkafka-ruby` (mensfeld)
+* [Fix] `#flush` does not handle the timeouts errors by making it return `true` if all flushed or `false` if failed. We do **not** raise an exception here to keep it backwards compatible.
 * [Change] Remove support for Ruby 2.6 due to it being EOL and WeakMap incompatibilities (mensfeld)
 
 # 0.13.0

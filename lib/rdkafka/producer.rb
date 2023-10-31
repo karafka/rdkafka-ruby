@@ -44,6 +44,13 @@ module Rdkafka
       end
     end
 
+    # @return [String] producer name
+    def name
+      @name ||= @native_kafka.with_inner do |inner|
+        ::Rdkafka::Bindings.rd_kafka_name(inner)
+      end
+    end
+
     # Set a callback that will be called every time a message is successfully produced.
     # The callback is called with a {DeliveryReport} and {DeliveryHandle}
     #

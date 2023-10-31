@@ -11,6 +11,10 @@ describe Rdkafka::Consumer do
   after { consumer.close }
   after { producer.close }
 
+  describe '#name' do
+    it { expect(consumer.name).to include('rdkafka#consumer-') }
+  end
+
   describe "#subscribe, #unsubscribe and #subscription" do
     it "should subscribe, unsubscribe and return the subscription" do
       expect(consumer.subscription).to be_empty

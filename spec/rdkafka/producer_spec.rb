@@ -15,6 +15,10 @@ describe Rdkafka::Producer do
     consumer.close
   end
 
+  describe '#name' do
+    it { expect(producer.name).to include('rdkafka#producer-') }
+  end
+
   context "delivery callback" do
     context "with a proc/lambda" do
       it "should set the callback" do

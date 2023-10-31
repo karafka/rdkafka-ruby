@@ -41,6 +41,7 @@ module Rdkafka
 
     # Metadata
 
+    attach_function :rd_kafka_name, [:pointer], :string, blocking: true
     attach_function :rd_kafka_memberid, [:pointer], :string, blocking: true
     attach_function :rd_kafka_clusterid, [:pointer], :string, blocking: true
     attach_function :rd_kafka_metadata, [:pointer, :int, :pointer, :pointer, :int], :int, blocking: true

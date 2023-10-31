@@ -1,4 +1,4 @@
-# 0.14.0 (Unreleased)
+# 0.13.7 (Unreleased)
 - [Change] Drop support for Ruby 2.6 due to incompatibilities in usage of `ObjectSpace::WeakMap`
 - [Fix] Fix dangling Opaque references.
 

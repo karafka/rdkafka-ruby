@@ -36,7 +36,7 @@ def rdkafka_consumer_config(config_overrides={})
   # Add consumer specific fields to it
   config[:"auto.offset.reset"] = "earliest"
   config[:"enable.partition.eof"] = false
-  config[:"group.id"] = "ruby-test-#{Random.new.rand(0..1_000_000)}"
+  config[:"group.id"] = "ruby-test-#{SecureRandom.uuid}"
   # Enable debug mode if required
   if ENV["DEBUG_CONSUMER"]
     config[:debug] = "cgrp,topic,fetch"

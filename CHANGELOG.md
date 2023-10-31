@@ -1,4 +1,4 @@
-# 0.13.8 (Unreleased)
+# 0.13.8 (2023-10-31)
 - [Enhancement] Get consumer position (thijsc & mensfeld)
 
 # 0.13.7 (2023-10-31)

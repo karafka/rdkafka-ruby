@@ -8,7 +8,6 @@ Gem::Specification.new do |gem|
   gem.description = "Modern Kafka client library for Ruby based on librdkafka"
   gem.summary = "The rdkafka gem is a modern Kafka client library for Ruby based on librdkafka. It wraps the production-ready C client using the ffi gem and targets Kafka 1.0+ and Ruby 2.4+."
   gem.license = 'MIT'
-  gem.homepage = 'https://github.com/thijsc/rdkafka-ruby'
 
   gem.files = `git ls-files`.split($\)
   gem.executables = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
@@ -18,6 +17,11 @@ Gem::Specification.new do |gem|
   gem.version = Rdkafka::VERSION
   gem.required_ruby_version = '>= 2.7'
   gem.extensions = %w(ext/Rakefile)
+  gem.cert_chain = %w[certs/cert_chain.pem]
+
+  if $PROGRAM_NAME.end_with?('gem')
+    gem.signing_key = File.expand_path('~/.ssh/gem-private_key.pem')
+  end
 
   gem.add_dependency 'ffi', '~> 1.15'
   gem.add_dependency 'mini_portile2', '~> 2.6'

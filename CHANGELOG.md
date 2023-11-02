@@ -5,6 +5,7 @@
 * [Enhancement] Introduce producer partitions count metadata cache (mensfeld)
 * [Enhancement] Increase metadata timeout request from `250 ms` to `2000 ms` default to allow for remote cluster operations via `rdkafka-ruby` (mensfeld)
 * [Enhancement] Introduce `#name` for producers and consumers (mensfeld)
+* [Enhancement] Include backtrace in non-raised binded errors (mensfeld)
 * [Fix] `#flush` does not handle the timeouts errors by making it return `true` if all flushed or `false` if failed. We do **not** raise an exception here to keep it backwards compatible (mensfeld)
 * [Change] Remove support for Ruby 2.6 due to it being EOL and WeakMap incompatibilities (mensfeld)
 * [Change] Update Kafka Docker with Confluent KRaft (mensfeld)

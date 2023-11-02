@@ -158,6 +158,7 @@ module Rdkafka
     ) do |_client_prr, err_code, reason, _opaque|
       if Rdkafka::Config.error_callback
         error = Rdkafka::RdkafkaError.new(err_code, broker_message: reason)
+        error.set_backtrace(caller)
         Rdkafka::Config.error_callback.call(error)
       end
     end

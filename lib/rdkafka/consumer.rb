@@ -12,6 +12,7 @@ module Rdkafka
   # `each_slice` to consume batches of messages.
   class Consumer
     include Enumerable
+    include Helpers::Time
 
     # @private
     def initialize(native_kafka)
@@ -602,10 +603,6 @@ module Rdkafka
     end
 
     private
-    def monotonic_now
-      # needed because Time.now can go backwards
-      Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    end
 
     def closed_consumer_check(method)
       raise Rdkafka::ClosedConsumerError.new(method) if closed?

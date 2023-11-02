@@ -5,6 +5,8 @@ require "objspace"
 module Rdkafka
   # A producer for Kafka messages. To create a producer set up a {Config} and call {Config#producer producer} on that.
   class Producer
+    include Helpers::Time
+
     # Cache partitions count for 30 seconds
     PARTITIONS_COUNT_TTL = 30
 
@@ -116,7 +118,7 @@ module Rdkafka
     # This prevents us in case someone uses `partition_key` from querying for the count with
     # each message. Instead we query once every 30 seconds at most
     #
-    # @param topic [String] topic name
+    # @param [String] topic name
     # @return [Integer] partition count for a given topic
     def partition_count(topic)
       closed_producer_check(__method__)
@@ -246,11 +248,6 @@ module Rdkafka
     end
 
     private
-
-    def monotonic_now
-      # needed because Time.now can go backwards
-      Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    end
 
     def closed_producer_check(method)
       raise Rdkafka::ClosedProducerError.new(method) if closed?

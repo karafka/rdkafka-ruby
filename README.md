@@ -12,14 +12,14 @@
 The `rdkafka` gem is a modern Kafka client library for Ruby based on
 [librdkafka](https://github.com/edenhill/librdkafka/).
 It wraps the production-ready C client using the [ffi](https://github.com/ffi/ffi)
-gem and targets Kafka 1.0+ and Ruby versions that are under security or
-active maintenance. We remove Ruby version from our CI builds if they 
+gem and targets Kafka 1.0+ and Ruby versions under security or
+active maintenance. We remove a Ruby version from our CI builds when they 
 become EOL.
 
 `rdkafka` was written because of the need for a reliable Ruby client for Kafka that supports modern Kafka at [AppSignal](https://appsignal.com). AppSignal runs it in production on very high-traffic systems.
 
 The most important pieces of a Kafka client are implemented. We're
-working towards feature completeness, you can track that here:
+working towards feature completeness. You can track that here:
 https://github.com/appsignal/rdkafka-ruby/milestone/1
 
 ## Table of content
@@ -38,7 +38,7 @@ https://github.com/appsignal/rdkafka-ruby/milestone/1
 ## Installation
 
 This gem downloads and compiles librdkafka when it is installed. If you
-have any problems installing the gem please open an issue.
+If you have any problems installing the gem, please open an issue.
 
 ## Usage
 
@@ -64,9 +64,9 @@ end
 
 ### Producing messages
 
-Produce a number of messages, put the delivery handles in an array and
+Produce a number of messages, put the delivery handles in an array, and
 wait for them before exiting. This way the messages will be batched and
-sent to Kafka in an efficient way.
+efficiently sent to Kafka.
 
 ```ruby
 config = {:"bootstrap.servers" => "localhost:9092"}
@@ -91,7 +91,7 @@ released until it `#close` is explicitly called, so be sure to call
 
 ## Higher level libraries
 
-Currently, there are two actively developed frameworks based on rdkafka-ruby, that provide higher level API that can be used to work with Kafka messages and one library for publishing messages.
+Currently, there are two actively developed frameworks based on rdkafka-ruby, that provide higher-level API that can be used to work with Kafka messages and one library for publishing messages.
 
 ### Message processing frameworks
 
@@ -104,7 +104,7 @@ Currently, there are two actively developed frameworks based on rdkafka-ruby, th
 
 ## Development
 
-A Docker Compose file is included to run Kafka and Zookeeper. To run
+A Docker Compose file is included to run Kafka. To run
 that:
 
 ```
@@ -122,7 +122,7 @@ DEBUG_PRODUCER=true bundle exec rspec
 DEBUG_CONSUMER=true bundle exec rspec
 ```
 
-After running the tests you can bring the cluster down to start with a
+After running the tests, you can bring the cluster down to start with a
 clean slate:
 
 ```
@@ -131,7 +131,7 @@ docker-compose down
 
 ## Example
 
-To see everything working run these in separate tabs:
+To see everything working, run these in separate tabs:
 
 ```
 bundle exec rake consume_messages

@@ -17,8 +17,6 @@ module Rdkafka
     # Registry for registering all the handles.
     REGISTRY = {}
 
-    private_constant :REGISTRY
-
     class << self
       # Adds handle to the register
       #

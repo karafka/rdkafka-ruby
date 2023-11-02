@@ -53,7 +53,7 @@ module Rdkafka
 
     # Set a callback that will be called every time the underlying client emits statistics.
     # You can configure if and how often this happens using `statistics.interval.ms`.
-    # The callback is called with a hash that's documented here: https://github.com/confluentinc//librdkafka/blob/master/STATISTICS.md
+    # The callback is called with a hash that's documented here: https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
     #
     # @param callback [Proc, #call] The callback
     #

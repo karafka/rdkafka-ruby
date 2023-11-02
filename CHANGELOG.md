@@ -9,6 +9,7 @@
 * [Fix] `#flush` does not handle the timeouts errors by making it return `true` if all flushed or `false` if failed. We do **not** raise an exception here to keep it backwards compatible (mensfeld)
 * [Change] Remove support for Ruby 2.6 due to it being EOL and WeakMap incompatibilities (mensfeld)
 * [Change] Update Kafka Docker with Confluent KRaft (mensfeld)
+* [Change] Update librdkafka repo reference from edenhill to confluentinc (mensfeld)
 
 ## 0.13.0 (2023-07-24)
 * Support cooperative sticky partition assignment in the rebalance callback (methodmissing)

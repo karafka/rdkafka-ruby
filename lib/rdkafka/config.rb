@@ -5,7 +5,7 @@ require "logger"
 module Rdkafka
   # Configuration for a Kafka consumer or producer. You can create an instance and use
   # the consumer and producer methods to create a client. Documentation of the available
-  # configuration options is available on https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md.
+  # configuration options is available on https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md.
   class Config
     # @private
     @@logger = Logger.new(STDOUT)
@@ -53,7 +53,7 @@ module Rdkafka
 
     # Set a callback that will be called every time the underlying client emits statistics.
     # You can configure if and how often this happens using `statistics.interval.ms`.
-    # The callback is called with a hash that's documented here: https://github.com/edenhill/librdkafka/blob/master/STATISTICS.md
+    # The callback is called with a hash that's documented here: https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
     #
     # @param callback [Proc, #call] The callback
     #

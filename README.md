@@ -10,7 +10,7 @@
 ---
 
 The `rdkafka` gem is a modern Kafka client library for Ruby based on
-[librdkafka](https://github.com/edenhill/librdkafka/).
+[librdkafka](https://github.com/confluentinc/librdkafka/).
 It wraps the production-ready C client using the [ffi](https://github.com/ffi/ffi)
 gem and targets Kafka 1.0+ and Ruby versions under security or
 active maintenance. We remove a Ruby version from our CI builds when they 

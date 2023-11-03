@@ -1,3 +1,6 @@
+# Ignore bundler config.
+/.bundle
+
 Gemfile.lock
 ext/ports
 ext/tmp
@@ -6,3 +9,4 @@ ext/librdkafka.*
 .yardoc
 doc
 coverage
+vendor

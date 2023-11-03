@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
 require "securerandom"
 
 describe Rdkafka::Metadata do

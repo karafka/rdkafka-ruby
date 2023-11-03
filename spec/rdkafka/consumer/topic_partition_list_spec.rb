@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Rdkafka::Consumer::TopicPartitionList do
   it "should create a new list and add unassigned topics" do
     list = Rdkafka::Consumer::TopicPartitionList.new

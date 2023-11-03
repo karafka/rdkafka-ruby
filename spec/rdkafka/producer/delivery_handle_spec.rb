@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Rdkafka::Producer::DeliveryHandle do
   let(:response) { 0 }
 

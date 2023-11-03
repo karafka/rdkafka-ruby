@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Rdkafka::Consumer::Headers do
   let(:headers) do
     { # Note String keys!

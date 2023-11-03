@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Rdkafka::Consumer::Partition do
   let(:offset) { 100 }
   let(:err) { 0 }

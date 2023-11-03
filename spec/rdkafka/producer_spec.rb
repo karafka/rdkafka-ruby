@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "zlib"
+require 'zlib'
 
 describe Rdkafka::Producer do
   let(:producer) { rdkafka_producer_config.producer }
@@ -18,9 +18,9 @@ describe Rdkafka::Producer do
     it { expect(producer.name).to include('rdkafka#producer-') }
   end
 
-  context "delivery callback" do
-    context "with a proc/lambda" do
-      it "should set the callback" do
+  context 'delivery callback' do
+    context 'with a proc/lambda' do
+      it 'should set the callback' do
         expect {
           producer.delivery_callback = lambda do |delivery_handle|
             puts delivery_handle
@@ -29,22 +29,22 @@ describe Rdkafka::Producer do
         expect(producer.delivery_callback).to respond_to :call
       end
 
-      it "should call the callback when a message is delivered" do
+      it 'should call the callback when a message is delivered' do
         @callback_called = false
 
         producer.delivery_callback = lambda do |report|
           expect(report).not_to be_nil
           expect(report.partition).to eq 1
           expect(report.offset).to be >= 0
-          expect(report.topic_name).to eq "produce_test_topic"
+          expect(report.topic_name).to eq 'produce_test_topic'
           @callback_called = true
         end
 
         # Produce a message
         handle = producer.produce(
-          topic:   "produce_test_topic",
-          payload: "payload",
-          key:     "key"
+          topic:   'produce_test_topic',
+          payload: 'payload',
+          key:     'key'
         )
 
         # Wait for it to be delivered
@@ -57,16 +57,16 @@ describe Rdkafka::Producer do
         expect(@callback_called).to be true
       end
 
-      it "should provide handle" do
+      it 'should provide handle' do
         @callback_handle = nil
 
         producer.delivery_callback = lambda { |_, handle| @callback_handle = handle }
 
         # Produce a message
         handle = producer.produce(
-          topic:   "produce_test_topic",
-          payload: "payload",
-          key:     "key"
+          topic:   'produce_test_topic',
+          payload: 'payload',
+          key:     'key'
         )
 
         # Wait for it to be delivered
@@ -79,8 +79,8 @@ describe Rdkafka::Producer do
       end
     end
 
-    context "with a callable object" do
-      it "should set the callback" do
+    context 'with a callable object' do
+      it 'should set the callback' do
         callback = Class.new do
           def call(stats); end
         end
@@ -90,7 +90,7 @@ describe Rdkafka::Producer do
         expect(producer.delivery_callback).to respond_to :call
       end
 
-      it "should call the callback when a message is delivered" do
+      it 'should call the callback when a message is delivered' do
         called_report = []
         callback = Class.new do
           def initialize(called_report)
@@ -105,9 +105,9 @@ describe Rdkafka::Producer do
 
         # Produce a message
         handle = producer.produce(
-          topic:   "produce_test_topic",
-          payload: "payload",
-          key:     "key"
+          topic:   'produce_test_topic',
+          payload: 'payload',
+          key:     'key'
         )
 
         # Wait for it to be delivered
@@ -120,10 +120,10 @@ describe Rdkafka::Producer do
         expect(called_report.first).not_to be_nil
         expect(called_report.first.partition).to eq 1
         expect(called_report.first.offset).to be >= 0
-        expect(called_report.first.topic_name).to eq "produce_test_topic"
+        expect(called_report.first.topic_name).to eq 'produce_test_topic'
       end
 
-      it "should provide handle" do
+      it 'should provide handle' do
         callback_handles = []
         callback = Class.new do
           def initialize(callback_handles)
@@ -138,9 +138,9 @@ describe Rdkafka::Producer do
 
         # Produce a message
         handle = producer.produce(
-          topic:   "produce_test_topic",
-          payload: "payload",
-          key:     "key"
+          topic:   'produce_test_topic',
+          payload: 'payload',
+          key:     'key'
         )
 
         # Wait for it to be delivered
@@ -161,21 +161,21 @@ describe Rdkafka::Producer do
     end
   end
 
-  it "should require a topic" do
+  it 'should require a topic' do
     expect {
       producer.produce(
-        payload: "payload",
-        key:     "key"
+        payload: 'payload',
+        key:     'key'
      )
     }.to raise_error ArgumentError, /missing keyword: [\:]?topic/
   end
 
-  it "should produce a message" do
+  it 'should produce a message' do
     # Produce a message
     handle = producer.produce(
-      topic:   "produce_test_topic",
-      payload: "payload",
-      key:     "key"
+      topic:   'produce_test_topic',
+      payload: 'payload',
+      key:     'key'
     )
 
     # Should be pending at first
@@ -194,39 +194,39 @@ describe Rdkafka::Producer do
 
     # Consume message and verify its content
     message = wait_for_message(
-      topic: "produce_test_topic",
+      topic: 'produce_test_topic',
       delivery_report: report,
       consumer: consumer
     )
     expect(message.partition).to eq 1
-    expect(message.payload).to eq "payload"
-    expect(message.key).to eq "key"
+    expect(message.payload).to eq 'payload'
+    expect(message.key).to eq 'key'
     # Since api.version.request is on by default we will get
     # the message creation timestamp if it's not set.
     expect(message.timestamp).to be_within(10).of(Time.now)
   end
 
-  it "should produce a message with a specified partition" do
+  it 'should produce a message with a specified partition' do
     # Produce a message
     handle = producer.produce(
-      topic:     "produce_test_topic",
-      payload:   "payload partition",
-      key:       "key partition",
+      topic:     'produce_test_topic',
+      payload:   'payload partition',
+      key:       'key partition',
       partition: 1
     )
     report = handle.wait(max_wait_timeout: 5)
 
     # Consume message and verify its content
     message = wait_for_message(
-      topic: "produce_test_topic",
+      topic: 'produce_test_topic',
       delivery_report: report,
       consumer: consumer
     )
     expect(message.partition).to eq 1
-    expect(message.key).to eq "key partition"
+    expect(message.key).to eq 'key partition'
   end
 
-  it "should produce a message to the same partition with a similar partition key" do
+  it 'should produce a message to the same partition with a similar partition key' do
     # Avoid partitioner collisions.
     while true
       key = ('a'..'z').to_a.shuffle.take(10).join('')
@@ -240,15 +240,15 @@ describe Rdkafka::Producer do
 
     messages = messages.map do |m|
       handle = producer.produce(
-        topic:     "partitioner_test_topic",
-        payload:   "payload partition",
+        topic:     'partitioner_test_topic',
+        payload:   'payload partition',
         key:       m[:key],
         partition_key: m[:partition_key]
       )
       report = handle.wait(max_wait_timeout: 5)
 
       wait_for_message(
-        topic: "partitioner_test_topic",
+        topic: 'partitioner_test_topic',
         delivery_report: report,
       )
     end
@@ -260,20 +260,20 @@ describe Rdkafka::Producer do
     expect(messages[2].key).to eq key
   end
 
-  it "should produce a message with empty string without crashing" do
+  it 'should produce a message with empty string without crashing' do
     messages = [{key: 'a', partition_key: ''}]
 
     messages = messages.map do |m|
       handle = producer.produce(
-        topic:     "partitioner_test_topic",
-        payload:   "payload partition",
+        topic:     'partitioner_test_topic',
+        payload:   'payload partition',
         key:       m[:key],
         partition_key: m[:partition_key]
       )
       report = handle.wait(max_wait_timeout: 5)
 
       wait_for_message(
-        topic: "partitioner_test_topic",
+        topic: 'partitioner_test_topic',
         delivery_report: report,
       )
     end
@@ -282,158 +282,158 @@ describe Rdkafka::Producer do
     expect(messages[0].key).to eq 'a'
   end
 
-  it "should produce a message with utf-8 encoding" do
+  it 'should produce a message with utf-8 encoding' do
     handle = producer.produce(
-      topic:   "produce_test_topic",
-      payload: "Τη γλώσσα μου έδωσαν ελληνική",
-      key:     "key utf8"
+      topic:   'produce_test_topic',
+      payload: 'Τη γλώσσα μου έδωσαν ελληνική',
+      key:     'key utf8'
     )
     report = handle.wait(max_wait_timeout: 5)
 
     # Consume message and verify its content
     message = wait_for_message(
-      topic: "produce_test_topic",
+      topic: 'produce_test_topic',
       delivery_report: report,
       consumer: consumer
     )
 
     expect(message.partition).to eq 1
-    expect(message.payload.force_encoding("utf-8")).to eq "Τη γλώσσα μου έδωσαν ελληνική"
-    expect(message.key).to eq "key utf8"
+    expect(message.payload.force_encoding('utf-8')).to eq 'Τη γλώσσα μου έδωσαν ελληνική'
+    expect(message.key).to eq 'key utf8'
   end
 
-  context "timestamp" do
-    it "should raise a type error if not nil, integer or time" do
+  context 'timestamp' do
+    it 'should raise a type error if not nil, integer or time' do
       expect {
         producer.produce(
-          topic:     "produce_test_topic",
-          payload:   "payload timestamp",
-          key:       "key timestamp",
-          timestamp: "10101010"
+          topic:     'produce_test_topic',
+          payload:   'payload timestamp',
+          key:       'key timestamp',
+          timestamp: '10101010'
         )
       }.to raise_error TypeError
     end
 
-    it "should produce a message with an integer timestamp" do
+    it 'should produce a message with an integer timestamp' do
       handle = producer.produce(
-        topic:     "produce_test_topic",
-        payload:   "payload timestamp",
-        key:       "key timestamp",
+        topic:     'produce_test_topic',
+        payload:   'payload timestamp',
+        key:       'key timestamp',
         timestamp: 1505069646252
       )
       report = handle.wait(max_wait_timeout: 5)
 
       # Consume message and verify its content
       message = wait_for_message(
-        topic: "produce_test_topic",
+        topic: 'produce_test_topic',
         delivery_report: report,
         consumer: consumer
       )
 
       expect(message.partition).to eq 2
-      expect(message.key).to eq "key timestamp"
+      expect(message.key).to eq 'key timestamp'
       expect(message.timestamp).to eq Time.at(1505069646, 252_000)
     end
 
-    it "should produce a message with a time timestamp" do
+    it 'should produce a message with a time timestamp' do
       handle = producer.produce(
-        topic:     "produce_test_topic",
-        payload:   "payload timestamp",
-        key:       "key timestamp",
+        topic:     'produce_test_topic',
+        payload:   'payload timestamp',
+        key:       'key timestamp',
         timestamp: Time.at(1505069646, 353_000)
       )
       report = handle.wait(max_wait_timeout: 5)
 
       # Consume message and verify its content
       message = wait_for_message(
-        topic: "produce_test_topic",
+        topic: 'produce_test_topic',
         delivery_report: report,
         consumer: consumer
       )
 
       expect(message.partition).to eq 2
-      expect(message.key).to eq "key timestamp"
+      expect(message.key).to eq 'key timestamp'
       expect(message.timestamp).to eq Time.at(1505069646, 353_000)
     end
   end
 
-  it "should produce a message with nil key" do
+  it 'should produce a message with nil key' do
     handle = producer.produce(
-      topic:   "produce_test_topic",
-      payload: "payload no key"
+      topic:   'produce_test_topic',
+      payload: 'payload no key'
     )
     report = handle.wait(max_wait_timeout: 5)
 
     # Consume message and verify its content
     message = wait_for_message(
-      topic: "produce_test_topic",
+      topic: 'produce_test_topic',
       delivery_report: report,
       consumer: consumer
     )
 
     expect(message.key).to be_nil
-    expect(message.payload).to eq "payload no key"
+    expect(message.payload).to eq 'payload no key'
   end
 
-  it "should produce a message with nil payload" do
+  it 'should produce a message with nil payload' do
     handle = producer.produce(
-      topic: "produce_test_topic",
-      key:   "key no payload"
+      topic: 'produce_test_topic',
+      key:   'key no payload'
     )
     report = handle.wait(max_wait_timeout: 5)
 
     # Consume message and verify its content
     message = wait_for_message(
-      topic: "produce_test_topic",
+      topic: 'produce_test_topic',
       delivery_report: report,
       consumer: consumer
     )
 
-    expect(message.key).to eq "key no payload"
+    expect(message.key).to eq 'key no payload'
     expect(message.payload).to be_nil
   end
 
-  it "should produce a message with headers" do
+  it 'should produce a message with headers' do
     handle = producer.produce(
-      topic:     "produce_test_topic",
-      payload:   "payload headers",
-      key:       "key headers",
+      topic:     'produce_test_topic',
+      payload:   'payload headers',
+      key:       'key headers',
       headers:   { foo: :bar, baz: :foobar }
     )
     report = handle.wait(max_wait_timeout: 5)
 
     # Consume message and verify its content
     message = wait_for_message(
-      topic: "produce_test_topic",
+      topic: 'produce_test_topic',
       delivery_report: report,
       consumer: consumer
     )
 
-    expect(message.payload).to eq "payload headers"
-    expect(message.key).to eq "key headers"
-    expect(message.headers["foo"]).to eq "bar"
-    expect(message.headers["baz"]).to eq "foobar"
-    expect(message.headers["foobar"]).to be_nil
+    expect(message.payload).to eq 'payload headers'
+    expect(message.key).to eq 'key headers'
+    expect(message.headers['foo']).to eq 'bar'
+    expect(message.headers['baz']).to eq 'foobar'
+    expect(message.headers['foobar']).to be_nil
   end
 
-  it "should produce a message with empty headers" do
+  it 'should produce a message with empty headers' do
     handle = producer.produce(
-      topic:     "produce_test_topic",
-      payload:   "payload headers",
-      key:       "key headers",
+      topic:     'produce_test_topic',
+      payload:   'payload headers',
+      key:       'key headers',
       headers:   {}
     )
     report = handle.wait(max_wait_timeout: 5)
 
     # Consume message and verify its content
     message = wait_for_message(
-      topic: "produce_test_topic",
+      topic: 'produce_test_topic',
       delivery_report: report,
       consumer: consumer
     )
 
-    expect(message.payload).to eq "payload headers"
-    expect(message.key).to eq "key headers"
+    expect(message.payload).to eq 'payload headers'
+    expect(message.key).to eq 'key headers'
     expect(message.headers).to be_empty
   end
 
@@ -441,9 +441,9 @@ describe Rdkafka::Producer do
     5.times do
       200.times do
         producer.produce(
-          topic:   "produce_test_topic",
-          payload: "payload not waiting",
-          key:     "key not waiting"
+          topic:   'produce_test_topic',
+          payload: 'payload not waiting',
+          key:     'key not waiting'
         )
       end
 
@@ -458,7 +458,7 @@ describe Rdkafka::Producer do
     end
   end
 
-  it "should produce a message in a forked process", skip: defined?(JRUBY_VERSION) && "Kernel#fork is not available" do
+  it 'should produce a message in a forked process', skip: defined?(JRUBY_VERSION) && 'Kernel#fork is not available' do
     # Fork, produce a message, send the report over a pipe and
     # wait for and check the message in the main process.
     reader, writer = IO.pipe
@@ -470,17 +470,17 @@ describe Rdkafka::Producer do
       producer = rdkafka_producer_config.producer
 
       handle = producer.produce(
-        topic:   "produce_test_topic",
-        payload: "payload-forked",
-        key:     "key-forked"
+        topic:   'produce_test_topic',
+        payload: 'payload-forked',
+        key:     'key-forked'
       )
 
       report = handle.wait(max_wait_timeout: 5)
 
       report_json = JSON.generate(
-        "partition" => report.partition,
-        "offset" => report.offset,
-        "topic_name" => report.topic_name
+        'partition' => report.partition,
+        'offset' => report.offset,
+        'topic_name' => report.topic_name
       )
 
       writer.write(report_json)
@@ -493,40 +493,40 @@ describe Rdkafka::Producer do
     writer.close
     report_hash = JSON.parse(reader.read)
     report = Rdkafka::Producer::DeliveryReport.new(
-      report_hash["partition"],
-      report_hash["offset"],
-      report_hash["topic_name"]
+      report_hash['partition'],
+      report_hash['offset'],
+      report_hash['topic_name']
     )
 
     reader.close
 
     # Consume message and verify its content
     message = wait_for_message(
-      topic: "produce_test_topic",
+      topic: 'produce_test_topic',
       delivery_report: report,
       consumer: consumer
     )
     expect(message.partition).to eq 0
-    expect(message.payload).to eq "payload-forked"
-    expect(message.key).to eq "key-forked"
+    expect(message.payload).to eq 'payload-forked'
+    expect(message.key).to eq 'key-forked'
   end
 
-  it "should raise an error when producing fails" do
+  it 'should raise an error when producing fails' do
     expect(Rdkafka::Bindings).to receive(:rd_kafka_producev).and_return(20)
 
     expect {
       producer.produce(
-        topic:   "produce_test_topic",
-        key:     "key error"
+        topic:   'produce_test_topic',
+        key:     'key error'
       )
     }.to raise_error Rdkafka::RdkafkaError
   end
 
-  it "should raise a timeout error when waiting too long" do
+  it 'should raise a timeout error when waiting too long' do
     handle = producer.produce(
-      topic:   "produce_test_topic",
-      payload: "payload timeout",
-      key:     "key timeout"
+      topic:   'produce_test_topic',
+      payload: 'payload timeout',
+      key:     'key timeout'
     )
     expect {
       handle.wait(max_wait_timeout: 0)
@@ -536,7 +536,7 @@ describe Rdkafka::Producer do
     handle.wait(max_wait_timeout: 5)
   end
 
-  context "methods that should not be called after a producer has been closed" do
+  context 'methods that should not be called after a producer has been closed' do
     before do
       producer.close
     end
@@ -601,11 +601,11 @@ describe Rdkafka::Producer do
   end
 
   describe '#flush' do
-    it "should return flush when it can flush all outstanding messages or when no messages" do
+    it 'should return flush when it can flush all outstanding messages or when no messages' do
       producer.produce(
-        topic:     "produce_test_topic",
-        payload:   "payload headers",
-        key:       "key headers",
+        topic:     'produce_test_topic',
+        payload:   'payload headers',
+        key:       'key headers',
         headers:   {}
       )
 
@@ -615,7 +615,7 @@ describe Rdkafka::Producer do
     context 'when it cannot flush due to a timeout' do
       let(:producer) do
         rdkafka_producer_config(
-          "bootstrap.servers": "localhost:9093",
+          "bootstrap.servers": 'localhost:9093',
           "message.timeout.ms": 2_000
         ).producer
       end
@@ -625,11 +625,11 @@ describe Rdkafka::Producer do
         sleep(2)
       end
 
-      it "should return false on flush when cannot deliver and beyond timeout" do
+      it 'should return false on flush when cannot deliver and beyond timeout' do
         producer.produce(
-          topic:     "produce_test_topic",
-          payload:   "payload headers",
-          key:       "key headers",
+          topic:     'produce_test_topic',
+          payload:   'payload headers',
+          key:       'key headers',
           headers:   {}
         )
 

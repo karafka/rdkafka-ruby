@@ -9,36 +9,36 @@ describe Rdkafka::Producer::DeliveryHandle do
       handle[:response] = response
       handle[:partition] = 2
       handle[:offset] = 100
-      handle[:topic_name] = FFI::MemoryPointer.from_string("produce_test_topic")
+      handle[:topic_name] = FFI::MemoryPointer.from_string('produce_test_topic')
     end
   end
 
-  describe "#wait" do
+  describe '#wait' do
     let(:pending_handle) { true }
 
-    it "should wait until the timeout and then raise an error" do
+    it 'should wait until the timeout and then raise an error' do
       expect {
         subject.wait(max_wait_timeout: 0.1)
       }.to raise_error Rdkafka::Producer::DeliveryHandle::WaitTimeoutError, /delivery/
     end
 
-    context "when not pending anymore and no error" do
+    context 'when not pending anymore and no error' do
       let(:pending_handle) { false }
 
-      it "should return a delivery report" do
+      it 'should return a delivery report' do
         report = subject.wait
 
         expect(report.partition).to eq(2)
         expect(report.offset).to eq(100)
-        expect(report.topic_name).to eq("produce_test_topic")
+        expect(report.topic_name).to eq('produce_test_topic')
       end
 
-      it "should wait without a timeout" do
+      it 'should wait without a timeout' do
         report = subject.wait(max_wait_timeout: nil)
 
         expect(report.partition).to eq(2)
         expect(report.offset).to eq(100)
-        expect(report.topic_name).to eq("produce_test_topic")
+        expect(report.topic_name).to eq('produce_test_topic')
       end
     end
   end

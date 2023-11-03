@@ -1,22 +1,22 @@
 # frozen_string_literal: true
 
-unless ENV["CI"] == "true"
-  require "simplecov"
+unless ENV['CI'] == 'true'
+  require 'simplecov'
   SimpleCov.start do
-    add_filter "/spec/"
+    add_filter '/spec/'
   end
 end
 
-require "pry"
-require "rspec"
-require "rdkafka"
-require "timeout"
+require 'pry'
+require 'rspec'
+require 'rdkafka'
+require 'timeout'
 
 def rdkafka_base_config
   {
     :"api.version.request" => false,
-    :"broker.version.fallback" => "1.0",
-    :"bootstrap.servers" => "localhost:9092",
+    :"broker.version.fallback" => '1.0',
+    :"bootstrap.servers" => 'localhost:9092',
   }
 end
 
@@ -33,12 +33,12 @@ def rdkafka_consumer_config(config_overrides={})
   # Generate the base config
   config = rdkafka_base_config
   # Add consumer specific fields to it
-  config[:"auto.offset.reset"] = "earliest"
+  config[:"auto.offset.reset"] = 'earliest'
   config[:"enable.partition.eof"] = false
   config[:"group.id"] = "ruby-test-#{Random.new.rand(0..1_000_000)}"
   # Enable debug mode if required
-  if ENV["DEBUG_CONSUMER"]
-    config[:debug] = "cgrp,topic,fetch"
+  if ENV['DEBUG_CONSUMER']
+    config[:debug] = 'cgrp,topic,fetch'
   end
   # Merge overrides
   config.merge!(config_overrides)
@@ -50,8 +50,8 @@ def rdkafka_producer_config(config_overrides={})
   # Generate the base config
   config = rdkafka_base_config
   # Enable debug mode if required
-  if ENV["DEBUG_PRODUCER"]
-    config[:debug] = "broker,topic,msg"
+  if ENV['DEBUG_PRODUCER']
+    config[:debug] = 'broker,topic,msg'
   end
   # Merge overrides
   config.merge!(config_overrides)
@@ -64,7 +64,7 @@ def new_native_client
   config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer)
 end
 
-def new_native_topic(topic_name="topic_name", native_client: )
+def new_native_topic(topic_name='topic_name', native_client: )
   Rdkafka::Bindings.rd_kafka_topic_new(
     native_client,
     topic_name,
@@ -108,7 +108,7 @@ end
 
 def notify_listener(listener, &block)
   # 1. subscribe and poll
-  consumer.subscribe("consume_test_topic")
+  consumer.subscribe('consume_test_topic')
   wait_for_assignment(consumer)
   consumer.poll(100)
 

@@ -47,91 +47,91 @@ describe Rdkafka::Consumer::Message do
     end
   end
 
-  it "should have a topic" do
-    expect(subject.topic).to eq "topic_name"
+  it 'should have a topic' do
+    expect(subject.topic).to eq 'topic_name'
   end
 
-  it "should have a partition" do
+  it 'should have a partition' do
     expect(subject.partition).to eq 3
   end
 
-  context "payload" do
-    it "should have a nil payload when none is present" do
+  context 'payload' do
+    it 'should have a nil payload when none is present' do
       expect(subject.payload).to be_nil
     end
 
-    context "present payload" do
-      let(:payload) { "payload content" }
+    context 'present payload' do
+      let(:payload) { 'payload content' }
 
-      it "should have a payload" do
-        expect(subject.payload).to eq "payload content"
+      it 'should have a payload' do
+        expect(subject.payload).to eq 'payload content'
       end
     end
   end
 
-  context "key" do
-    it "should have a nil key when none is present" do
+  context 'key' do
+    it 'should have a nil key when none is present' do
       expect(subject.key).to be_nil
     end
 
-    context "present key" do
-      let(:key) { "key content" }
+    context 'present key' do
+      let(:key) { 'key content' }
 
-      it "should have a key" do
-        expect(subject.key).to eq "key content"
+      it 'should have a key' do
+        expect(subject.key).to eq 'key content'
       end
     end
   end
 
-  it "should have an offset" do
+  it 'should have an offset' do
     expect(subject.offset).to eq 100
   end
 
-  describe "#timestamp" do
-    context "without a timestamp" do
+  describe '#timestamp' do
+    context 'without a timestamp' do
       before do
         allow(Rdkafka::Bindings).to receive(:rd_kafka_message_timestamp).and_return(-1)
       end
 
-      it "should have a nil timestamp if not present" do
+      it 'should have a nil timestamp if not present' do
         expect(subject.timestamp).to be_nil
       end
     end
 
-    context "with a timestamp" do
+    context 'with a timestamp' do
       before do
         allow(Rdkafka::Bindings).to receive(:rd_kafka_message_timestamp).and_return(1505069646250)
       end
 
-      it "should have timestamp if present" do
+      it 'should have timestamp if present' do
         expect(subject.timestamp).to eq Time.at(1505069646, 250_000)
       end
     end
   end
 
-  describe "#to_s" do
+  describe '#to_s' do
     before do
       allow(subject).to receive(:timestamp).and_return(1000)
     end
 
-    it "should have a human readable representation" do
+    it 'should have a human readable representation' do
       expect(subject.to_s).to eq "<Message in 'topic_name' with key '', payload '', partition 3, offset 100, timestamp 1000>"
     end
 
-    context "with key and payload" do
-      let(:key) { "key" }
-      let(:payload) { "payload" }
+    context 'with key and payload' do
+      let(:key) { 'key' }
+      let(:payload) { 'payload' }
 
-      it "should have a human readable representation" do
+      it 'should have a human readable representation' do
         expect(subject.to_s).to eq "<Message in 'topic_name' with key 'key', payload 'payload', partition 3, offset 100, timestamp 1000>"
       end
     end
 
-    context "with a very long key and payload" do
-      let(:key) { "k" * 100_000 }
-      let(:payload) { "p" * 100_000 }
+    context 'with a very long key and payload' do
+      let(:key) { 'k' * 100_000 }
+      let(:payload) { 'p' * 100_000 }
 
-      it "should have a human readable representation" do
+      it 'should have a human readable representation' do
         expect(subject.to_s).to eq "<Message in 'topic_name' with key 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk...', payload 'pppppppppppppppppppppppppppppppppppppppp...', partition 3, offset 100, timestamp 1000>"
       end
     end

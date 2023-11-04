@@ -559,16 +559,16 @@ describe Rdkafka::Producer do
   end
 
   describe '#partition_count' do
-    it { expect(producer.partition_count('example_topic')).to eq(1) }
+    it { expect(producer.partition_count('consume_test_topic')).to eq(3) }
 
     context 'when the partition count value is already cached' do
       before do
-        producer.partition_count('example_topic')
+        producer.partition_count('consume_test_topic')
         allow(::Rdkafka::Metadata).to receive(:new).and_call_original
       end
 
       it 'expect not to query it again' do
-        producer.partition_count('example_topic')
+        producer.partition_count('consume_test_topic')
         expect(::Rdkafka::Metadata).not_to have_received(:new)
       end
     end
@@ -576,12 +576,12 @@ describe Rdkafka::Producer do
     context 'when the partition count value was cached but time expired' do
       before do
         allow(::Process).to receive(:clock_gettime).and_return(0, 30.02)
-        producer.partition_count('example_topic')
+        producer.partition_count('consume_test_topic')
         allow(::Rdkafka::Metadata).to receive(:new).and_call_original
       end
 
       it 'expect not to query it again' do
-        producer.partition_count('example_topic')
+        producer.partition_count('consume_test_topic')
         expect(::Rdkafka::Metadata).to have_received(:new)
       end
     end
@@ -589,12 +589,12 @@ describe Rdkafka::Producer do
     context 'when the partition count value was cached and time did not expire' do
       before do
         allow(::Process).to receive(:clock_gettime).and_return(0, 29.001)
-        producer.partition_count('example_topic')
+        producer.partition_count('consume_test_topic')
         allow(::Rdkafka::Metadata).to receive(:new).and_call_original
       end
 
       it 'expect not to query it again' do
-        producer.partition_count('example_topic')
+        producer.partition_count('consume_test_topic')
         expect(::Rdkafka::Metadata).not_to have_received(:new)
       end
     end

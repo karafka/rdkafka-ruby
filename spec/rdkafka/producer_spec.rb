@@ -559,16 +559,16 @@ describe Rdkafka::Producer do
   end
 
   describe '#partition_count' do
-    it { expect(producer.partition_count('consume_test_topic')).to eq(3) }
+    it { expect(producer.partition_count('example_topic')).to eq(1) }
 
     context 'when the partition count value is already cached' do
       before do
-        producer.partition_count('consume_test_topic')
+        producer.partition_count('example_topic')
         allow(::Rdkafka::Metadata).to receive(:new).and_call_original
       end
 
       it 'expect not to query it again' do
-        producer.partition_count('consume_test_topic')
+        producer.partition_count('example_topic')
         expect(::Rdkafka::Metadata).not_to have_received(:new)
       end
     end
@@ -576,12 +576,12 @@ describe Rdkafka::Producer do
     context 'when the partition count value was cached but time expired' do
       before do
         allow(::Process).to receive(:clock_gettime).and_return(0, 30.02)
-        producer.partition_count('consume_test_topic')
+        producer.partition_count('example_topic')
         allow(::Rdkafka::Metadata).to receive(:new).and_call_original
       end
 
       it 'expect not to query it again' do
-        producer.partition_count('consume_test_topic')
+        producer.partition_count('example_topic')
         expect(::Rdkafka::Metadata).to have_received(:new)
       end
     end
@@ -589,13 +589,40 @@ describe Rdkafka::Producer do
     context 'when the partition count value was cached and time did not expire' do
       before do
         allow(::Process).to receive(:clock_gettime).and_return(0, 29.001)
-        producer.partition_count('consume_test_topic')
+        producer.partition_count('example_topic')
         allow(::Rdkafka::Metadata).to receive(:new).and_call_original
       end
 
       it 'expect not to query it again' do
-        producer.partition_count('consume_test_topic')
+        producer.partition_count('example_topic')
         expect(::Rdkafka::Metadata).not_to have_received(:new)
+      end
+    end
+  end
+
+  describe 'metadata fetch request recovery' do
+    subject(:partition_count) { producer.partition_count('example_topic') }
+
+    describe 'metadata initialization recovery' do
+      context 'when all good' do
+        it { expect(partition_count).to eq(1) }
+      end
+
+      context 'when we fail for the first time with handled error' do
+        before do
+          raised = false
+
+          allow(Rdkafka::Bindings).to receive(:rd_kafka_metadata).and_wrap_original do |m, *args|
+            if raised
+              m.call(*args)
+            else
+              raised = true
+              -185
+            end
+          end
+        end
+
+        it { expect(partition_count).to eq(1) }
       end
     end
   end
@@ -642,6 +669,71 @@ describe Rdkafka::Producer do
 
       it 'should raise it' do
         expect { producer.flush }.to raise_error(Rdkafka::RdkafkaError)
+      end
+    end
+  end
+
+  describe '#purge' do
+    context 'when no outgoing messages' do
+      it { expect(producer.purge).to eq(true) }
+    end
+
+    context 'when librdkafka purge returns an error' do
+      before { expect(Rdkafka::Bindings).to receive(:rd_kafka_purge).and_return(-153) }
+
+      it 'expect to raise an error' do
+        expect { producer.purge }.to raise_error(Rdkafka::RdkafkaError, /retry/)
+      end
+    end
+
+    context 'when there are outgoing things in the queue' do
+      let(:producer) do
+        rdkafka_producer_config(
+          "bootstrap.servers": "localhost:9093",
+          "message.timeout.ms": 2_000
+        ).producer
+      end
+
+      it "should should purge and move forward" do
+        producer.produce(
+          topic:     "produce_test_topic",
+          payload:   "payload headers"
+        )
+
+        expect(producer.purge).to eq(true)
+        expect(producer.flush(1_000)).to eq(true)
+      end
+
+      it "should materialize the delivery handles" do
+        handle = producer.produce(
+          topic:     "produce_test_topic",
+          payload:   "payload headers"
+        )
+
+        expect(producer.purge).to eq(true)
+
+        expect { handle.wait }.to raise_error(Rdkafka::RdkafkaError, /purge_queue/)
+      end
+
+      context "when using delivery_callback" do
+        let(:delivery_reports) { [] }
+
+        let(:delivery_callback) do
+          ->(delivery_report) { delivery_reports << delivery_report }
+        end
+
+        before { producer.delivery_callback = delivery_callback }
+
+        it "should run the callback" do
+          handle = producer.produce(
+            topic:     "produce_test_topic",
+            payload:   "payload headers"
+          )
+
+          expect(producer.purge).to eq(true)
+          # queue purge
+          expect(delivery_reports[0].error).to eq(-152)
+        end
       end
     end
   end

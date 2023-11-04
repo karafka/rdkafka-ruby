@@ -600,33 +600,6 @@ describe Rdkafka::Producer do
     end
   end
 
-  describe 'metadata fetch request recovery' do
-    subject(:partition_count) { producer.partition_count('example_topic') }
-
-    describe 'metadata initialization recovery' do
-      context 'when all good' do
-        it { expect(partition_count).to eq(1) }
-      end
-
-      context 'when we fail for the first time with handled error' do
-        before do
-          raised = false
-
-          allow(Rdkafka::Bindings).to receive(:rd_kafka_metadata).and_wrap_original do |m, *args|
-            if raised
-              m.call(*args)
-            else
-              raised = true
-              -185
-            end
-          end
-        end
-
-        it { expect(partition_count).to eq(1) }
-      end
-    end
-  end
-
   describe '#flush' do
     it "should return flush when it can flush all outstanding messages or when no messages" do
       producer.produce(

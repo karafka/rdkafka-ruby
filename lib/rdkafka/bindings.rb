@@ -249,10 +249,13 @@ module Rdkafka
     RD_KAFKA_VTYPE_TIMESTAMP = 8
     RD_KAFKA_VTYPE_HEADER = 9
     RD_KAFKA_VTYPE_HEADERS = 10
+    RD_KAFKA_PURGE_F_QUEUE = 1
+    RD_KAFKA_PURGE_F_INFLIGHT = 2
 
     RD_KAFKA_MSG_F_COPY = 0x2
 
     attach_function :rd_kafka_producev, [:pointer, :varargs], :int, blocking: true
+    attach_function :rd_kafka_purge, [:pointer, :int], :int, blocking: true
     callback :delivery_cb, [:pointer, :pointer, :pointer], :void
     attach_function :rd_kafka_conf_set_dr_msg_cb, [:pointer, :delivery_cb], :void
 

@@ -1,9 +1,5 @@
 # frozen_string_literal: true
 
-require "ffi"
-require "json"
-require "logger"
-
 module Rdkafka
   # @private
   module Bindings

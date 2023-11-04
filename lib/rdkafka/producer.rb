@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "objspace"
-
 module Rdkafka
   # A producer for Kafka messages. To create a producer set up a {Config} and call {Config#producer producer} on that.
   class Producer
@@ -108,18 +106,16 @@ module Rdkafka
     end
 
     # Partition count for a given topic.
-    # NOTE: If 'allow.auto.create.topics' is set to true in the broker, the topic will be auto-created after returning nil.
     #
     # @param topic [String] The topic name.
-    #
-    # @return partition count [Integer,nil]
-    #
-    # We cache the partition count for a given topic for given time
-    # This prevents us in case someone uses `partition_key` from querying for the count with
-    # each message. Instead we query once every 30 seconds at most
-    #
-    # @param [String] topic name
     # @return [Integer] partition count for a given topic
+    #
+    # @note If 'allow.auto.create.topics' is set to true in the broker, the topic will be
+    #   auto-created after returning nil.
+    #
+    # @note We cache the partition count for a given topic for given time.
+    #   This prevents us in case someone uses `partition_key` from querying for the count with
+    #   each message. Instead we query once every 30 seconds at most
     def partition_count(topic)
       closed_producer_check(__method__)
 

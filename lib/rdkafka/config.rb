@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "logger"
-
 module Rdkafka
   # Configuration for a Kafka consumer or producer. You can create an instance and use
   # the consumer and producer methods to create a client. Documentation of the available
@@ -142,12 +140,12 @@ module Rdkafka
       @consumer_rebalance_listener = listener
     end
 
-    # Create a consumer with this configuration.
+    # Creates a consumer with this configuration.
+    #
+    # @return [Consumer] The created consumer
     #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    #
-    # @return [Consumer] The created consumer
     def consumer
       opaque = Opaque.new
       config = native_config(opaque)
@@ -175,10 +173,10 @@ module Rdkafka
 
     # Create a producer with this configuration.
     #
+    # @return [Producer] The created producer
+    #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    #
-    # @return [Producer] The created producer
     def producer
       # Create opaque
       opaque = Opaque.new
@@ -196,12 +194,12 @@ module Rdkafka
       end
     end
 
-    # Create an admin instance with this configuration.
+    # Creates an admin instance with this configuration.
+    #
+    # @return [Admin] The created admin instance
     #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    #
-    # @return [Admin] The created admin instance
     def admin
       opaque = Opaque.new
       config = native_config(opaque)

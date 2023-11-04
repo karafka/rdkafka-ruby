@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "ffi"
-
 module Rdkafka
   # This class serves as an abstract base class to represent handles within the Rdkafka module.
   # As a subclass of `FFI::Struct`, this class provides a blueprint for other specific handle

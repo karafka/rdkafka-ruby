@@ -1,7 +1,11 @@
 # frozen_string_literal: true
 
-require "rdkafka/version"
+require "logger"
+require "objspace"
+require "ffi"
+require "json"
 
+require "rdkafka/version"
 require "rdkafka/helpers/time"
 require "rdkafka/abstract_handle"
 require "rdkafka/admin"

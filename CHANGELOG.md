@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.13.9 (Unreleased)
+## 0.13.9 (2023-11-07)
 - [Enhancement] Expose alternative way of managing consumer events via a separate queue.
 - [Enhancement] Allow for setting `statistics_callback` as nil to reset predefined settings configured by a different gem.
 

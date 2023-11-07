@@ -1,5 +1,9 @@
 # Rdkafka Changelog
 
+## 0.13.9 (Unreleased)
+- [Enhancement] Expose alternative way of managing consumer events via a separate queue.
+- [Enhancement] Allow for setting `statistics_callback` as nil to reset predefined settings configured by a different gem.
+
 ## 0.13.8 (2023-10-31)
 - [Enhancement] Get consumer position (thijsc & mensfeld)
 

@@ -18,13 +18,11 @@ module Rdkafka
 
       # Reads a librdkafka native message's headers and returns them as a Ruby Hash
       #
-      # @param [librdkakfa message] native_message
-      #
-      # @return [Hash<String, String>] headers Hash for the native_message
-      #
-      # @raise [Rdkafka::RdkafkaError] when fail to read headers
-      #
       # @private
+      #
+      # @param [librdkakfa message] native_message
+      # @return [Hash<String, String>] headers Hash for the native_message
+      # @raise [Rdkafka::RdkafkaError] when fail to read headers
       def self.from_native(native_message)
         headers_ptrptr = FFI::MemoryPointer.new(:pointer)
         err = Rdkafka::Bindings.rd_kafka_message_headers(native_message, headers_ptrptr)

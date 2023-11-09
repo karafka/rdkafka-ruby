@@ -1,7 +1,12 @@
 # frozen_string_literal: true
 
-require "rdkafka/version"
+require "logger"
+require "objspace"
+require "ffi"
+require "json"
 
+require "rdkafka/version"
+require "rdkafka/helpers/time"
 require "rdkafka/abstract_handle"
 require "rdkafka/admin"
 require "rdkafka/admin/create_topic_handle"
@@ -22,3 +27,7 @@ require "rdkafka/native_kafka"
 require "rdkafka/producer"
 require "rdkafka/producer/delivery_handle"
 require "rdkafka/producer/delivery_report"
+
+# Main Rdkafka namespace of this gem
+module Rdkafka
+end

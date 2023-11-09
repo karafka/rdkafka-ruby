@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Rdkafka::Producer::DeliveryReport do
   subject { Rdkafka::Producer::DeliveryReport.new(2, 100, "topic", -1) }
 

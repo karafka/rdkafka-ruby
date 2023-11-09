@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Rdkafka::Consumer::Message do
   let(:native_client) { new_native_client }
   let(:native_topic) { new_native_topic(native_client: native_client) }

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Rdkafka::Admin::DeleteTopicReport do
   subject { Rdkafka::Admin::DeleteTopicReport.new(
       FFI::MemoryPointer.from_string("error string"),

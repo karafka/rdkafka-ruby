@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Rdkafka::Config do
   context "logger" do
     it "should have a default logger" do

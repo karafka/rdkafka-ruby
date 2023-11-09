@@ -406,6 +406,39 @@ module Rdkafka
       end
     end
 
+    # Lookup offset for the given partitions by timestamp.
+    #
+    # @param list [TopicPartitionList] The TopicPartitionList with timestamps instead of offsets
+    #
+    # @raise [RdKafkaError] When the OffsetForTimes lookup fails
+    #
+    # @return [TopicPartitionList]
+    def offsets_for_times(list, timeout_ms = 1000)
+      closed_consumer_check(__method__)
+
+      if !list.is_a?(TopicPartitionList)
+        raise TypeError.new("list has to be a TopicPartitionList")
+      end
+
+      tpl = list.to_native_tpl
+
+      response = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_offsets_for_times(
+          inner,
+          tpl,
+          timeout_ms # timeout
+        )
+      end
+
+      if response != 0
+        raise Rdkafka::RdkafkaError.new(response)
+      end
+
+      TopicPartitionList.from_native_tpl(tpl)
+    ensure
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl) if tpl
+    end
+
     # Manually commit the current offsets of this consumer.
     #
     # To use this set `enable.auto.commit`to `false` to disable automatic triggering

@@ -188,6 +188,7 @@ module Rdkafka
     attach_function :rd_kafka_pause_partitions, [:pointer, :pointer], :int, blocking: true
     attach_function :rd_kafka_resume_partitions, [:pointer, :pointer], :int, blocking: true
     attach_function :rd_kafka_seek, [:pointer, :int32, :int64, :int], :int, blocking: true
+    attach_function :rd_kafka_offsets_for_times, [:pointer, :pointer, :int], :int, blocking: true
 
     # Headers
     attach_function :rd_kafka_header_get_all, [:pointer, :size_t, :pointer, :pointer, SizePtr], :int

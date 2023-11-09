@@ -953,6 +953,69 @@ describe Rdkafka::Consumer do
     end
   end
 
+  describe "#offsets_for_times" do
+    it "should raise when not TopicPartitionList" do
+      expect { consumer.offsets_for_times([]) }.to raise_error(TypeError)
+    end
+
+    it "should raise an error when offsets_for_times fails" do
+      tpl = Rdkafka::Consumer::TopicPartitionList.new
+
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_offsets_for_times).and_return(7)
+
+      expect { consumer.offsets_for_times(tpl) }.to raise_error(Rdkafka::RdkafkaError)
+    end
+
+    context "when subscribed" do
+      let(:timeout) { 1000 }
+
+      before do
+        consumer.subscribe("consume_test_topic")
+
+        # 1. partitions are assigned
+        wait_for_assignment(consumer)
+        expect(consumer.assignment).not_to be_empty
+
+        # 2. eat unrelated messages
+        while(consumer.poll(timeout)) do; end
+      end
+
+      after { consumer.unsubscribe }
+
+      def send_one_message(val)
+        producer.produce(
+          topic:     "consume_test_topic",
+          payload:   "payload #{val}",
+          key:       "key 0",
+          partition: 0
+        ).wait
+      end
+
+      it "returns a TopicParticionList with updated offsets" do
+        send_one_message("a")
+        send_one_message("b")
+        send_one_message("c")
+
+        consumer.poll(timeout)
+        message = consumer.poll(timeout)
+        consumer.poll(timeout)
+
+        tpl = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic_and_partitions_with_offsets(
+            "consume_test_topic",
+            [
+              [0, message.timestamp]
+            ]
+          )
+        end
+
+        tpl_response = consumer.offsets_for_times(tpl)
+
+        expect(tpl_response.to_h["consume_test_topic"][0].offset).to eq message.offset
+      end
+    end
+  end
+
   describe "a rebalance listener" do
     let(:consumer) do
       config = rdkafka_consumer_config

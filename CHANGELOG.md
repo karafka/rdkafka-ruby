@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.14.0 (Unreleased)
+* [Enhancement] Get consumer position (thijsc & mensfeld)
 * [Enhancement] Provide `#purge` to remove any outstanding requests from the producer (mensfeld)
 * [Enhancement] Update `librdkafka` to `2.2.0` (mensfeld)
 * [Enhancement] Introduce producer partitions count metadata cache (mensfeld)

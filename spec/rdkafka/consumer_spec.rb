@@ -314,8 +314,9 @@ describe Rdkafka::Consumer do
     end
   end
 
-  describe "#commit, #committed and #store_offset" do
-    # Make sure there's a stored offset
+
+  describe "#position, #commit, #committed and #store_offset" do
+    # Make sure there are messages to work with
     let!(:report) do
       producer.produce(
         topic:     "consume_test_topic",
@@ -333,29 +334,33 @@ describe Rdkafka::Consumer do
       )
     end
 
-    it "should only accept a topic partition list in committed" do
-      expect {
-        consumer.committed("list")
-      }.to raise_error TypeError
+    describe "#position" do
+      it "should only accept a topic partition list in position if not nil" do
+        expect {
+          consumer.position("list")
+        }.to raise_error TypeError
+      end
     end
 
-    it "should commit in sync mode" do
-      expect {
-        consumer.commit(nil, true)
-      }.not_to raise_error
-    end
+    describe "#committed" do
+      it "should only accept a topic partition list in commit if not nil" do
+        expect {
+          consumer.commit("list")
+        }.to raise_error TypeError
+      end
 
-    it "should only accept a topic partition list in commit if not nil" do
-      expect {
-        consumer.commit("list")
-      }.to raise_error TypeError
+      it "should commit in sync mode" do
+        expect {
+          consumer.commit(nil, true)
+        }.not_to raise_error
+      end
     end
 
     context "with a committed consumer" do
       before :all do
         # Make sure there are some messages.
         handles = []
-        producer = rdkafka_producer_config.producer
+        producer = rdkafka_config.producer
         10.times do
           (0..2).each do |i|
             handles << producer.produce(
@@ -399,31 +404,33 @@ describe Rdkafka::Consumer do
         }.to raise_error(Rdkafka::RdkafkaError)
       end
 
-      it "should fetch the committed offsets for the current assignment" do
-        partitions = consumer.committed.to_h["consume_test_topic"]
-        expect(partitions).not_to be_nil
-        expect(partitions[0].offset).to eq 1
-      end
-
-      it "should fetch the committed offsets for a specified topic partition list" do
-        list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-          list.add_topic("consume_test_topic", [0, 1, 2])
+      describe "#committed" do
+        it "should fetch the committed offsets for the current assignment" do
+          partitions = consumer.committed.to_h["consume_test_topic"]
+          expect(partitions).not_to be_nil
+          expect(partitions[0].offset).to eq 1
         end
-        partitions = consumer.committed(list).to_h["consume_test_topic"]
-        expect(partitions).not_to be_nil
-        expect(partitions[0].offset).to eq 1
-        expect(partitions[1].offset).to eq 1
-        expect(partitions[2].offset).to eq 1
-      end
 
-      it "should raise an error when getting committed fails" do
-        expect(Rdkafka::Bindings).to receive(:rd_kafka_committed).and_return(20)
-        list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-          list.add_topic("consume_test_topic", [0, 1, 2])
+        it "should fetch the committed offsets for a specified topic partition list" do
+          list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+            list.add_topic("consume_test_topic", [0, 1, 2])
+          end
+          partitions = consumer.committed(list).to_h["consume_test_topic"]
+          expect(partitions).not_to be_nil
+          expect(partitions[0].offset).to eq 1
+          expect(partitions[1].offset).to eq 1
+          expect(partitions[2].offset).to eq 1
         end
-        expect {
-          consumer.committed(list)
-        }.to raise_error Rdkafka::RdkafkaError
+
+        it "should raise an error when getting committed fails" do
+          expect(Rdkafka::Bindings).to receive(:rd_kafka_committed).and_return(20)
+          list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+            list.add_topic("consume_test_topic", [0, 1, 2])
+          end
+          expect {
+            consumer.committed(list)
+          }.to raise_error Rdkafka::RdkafkaError
+        end
       end
 
       describe "#store_offset" do
@@ -444,6 +451,8 @@ describe Rdkafka::Consumer do
           @new_consumer.store_offset(message)
           @new_consumer.commit
 
+          # TODO use position here, should be at offset
+
           list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
             list.add_topic("consume_test_topic", [0, 1, 2])
           end
@@ -457,6 +466,35 @@ describe Rdkafka::Consumer do
           expect {
             @new_consumer.store_offset(message)
           }.to raise_error Rdkafka::RdkafkaError
+        end
+
+        describe "#position" do
+          it "should fetch the positions for the current assignment" do
+            consumer.store_offset(message)
+
+            partitions = consumer.position.to_h["consume_test_topic"]
+            expect(partitions).not_to be_nil
+            expect(partitions[0].offset).to eq message.offset + 1
+          end
+
+          it "should fetch the positions for a specified assignment" do
+            consumer.store_offset(message)
+
+            list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+              list.add_topic_and_partitions_with_offsets("consume_test_topic", 0 => nil, 1 => nil, 2 => nil)
+            end
+            partitions = consumer.position(list).to_h["consume_test_topic"]
+            expect(partitions).not_to be_nil
+            expect(partitions[0].offset).to eq message.offset + 1
+          end
+
+          it "should raise an error when getting the position fails" do
+            expect(Rdkafka::Bindings).to receive(:rd_kafka_position).and_return(20)
+
+            expect {
+              consumer.position
+            }.to raise_error(Rdkafka::RdkafkaError)
+          end
         end
       end
     end
@@ -1090,7 +1128,7 @@ describe Rdkafka::Consumer do
         :assign                  => [ nil ],
         :assignment              => nil,
         :committed               => [],
-        :query_watermark_offsets => [ nil, nil ],
+        :query_watermark_offsets => [ nil, nil ]
     }.each do |method, args|
       it "raises an exception if #{method} is called" do
         expect {

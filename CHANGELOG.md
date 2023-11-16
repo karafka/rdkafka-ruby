@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.14.0 (Unreleased)
+- [Enhancement] Allow for setting `statistics_callback` as nil to reset predefined settings configured by a different gem (mensfeld)
 * [Enhancement] Get consumer position (thijsc & mensfeld)
 * [Enhancement] Provide `#purge` to remove any outstanding requests from the producer (mensfeld)
 * [Enhancement] Update `librdkafka` to `2.2.0` (mensfeld)

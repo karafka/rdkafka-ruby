@@ -57,7 +57,7 @@ module Rdkafka
     #
     # @return [nil]
     def self.statistics_callback=(callback)
-      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call)
+      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call) || callback == nil
       @@statistics_callback = callback
     end
 

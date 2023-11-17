@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.14.0 (Unreleased)
+## 0.14.0 (2023-11-17)
 - [Enhancement] Bump librdkafka to 2.3.0
 - [Enhancement] Increase the `#lag` and `#query_watermark_offsets` default timeouts from 100ms to 1000ms. This will compensate for network glitches and remote clusters operations.
 

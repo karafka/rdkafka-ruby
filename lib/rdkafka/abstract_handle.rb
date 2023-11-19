@@ -48,12 +48,13 @@ module Rdkafka
     #   If this is nil it does not time out.
     # @param wait_timeout [Numeric] Amount of time we should wait before we recheck if the
     #   operation has completed
+    # @param raise_response_error [Boolean] should we raise error when waiting finishes
     #
     # @return [Object] Operation-specific result
     #
     # @raise [RdkafkaError] When the operation failed
     # @raise [WaitTimeoutError] When the timeout has been reached and the handle is still pending
-    def wait(max_wait_timeout: 60, wait_timeout: 0.1)
+    def wait(max_wait_timeout: 60, wait_timeout: 0.1, raise_response_error: true)
       timeout = if max_wait_timeout
                   monotonic_now + max_wait_timeout
                 else
@@ -67,7 +68,7 @@ module Rdkafka
             )
           end
           sleep wait_timeout
-        elsif self[:response] != 0
+        elsif self[:response] != 0 && raise_response_error
           raise_error
         else
           return create_result

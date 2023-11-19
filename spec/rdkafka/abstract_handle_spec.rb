@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Rdkafka::AbstractHandle do
   let(:response) { 0 }
   let(:result) { -1 }

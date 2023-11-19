@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "objspace"
-
 module Rdkafka
   class Admin
     # @private
@@ -30,11 +28,12 @@ module Rdkafka
 
     # Create a topic with the given partition count and replication factor
     #
+    # @return [CreateTopicHandle] Create topic handle that can be used to wait for the result of
+    #   creating the topic
+    #
     # @raise [ConfigError] When the partition count or replication factor are out of valid range
     # @raise [RdkafkaError] When the topic name is invalid or the topic already exists
     # @raise [RdkafkaError] When the topic configuration is invalid
-    #
-    # @return [CreateTopicHandle] Create topic handle that can be used to wait for the result of creating the topic
     def create_topic(topic_name, partition_count, replication_factor, topic_config={})
       closed_admin_check(__method__)
 
@@ -107,11 +106,11 @@ module Rdkafka
       create_topic_handle
     end
 
-    # Delete the named topic
+    # Deletes the named topic
     #
+    # @return [DeleteTopicHandle] Delete topic handle that can be used to wait for the result of
+    #   deleting the topic
     # @raise [RdkafkaError] When the topic name is invalid or the topic does not exist
-    #
-    # @return [DeleteTopicHandle] Delete topic handle that can be used to wait for the result of deleting the topic
     def delete_topic(topic_name)
       closed_admin_check(__method__)
 

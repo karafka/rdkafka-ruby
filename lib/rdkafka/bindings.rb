@@ -1,9 +1,5 @@
 # frozen_string_literal: true
 
-require "ffi"
-require "json"
-require "logger"
-
 module Rdkafka
   # @private
   module Bindings
@@ -41,6 +37,7 @@ module Rdkafka
 
     # Metadata
 
+    attach_function :rd_kafka_name, [:pointer], :string, blocking: true
     attach_function :rd_kafka_memberid, [:pointer], :string, blocking: true
     attach_function :rd_kafka_clusterid, [:pointer], :string, blocking: true
     attach_function :rd_kafka_metadata, [:pointer, :int, :pointer, :pointer, :int], :int, blocking: true
@@ -157,6 +154,7 @@ module Rdkafka
     ) do |_client_prr, err_code, reason, _opaque|
       if Rdkafka::Config.error_callback
         error = Rdkafka::RdkafkaError.new(err_code, broker_message: reason)
+        error.set_backtrace(caller)
         Rdkafka::Config.error_callback.call(error)
       end
     end
@@ -190,6 +188,8 @@ module Rdkafka
     attach_function :rd_kafka_pause_partitions, [:pointer, :pointer], :int, blocking: true
     attach_function :rd_kafka_resume_partitions, [:pointer, :pointer], :int, blocking: true
     attach_function :rd_kafka_seek, [:pointer, :int32, :int64, :int], :int, blocking: true
+    attach_function :rd_kafka_offsets_for_times, [:pointer, :pointer, :int], :int, blocking: true
+    attach_function :rd_kafka_position, [:pointer, :pointer], :int, blocking: true
 
     # Headers
     attach_function :rd_kafka_header_get_all, [:pointer, :size_t, :pointer, :pointer, SizePtr], :int
@@ -251,10 +251,13 @@ module Rdkafka
     RD_KAFKA_VTYPE_TIMESTAMP = 8
     RD_KAFKA_VTYPE_HEADER = 9
     RD_KAFKA_VTYPE_HEADERS = 10
+    RD_KAFKA_PURGE_F_QUEUE = 1
+    RD_KAFKA_PURGE_F_INFLIGHT = 2
 
     RD_KAFKA_MSG_F_COPY = 0x2
 
     attach_function :rd_kafka_producev, [:pointer, :varargs], :int, blocking: true
+    attach_function :rd_kafka_purge, [:pointer, :int], :int, blocking: true
     callback :delivery_cb, [:pointer, :pointer, :pointer], :void
     attach_function :rd_kafka_conf_set_dr_msg_cb, [:pointer, :delivery_cb], :void
 

@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require "objspace"
-
 module Rdkafka
   # A producer for Kafka messages. To create a producer set up a {Config} and call {Config#producer producer} on that.
   class Producer
+    include Helpers::Time
+
     # Cache partitions count for 30 seconds
     PARTITIONS_COUNT_TTL = 30
 
@@ -41,6 +41,13 @@ module Rdkafka
           monotonic_now,
           topic_metadata ? topic_metadata[:partition_count] : nil
         ]
+      end
+    end
+
+    # @return [String] producer name
+    def name
+      @name ||= @native_kafka.with_inner do |inner|
+        ::Rdkafka::Bindings.rd_kafka_name(inner)
       end
     end
 
@@ -98,19 +105,43 @@ module Rdkafka
       raise(error)
     end
 
+    # Purges the outgoing queue and releases all resources.
+    #
+    # Useful when closing the producer with outgoing messages to unstable clusters or when for
+    # any other reasons waiting cannot go on anymore. This purges both the queue and all the
+    # inflight requests + updates the delivery handles statuses so they can be materialized into
+    # `purge_queue` errors.
+    def purge
+      closed_producer_check(__method__)
+
+      code = nil
+
+      @native_kafka.with_inner do |inner|
+        code = Bindings.rd_kafka_purge(
+          inner,
+          Bindings::RD_KAFKA_PURGE_F_QUEUE | Bindings::RD_KAFKA_PURGE_F_INFLIGHT
+        )
+      end
+
+      code.zero? || raise(Rdkafka::RdkafkaError.new(code))
+
+      # Wait for the purge to affect everything
+      sleep(0.001) until flush(100)
+
+      true
+    end
+
     # Partition count for a given topic.
-    # NOTE: If 'allow.auto.create.topics' is set to true in the broker, the topic will be auto-created after returning nil.
     #
     # @param topic [String] The topic name.
-    #
-    # @return partition count [Integer,nil]
-    #
-    # We cache the partition count for a given topic for given time
-    # This prevents us in case someone uses `partition_key` from querying for the count with
-    # each message. Instead we query once every 30 seconds at most
-    #
-    # @param topic [String] topic name
     # @return [Integer] partition count for a given topic
+    #
+    # @note If 'allow.auto.create.topics' is set to true in the broker, the topic will be
+    #   auto-created after returning nil.
+    #
+    # @note We cache the partition count for a given topic for given time.
+    #   This prevents us in case someone uses `partition_key` from querying for the count with
+    #   each message. Instead we query once every 30 seconds at most
     def partition_count(topic)
       closed_producer_check(__method__)
 
@@ -239,11 +270,6 @@ module Rdkafka
     end
 
     private
-
-    def monotonic_now
-      # needed because Time.now can go backwards
-      Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    end
 
     def closed_producer_check(method)
       raise Rdkafka::ClosedProducerError.new(method) if closed?

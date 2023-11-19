@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Rdkafka::Callbacks do
 
   # The code in the call back functions is 100% covered by other specs.  Due to

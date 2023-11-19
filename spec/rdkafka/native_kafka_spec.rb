@@ -1,14 +1,13 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Rdkafka::NativeKafka do
   let(:config) { rdkafka_producer_config }
   let(:native) { config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer) }
   let(:closing) { false }
   let(:thread) { double(Thread) }
+  let(:opaque) { Rdkafka::Opaque.new }
 
-  subject(:client) { described_class.new(native, run_polling_thread: true) }
+  subject(:client) { described_class.new(native, run_polling_thread: true, opaque: opaque) }
 
   before do
     allow(Thread).to receive(:new).and_return(thread)

@@ -4,8 +4,9 @@ module Rdkafka
   # @private
   # A wrapper around a native kafka that polls and cleanly exits
   class NativeKafka
-    def initialize(inner, run_polling_thread:)
+    def initialize(inner, run_polling_thread:, opaque:)
       @inner = inner
+      @opaque = opaque
       # Lock around external access
       @access_mutex = Mutex.new
       # Lock around internal polling
@@ -26,6 +27,9 @@ module Rdkafka
       @decrement_mutex = Mutex.new
       # counter for operations in progress using inner
       @operations_in_progress = 0
+
+      # Trigger initial poll to make sure oauthbearer cb and other initial cb are handled
+      Rdkafka::Bindings.rd_kafka_poll(inner, 0)
 
       if run_polling_thread
         # Start thread to poll client for delivery callbacks,
@@ -109,6 +113,7 @@ module Rdkafka
 
         Rdkafka::Bindings.rd_kafka_destroy(@inner)
         @inner = nil
+        @opaque = nil
       end
     end
   end

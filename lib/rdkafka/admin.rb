@@ -224,7 +224,10 @@ module Rdkafka
       acls_array_ptr.write_array_of_pointer(pointer_array)
 
       # Get a pointer to the queue that our request will be enqueued on
-      queue_ptr = Rdkafka::Bindings.rd_kafka_queue_get_background(@native_kafka.inner)
+      queue_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+      end
+
       if queue_ptr.null?
         Rdkafka::Bindings.rd_kafka_AclBinding_destroy(new_acl_ptr)
         raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
@@ -235,17 +238,23 @@ module Rdkafka
       create_acl_handle[:pending] = true
       create_acl_handle[:response] = -1
       CreateAclHandle.register(create_acl_handle)
-      admin_options_ptr = Rdkafka::Bindings.rd_kafka_AdminOptions_new(@native_kafka.inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATEACLS)
+
+      admin_options_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATEACLS)
+      end
+
       Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, create_acl_handle.to_ptr)
 
       begin
-        Rdkafka::Bindings.rd_kafka_CreateAcls(
-          @native_kafka.inner,
-          acls_array_ptr,
-          1,
-          admin_options_ptr,
-          queue_ptr
-        )
+        @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_CreateAcls(
+            inner,
+            acls_array_ptr,
+            1,
+            admin_options_ptr,
+            queue_ptr
+          )
+        end
       rescue Exception
         CreateAclHandle.remove(create_acl_handle.to_ptr.address)
         raise
@@ -322,7 +331,10 @@ module Rdkafka
       acls_array_ptr.write_array_of_pointer(pointer_array)
 
       # Get a pointer to the queue that our request will be enqueued on
-      queue_ptr = Rdkafka::Bindings.rd_kafka_queue_get_background(@native_kafka.inner)
+      queue_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+      end
+
       if queue_ptr.null?
         Rdkafka::Bindings.rd_kafka_AclBinding_destroy(new_acl_ptr)
         raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
@@ -333,17 +345,23 @@ module Rdkafka
       delete_acl_handle[:pending] = true
       delete_acl_handle[:response] = -1
       DeleteAclHandle.register(delete_acl_handle)
-      admin_options_ptr = Rdkafka::Bindings.rd_kafka_AdminOptions_new(@native_kafka.inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DELETEACLS)
+
+      admin_options_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DELETEACLS)
+      end
+
       Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, delete_acl_handle.to_ptr)
 
       begin
-        Rdkafka::Bindings.rd_kafka_DeleteAcls(
-          @native_kafka.inner,
-          acls_array_ptr,
-          1,
-          admin_options_ptr,
-          queue_ptr
-        )
+        @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_DeleteAcls(
+            inner,
+            acls_array_ptr,
+            1,
+            admin_options_ptr,
+            queue_ptr
+          )
+        end
       rescue Exception
         DeleteAclHandle.remove(delete_acl_handle.to_ptr.address)
         raise
@@ -413,7 +431,10 @@ module Rdkafka
       end
 
       # Get a pointer to the queue that our request will be enqueued on
-      queue_ptr = Rdkafka::Bindings.rd_kafka_queue_get_background(@native_kafka.inner)
+      queue_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+      end
+
       if queue_ptr.null?
         Rdkafka::Bindings.rd_kafka_AclBinding_destroy(new_acl_ptr)
         raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
@@ -424,16 +445,22 @@ module Rdkafka
       describe_acl_handle[:pending] = true
       describe_acl_handle[:response] = -1
       DescribeAclHandle.register(describe_acl_handle)
-      admin_options_ptr = Rdkafka::Bindings.rd_kafka_AdminOptions_new(@native_kafka.inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DESCRIBEACLS)
+
+      admin_options_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DESCRIBEACLS)
+      end
+
       Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, describe_acl_handle.to_ptr)
 
       begin
-        Rdkafka::Bindings.rd_kafka_DescribeAcls(
-          @native_kafka.inner,
-          describe_acl_ptr,
-          admin_options_ptr,
-          queue_ptr
-        )
+        @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_DescribeAcls(
+            inner,
+            describe_acl_ptr,
+            admin_options_ptr,
+            queue_ptr
+          )
+        end
       rescue Exception
         DescribeAclHandle.remove(describe_acl_handle.to_ptr.address)
         raise

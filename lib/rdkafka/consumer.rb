@@ -289,7 +289,7 @@ module Rdkafka
     # @param timeout_ms [Integer] The timeout for querying the broker
     # @return [Integer] The low and high watermark
     # @raise [RdkafkaError] When querying the broker fails.
-    def query_watermark_offsets(topic, partition, timeout_ms=200)
+    def query_watermark_offsets(topic, partition, timeout_ms=1000)
       closed_consumer_check(__method__)
 
       low = FFI::MemoryPointer.new(:int64, 1)
@@ -325,7 +325,7 @@ module Rdkafka
     # @return [Hash<String, Hash<Integer, Integer>>] A hash containing all topics with the lag
     #   per partition
     # @raise [RdkafkaError] When querying the broker fails.
-    def lag(topic_partition_list, watermark_timeout_ms=100)
+    def lag(topic_partition_list, watermark_timeout_ms=1000)
       out = {}
 
       topic_partition_list.to_h.each do |topic, partitions|

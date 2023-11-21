@@ -18,9 +18,7 @@ become EOL.
 
 `rdkafka` was written because of the need for a reliable Ruby client for Kafka that supports modern Kafka at [AppSignal](https://appsignal.com). AppSignal runs it in production on very high-traffic systems.
 
-The most important pieces of a Kafka client are implemented. We're
-working towards feature completeness. You can track that here:
-https://github.com/appsignal/rdkafka-ruby/milestone/1
+The most important pieces of a Kafka client are implemented, and we aim to provide all relevant consumer, producer, and admin APIs.
 
 ## Table of content
 
@@ -42,7 +40,7 @@ If you have any problems installing the gem, please open an issue.
 
 ## Usage
 
-See the [documentation](https://www.rubydoc.info/github/appsignal/rdkafka-ruby) for full details on how to use this gem. Two quick examples:
+See the [documentation](https://karafka.io/docs/code/rdkafka-ruby/) for full details on how to use this gem. Two quick examples:
 
 ### Consuming messages
 

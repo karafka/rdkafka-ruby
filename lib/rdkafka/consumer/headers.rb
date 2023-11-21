@@ -20,7 +20,7 @@ module Rdkafka
       #
       # @private
       #
-      # @param [librdkakfa message] native_message
+      # @param [Rdkafka::Bindings::Message] native_message
       # @return [Hash<String, String>] headers Hash for the native_message
       # @raise [Rdkafka::RdkafkaError] when fail to read headers
       def self.from_native(native_message)

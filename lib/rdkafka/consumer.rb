@@ -259,9 +259,9 @@ module Rdkafka
     #
     # @param list [TopicPartitionList, nil] The topic with partitions to get the offsets for or nil to use the current subscription.
     #
-    # @raise [RdkafkaError] When getting the positions fails.
-    #
     # @return [TopicPartitionList]
+    #
+    # @raise [RdkafkaError] When getting the positions fails.
     def position(list=nil)
       if list.nil?
         list = assignment
@@ -438,9 +438,9 @@ module Rdkafka
     #
     # @param list [TopicPartitionList] The TopicPartitionList with timestamps instead of offsets
     #
-    # @raise [RdKafkaError] When the OffsetForTimes lookup fails
-    #
     # @return [TopicPartitionList]
+    #
+    # @raise [RdKafkaError] When the OffsetForTimes lookup fails
     def offsets_for_times(list, timeout_ms = 1000)
       closed_consumer_check(__method__)
 
@@ -537,9 +537,9 @@ module Rdkafka
     # If `enable.partition.eof` is turned on in the config this will raise an error when an eof is
     # reached, so you probably want to disable that when using this method of iteration.
     #
-    # @raise [RdkafkaError] When polling fails
     # @yieldparam message [Message] Received message
     # @return [nil]
+    # @raise [RdkafkaError] When polling fails
     def each
       loop do
         message = poll(250)
@@ -594,14 +594,15 @@ module Rdkafka
     # @param bytes_threshold [Integer] Threshold number of total message bytes in the yielded array of messages
     # @param timeout_ms [Integer] max time to wait for up to max_items
     #
-    # @raise [RdkafkaError] When polling fails
-    #
-    # @yield [messages, pending_exception]
     # @yieldparam messages [Array] An array of received Message
     # @yieldparam pending_exception [Exception] normally nil, or an exception
+    #
+    # @yield [messages, pending_exception]
     # which will be propagated after processing of the partial batch is complete.
     #
     # @return [nil]
+    #
+    # @raise [RdkafkaError] When polling fails
     def each_batch(max_items: 100, bytes_threshold: Float::INFINITY, timeout_ms: 250, yield_on_error: false, &block)
       closed_consumer_check(__method__)
       slice = []

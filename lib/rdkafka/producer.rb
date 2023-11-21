@@ -165,9 +165,9 @@ module Rdkafka
     # @param timestamp [Time,Integer,nil] Optional timestamp of this message. Integer timestamp is in milliseconds since Jan 1 1970.
     # @param headers [Hash<String,String>] Optional message headers
     #
-    # @raise [RdkafkaError] When adding the message to rdkafka's queue failed
-    #
     # @return [DeliveryHandle] Delivery handle that can be used to wait for the result of producing this message
+    #
+    # @raise [RdkafkaError] When adding the message to rdkafka's queue failed
     def produce(topic:, payload: nil, key: nil, partition: nil, partition_key: nil, timestamp: nil, headers: nil)
       closed_producer_check(__method__)
 

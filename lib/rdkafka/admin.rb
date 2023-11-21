@@ -195,9 +195,10 @@ module Rdkafka
     #        valid values are:
     #           RD_KAFKA_ACL_PERMISSION_TYPE_DENY  = 2
     #           RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW = 3
-    # @raise [RdkafkaError]
     #
     # @return [CreateAclHandle] Create acl handle that can be used to wait for the result of creating the acl
+    #
+    # @raise [RdkafkaError]
     def create_acl(resource_type:, resource_name:, resource_pattern_type:, principal:, host:, operation:, permission_type:)
       closed_admin_check(__method__)
 
@@ -300,9 +301,9 @@ module Rdkafka
     #        valid values are:
     #           RD_KAFKA_ACL_PERMISSION_TYPE_DENY  = 2
     #           RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW = 3
-    # @raise [RdkafkaError]
-    #
     # @return [DeleteAclHandle] Delete acl handle that can be used to wait for the result of deleting the acl
+    #
+    # @raise [RdkafkaError]
     def delete_acl(resource_type:, resource_name:, resource_pattern_type:, principal:, host:, operation:, permission_type:)
       closed_admin_check(__method__)
 
@@ -407,9 +408,9 @@ module Rdkafka
     #        valid values are:
     #           RD_KAFKA_ACL_PERMISSION_TYPE_DENY  = 2
     #           RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW = 3
-    # @raise [RdkafkaError]
-    #
     # @return [DescribeAclHandle] Describe acl handle that can be used to wait for the result of fetching acls
+    #
+    # @raise [RdkafkaError]
     def describe_acl(resource_type:, resource_name:, resource_pattern_type:, principal:, host:, operation:, permission_type:)
       closed_admin_check(__method__)
 

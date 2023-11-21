@@ -1,5 +1,9 @@
 # Rdkafka Changelog
 
+## 0.15.0 (Unreleased)
+- [Enhancement] Bump librdkafka to 2.3.0 (mensfeld)
+- [Enhancement] Increase the `#lag` and `#query_watermark_offsets` default timeouts from 100ms to 1000ms. This will compensate for network glitches and remote clusters operations (mensfeld)
+
 ## 0.14.0 (2023-11-21)
 - [Enhancement] Add `raise_response_error` flag to the `Rdkafka::AbstractHandle`.
 - [Enhancement] Allow for setting `statistics_callback` as nil to reset predefined settings configured by a different gem (mensfeld)

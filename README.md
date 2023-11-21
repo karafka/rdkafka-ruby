@@ -35,7 +35,6 @@ https://github.com/appsignal/rdkafka-ruby/milestone/1
 - [Development](#development)
 - [Example](#example)
 
-
 ## Project Scope
 
 While rdkafka-ruby aims to simplify the use of librdkafka in Ruby applications, it's important to understand the limitations of this library:

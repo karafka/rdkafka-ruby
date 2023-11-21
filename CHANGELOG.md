@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.14.0 (Unreleased)
+## 0.14.0 (2023-11-21)
 - [Enhancement] Add `raise_response_error` flag to the `Rdkafka::AbstractHandle`.
 - [Enhancement] Allow for setting `statistics_callback` as nil to reset predefined settings configured by a different gem (mensfeld)
 - [Enhancement] Get consumer position (thijsc & mensfeld)

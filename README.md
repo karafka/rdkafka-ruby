@@ -22,15 +22,26 @@ The most important pieces of a Kafka client are implemented, and we aim to provi
 
 ## Table of content
 
+- [Project Scope](#project-scope)
 - [Installation](#installation)
 - [Usage](#usage)
-  * [Consuming messages](#consuming-messages)
-  * [Producing messages](#producing-messages)
-- [Higher level libraries](#higher-level-libraries)
-  * [Message processing frameworks](#message-processing-frameworks)
-  * [Message publishing libraries](#message-publishing-libraries)
+  * [Consuming Messages](#consuming-messages)
+  * [Producing Messages](#producing-messages)
+- [Higher Level Libraries](#higher-level-libraries)
+  * [Message Processing Frameworks](#message-processing-frameworks)
+  * [Message Publishing Libraries](#message-publishing-libraries)
 - [Development](#development)
 - [Example](#example)
+
+## Project Scope
+
+While rdkafka-ruby aims to simplify the use of librdkafka in Ruby applications, it's important to understand the limitations of this library:
+
+- **No Complex Producers/Consumers**: This library does not intend to offer complex producers or consumers. The aim is to stick closely to the functionalities provided by librdkafka itself.
+
+- **Focus on librdkafka Capabilities**: Features that can be achieved directly in Ruby, without specific needs from librdkafka, are outside the scope of this library.
+
+- **Existing High-Level Functionalities**: Certain high-level functionalities like producer metadata cache and simple consumer are already part of the library. Although they fall slightly outside the primary goal, they will remain part of the contract, given their existing usage.
 
 
 ## Installation
@@ -42,7 +53,7 @@ If you have any problems installing the gem, please open an issue.
 
 See the [documentation](https://karafka.io/docs/code/rdkafka-ruby/) for full details on how to use this gem. Two quick examples:
 
-### Consuming messages
+### Consuming Messages
 
 Subscribe to a topic and get messages. Kafka will automatically spread
 the available partitions over consumers with the same group id.
@@ -60,7 +71,7 @@ consumer.each do |message|
 end
 ```
 
-### Producing messages
+### Producing Messages
 
 Produce a number of messages, put the delivery handles in an array, and
 wait for them before exiting. This way the messages will be batched and
@@ -87,41 +98,42 @@ Note that creating a producer consumes some resources that will not be
 released until it `#close` is explicitly called, so be sure to call
 `Config#producer` only as necessary.
 
-## Higher level libraries
+## Higher Level Libraries
 
 Currently, there are two actively developed frameworks based on rdkafka-ruby, that provide higher-level API that can be used to work with Kafka messages and one library for publishing messages.
 
-### Message processing frameworks
+### Message Processing Frameworks
 
 * [Karafka](https://github.com/karafka/karafka) - Ruby and Rails efficient Kafka processing framework.
 * [Racecar](https://github.com/zendesk/racecar) - A simple framework for Kafka consumers in Ruby 
 
-### Message publishing libraries
+### Message Publishing Libraries
 
 * [WaterDrop](https://github.com/karafka/waterdrop) – Standalone Karafka library for producing Kafka messages.
 
 ## Development
 
-A Docker Compose file is included to run Kafka. To run
-that:
+Contributors are encouraged to focus on enhancements that align with the core goal of the library. We appreciate contributions but will likely not accept pull requests for features that:
+
+- Implement functionalities that can achieved using standard Ruby capabilities without changes to the underlying rdkafka-ruby bindings.
+- Deviate significantly from the primary aim of providing librdkafka bindings with Ruby-friendly interfaces.
+
+A Docker Compose file is included to run Kafka. To run that:
 
 ```
 docker-compose up
 ```
 
-Run `bundle` and `cd ext && bundle exec rake && cd ..` to download and
-compile `librdkafka`.
+Run `bundle` and `cd ext && bundle exec rake && cd ..` to download and compile `librdkafka`.
 
-You can then run `bundle exec rspec` to run the tests. To see rdkafka
-debug output:
+You can then run `bundle exec rspec` to run the tests. To see rdkafka debug output:
 
 ```
 DEBUG_PRODUCER=true bundle exec rspec
 DEBUG_CONSUMER=true bundle exec rspec
 ```
 
-After running the tests, you can bring the cluster down to start with a
-clean slate:
+After running the tests, you can bring the cluster down to start with a clean slate:
 
 ```
 docker-compose down

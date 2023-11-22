@@ -314,21 +314,6 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
 
   describe('Group tests') do
     describe "#delete_group" do
-      describe "called with invalid input" do
-        describe "with the name of a group that does not exist" do
-          it "raises an exception" do
-            delete_group_handle = admin.delete_group(group_name)
-
-            expect {
-              delete_group_handle.wait(max_wait_timeout: 15.0)
-            }.to raise_exception { |ex|
-              expect(ex).to be_a(Rdkafka::RdkafkaError)
-              expect(ex.message).to match(/Broker: The group id does not exist \(group_id_not_found\)/)
-            }
-          end
-        end
-      end
-
       describe("with an existing group") do
         let(:consumer_config) { rdkafka_consumer_config('group.id': group_name) }
         let(:producer_config) { rdkafka_producer_config }
@@ -363,6 +348,22 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
           expect(report.result_name).to eql(group_name)
         end
       end
+
+      describe "called with invalid input" do
+        describe "with the name of a group that does not exist" do
+          it "raises an exception" do
+            delete_group_handle = admin.delete_group(group_name)
+
+            expect {
+              delete_group_handle.wait(max_wait_timeout: 15.0)
+            }.to raise_exception { |ex|
+              expect(ex).to be_a(Rdkafka::RdkafkaError)
+              expect(ex.message).to match(/Broker: The group id does not exist \(group_id_not_found\)/)
+            }
+          end
+        end
+      end
+
     end
   end
 end

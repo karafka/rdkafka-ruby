@@ -128,6 +128,8 @@ module Rdkafka
           process_create_topic(event_ptr)
         elsif event_type == Rdkafka::Bindings::RD_KAFKA_EVENT_DELETETOPICS_RESULT
           process_delete_topic(event_ptr)
+        elsif event_type == Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATEPARTITIONS_RESULT
+          process_create_partitions(event_ptr)
         elsif event_type == Rdkafka::Bindings::RD_KAFKA_EVENT_CREATEACLS_RESULT
           process_create_acl(event_ptr)
         elsif event_type == Rdkafka::Bindings::RD_KAFKA_EVENT_DELETEACLS_RESULT
@@ -189,6 +191,23 @@ module Rdkafka
           delete_topic_handle[:error_string] = delete_topic_results[0].error_string
           delete_topic_handle[:result_name] = delete_topic_results[0].result_name
           delete_topic_handle[:pending] = false
+        end
+      end
+
+      def self.process_create_partitions(event_ptr)
+        create_partitionss_result = Rdkafka::Bindings.rd_kafka_event_CreatePartitions_result(event_ptr)
+
+        # Get the number of create topic results
+        pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+        create_partitions_result_array = Rdkafka::Bindings.rd_kafka_CreatePartitions_result_topics(create_partitionss_result, pointer_to_size_t)
+        create_partitions_results = TopicResult.create_topic_results_from_array(pointer_to_size_t.read_int, create_partitions_result_array)
+        create_partitions_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
+
+        if create_partitions_handle = Rdkafka::Admin::CreatePartitionsHandle.remove(create_partitions_handle_ptr.address)
+          create_partitions_handle[:response] = create_partitions_results[0].result_error
+          create_partitions_handle[:error_string] = create_partitions_results[0].error_string
+          create_partitions_handle[:result_name] = create_partitions_results[0].result_name
+          create_partitions_handle[:pending] = false
         end
       end
 

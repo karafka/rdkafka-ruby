@@ -14,6 +14,19 @@ module Rdkafka
       ->(_) { close }
     end
 
+    # Performs the metadata request using admin
+    #
+    # @param topic_name [String, nil] metadat about particular topic or all if nil
+    # @param timeout_ms [Integer] metadata request timeout
+    # @return [Metadata] requested metadata
+    def metadata(topic_name = nil, timeout_ms = 2_000)
+      closed_admin_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        Metadata.new(inner, topic_name, timeout_ms)
+      end
+    end
+
     # Close this admin instance
     def close
       return if closed?
@@ -214,6 +227,71 @@ module Rdkafka
       end
 
       delete_topic_handle
+    end
+
+    # Creates extra partitions for a given topic
+    #
+    # @param topic_name [String]
+    # @param partition_count [Integer] how many partitions we want to end up with for given topic
+    #
+    # @raise [ConfigError] When the partition count or replication factor are out of valid range
+    # @raise [RdkafkaError] When the topic name is invalid or the topic already exists
+    # @raise [RdkafkaError] When the topic configuration is invalid
+    #
+    # @return [CreateTopicHandle] Create topic handle that can be used to wait for the result of creating the topic
+    def create_partitions(topic_name, partition_count)
+      closed_admin_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        error_buffer = FFI::MemoryPointer.from_string(" " * 256)
+        new_partitions_ptr = Rdkafka::Bindings.rd_kafka_NewPartitions_new(
+          FFI::MemoryPointer.from_string(topic_name),
+          partition_count,
+          error_buffer,
+          256
+        )
+        if new_partitions_ptr.null?
+          raise Rdkafka::Config::ConfigError.new(error_buffer.read_string)
+        end
+
+        pointer_array = [new_partitions_ptr]
+        topics_array_ptr = FFI::MemoryPointer.new(:pointer)
+        topics_array_ptr.write_array_of_pointer(pointer_array)
+
+        # Get a pointer to the queue that our request will be enqueued on
+        queue_ptr = Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+        if queue_ptr.null?
+          Rdkafka::Bindings.rd_kafka_NewPartitions_destroy(new_partitions_ptr)
+          raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
+        end
+
+        # Create and register the handle we will return to the caller
+        create_partitions_handle = CreatePartitionsHandle.new
+        create_partitions_handle[:pending] = true
+        create_partitions_handle[:response] = -1
+        CreatePartitionsHandle.register(create_partitions_handle)
+        admin_options_ptr = Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATEPARTITIONS)
+        Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, create_partitions_handle.to_ptr)
+
+        begin
+          Rdkafka::Bindings.rd_kafka_CreatePartitions(
+            inner,
+            topics_array_ptr,
+            1,
+            admin_options_ptr,
+            queue_ptr
+          )
+        rescue Exception
+          CreatePartitionsHandle.remove(create_partitions_handle.to_ptr.address)
+          raise
+        ensure
+          Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
+          Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr)
+          Rdkafka::Bindings.rd_kafka_NewPartitions_destroy(new_partitions_ptr)
+        end
+
+        create_partitions_handle
+      end
     end
 
     # Create acl
@@ -528,6 +606,7 @@ module Rdkafka
     end
 
     private
+
     def closed_admin_check(method)
       raise Rdkafka::ClosedAdminError.new(method) if closed?
     end

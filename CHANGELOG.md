@@ -1,6 +1,8 @@
 # Rdkafka Changelog
 
 ## 0.15.0 (Unreleased)
+- **[Feature]** Add `Admin#metadata` (mensfeld)
+- **[Feature]** Add `Admin#create_partitions` (mensfeld)
 - **[Feature]** Add `Admin#delete_group` utility (piotaixr)
 - **[Feature]** Add Create and Delete ACL Feature To Admin Functions (vgnanasekaran)
 - [Enhancement] Bump librdkafka to 2.3.0 (mensfeld)

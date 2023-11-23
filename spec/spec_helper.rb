@@ -11,6 +11,7 @@ require "pry"
 require "rspec"
 require "rdkafka"
 require "timeout"
+require "securerandom"
 
 def rdkafka_base_config
   {

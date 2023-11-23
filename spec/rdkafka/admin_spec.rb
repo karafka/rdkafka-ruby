@@ -9,6 +9,7 @@ describe Rdkafka::Admin do
   after do
     # Registry should always end up being empty
     expect(Rdkafka::Admin::CreateTopicHandle::REGISTRY).to be_empty
+    expect(Rdkafka::Admin::CreatePartitionsHandle::REGISTRY).to be_empty
     expect(Rdkafka::Admin::DescribeAclHandle::REGISTRY).to be_empty
     expect(Rdkafka::Admin::CreateAclHandle::REGISTRY).to be_empty
     expect(Rdkafka::Admin::DeleteAclHandle::REGISTRY).to be_empty
@@ -364,6 +365,43 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
         end
       end
 
+    end
+  end
+
+  describe '#create_partitions' do
+    let(:metadata) { admin.metadata(topic_name).topics.first }
+
+    context 'when topic does not exist' do
+      it 'expect to fail due to unknown partition' do
+        expect { admin.create_partitions(topic_name, 10).wait }.to raise_error(Rdkafka::RdkafkaError, /unknown_topic_or_part/)
+      end
+    end
+
+    context 'when topic already has the desired number of partitions' do
+      before { admin.create_topic(topic_name, 2, 1).wait }
+
+      it 'expect not to change number of partitions' do
+        expect { admin.create_partitions(topic_name, 2).wait }.to raise_error(Rdkafka::RdkafkaError, /invalid_partitions/)
+        expect(metadata[:partition_count]).to eq(2)
+      end
+    end
+
+    context 'when topic has more than the requested number of partitions' do
+      before { admin.create_topic(topic_name, 5, 1).wait }
+
+      it 'expect not to change number of partitions' do
+        expect { admin.create_partitions(topic_name, 2).wait }.to raise_error(Rdkafka::RdkafkaError, /invalid_partitions/)
+        expect(metadata[:partition_count]).to eq(5)
+      end
+    end
+
+    context 'when topic has less then desired number of partitions' do
+      before { admin.create_topic(topic_name, 1, 1).wait }
+
+      it 'expect to change number of partitions' do
+        admin.create_partitions(topic_name, 10).wait
+        expect(metadata[:partition_count]).to eq(10)
+      end
     end
   end
 end

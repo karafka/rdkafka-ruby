@@ -20,6 +20,7 @@ describe Rdkafka::Admin do
   let(:topic_replication_factor) { 1 }
   let(:topic_config)             { {"cleanup.policy" => "compact", "min.cleanable.dirty.ratio" => 0.8} }
   let(:invalid_topic_config)     { {"cleeeeenup.policee" => "campact"} }
+  let(:group_name)               { "test-group-#{Random.new.rand(0..1_000_000)}" }
 
   let(:resource_name)         {"acl-test-topic"}
   let(:resource_type)         {Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC}
@@ -306,7 +307,63 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
         delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
         expect(delete_acl_handle[:response]).to eq(0)
         expect(delete_acl_report.deleted_acls.length).to eq(2)
+
       end
+    end
+  end
+
+  describe('Group tests') do
+    describe "#delete_group" do
+      describe("with an existing group") do
+        let(:consumer_config) { rdkafka_consumer_config('group.id': group_name) }
+        let(:producer_config) { rdkafka_producer_config }
+        let(:producer) { producer_config.producer }
+        let(:consumer) { consumer_config.consumer }
+
+        before do
+          # Create a topic, post a message to it, consume it and commit offsets, this will create a group that we can then delete.
+          admin.create_topic(topic_name, topic_partition_count, topic_replication_factor).wait(max_wait_timeout: 15.0)
+
+          producer.produce(topic: topic_name, payload: "test", key: "test").wait(max_wait_timeout: 15.0)
+
+          consumer.subscribe(topic_name)
+          wait_for_assignment(consumer)
+          message = consumer.poll(100)
+
+          expect(message).to_not be_nil
+
+          consumer.commit
+          consumer.close
+        end
+
+        after do
+          producer.close
+          consumer.close
+        end
+
+        it "deletes the group" do
+          delete_group_handle = admin.delete_group(group_name)
+          report = delete_group_handle.wait(max_wait_timeout: 15.0)
+
+          expect(report.result_name).to eql(group_name)
+        end
+      end
+
+      describe "called with invalid input" do
+        describe "with the name of a group that does not exist" do
+          it "raises an exception" do
+            delete_group_handle = admin.delete_group(group_name)
+
+            expect {
+              delete_group_handle.wait(max_wait_timeout: 15.0)
+            }.to raise_exception { |ex|
+              expect(ex).to be_a(Rdkafka::RdkafkaError)
+              expect(ex.message).to match(/Broker: The group id does not exist \(group_id_not_found\)/)
+            }
+          end
+        end
+      end
+
     end
   end
 end

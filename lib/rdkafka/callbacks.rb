@@ -23,6 +23,29 @@ module Rdkafka
       end
     end
 
+    class GroupResult
+      attr_reader :result_error, :error_string, :result_name
+      def initialize(group_result_pointer)
+        native_error = Rdkafka::Bindings.rd_kafka_group_result_error(group_result_pointer)
+
+        if native_error.null?
+          @result_error = 0
+          @error_string = FFI::Pointer::NULL
+        else
+          @result_error = native_error[:code]
+          @error_string = native_error[:errstr]
+        end
+
+        @result_name = Rdkafka::Bindings.rd_kafka_group_result_name(group_result_pointer)
+      end
+      def self.create_group_results_from_array(count, array_pointer)
+        (1..count).map do |index|
+          result_pointer = (array_pointer + (index - 1)).read_pointer
+          new(result_pointer)
+        end
+      end
+    end
+
     # Extracts attributes of rd_kafka_acl_result_t
     #
     # @private
@@ -111,6 +134,8 @@ module Rdkafka
           process_delete_acl(event_ptr)
         elsif event_type == Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBEACLS_RESULT
           process_describe_acl(event_ptr)
+        elsif event_type == Rdkafka::Bindings::RD_KAFKA_EVENT_DELETEGROUPS_RESULT
+          process_delete_groups(event_ptr)
         end
       end
 
@@ -130,6 +155,23 @@ module Rdkafka
           create_topic_handle[:error_string] = create_topic_results[0].error_string
           create_topic_handle[:result_name] = create_topic_results[0].result_name
           create_topic_handle[:pending] = false
+        end
+      end
+
+      def self.process_delete_groups(event_ptr)
+        delete_groups_result = Rdkafka::Bindings.rd_kafka_event_DeleteGroups_result(event_ptr)
+
+        # Get the number of delete group results
+        pointer_to_size_t = FFI::MemoryPointer.new(:size_t)
+        delete_group_result_array = Rdkafka::Bindings.rd_kafka_DeleteGroups_result_groups(delete_groups_result, pointer_to_size_t)
+        delete_group_results = GroupResult.create_group_results_from_array(pointer_to_size_t.read_int, delete_group_result_array) # TODO fix this
+        delete_group_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
+
+        if (delete_group_handle = Rdkafka::Admin::DeleteGroupsHandle.remove(delete_group_handle_ptr.address))
+          delete_group_handle[:response] = delete_group_results[0].result_error
+          delete_group_handle[:error_string] = delete_group_results[0].error_string
+          delete_group_handle[:result_name] = delete_group_results[0].result_name
+          delete_group_handle[:pending] = false
         end
       end
 

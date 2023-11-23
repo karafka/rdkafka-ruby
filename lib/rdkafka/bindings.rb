@@ -302,6 +302,17 @@ module Rdkafka
     attach_function :rd_kafka_event_DeleteTopics_result, [:pointer], :pointer, blocking: true
     attach_function :rd_kafka_DeleteTopics_result_topics, [:pointer, :pointer], :pointer, blocking: true
 
+    # Delete Group
+
+    RD_KAFKA_ADMIN_OP_DELETEGROUPS = 7   # rd_kafka_admin_op_t
+    RD_KAFKA_EVENT_DELETEGROUPS_RESULT = 106 # rd_kafka_event_type_t
+
+    attach_function :rd_kafka_DeleteGroups, [:pointer, :pointer, :size_t, :pointer, :pointer], :void, blocking: true
+    attach_function :rd_kafka_DeleteGroup_new, [:pointer], :pointer, blocking: true
+    attach_function :rd_kafka_DeleteGroup_destroy, [:pointer], :void, blocking: true
+    attach_function :rd_kafka_event_DeleteGroups_result, [:pointer], :pointer, blocking: true # rd_kafka_event_t* => rd_kafka_DeleteGroups_result_t*
+    attach_function :rd_kafka_DeleteGroups_result_groups, [:pointer, :pointer], :pointer, blocking: true # rd_kafka_DeleteGroups_result_t*, size_t* => rd_kafka_group_result_t**
+
     # Background Queue and Callback
 
     attach_function :rd_kafka_queue_get_background, [:pointer], :pointer
@@ -408,5 +419,18 @@ module Rdkafka
     attach_function :rd_kafka_event_error, [:pointer], :int32
     attach_function :rd_kafka_event_error_string, [:pointer], :pointer
     attach_function :rd_kafka_AclBinding_error, [:pointer], :pointer
+
+
+    # Extracting data from group results
+    class NativeError < FFI::Struct # rd_kafka_error_t
+      layout :code, :int32,
+             :errstr, :pointer,
+             :fatal, :uint8_t,
+             :retriable, :uint8_t,
+             :txn_requires_abort, :uint8_t
+    end
+
+    attach_function :rd_kafka_group_result_error, [:pointer], NativeError.by_ref # rd_kafka_group_result_t* => rd_kafka_error_t*
+    attach_function :rd_kafka_group_result_name, [:pointer], :pointer
   end
 end

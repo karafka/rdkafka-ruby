@@ -106,6 +106,59 @@ module Rdkafka
       create_topic_handle
     end
 
+    def delete_group(group_id)
+      closed_admin_check(__method__)
+
+      # Create a rd_kafka_DeleteGroup_t representing the new topic
+      delete_groups_ptr = Rdkafka::Bindings.rd_kafka_DeleteGroup_new(
+        FFI::MemoryPointer.from_string(group_id)
+      )
+
+      pointer_array = [delete_groups_ptr]
+      groups_array_ptr = FFI::MemoryPointer.new(:pointer)
+      groups_array_ptr.write_array_of_pointer(pointer_array)
+
+      # Get a pointer to the queue that our request will be enqueued on
+      queue_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+      end
+      if queue_ptr.null?
+        Rdkafka::Bindings.rd_kafka_DeleteTopic_destroy(delete_topic_ptr)
+        raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
+      end
+
+      # Create and register the handle we will return to the caller
+      delete_groups_handle = DeleteGroupsHandle.new
+      delete_groups_handle[:pending] = true
+      delete_groups_handle[:response] = -1
+      DeleteGroupsHandle.register(delete_groups_handle)
+      admin_options_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DELETETOPICS)
+      end
+      Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, delete_groups_handle.to_ptr)
+
+      begin
+        @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_DeleteGroups(
+            inner,
+            groups_array_ptr,
+            1,
+            admin_options_ptr,
+            queue_ptr
+          )
+        end
+      rescue Exception
+        DeleteGroupsHandle.remove(delete_groups_handle.to_ptr.address)
+        raise
+      ensure
+        Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
+        Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr)
+        Rdkafka::Bindings.rd_kafka_DeleteGroup_destroy(delete_groups_ptr)
+      end
+
+      delete_groups_handle
+    end
+
     # Deletes the named topic
     #
     # @return [DeleteTopicHandle] Delete topic handle that can be used to wait for the result of

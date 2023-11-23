@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.15.0 (Unreleased)
+- **[Feature]** Add `Admin#delete_group` utility (piotaixr)
 - **[Feature]** Add Create and Delete ACL Feature To Admin Functions (vgnanasekaran)
 
 ## 0.14.0 (2023-11-17)

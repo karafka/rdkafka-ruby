@@ -5,8 +5,10 @@
 - **[Feature]** Add `Admin#create_partitions` (mensfeld)
 - **[Feature]** Add `Admin#delete_group` utility (piotaixr)
 - **[Feature]** Add Create and Delete ACL Feature To Admin Functions (vgnanasekaran)
+- [Enhancement] Expose alternative way of managing consumer events via a separate queue (mensfeld) 
 - [Enhancement] Bump librdkafka to 2.3.0 (mensfeld)
 - [Enhancement] Increase the `#lag` and `#query_watermark_offsets` default timeouts from 100ms to 1000ms. This will compensate for network glitches and remote clusters operations (mensfeld)
+- [Change] Use `SecureRandom.uuid` instead of `random` for test consumer groups (mensfeld)
 
 ## 0.14.0 (2023-11-21)
 - [Enhancement] Add `raise_response_error` flag to the `Rdkafka::AbstractHandle`.

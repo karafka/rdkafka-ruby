@@ -112,6 +112,7 @@ module Rdkafka
     def initialize(config_hash = {})
       @config_hash = DEFAULT_CONFIG.merge(config_hash)
       @consumer_rebalance_listener = nil
+      @consumer_poll_set = true
     end
 
     # Set a config option.
@@ -140,6 +141,22 @@ module Rdkafka
       @consumer_rebalance_listener = listener
     end
 
+    # Should we use a single queue for the underlying consumer and events.
+    #
+    # This is an advanced API that allows for more granular control of the polling process.
+    # When this value is set to `false` (`true` by defualt), there will be two queues that need to
+    # be polled:
+    #   - main librdkafka queue for events
+    #   - consumer queue with messages and rebalances
+    #
+    # It is recommended to use the defaults and only set it to `false` in advance multi-threaded
+    # and complex cases where granular events handling control is needed.
+    #
+    # @param poll_set [Boolean]
+    def consumer_poll_set=(poll_set)
+      @consumer_poll_set = poll_set
+    end
+
     # Creates a consumer with this configuration.
     #
     # @return [Consumer] The created consumer
@@ -158,8 +175,8 @@ module Rdkafka
       # Create native client
       kafka = native_kafka(config, :rd_kafka_consumer)
 
-      # Redirect the main queue to the consumer
-      Rdkafka::Bindings.rd_kafka_poll_set_consumer(kafka)
+      # Redirect the main queue to the consumer queue
+      Rdkafka::Bindings.rd_kafka_poll_set_consumer(kafka) if @consumer_poll_set
 
       # Return consumer with Kafka client
       Rdkafka::Consumer.new(
@@ -187,7 +204,11 @@ module Rdkafka
       # Return producer with Kafka client
       partitioner_name = self[:partitioner] || self["partitioner"]
       Rdkafka::Producer.new(
-        Rdkafka::NativeKafka.new(native_kafka(config, :rd_kafka_producer), run_polling_thread: true, opaque: opaque),
+        Rdkafka::NativeKafka.new(
+          native_kafka(config, :rd_kafka_producer),
+          run_polling_thread: true,
+          opaque: opaque
+        ),
         partitioner_name
       ).tap do |producer|
         opaque.producer = producer

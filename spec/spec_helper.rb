@@ -36,7 +36,7 @@ def rdkafka_consumer_config(config_overrides={})
   # Add consumer specific fields to it
   config[:"auto.offset.reset"] = "earliest"
   config[:"enable.partition.eof"] = false
-  config[:"group.id"] = "ruby-test-#{Random.new.rand(0..1_000_000)}"
+  config[:"group.id"] = "ruby-test-#{SecureRandom.uuid}"
   # Enable debug mode if required
   if ENV["DEBUG_CONSUMER"]
     config[:debug] = "cgrp,topic,fetch"
@@ -135,6 +135,7 @@ RSpec.configure do |config|
         rake_test_topic:         3,
         watermarks_test_topic:   3,
         partitioner_test_topic: 25,
+        example_topic:           1
     }.each do |topic, partitions|
       create_topic_handle = admin.create_topic(topic.to_s, partitions, 1)
       begin

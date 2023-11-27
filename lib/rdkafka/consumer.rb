@@ -531,6 +531,32 @@ module Rdkafka
       end
     end
 
+    # Polls the main rdkafka queue (not the consumer one). Do **NOT** use it if `consumer_poll_set`
+    #   was set to `true`.
+    #
+    # Events will cause application-provided callbacks to be called.
+    #
+    # Events (in the context of the consumer):
+    #   - error callbacks
+    #   - stats callbacks
+    #   - any other callbacks supported by librdkafka that are not part of the consumer_poll, that
+    #     would have a callback configured and activated.
+    #
+    # This method needs to be called at regular intervals to serve any queued callbacks waiting to
+    # be called. When in use, does **NOT** replace `#poll` but needs to run complementary with it.
+    #
+    # @param timeout_ms [Integer] poll timeout. If set to 0 will run async, when set to -1 will
+    #   block until any events available.
+    #
+    # @note This method technically should be called `#poll` and the current `#poll` should be
+    #   called `#consumer_poll` though we keep the current naming convention to make it backward
+    #   compatible.
+    def events_poll(timeout_ms = 0)
+      @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_poll(inner, timeout_ms)
+      end
+    end
+
     # Poll for new messages and yield for each received one. Iteration
     # will end when the consumer is closed.
     #

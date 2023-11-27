@@ -113,6 +113,14 @@ describe Rdkafka::Config do
       consumer.close
     end
 
+    it "should create a consumer with consumer_poll_set set to false" do
+      config = rdkafka_consumer_config
+      config.consumer_poll_set = false
+      consumer = config.consumer
+      expect(consumer).to be_a Rdkafka::Consumer
+      consumer.close
+    end
+
     it "should raise an error when creating a consumer with invalid config" do
       config = Rdkafka::Config.new('invalid.key' => 'value')
       expect {

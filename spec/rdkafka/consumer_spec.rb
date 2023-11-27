@@ -54,6 +54,30 @@ describe Rdkafka::Consumer do
         consumer.subscription
       }.to raise_error(Rdkafka::RdkafkaError)
     end
+
+    context "when using consumer without the poll set" do
+      let(:consumer) do
+        config = rdkafka_consumer_config
+        config.consumer_poll_set = false
+        config.consumer
+      end
+
+      it "should subscribe, unsubscribe and return the subscription" do
+        expect(consumer.subscription).to be_empty
+
+        consumer.subscribe("consume_test_topic")
+
+        expect(consumer.subscription).not_to be_empty
+        expected_subscription = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic("consume_test_topic")
+        end
+        expect(consumer.subscription).to eq expected_subscription
+
+        consumer.unsubscribe
+
+        expect(consumer.subscription).to be_empty
+      end
+    end
   end
 
   describe "#pause and #resume" do
@@ -1051,6 +1075,29 @@ describe Rdkafka::Consumer do
 
         expect(tpl_response.to_h["consume_test_topic"][0].offset).to eq message.offset
       end
+    end
+  end
+
+  # Only relevant in case of a consumer with separate queues
+  describe '#events_poll' do
+    let(:stats) { [] }
+
+    before { Rdkafka::Config.statistics_callback = ->(published) { stats << published } }
+
+    after { Rdkafka::Config.statistics_callback = nil }
+
+    let(:consumer) do
+      config = rdkafka_consumer_config('statistics.interval.ms': 100)
+      config.consumer_poll_set = false
+      config.consumer
+    end
+
+    it "expect to run events_poll, operate and propagate stats on events_poll and not poll" do
+      consumer.subscribe("consume_test_topic")
+      consumer.poll(1_000)
+      expect(stats).to be_empty
+      consumer.events_poll(-1)
+      expect(stats).not_to be_empty
     end
   end
 

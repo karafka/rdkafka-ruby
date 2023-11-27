@@ -605,7 +605,6 @@ module Rdkafka
       describe_acl_handle
     end
 
-
     private
 
     def closed_admin_check(method)

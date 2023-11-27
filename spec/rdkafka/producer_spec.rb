@@ -847,10 +847,12 @@ describe Rdkafka::Producer do
         producer.init_transactions
         producer.begin_transaction
 
-        sleep(5)
+        sleep(1)
 
         handle1 = producer.produce(topic: 'produce_test_topic', payload: 'data1', partition: 1)
         handle2 = producer.produce(topic: 'example_topic', payload: 'data2', partition: 0)
+
+        sleep(15)
 
         begin
           producer.commit_transaction(15_000)
@@ -862,10 +864,10 @@ describe Rdkafka::Producer do
           rescue Rdkafka::RdkafkaError => e
             nil
           end
-
-          expect { handle1.wait(max_wait_timeout: 15) }.to raise_error(Rdkafka::RdkafkaError)
-          expect { handle2.wait(max_wait_timeout: 15) }.to raise_error(Rdkafka::RdkafkaError)
         end
+
+        expect { handle1.wait(max_wait_timeout: 15) }.to raise_error(Rdkafka::RdkafkaError)
+        expect { handle2.wait(max_wait_timeout: 15) }.to raise_error(Rdkafka::RdkafkaError)
       end
     end
 

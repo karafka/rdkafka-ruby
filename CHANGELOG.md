@@ -5,6 +5,8 @@
 - **[Feature]** Add `Admin#create_partitions` (mensfeld)
 - **[Feature]** Add `Admin#delete_group` utility (piotaixr)
 - **[Feature]** Add Create and Delete ACL Feature To Admin Functions (vgnanasekaran)
+- **[Enhancement]** Improve error reporting on `unknown_topic_or_part` and include missing topic (mensfeld)
+- **[Enhancement]** Improve error reporting on consumer polling errors (mensfeld)
 
 ## 0.14.0 (2023-11-17)
 - [Enhancement] Bump librdkafka to 2.3.0

@@ -702,6 +702,15 @@ describe Rdkafka::Consumer do
         consumer.poll(100)
       }.to raise_error Rdkafka::RdkafkaError
     end
+
+    it "expect to raise error when polling non-existing topic" do
+      missing_topic = SecureRandom.uuid
+      consumer.subscribe(missing_topic)
+
+      expect {
+        consumer.poll(1_000)
+      }.to raise_error Rdkafka::RdkafkaError, /Subscribed topic not available: #{missing_topic}/
+    end
   end
 
   describe "#poll with headers" do

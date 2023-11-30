@@ -42,8 +42,19 @@ module Rdkafka
       end
 
       def build(response_ptr_or_code, message_prefix = nil, broker_message: nil)
-        if response_ptr_or_code.is_a?(Integer)
-          response_ptr_or_code.zero? ? false : new(response_ptr_or_code, message_prefix, broker_message: broker_message)
+        case response_ptr_or_code
+        when Integer
+          return false if response_ptr_or_code.zero?
+
+          new(response_ptr_or_code, message_prefix, broker_message: broker_message)
+        when Bindings::Message
+          return false if response_ptr_or_code[:err].zero?
+
+          unless response_ptr_or_code[:payload].null?
+            message_prefix ||= response_ptr_or_code[:payload].read_string(response_ptr_or_code[:len])
+          end
+
+          new(response_ptr_or_code[:err], message_prefix, broker_message: broker_message)
         else
           build_from_c(response_ptr_or_code, message_prefix)
         end

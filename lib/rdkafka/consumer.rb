@@ -522,18 +522,17 @@ module Rdkafka
       message_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_consumer_poll(inner, timeout_ms)
       end
-      if message_ptr.null?
-        nil
-      else
-        # Create struct wrapper
-        native_message = Rdkafka::Bindings::Message.new(message_ptr)
-        # Raise error if needed
 
-        Rdkafka::RdkafkaError.validate!(native_message[:err])
+      return nil if message_ptr.null?
 
-        # Create a message to pass out
-        Rdkafka::Consumer::Message.new(native_message)
-      end
+      # Create struct wrapper
+      native_message = Rdkafka::Bindings::Message.new(message_ptr)
+
+      # Create a message to pass out
+      return Rdkafka::Consumer::Message.new(native_message) if native_message[:err].zero?
+
+      # Raise error if needed
+      Rdkafka::RdkafkaError.validate!(native_message)
     ensure
       # Clean up rdkafka message if there is one
       if message_ptr && !message_ptr.null?

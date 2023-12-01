@@ -221,6 +221,15 @@ module Rdkafka
       ptr.free unless ptr.nil?
     end
 
+    # @return [Boolean] true if our current assignment has been lost involuntarily.
+    def assignment_lost?
+      closed_consumer_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        !Rdkafka::Bindings.rd_kafka_assignment_lost(inner).zero?
+      end
+    end
+
     # Return the current committed offset per partition for this consumer group.
     # The offset field of each requested partition will either be set to stored offset or to -1001
     # in case there was no stored offset for that partition.

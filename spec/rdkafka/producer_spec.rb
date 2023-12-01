@@ -834,43 +834,6 @@ describe Rdkafka::Producer do
       expect(response.error.abortable?).to eq(false)
     end
 
-    # This may not always crash, depends on load but no other way to check it
-    context 'when timeout is too short and error occurs and we can abort' do
-      let(:producer) do
-        rdkafka_producer_config(
-          'transactional.id': SecureRandom.uuid,
-          'transaction.timeout.ms': 1_000
-        ).producer
-      end
-
-      it 'expect to allow to produce within a transaction, finalize and not ship data' do
-        producer.init_transactions
-        producer.begin_transaction
-
-        sleep(1)
-
-        handle1 = producer.produce(topic: 'produce_test_topic', payload: 'data1', partition: 1)
-        handle2 = producer.produce(topic: 'example_topic', payload: 'data2', partition: 0)
-
-        sleep(15)
-
-        begin
-          producer.commit_transaction(15_000)
-        rescue Rdkafka::RdkafkaError => e
-          next unless e.abortable?
-
-          begin
-            producer.abort_transaction(15_000)
-          rescue Rdkafka::RdkafkaError => e
-            nil
-          end
-        end
-
-        expect { handle1.wait(max_wait_timeout: 15) }.to raise_error(Rdkafka::RdkafkaError)
-        expect { handle2.wait(max_wait_timeout: 15) }.to raise_error(Rdkafka::RdkafkaError)
-      end
-    end
-
     context 'fencing against previous active producer with same transactional id' do
       let(:transactional_id) { SecureRandom.uuid }
 

@@ -297,6 +297,28 @@ describe Rdkafka::Consumer do
     end
   end
 
+  describe '#assignment_lost?' do
+    it "should not return true as we do have an assignment" do
+      consumer.subscribe("consume_test_topic")
+      expected_subscription = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+        list.add_topic("consume_test_topic")
+      end
+
+      expect(consumer.assignment_lost?).to eq false
+      consumer.unsubscribe
+    end
+
+    it "should not return true after voluntary unsubscribing" do
+      consumer.subscribe("consume_test_topic")
+      expected_subscription = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+        list.add_topic("consume_test_topic")
+      end
+
+      consumer.unsubscribe
+      expect(consumer.assignment_lost?).to eq false
+    end
+  end
+
   describe "#close" do
     it "should close a consumer" do
       consumer.subscribe("consume_test_topic")

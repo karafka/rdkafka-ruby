@@ -5,6 +5,7 @@
 - **[Feature]** Add `Admin#create_partitions` (mensfeld)
 - **[Feature]** Add `Admin#delete_group` utility (piotaixr)
 - **[Feature]** Add Create and Delete ACL Feature To Admin Functions (vgnanasekaran)
+- **[Feature]** Support `#assignment_lost?` on a consumer to check for involuntary assignment revocation (mensfeld)
 - [Enhancement] Expose alternative way of managing consumer events via a separate queue (mensfeld) 
 - [Enhancement] Bump librdkafka to 2.3.0 (mensfeld)
 - [Enhancement] Increase the `#lag` and `#query_watermark_offsets` default timeouts from 100ms to 1000ms. This will compensate for network glitches and remote clusters operations (mensfeld)

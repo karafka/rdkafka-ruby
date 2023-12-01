@@ -179,6 +179,7 @@ module Rdkafka
     attach_function :rd_kafka_incremental_assign, [:pointer, :pointer], :int, blocking: true
     attach_function :rd_kafka_incremental_unassign, [:pointer, :pointer], :int, blocking: true
     attach_function :rd_kafka_assignment, [:pointer, :pointer], :int, blocking: true
+    attach_function :rd_kafka_assignment_lost, [:pointer], :int, blocking: true
     attach_function :rd_kafka_committed, [:pointer, :pointer, :int], :int, blocking: true
     attach_function :rd_kafka_commit, [:pointer, :pointer, :bool], :int, blocking: true
     attach_function :rd_kafka_poll_set_consumer, [:pointer], :void, blocking: true

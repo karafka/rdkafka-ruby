@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.15.0 (Unreleased)
+## 0.14.1 (2023-12-02)
 - **[Feature]** Add `Admin#metadata` (mensfeld)
 - **[Feature]** Add `Admin#create_partitions` (mensfeld)
 - **[Feature]** Add `Admin#delete_group` utility (piotaixr)

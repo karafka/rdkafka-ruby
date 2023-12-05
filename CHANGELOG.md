@@ -2,6 +2,7 @@
 
 ## 0.15.1 (Unreleased)
 - [Enhancement] Alias `topic_name` as `topic` in the delivery report (mensfeld)
+- [Fix] Fix return type on `#rd_kafka_poll` (mensfeld)
 
 ## 0.15.0 (2023-12-03)
 - **[Feature]** Add `Admin#metadata` (mensfeld)

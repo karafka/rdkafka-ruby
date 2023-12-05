@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.15.1 (Unreleased)
+- [Fix] Fix return type on `#rd_kafka_poll` (mensfeld)
+
 ## 0.15.0 (2023-12-03)
 - **[Feature]** Add `Admin#metadata` (mensfeld)
 - **[Feature]** Add `Admin#create_partitions` (mensfeld)

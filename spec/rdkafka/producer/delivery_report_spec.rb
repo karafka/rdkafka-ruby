@@ -15,6 +15,10 @@ describe Rdkafka::Producer::DeliveryReport do
     expect(subject.topic_name).to eq "topic"
   end
 
+  it "should get the same topic name under topic alias" do
+    expect(subject.topic).to eq "topic"
+  end
+
   it "should get the error" do
     expect(subject.error).to eq -1
   end

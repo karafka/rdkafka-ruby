@@ -1,40 +1,48 @@
-# frozen_string_literal: true
-
 require File.expand_path('../../lib/rdkafka/version', __FILE__)
-require "mini_portile2"
 require "fileutils"
 require "open-uri"
 
 task :default => :clean do
-  # Download and compile librdkafka
-  recipe = MiniPortile.new("librdkafka", Rdkafka::LIBRDKAFKA_VERSION)
+  if ENV.fetch('RDKAFKA_EXT_PATH', '').empty?
+    # Download and compile librdkafka if RDKAFKA_EXT_PATH is not set
+    require "mini_portile2"
 
-  # Use default homebrew openssl if we're on mac and the directory exists
-  # and each of flags is not empty
-  if recipe.host&.include?("darwin") && system("which brew &> /dev/null") && Dir.exist?("#{homebrew_prefix = %x(brew --prefix openssl).strip}")
-    ENV["CPPFLAGS"] = "-I#{homebrew_prefix}/include" unless ENV["CPPFLAGS"]
-    ENV["LDFLAGS"] = "-L#{homebrew_prefix}/lib" unless ENV["LDFLAGS"]
-  end
+    recipe = MiniPortile.new("librdkafka", Rdkafka::LIBRDKAFKA_VERSION)
 
-  recipe.files << {
-    :url => "https://codeload.github.com/confluentinc/librdkafka/tar.gz/v#{Rdkafka::LIBRDKAFKA_VERSION}",
-    :sha256 => Rdkafka::LIBRDKAFKA_SOURCE_SHA256
-  }
-  recipe.configure_options = ["--host=#{recipe.host}"]
-  recipe.cook
-  # Move dynamic library we're interested in
-  if recipe.host.include?('darwin')
-    from_extension = '1.dylib'
-    to_extension   = 'dylib'
+    # Use default homebrew openssl if we're on mac and the directory exists
+    # and each of flags is not empty
+    if recipe.host&.include?("darwin") && system("which brew &> /dev/null") && Dir.exist?("#{homebrew_prefix = %x(brew --prefix openssl).strip}")
+      ENV["CPPFLAGS"] = "-I#{homebrew_prefix}/include" unless ENV["CPPFLAGS"]
+      ENV["LDFLAGS"] = "-L#{homebrew_prefix}/lib" unless ENV["LDFLAGS"]
+    end
+
+    recipe.files << {
+      :url => "https://codeload.github.com/edenhill/librdkafka/tar.gz/v#{Rdkafka::LIBRDKAFKA_VERSION}",
+      :sha256 => Rdkafka::LIBRDKAFKA_SOURCE_SHA256
+    }
+    recipe.configure_options = ["--host=#{recipe.host}"]
+    recipe.cook
+    # Move dynamic library we're interested in
+    if recipe.host.include?('darwin')
+      from_extension = '1.dylib'
+      to_extension   = 'dylib'
+    else
+      from_extension = 'so.1'
+      to_extension = 'so'
+    end
+    lib_path = File.join(File.dirname(__FILE__), "ports/#{recipe.host}/librdkafka/#{Rdkafka::LIBRDKAFKA_VERSION}/lib/librdkafka.#{from_extension}")
+    FileUtils.mv(lib_path, File.join(File.dirname(__FILE__), "librdkafka.#{to_extension}"))
+    # Cleanup files created by miniportile we don't need in the gem
+    FileUtils.rm_rf File.join(File.dirname(__FILE__), "tmp")
+    FileUtils.rm_rf File.join(File.dirname(__FILE__), "ports")
   else
-    from_extension = 'so.1'
-    to_extension = 'so'
+    # Otherwise, copy existing libraries to ./ext
+    files = [
+      File.join(ENV['RDKAFKA_EXT_PATH'], 'lib', 'librdkafka.dylib'),
+      File.join(ENV['RDKAFKA_EXT_PATH'], 'lib', 'librdkafka.so')
+    ]
+    files.each { |ext| FileUtils.cp(ext, File.dirname(__FILE__)) if File.exist?(ext) }
   end
-  lib_path = File.join(File.dirname(__FILE__), "ports/#{recipe.host}/librdkafka/#{Rdkafka::LIBRDKAFKA_VERSION}/lib/librdkafka.#{from_extension}")
-  FileUtils.mv(lib_path, File.join(File.dirname(__FILE__), "librdkafka.#{to_extension}"))
-  # Cleanup files created by miniportile we don't need in the gem
-  FileUtils.rm_rf File.join(File.dirname(__FILE__), "tmp")
-  FileUtils.rm_rf File.join(File.dirname(__FILE__), "ports")
 end
 
 task :clean do

@@ -1,72 +1,98 @@
-require File.expand_path('../../lib/rdkafka/version', __FILE__)
-require "fileutils"
-require "open-uri"
+# frozen_string_literal: true
 
-task :default => :clean do
-  if ENV.fetch('RDKAFKA_EXT_PATH', '').empty?
-    # Download and compile librdkafka if RDKAFKA_EXT_PATH is not set
-    require "mini_portile2"
+# Rakefile
 
-    recipe = MiniPortile.new("librdkafka", Rdkafka::LIBRDKAFKA_VERSION)
+require 'bundler/gem_tasks'
+require "./lib/rdkafka"
 
-    # Use default homebrew openssl if we're on mac and the directory exists
-    # and each of flags is not empty
-    if recipe.host&.include?("darwin") && system("which brew &> /dev/null") && Dir.exist?("#{homebrew_prefix = %x(brew --prefix openssl).strip}")
-      ENV["CPPFLAGS"] = "-I#{homebrew_prefix}/include" unless ENV["CPPFLAGS"]
-      ENV["LDFLAGS"] = "-L#{homebrew_prefix}/lib" unless ENV["LDFLAGS"]
-    end
+desc 'Generate some message traffic'
+task :produce_messages do
+  config = {:"bootstrap.servers" => "localhost:9092"}
+  if ENV["DEBUG"]
+    config[:debug] = "broker,topic,msg"
+  end
+  producer = Rdkafka::Config.new(config).producer
 
-    recipe.files << {
-      :url => "https://codeload.github.com/edenhill/librdkafka/tar.gz/v#{Rdkafka::LIBRDKAFKA_VERSION}",
-      :sha256 => Rdkafka::LIBRDKAFKA_SOURCE_SHA256
-    }
-    recipe.configure_options = ["--host=#{recipe.host}"]
-    recipe.cook
-    # Move dynamic library we're interested in
-    if recipe.host.include?('darwin')
-      from_extension = '1.dylib'
-      to_extension   = 'dylib'
-    else
-      from_extension = 'so.1'
-      to_extension = 'so'
-    end
-    lib_path = File.join(File.dirname(__FILE__), "ports/#{recipe.host}/librdkafka/#{Rdkafka::LIBRDKAFKA_VERSION}/lib/librdkafka.#{from_extension}")
-    FileUtils.mv(lib_path, File.join(File.dirname(__FILE__), "librdkafka.#{to_extension}"))
-    # Cleanup files created by miniportile we don't need in the gem
-    FileUtils.rm_rf File.join(File.dirname(__FILE__), "tmp")
-    FileUtils.rm_rf File.join(File.dirname(__FILE__), "ports")
-  else
-    # Otherwise, copy existing libraries to ./ext
-    files = [
-      File.join(ENV['RDKAFKA_EXT_PATH'], 'lib', 'librdkafka.dylib'),
-      File.join(ENV['RDKAFKA_EXT_PATH'], 'lib', 'librdkafka.so')
-    ]
-    files.each { |ext| FileUtils.cp(ext, File.dirname(__FILE__)) if File.exist?(ext) }
+  delivery_handles = []
+  100.times do |i|
+    puts "Producing message #{i}"
+    delivery_handles << producer.produce(
+        topic:   "rake_test_topic",
+        payload: "Payload #{i} from Rake",
+        key:     "Key #{i} from Rake"
+    )
+  end
+  puts 'Waiting for delivery'
+  delivery_handles.each(&:wait)
+  puts 'Done'
+end
+
+desc 'Consume some messages'
+task :consume_messages do
+  config = {
+    :"bootstrap.servers" => "localhost:9092",
+    :"group.id" => "rake_test",
+    :"enable.partition.eof" => false,
+    :"auto.offset.reset" => "earliest",
+    :"statistics.interval.ms" => 10_000
+  }
+  if ENV["DEBUG"]
+    config[:debug] = "cgrp,topic,fetch"
+  end
+  Rdkafka::Config.statistics_callback = lambda do |stats|
+    puts stats
+  end
+  consumer = Rdkafka::Config.new(config).consumer
+  consumer = Rdkafka::Config.new(config).consumer
+  consumer.subscribe("rake_test_topic")
+  consumer.each do |message|
+    puts "Message received: #{message}"
   end
 end
 
-task :clean do
-  FileUtils.rm_f File.join(File.dirname(__FILE__), "librdkafka.dylib")
-  FileUtils.rm_f File.join(File.dirname(__FILE__), "librdkafka.so")
-  FileUtils.rm_rf File.join(File.dirname(__FILE__), "ports")
-  FileUtils.rm_rf File.join(File.dirname(__FILE__), "tmp")
-end
+desc 'Hammer down'
+task :load_test do
+  puts "Starting load test"
 
-namespace :build do
-  desc "Build librdkafka at the given git sha or tag"
-  task :git, [:ref] do |task, args|
-    ref = args[:ref]
-    version = "git-#{ref}"
+  config = Rdkafka::Config.new(
+    :"bootstrap.servers" => "localhost:9092",
+    :"group.id" => "load-test",
+    :"enable.partition.eof" => false
+  )
 
-    recipe = MiniPortile.new("librdkafka", version)
-    recipe.files << "https://github.com/edenhill/librdkafka/archive/#{ref}.tar.gz"
-    recipe.configure_options = ["--host=#{recipe.host}","--enable-static", "--enable-zstd"]
-    recipe.cook
+  # Create a producer in a thread
+  Thread.new do
+    producer = config.producer
+    loop do
+      handles = []
+      1000.times do |i|
+        handles.push(producer.produce(
+          topic:   "load_test_topic",
+          payload: "Payload #{i}",
+          key:     "Key #{i}"
+        ))
+      end
+      handles.each(&:wait)
+      puts "Produced 1000 messages"
+    end
+  end.abort_on_exception = true
 
-    ext = recipe.host.include?("darwin") ? "dylib" : "so"
-    lib = File.expand_path("ports/#{recipe.host}/librdkafka/#{version}/lib/librdkafka.#{ext}", __dir__)
+  # Create three consumers in threads
+  3.times do |i|
+    Thread.new do
+      count = 0
+      consumer = config.consumer
+      consumer.subscribe("load_test_topic")
+      consumer.each do |message|
+        count += 1
+        if count % 1000 == 0
+          puts "Received 1000 messages in thread #{i}"
+        end
+      end
+    end.abort_on_exception = true
+  end
 
-    # Copy will copy the content, following any symlinks
-    FileUtils.cp(lib, __dir__)
+  loop do
+    sleep 1
   end
 end

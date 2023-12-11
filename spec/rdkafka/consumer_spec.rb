@@ -480,6 +480,8 @@ describe Rdkafka::Consumer do
       end
 
       describe "#store_offset" do
+        let(:consumer) { rdkafka_consumer_config('enable.auto.offset.store': false).consumer }
+
         before do
           config = {}
           config[:'enable.auto.offset.store'] = false

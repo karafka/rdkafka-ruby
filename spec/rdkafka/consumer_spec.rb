@@ -544,6 +544,14 @@ describe Rdkafka::Consumer do
             }.to raise_error(Rdkafka::RdkafkaError)
           end
         end
+
+        context "when trying to use with enable.auto.offset.store set to true" do
+          let(:consumer) { rdkafka_consumer_config('enable.auto.offset.store': true).consumer }
+
+          it "expect to raise invalid configuration error" do
+            expect { consumer.store_offset(message) }.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
+          end
+        end
       end
     end
   end

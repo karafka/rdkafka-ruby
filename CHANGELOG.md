@@ -3,6 +3,7 @@
 ## 0.14.2 (Unreleased)
 - [Enhancement] Alias `topic_name` as `topic` in the delivery report (mensfeld)
 - [Fix] Fix return type on `#rd_kafka_poll` (mensfeld)
+- [Fix] `uint8_t` does not exist on Apple Silicon (mensfeld)
 
 ## 0.14.1 (2023-12-02)
 - **[Feature]** Add `Admin#metadata` (mensfeld)

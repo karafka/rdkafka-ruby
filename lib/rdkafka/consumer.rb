@@ -382,10 +382,9 @@ module Rdkafka
     # When using this `enable.auto.offset.store` should be set to `false` in the config.
     #
     # @param message [Rdkafka::Consumer::Message] The message which offset will be stored
-    # @param metadata [String, nil] extra metadata for given offset
     # @return [nil]
     # @raise [RdkafkaError] When storing the offset fails
-    def store_offset(message, metadata = nil)
+    def store_offset(message)
       closed_consumer_check(__method__)
 
       list = TopicPartitionList.new

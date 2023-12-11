@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require File.expand_path('../../lib/rdkafka/version', __FILE__)
 require "fileutils"
 require "open-uri"

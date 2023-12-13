@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.14.3 (Unreleased)
+- [Enhancement] Replace `rd_kafka_offset_store` with `rd_kafka_offsets_store` (mensfeld)
+
 ## 0.14.2 (2023-12-11)
 - [Enhancement] Alias `topic_name` as `topic` in the delivery report (mensfeld)
 - [Fix] Fix return type on `#rd_kafka_poll` (mensfeld)

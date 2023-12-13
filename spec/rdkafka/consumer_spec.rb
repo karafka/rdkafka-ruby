@@ -480,6 +480,8 @@ describe Rdkafka::Consumer do
       end
 
       describe "#store_offset" do
+        let(:consumer) { rdkafka_consumer_config('enable.auto.offset.store': false).consumer }
+
         before do
           config = {}
           config[:'enable.auto.offset.store'] = false
@@ -540,6 +542,14 @@ describe Rdkafka::Consumer do
             expect {
               consumer.position
             }.to raise_error(Rdkafka::RdkafkaError)
+          end
+        end
+
+        context "when trying to use with enable.auto.offset.store set to true" do
+          let(:consumer) { rdkafka_consumer_config('enable.auto.offset.store': true).consumer }
+
+          it "expect to raise invalid configuration error" do
+            expect { consumer.store_offset(message) }.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
           end
         end
       end

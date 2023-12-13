@@ -388,28 +388,26 @@ module Rdkafka
     def store_offset(message)
       closed_consumer_check(__method__)
 
-      # rd_kafka_offset_store is one of the few calls that does not support
-      # a string as the topic, so create a native topic for it.
-      native_topic = @native_kafka.with_inner do |inner|
-        Rdkafka::Bindings.rd_kafka_topic_new(
+      list = TopicPartitionList.new
+      list.add_topic_and_partitions_with_offsets(
+        message.topic,
+        message.partition => message.offset + 1
+      )
+
+      tpl = list.to_native_tpl
+
+      response = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_offsets_store(
           inner,
-          message.topic,
-          nil
+          tpl
         )
       end
-      response = Rdkafka::Bindings.rd_kafka_offset_store(
-        native_topic,
-        message.partition,
-        message.offset
-      )
 
       Rdkafka::RdkafkaError.validate!(response)
 
       nil
     ensure
-      if native_topic && !native_topic.null?
-        Rdkafka::Bindings.rd_kafka_topic_destroy(native_topic)
-      end
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl) if tpl
     end
 
     # Seek to a particular message. The next poll on the topic/partition will return the

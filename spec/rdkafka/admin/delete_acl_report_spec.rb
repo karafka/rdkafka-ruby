@@ -50,6 +50,7 @@ describe Rdkafka::Admin::DeleteAclReport do
   end
 
   it "should get deleted acl resource pattern type as Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL" do
+    expect(subject.deleted_acls[0].matching_acl_resource_pattern_type).to eq(Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL)
     expect(subject.deleted_acls[0].matching_acl_pattern_type).to eq(Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL)
   end
 

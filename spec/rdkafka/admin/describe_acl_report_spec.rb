@@ -51,6 +51,7 @@ describe Rdkafka::Admin::DescribeAclReport do
   end
 
   it "should get matching acl resource pattern type as Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL" do
+    expect(subject.acls[0].matching_acl_resource_pattern_type).to eq(Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL)
     expect(subject.acls[0].matching_acl_pattern_type).to eq(Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL)
   end
 

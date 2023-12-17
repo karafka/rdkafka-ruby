@@ -5,6 +5,8 @@
 - [Enhancement] Alias `topic_name` as `topic` in the delivery report (mensfeld)
 - [Fix] Fix return type on `#rd_kafka_poll` (mensfeld)
 - [Fix] `uint8_t` does not exist on Apple Silicon (mensfeld)
+- [Fix] Missing ACL `RD_KAFKA_RESOURCE_BROKER` constant reference (mensfeld)
+- [Change] Rename `matching_acl_pattern_type` to `matching_acl_resource_pattern_type` to align the whole API (mensfeld)
 
 ## 0.15.0 (2023-12-03)
 - **[Feature]** Add `Admin#metadata` (mensfeld)

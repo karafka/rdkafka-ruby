@@ -1,14 +1,14 @@
 # Rdkafka Changelog
 
-## 0.14.3 (Unreleased)
+## 0.14.3 (2023-12-17)
 - [Enhancement] Replace `rd_kafka_offset_store` with `rd_kafka_offsets_store` (mensfeld)
+- [Fix] Missing ACL `RD_KAFKA_RESOURCE_BROKER` constant reference (mensfeld)
+- [Change] Rename `matching_acl_pattern_type` to `matching_acl_resource_pattern_type` to align the whole API (mensfeld)
 
 ## 0.14.2 (2023-12-11)
 - [Enhancement] Alias `topic_name` as `topic` in the delivery report (mensfeld)
 - [Fix] Fix return type on `#rd_kafka_poll` (mensfeld)
 - [Fix] `uint8_t` does not exist on Apple Silicon (mensfeld)
-- [Fix] Missing ACL `RD_KAFKA_RESOURCE_BROKER` constant reference (mensfeld)
-- [Change] Rename `matching_acl_pattern_type` to `matching_acl_resource_pattern_type` to align the whole API (mensfeld)
 
 ## 0.14.1 (2023-12-02)
 - **[Feature]** Add `Admin#metadata` (mensfeld)

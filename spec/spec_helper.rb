@@ -107,10 +107,6 @@ def wait_for_unassignment(consumer)
   end
 end
 
-def objects_of_type_count(type)
-  ObjectSpace.each_object(type).count
-end
-
 def notify_listener(listener, &block)
   # 1. subscribe and poll
   consumer.subscribe("consume_test_topic")

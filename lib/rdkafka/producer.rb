@@ -81,7 +81,7 @@ module Rdkafka
       @native_kafka.with_inner do |inner|
         response_ptr = Rdkafka::Bindings.rd_kafka_begin_transaction(inner)
 
-        Rdkafka::RdkafkaError.validate!(response_ptr)
+        Rdkafka::RdkafkaError.validate!(response_ptr) || true
       end
     end
 
@@ -91,7 +91,7 @@ module Rdkafka
       @native_kafka.with_inner do |inner|
         response_ptr = Rdkafka::Bindings.rd_kafka_commit_transaction(inner, timeout_ms)
 
-        Rdkafka::RdkafkaError.validate!(response_ptr)
+        Rdkafka::RdkafkaError.validate!(response_ptr) || true
       end
     end
 
@@ -100,8 +100,35 @@ module Rdkafka
 
       @native_kafka.with_inner do |inner|
         response_ptr = Rdkafka::Bindings.rd_kafka_abort_transaction(inner, timeout_ms)
+        Rdkafka::RdkafkaError.validate!(response_ptr) || true
+      end
+    end
+
+    # Sends provided offsets of a consumer to the transaction for collective commit
+    #
+    # @param consumer [Consumer] consumer that owns the given tpls
+    # @param tpl [Consumer::TopicPartitionList]
+    # @param timeout_ms [Integer] offsets send timeout
+    # @note Use **only** in the context of an active transaction
+    def send_offsets_to_transaction(consumer, tpl, timeout_ms = 5_000)
+      closed_producer_check(__method__)
+
+      return if tpl.empty?
+
+      cgmetadata = consumer.consumer_group_metadata_pointer
+      native_tpl = tpl.to_native_tpl
+
+      @native_kafka.with_inner do |inner|
+        response_ptr = Bindings.rd_kafka_send_offsets_to_transaction(inner, native_tpl, cgmetadata, timeout_ms)
+
         Rdkafka::RdkafkaError.validate!(response_ptr)
       end
+    ensure
+      if cgmetadata && !cgmetadata.null?
+        Bindings.rd_kafka_consumer_group_metadata_destroy(cgmetadata)
+      end
+
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(native_tpl) unless native_tpl.nil?
     end
 
     # Close this producer and wait for the internal poll queue to empty.

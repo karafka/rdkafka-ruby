@@ -883,5 +883,30 @@ describe Rdkafka::Producer do
         expect { producer2.commit_transaction }.not_to raise_error
       end
     end
+
+    context 'when having a consumer with tpls for exactly once semantics' do
+      let(:tpl) do
+        producer.produce(topic: 'consume_test_topic', payload: 'data1', partition: 0).wait
+        result = producer.produce(topic: 'consume_test_topic', payload: 'data1', partition: 0).wait
+
+        Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic_and_partitions_with_offsets("consume_test_topic", 0 => result.offset + 1)
+        end
+      end
+
+      before do
+        consumer.subscribe("consume_test_topic")
+        wait_for_assignment(consumer)
+        producer.init_transactions
+        producer.begin_transaction
+      end
+
+      after { consumer.unsubscribe }
+
+      it 'expect to store offsets and not crash' do
+        producer.send_offsets_to_transaction(consumer, tpl)
+        producer.commit_transaction
+      end
+    end
   end
 end

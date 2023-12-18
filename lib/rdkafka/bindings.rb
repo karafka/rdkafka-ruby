@@ -205,6 +205,9 @@ module Rdkafka
     attach_function :rd_kafka_seek, [:pointer, :int32, :int64, :int], :int, blocking: true
     attach_function :rd_kafka_offsets_for_times, [:pointer, :pointer, :int], :int, blocking: true
     attach_function :rd_kafka_position, [:pointer, :pointer], :int, blocking: true
+    # those two are used for eos support
+    attach_function :rd_kafka_consumer_group_metadata, [:pointer], :pointer, blocking: true
+    attach_function :rd_kafka_consumer_group_metadata_destroy, [:pointer], :void, blocking: true
 
     # Headers
     attach_function :rd_kafka_header_get_all, [:pointer, :size_t, :pointer, :pointer, SizePtr], :int
@@ -276,6 +279,7 @@ module Rdkafka
     callback :delivery_cb, [:pointer, :pointer, :pointer], :void
     attach_function :rd_kafka_conf_set_dr_msg_cb, [:pointer, :delivery_cb], :void
     attach_function :rd_kafka_init_transactions, [:pointer, :int], :pointer, blocking: true
+    attach_function :rd_kafka_send_offsets_to_transaction, [:pointer, :pointer, :pointer, :int], :pointer, blocking: true
     attach_function :rd_kafka_begin_transaction, [:pointer], :pointer, blocking: true
     attach_function :rd_kafka_abort_transaction, [:pointer, :int], :pointer, blocking: true
     attach_function :rd_kafka_commit_transaction, [:pointer, :int], :pointer, blocking: true

@@ -360,7 +360,6 @@ describe Rdkafka::Consumer do
     end
   end
 
-
   describe "#position, #commit, #committed and #store_offset" do
     # Make sure there are messages to work with
     let!(:report) do
@@ -1139,6 +1138,14 @@ describe Rdkafka::Consumer do
       expect(stats).to be_empty
       consumer.events_poll(-1)
       expect(stats).not_to be_empty
+    end
+  end
+
+  describe '#consumer_group_metadata_pointer' do
+    it 'expect to yield pointer' do
+      consumer.consumer_group_metadata_pointer do |pointer|
+        expect(pointer).to be_a(FFI::Pointer)
+      end
     end
   end
 

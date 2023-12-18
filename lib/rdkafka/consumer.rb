@@ -671,6 +671,22 @@ module Rdkafka
       end
     end
 
+    # Returns pointer to the consumer group metadata. It is used only in the context of
+    # exactly-once-semantics in transactions, this is why it is never remapped to Ruby
+    #
+    # This API is **not** usable by itself from Ruby
+    #
+    # @note This pointer **needs** to be removed with `#rd_kafka_consumer_group_metadata_destroy`
+    #
+    # @private
+    def consumer_group_metadata_pointer
+      closed_consumer_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        Bindings.rd_kafka_consumer_group_metadata(inner)
+      end
+    end
+
     private
 
     def closed_consumer_check(method)

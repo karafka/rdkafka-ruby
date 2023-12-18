@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.14.4 (Unreleased)
+- [Enhancement] Add ability to store offsets in a transaction (mensfeld)
+
 ## 0.14.3 (2023-12-17)
 - [Enhancement] Replace `rd_kafka_offset_store` with `rd_kafka_offsets_store` (mensfeld)
 - [Fix] Missing ACL `RD_KAFKA_RESOURCE_BROKER` constant reference (mensfeld)

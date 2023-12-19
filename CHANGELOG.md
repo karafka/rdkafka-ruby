@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.14.4 (Unreleased)
+## 0.14.4 (2023-12-19)
 - [Enhancement] Add ability to store offsets in a transaction (mensfeld)
 
 ## 0.14.3 (2023-12-17)

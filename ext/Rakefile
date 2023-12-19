@@ -5,15 +5,14 @@ require "fileutils"
 require "open-uri"
 
 task :default => :clean do
+  # For nix users, nix can't locate the file paths because the packages it's requiring aren't managed by the system but are
+  # managed by nix itself, so using the normal file paths doesn't work for nix users.
+  #
+  # Mini_portile causes an issue because it's dependencies are downloaded on the fly and therefore don't exist/aren't
+  # accessible in the nix environment
   if ENV.fetch('RDKAFKA_EXT_PATH', '').empty?
     # Download and compile librdkafka if RDKAFKA_EXT_PATH is not set
     require "mini_portile2"
-
-    # For nix users, nix can't locate the file paths because the packages it's requiring aren't managed by the system but are 
-    # managed by nix itself, so using the normal file paths doesn't work for nix users.
-    #
-    # Mini_portile causes an issue because it's dependencies are downloaded on the fly and therefore don't exist/aren't 
-    # accessible in the nix environment
     recipe = MiniPortile.new("librdkafka", Rdkafka::LIBRDKAFKA_VERSION)
 
     # Use default homebrew openssl if we're on mac and the directory exists
@@ -44,6 +43,9 @@ task :default => :clean do
     FileUtils.rm_rf File.join(File.dirname(__FILE__), "ports")
   else
     # Otherwise, copy existing libraries to ./ext
+    if ENV['RDKAFKA_EXT_PATH'].nil? || ENV['RDKAFKA_EXT_PATH'].empty?
+      raise "RDKAFKA_EXT_PATH must be set in your nix config when running under nix"
+    end
     files = [
       File.join(ENV['RDKAFKA_EXT_PATH'], 'lib', 'librdkafka.dylib'),
       File.join(ENV['RDKAFKA_EXT_PATH'], 'lib', 'librdkafka.so')

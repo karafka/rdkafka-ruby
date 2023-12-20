@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.14.5 (Unreleased)
+- [Enhancement] Provide `label` producer handler and report reference for improved traceability.
+
 ## 0.14.4 (2023-12-19)
 - [Enhancement] Add ability to store offsets in a transaction (mensfeld)
 

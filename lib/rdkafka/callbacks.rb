@@ -288,7 +288,16 @@ module Rdkafka
 
           # Call delivery callback on opaque
           if opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
-            opaque.call_delivery_callback(Rdkafka::Producer::DeliveryReport.new(message[:partition], message[:offset], topic_name, message[:err]), delivery_handle)
+            opaque.call_delivery_callback(
+              Rdkafka::Producer::DeliveryReport.new(
+                message[:partition],
+                message[:offset],
+                topic_name,
+                message[:err],
+                delivery_handle.label
+              ),
+              delivery_handle
+            )
           end
         end
       end

@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.14.5 (Unreleased)
+## 0.14.5 (2023-12-20)
 - [Enhancement] Provide `label` producer handler and report reference for improved traceability.
 
 ## 0.14.4 (2023-12-19)

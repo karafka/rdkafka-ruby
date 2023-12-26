@@ -25,7 +25,7 @@ module Rdkafka
           self[:partition],
           self[:offset],
           self[:topic_name].read_string,
-          nil,
+          self[:response] != 0 ? RdkafkaError.new(self[:response]) : nil,
           label
         )
       end

@@ -563,22 +563,22 @@ describe Rdkafka::Producer do
         }.to raise_exception(Rdkafka::ClosedProducerError, /#{method.to_s}/)
       end
     end
+  end
 
-    context "when not being able to deliver the message" do
-      let(:producer) do
-        rdkafka_producer_config(
-          "bootstrap.servers": "localhost:9093",
-          "message.timeout.ms": 100
-        ).producer
-      end
+  context "when not being able to deliver the message" do
+    let(:producer) do
+      rdkafka_producer_config(
+        "bootstrap.servers": "localhost:9093",
+        "message.timeout.ms": 100
+      ).producer
+    end
 
-      it "should contain the error in the response when not deliverable" do
-        handler = producer.produce(topic: 'produce_test_topic', payload: nil, label: 'na')
-        # Wait for the async callbacks and delivery registry to update
-        sleep(2)
-        expect(handler.create_result.error).to be_a(Rdkafka::RdkafkaError)
-        expect(handler.create_result.label).to eq('na')
-      end
+    it "should contain the error in the response when not deliverable" do
+      handler = producer.produce(topic: 'produce_test_topic', payload: nil, label: 'na')
+      # Wait for the async callbacks and delivery registry to update
+      sleep(2)
+      expect(handler.create_result.error).to be_a(Rdkafka::RdkafkaError)
+      expect(handler.create_result.label).to eq('na')
     end
   end
 

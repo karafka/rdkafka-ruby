@@ -34,6 +34,7 @@ describe Rdkafka::Producer do
 
         producer.delivery_callback = lambda do |report|
           expect(report).not_to be_nil
+          expect(report.label).to eq "label"
           expect(report.partition).to eq 1
           expect(report.offset).to be >= 0
           expect(report.topic_name).to eq "produce_test_topic"
@@ -44,8 +45,11 @@ describe Rdkafka::Producer do
         handle = producer.produce(
           topic:   "produce_test_topic",
           payload: "payload",
-          key:     "key"
+          key:     "key",
+          label:   "label"
         )
+
+        expect(handle.label).to eq "label"
 
         # Wait for it to be delivered
         handle.wait(max_wait_timeout: 15)
@@ -175,11 +179,13 @@ describe Rdkafka::Producer do
     handle = producer.produce(
       topic:   "produce_test_topic",
       payload: "payload",
-      key:     "key"
+      key:     "key",
+      label:   "label"
     )
 
     # Should be pending at first
     expect(handle.pending?).to be true
+    expect(handle.label).to eq "label"
 
     # Check delivery handle and report
     report = handle.wait(max_wait_timeout: 5)
@@ -187,6 +193,7 @@ describe Rdkafka::Producer do
     expect(report).not_to be_nil
     expect(report.partition).to eq 1
     expect(report.offset).to be >= 0
+    expect(report.label).to eq "label"
 
     # Flush and close producer
     producer.flush
@@ -554,6 +561,23 @@ describe Rdkafka::Producer do
             producer.public_send(method, args)
           end
         }.to raise_exception(Rdkafka::ClosedProducerError, /#{method.to_s}/)
+      end
+    end
+
+    context "when not being able to deliver the message" do
+      let(:producer) do
+        rdkafka_producer_config(
+          "bootstrap.servers": "localhost:9093",
+          "message.timeout.ms": 100
+        ).producer
+      end
+
+      it "should contain the error in the response when not deliverable" do
+        handler = producer.produce(topic: 'produce_test_topic', payload: nil, label: 'na')
+        # Wait for the async callbacks and delivery registry to update
+        sleep(2)
+        expect(handler.create_result.error).to be_a(Rdkafka::RdkafkaError)
+        expect(handler.create_result.label).to eq('na')
       end
     end
   end

@@ -3,6 +3,7 @@
 ## 0.15.1 (Unreleased)
 - [Enhancement] Replace `rd_kafka_offset_store` with `rd_kafka_offsets_store` (mensfeld)
 - [Enhancement] Alias `topic_name` as `topic` in the delivery report (mensfeld)
+- [Enhancement] Provide `label` producer handler and report reference for improved traceability (mensfeld)
 - [Fix] Fix return type on `#rd_kafka_poll` (mensfeld)
 - [Fix] `uint8_t` does not exist on Apple Silicon (mensfeld)
 - [Fix] Missing ACL `RD_KAFKA_RESOURCE_BROKER` constant reference (mensfeld)

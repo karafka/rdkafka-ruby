@@ -20,6 +20,9 @@ module Rdkafka
       # @return [Integer]
       attr_reader :error
 
+      # @return [Object, nil] label set during message production or nil by default
+      attr_reader :label
+
       # We alias the `#topic_name` under `#topic` to make this consistent with `Consumer::Message`
       # where the topic name is under `#topic` method. That way we have a consistent name that
       # is present in both places
@@ -29,11 +32,12 @@ module Rdkafka
 
       private
 
-      def initialize(partition, offset, topic_name = nil, error = nil)
+      def initialize(partition, offset, topic_name = nil, error = nil, label = nil)
         @partition = partition
         @offset = offset
         @topic_name = topic_name
         @error = error
+        @label = label
       end
     end
   end

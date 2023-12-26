@@ -293,7 +293,8 @@ module Rdkafka
               Rdkafka::Producer::DeliveryReport.new(
                 message[:partition],
                 message[:offset],
-                topic_name, message[:err],
+                topic_name,
+                message[:err],
                 delivery_handle.label
               ),
               delivery_handle

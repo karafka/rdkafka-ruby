@@ -12,8 +12,10 @@ module Rdkafka
       # @return [Integer]
       attr_reader :offset
 
-      # The name of the topic this message was produced to.
-      # @return [String]
+      # The name of the topic this message was produced to or nil in case of reports with errors
+      # where topic was not reached.
+      #
+      # @return [String, nil]
       attr_reader :topic_name
 
       # Error in case happen during produce.

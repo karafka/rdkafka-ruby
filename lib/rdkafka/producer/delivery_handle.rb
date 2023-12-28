@@ -11,6 +11,9 @@ module Rdkafka
              :offset, :int64,
              :topic_name, :pointer
 
+      # @return [Object, nil] label set during message production or nil by default
+      attr_accessor :label
+
       # @return [String] the name of the operation (e.g. "delivery")
       def operation_name
         "delivery"
@@ -18,7 +21,15 @@ module Rdkafka
 
       # @return [DeliveryReport] a report on the delivery of the message
       def create_result
-        DeliveryReport.new(self[:partition], self[:offset], self[:topic_name].read_string)
+        DeliveryReport.new(
+          self[:partition],
+          self[:offset],
+          # For part of errors, we will not get a topic name reference and in cases like this
+          # we should not return it
+          self[:topic_name].null? ? nil : self[:topic_name].read_string,
+          self[:response] != 0 ? RdkafkaError.new(self[:response]) : nil,
+          label
+        )
       end
     end
   end

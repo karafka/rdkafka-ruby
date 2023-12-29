@@ -152,7 +152,8 @@ module Rdkafka
                 p.partition
               )
 
-              if p.metadata
+              # Remove the respond to check after karafka 2.3.0 is released
+              if p.respond_to?(:metadata) && p.metadata
                 part = Rdkafka::Bindings::TopicPartition.new(ref)
                 str_ptr = FFI::MemoryPointer.from_string(p.metadata)
                 # released here:

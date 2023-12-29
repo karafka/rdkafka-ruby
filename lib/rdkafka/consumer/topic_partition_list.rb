@@ -66,10 +66,14 @@ module Rdkafka
       #
       # @param topic [String] The topic's name
       # @param partitions_with_offsets [Hash<Integer, Integer>] The topic's partitions and offsets
+      # @param partitions_with_offsets [Array<Consumer::Partition>] The topic's partitions with offsets
+      #   and metadata (if any)
       #
       # @return [nil]
       def add_topic_and_partitions_with_offsets(topic, partitions_with_offsets)
-        @data[topic.to_s] = partitions_with_offsets.map { |p, o| Partition.new(p, o) }
+        @data[topic.to_s] = partitions_with_offsets.map do |p, o|
+          p.is_a?(Partition) ? p : Partition.new(p, o)
+        end
       end
 
       # Return a `Hash` with the topics as keys and and an array of partition information as the value if present.
@@ -114,7 +118,13 @@ module Rdkafka
                      else
                        elem[:offset]
                      end
-            partition = Partition.new(elem[:partition], offset, elem[:err])
+
+            partition = Partition.new(
+              elem[:partition],
+              offset,
+              elem[:err],
+              elem[:metadata].null? ? nil : elem[:metadata].read_string(elem[:metadata_size])
+            )
             partitions.push(partition)
             data[elem[:topic]] = partitions
           end
@@ -136,11 +146,21 @@ module Rdkafka
         @data.each do |topic, partitions|
           if partitions
             partitions.each do |p|
-              Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
+              ref = Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
                 tpl,
                 topic,
                 p.partition
               )
+
+              if p.metadata
+                part = Rdkafka::Bindings::TopicPartition.new(ref)
+                str_ptr = FFI::MemoryPointer.from_string(p.metadata)
+                # released here:
+                # https://github.com/confluentinc/librdkafka/blob/e03d3bb91ed92a38f38d9806b8d8deffe78a1de5/src/rdkafka_partition.c#L2682C18-L2682C18
+                str_ptr.autorelease = false
+                part[:metadata] = str_ptr
+                part[:metadata_size] = p.metadata.bytesize
+              end
 
               if p.offset
                 offset = p.offset.is_a?(Time) ? p.offset.to_f * 1_000 : p.offset

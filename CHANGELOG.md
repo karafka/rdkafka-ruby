@@ -1,5 +1,9 @@
 # Rdkafka Changelog
 
+## 0.14.6 (Unreleased)
+- **[Feature]** Support storing metadata alongside offsets via `rd_kafka_offsets_store` in `#store_offset` (mensfeld)
+- [Enhancement] Increase the `#committed` default timeout from 1_200ms to 2000ms. This will compensate for network glitches and remote clusters operations and will align with metadata query timeout.
+
 ## 0.14.5 (2023-12-20)
 - [Enhancement] Provide `label` producer handler and report reference for improved traceability.
 

@@ -32,7 +32,6 @@ jobs:
           - '3.0'
           - '3.0.0'
           - '2.7'
-          - '2.7.0'
         include:
           - ruby: '3.3'
             coverage: 'true'
@@ -41,13 +40,8 @@ jobs:
       - name: Install package dependencies
         run: "[ -e $APT_DEPS ] || sudo apt-get install -y --no-install-recommends $APT_DEPS"
 
-      - name: Setup docker (missing on MacOS)
-        if: runner.os == 'macos'
-        run: |
-          brew install docker
-          colima start
-
-          sudo ln -sf $HOME/.colima/default/docker.sock /var/run/docker.sock
+      - name: setup-docker
+        uses: docker-practice/actions-setup-docker@v1
 
       - name: Start Kafka with docker-compose
         run: |

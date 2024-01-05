@@ -17,10 +17,13 @@ env:
 jobs:
   specs:
     timeout-minutes: 30
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
         ruby:
           - '3.3'
           - '3.2'

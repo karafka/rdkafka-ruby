@@ -41,6 +41,14 @@ jobs:
       - name: Install package dependencies
         run: "[ -e $APT_DEPS ] || sudo apt-get install -y --no-install-recommends $APT_DEPS"
 
+      - name: Setup docker (missing on MacOS)
+        if: runner.os == 'macos'
+        run: |
+          brew install docker
+          colima start
+
+          sudo ln -sf $HOME/.colima/default/docker.sock /var/run/docker.sock
+
       - name: Start Kafka with docker-compose
         run: |
           docker-compose up -d || (sleep 5 && docker-compose up -d)

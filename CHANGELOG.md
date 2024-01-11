@@ -5,6 +5,7 @@
 - [Enhancement] Alias `topic_name` as `topic` in the delivery report (mensfeld)
 - [Enhancement] Provide `label` producer handler and report reference for improved traceability (mensfeld)
 - [Enhancement] Include the error when invoking `create_result` on producer handle (mensfeld)
+- [Enhancement] Skip intermediate array creation on delivery report callback execution (one per message).
 - [Fix] Fix return type on `#rd_kafka_poll` (mensfeld)
 - [Fix] `uint8_t` does not exist on Apple Silicon (mensfeld)
 - [Fix] Missing ACL `RD_KAFKA_RESOURCE_BROKER` constant reference (mensfeld)

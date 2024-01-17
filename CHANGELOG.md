@@ -1,5 +1,9 @@
 # Rdkafka Changelog
 
+## 0.14.8 (Unreleased)
+- [Enhancement] Provide support for Nix OS (alexandriainfantino)
+- [Enhancement] Skip intermediate array creation on delivery report callback execution (one per message) (mensfeld)
+
 ## 0.14.7 (2023-12-29)
 - [Fix] Recognize that Karafka uses a custom partition object (fixed in 2.3.0) and ensure it is recognized.
 

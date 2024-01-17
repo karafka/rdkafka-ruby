@@ -23,6 +23,9 @@ module Rdkafka
     attr_reader :delivery_callback_arity
 
     # @private
+    # @param native_kafka [NativeKafka]
+    # @param partitioner_name [String, nil] name of the partitioner we want to use or nil to use
+    #   the "consistent_random" default
     def initialize(native_kafka, partitioner_name)
       @native_kafka = native_kafka
       @partitioner_name = partitioner_name || "consistent_random"
@@ -320,13 +323,27 @@ module Rdkafka
       delivery_handle
     end
 
+    # Calls (if registered) the delivery callback
+    #
+    # @param delivery_report [Producer::DeliveryReport]
+    # @param delivery_handle [Producer::DeliveryHandle]
     def call_delivery_callback(delivery_report, delivery_handle)
       return unless @delivery_callback
 
-      args = [delivery_report, delivery_handle].take(@delivery_callback_arity)
-      @delivery_callback.call(*args)
+      case @delivery_callback_arity
+      when 0
+        @delivery_callback.call
+      when 1
+        @delivery_callback.call(delivery_report)
+      else
+        @delivery_callback.call(delivery_report, delivery_handle)
+      end
     end
 
+    # Figures out the arity of a given block/method
+    #
+    # @param callback [#call, Proc]
+    # @return [Integer] arity of the provided block/method
     def arity(callback)
       return callback.arity if callback.respond_to?(:arity)
 
@@ -335,6 +352,10 @@ module Rdkafka
 
     private
 
+    # Ensures, no operations can happen on a closed producer
+    #
+    # @param method [Symbol] name of the method that invoked producer
+    # @raise [Rdkafka::ClosedProducerError]
     def closed_producer_check(method)
       raise Rdkafka::ClosedProducerError.new(method) if closed?
     end

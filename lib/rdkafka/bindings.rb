@@ -191,6 +191,9 @@ module Rdkafka
     attach_function :rd_kafka_seek, [:pointer, :int32, :int64, :int], :int, blocking: true
     attach_function :rd_kafka_offsets_for_times, [:pointer, :pointer, :int], :int, blocking: true
     attach_function :rd_kafka_position, [:pointer, :pointer], :int, blocking: true
+    # those two are used for eos support
+    attach_function :rd_kafka_consumer_group_metadata, [:pointer], :pointer, blocking: true
+    attach_function :rd_kafka_consumer_group_metadata_destroy, [:pointer], :void, blocking: true
 
     # Headers
     attach_function :rd_kafka_header_get_all, [:pointer, :size_t, :pointer, :pointer, SizePtr], :int

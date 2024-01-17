@@ -19,15 +19,15 @@ module Rdkafka
       @native_kafka = native_kafka
     end
 
-    def finalizer
-      ->(_) { close }
-    end
-
     # @return [String] consumer name
     def name
       @name ||= @native_kafka.with_inner do |inner|
         ::Rdkafka::Bindings.rd_kafka_name(inner)
       end
+    end
+
+    def finalizer
+      ->(_) { close }
     end
 
     # Close this consumer
@@ -239,7 +239,7 @@ module Rdkafka
     # @param timeout_ms [Integer] The timeout for fetching this information.
     # @return [TopicPartitionList]
     # @raise [RdkafkaError] When getting the committed positions fails.
-    def committed(list=nil, timeout_ms=1200)
+    def committed(list=nil, timeout_ms=2000)
       closed_consumer_check(__method__)
 
       if list.nil?
@@ -669,6 +669,22 @@ module Rdkafka
           bytes = 0
           end_time = monotonic_now + timeout_ms / 1000.0
         end
+      end
+    end
+
+    # Returns pointer to the consumer group metadata. It is used only in the context of
+    # exactly-once-semantics in transactions, this is why it is never remapped to Ruby
+    #
+    # This API is **not** usable by itself from Ruby
+    #
+    # @note This pointer **needs** to be removed with `#rd_kafka_consumer_group_metadata_destroy`
+    #
+    # @private
+    def consumer_group_metadata_pointer
+      closed_consumer_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        Bindings.rd_kafka_consumer_group_metadata(inner)
       end
     end
 

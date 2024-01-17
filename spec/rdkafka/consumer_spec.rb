@@ -1133,6 +1133,16 @@ describe Rdkafka::Consumer do
     end
   end
 
+  describe '#consumer_group_metadata_pointer' do
+    let(:pointer) { consumer.consumer_group_metadata_pointer }
+
+    after { Rdkafka::Bindings.rd_kafka_consumer_group_metadata_destroy(pointer) }
+
+    it 'expect to return a pointer' do
+      expect(pointer).to be_a(FFI::Pointer)
+    end
+  end
+
   describe "a rebalance listener" do
     let(:consumer) do
       config = rdkafka_consumer_config

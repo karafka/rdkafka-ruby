@@ -1161,10 +1161,12 @@ describe Rdkafka::Consumer do
   end
 
   describe '#consumer_group_metadata_pointer' do
-    it 'expect to yield pointer' do
-      consumer.consumer_group_metadata_pointer do |pointer|
-        expect(pointer).to be_a(FFI::Pointer)
-      end
+    let(:pointer) { consumer.consumer_group_metadata_pointer }
+
+    after { Rdkafka::Bindings.rd_kafka_consumer_group_metadata_destroy(pointer) }
+
+    it 'expect to return a pointer' do
+      expect(pointer).to be_a(FFI::Pointer)
     end
   end
 

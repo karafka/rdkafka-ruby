@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.15.1 (Unreleased)
+- [Enhancement] Provide support for Nix OS (alexandriainfantino)
 - [Enhancement] Replace `rd_kafka_offset_store` with `rd_kafka_offsets_store` (mensfeld)
 - [Enhancement] Alias `topic_name` as `topic` in the delivery report (mensfeld)
 - [Enhancement] Provide `label` producer handler and report reference for improved traceability (mensfeld)

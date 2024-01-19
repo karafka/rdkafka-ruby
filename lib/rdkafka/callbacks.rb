@@ -261,7 +261,6 @@ module Rdkafka
           end
         end
       end
-
     end
 
     # FFI Function used for Message Delivery callbacks

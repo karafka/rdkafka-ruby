@@ -32,6 +32,7 @@ The most important pieces of a Kafka client are implemented, and we aim to provi
   * [Message Publishing Libraries](#message-publishing-libraries)
 - [Development](#development)
 - [Example](#example)
+- [Versions](#versions)
 
 ## Project Scope
 
@@ -147,3 +148,14 @@ To see everything working, run these in separate tabs:
 bundle exec rake consume_messages
 bundle exec rake produce_messages
 ```
+
+## Versions
+
+| rdkafka-ruby | librdkafka |
+|-|-|
+| 0.15.0 (2023-12-03) | 2.3.0 (2023-10-25) |
+| 0.14.0 (2023-11-21) | 2.2.0 (2023-07-12) |
+| 0.13.0 (2023-07-24) | 2.0.2 (2023-01-20) |
+| 0.12.0 (2022-06-17) | 1.9.0 (2022-06-16) |
+| 0.11.0 (2021-11-17) | 1.8.2 (2021-10-18) |
+| 0.10.0 (2021-09-07) | 1.5.0 (2020-07-20) |

@@ -236,11 +236,7 @@ module Rdkafka
     # @param timeout_ms [Integer] The timeout for fetching this information.
     # @return [TopicPartitionList]
     # @raise [RdkafkaError] When getting the committed positions fails.
-<<<<<<< HEAD
     def committed(list=nil, timeout_ms=2_000)
-=======
-    def committed(list=nil, timeout_ms=2000)
->>>>>>> upstream/main
       closed_consumer_check(__method__)
 
       if list.nil?

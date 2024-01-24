@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.14.8 (Unreleased)
+## 0.14.8 (2024-01-24)
 - [Enhancement] Provide support for Nix OS (alexandriainfantino)
 - [Enhancement] Skip intermediate array creation on delivery report callback execution (one per message) (mensfeld)
 

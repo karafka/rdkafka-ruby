@@ -30,13 +30,6 @@ module Rdkafka
       ->(_) { close }
     end
 
-    # @return [String] consumer name
-    def name
-      @name ||= @native_kafka.with_inner do |inner|
-        ::Rdkafka::Bindings.rd_kafka_name(inner)
-      end
-    end
-
     # Close this consumer
     # @return [nil]
     def close
@@ -243,7 +236,11 @@ module Rdkafka
     # @param timeout_ms [Integer] The timeout for fetching this information.
     # @return [TopicPartitionList]
     # @raise [RdkafkaError] When getting the committed positions fails.
+<<<<<<< HEAD
     def committed(list=nil, timeout_ms=2_000)
+=======
+    def committed(list=nil, timeout_ms=2000)
+>>>>>>> upstream/main
       closed_consumer_check(__method__)
 
       if list.nil?

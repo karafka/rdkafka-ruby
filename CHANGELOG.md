@@ -1,5 +1,9 @@
 # Rdkafka Changelog
 
+## 0.14.9 (2024-01-29)
+- [Fix] Partition cache caches invalid `nil` result for `PARTITIONS_COUNT_TTL`.
+- [Enhancement] Report `-1` instead of `nil` in case `partition_count` failure.
+
 ## 0.14.8 (2024-01-24)
 - [Enhancement] Provide support for Nix OS (alexandriainfantino)
 - [Enhancement] Skip intermediate array creation on delivery report callback execution (one per message) (mensfeld)

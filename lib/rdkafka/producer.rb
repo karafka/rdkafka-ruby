@@ -40,10 +40,16 @@ module Rdkafka
           topic_metadata = ::Rdkafka::Metadata.new(inner, topic).topics&.first
         end
 
-        cache[topic] = [
-          monotonic_now,
-          topic_metadata ? topic_metadata[:partition_count] : nil
-        ]
+        partition_count = topic_metadata ? topic_metadata[:partition_count] : -1
+
+        # This approach caches the failure to fetch only for 1 second. This will make sure, that
+        # we do not cache the failure for too long but also "buys" us a bit of time in case there
+        # would be issues in the cluster so we won't overaload it with consecutive requests
+        cache[topic] = if partition_count.positive?
+                         [monotonic_now, partition_count]
+                       else
+                         [monotonic_now - PARTITIONS_COUNT_TTL + 5, partition_count]
+                       end
       end
     end
 
@@ -137,14 +143,15 @@ module Rdkafka
     # Partition count for a given topic.
     #
     # @param topic [String] The topic name.
-    # @return [Integer] partition count for a given topic
+    # @return [Integer] partition count for a given topic or `-1` if it could not be obtained.
     #
     # @note If 'allow.auto.create.topics' is set to true in the broker, the topic will be
     #   auto-created after returning nil.
     #
     # @note We cache the partition count for a given topic for given time.
     #   This prevents us in case someone uses `partition_key` from querying for the count with
-    #   each message. Instead we query once every 30 seconds at most
+    #   each message. Instead we query once every 30 seconds at most if we have a valid partition
+    #   count or every 5 seconds in case we were not able to obtain number of partitions
     def partition_count(topic)
       closed_producer_check(__method__)
 
@@ -194,7 +201,7 @@ module Rdkafka
       if partition_key
         partition_count = partition_count(topic)
         # If the topic is not present, set to -1
-        partition = Rdkafka::Bindings.partitioner(partition_key, partition_count, @partitioner_name) if partition_count
+        partition = Rdkafka::Bindings.partitioner(partition_key, partition_count, @partitioner_name) if partition_count.positive?
       end
 
       # If partition is nil, use -1 to let librdafka set the partition randomly or

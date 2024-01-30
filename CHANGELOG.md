@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.15.1 (Unreleased)
+## 0.15.1 (2024-01-30)
 - [Enhancement] Provide support for Nix OS (alexandriainfantino)
 - [Enhancement] Replace `rd_kafka_offset_store` with `rd_kafka_offsets_store` (mensfeld)
 - [Enhancement] Alias `topic_name` as `topic` in the delivery report (mensfeld)

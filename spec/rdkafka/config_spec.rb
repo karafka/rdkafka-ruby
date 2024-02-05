@@ -121,9 +121,10 @@ describe Rdkafka::Config do
     end
 
     it "should not accept a callback that's not callable" do
-
+      expect {
+        Rdkafka::Config.oauthbearer_token_refresh_callback = 'not a callback'
+      }.to raise_error(TypeError)
     end
-
   end
 
   context "configuration" do

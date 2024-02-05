@@ -132,4 +132,28 @@ describe Rdkafka::Bindings do
       end
     end
   end
+
+  describe "oauthbearer callback" do
+    context "without an oauthbearer callback" do
+      it "should do nothing" do
+        expect {
+          Rdkafka::Bindings::OAuthbearerTokenRefreshCallback.call(nil, "", nil)
+        }.not_to raise_error
+      end
+    end
+
+    context "with an oauthbearer callback" do
+      before do
+        Rdkafka::Config.oauthbearer_token_refresh_callback = lambda do |oauth|
+          $received_oauth = oauth
+        end
+      end
+
+      it "should call the oauth bearer callback with an ???" do
+        Rdkafka::Bindings::OAuthbearerTokenRefreshCallback.call(nil, "oauth", nil)
+        expect($received_oauth)
+
+      end
+    end
+  end
 end

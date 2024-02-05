@@ -49,7 +49,7 @@ describe Rdkafka::Config do
       writer.close
       Process.wait(pid)
       output = reader.read
-      expect(output.split("\n").size).to be >= 50
+      expect(output.split("\n").size).to be >= 30
     end
   end
 

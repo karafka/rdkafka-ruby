@@ -95,6 +95,37 @@ describe Rdkafka::Config do
     end
   end
 
+  context "oauthbearer calllback" do
+    context "with a proc/lambda" do
+      it "should set the callback" do
+        expect {
+          Rdkafka::Config.oauthbearer_token_refresh_callback = lambda do |oauth|
+            puts oauth
+          end
+        }.not_to raise_error
+        expect(Rdkafka::Config.oauthbearer_token_refresh_callback).to respond_to :call
+      end
+    end
+
+    context "with a callable object" do
+      it "should set the callback" do
+        callback = Class.new do
+          def call(oauth); end
+        end
+
+        expect {
+          Rdkafka::Config.oauthbearer_token_refresh_callback = callback.new
+        }.not_to raise_error
+        expect(Rdkafka::Config.oauthbearer_token_refresh_callback).to respond_to :call
+      end
+    end
+
+    it "should not accept a callback that's not callable" do
+
+    end
+
+  end
+
   context "configuration" do
     it "should store configuration" do
       config = Rdkafka::Config.new

@@ -111,6 +111,8 @@ module Rdkafka
     callback :error_cb, [:pointer, :int, :string, :pointer], :void
     attach_function :rd_kafka_conf_set_error_cb, [:pointer, :error_cb], :void
     attach_function :rd_kafka_rebalance_protocol, [:pointer], :string
+    callback :oauthbearer_token_refresh_cb, [:pointer, :string, :pointer], :void
+    attach_function :rd_kafka_conf_set_oauthbearer_token_refresh_cb, [:pointer, :oauthbearer_token_refresh_cb], :void
 
     # Log queue
     attach_function :rd_kafka_set_log_queue, [:pointer, :pointer], :void
@@ -156,6 +158,14 @@ module Rdkafka
         error = Rdkafka::RdkafkaError.new(err_code, broker_message: reason)
         error.set_backtrace(caller)
         Rdkafka::Config.error_callback.call(error)
+      end
+    end
+
+    OAuthbearerTokenRefreshCallback = FFI::Function.new(
+      :void, [:pointer, :string, :pointer]
+    ) do |_client_ptr, _config, _opaque|
+      if Rdkafka::Config.oauthbearer_token_refresh_callback
+        Rdkafka::Config.oauthbearer_token_refresh_callback.call()
       end
     end
 

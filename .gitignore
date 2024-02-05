@@ -10,3 +10,4 @@ ext/librdkafka.*
 doc
 coverage
 vendor
+.idea/

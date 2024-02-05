@@ -22,6 +22,7 @@ describe Rdkafka::Config do
     it "supports logging queue" do
       log = StringIO.new
       Rdkafka::Config.logger = Logger.new(log)
+      Rdkafka::Config.ensure_log_thread
 
       Rdkafka::Config.log_queue << [Logger::FATAL, "I love testing"]
       20.times do
@@ -30,6 +31,25 @@ describe Rdkafka::Config do
       end
 
       expect(log.string).to include "FATAL -- : I love testing"
+    end
+
+    it "expect to start new logger thread after fork and work" do
+      reader, writer = IO.pipe
+
+      pid = fork do
+        $stdout.reopen(writer)
+        Rdkafka::Config.logger = Logger.new($stdout)
+        reader.close
+        producer = rdkafka_producer_config(debug: 'all').producer
+        producer.close
+        writer.close
+        sleep(1)
+      end
+
+      writer.close
+      Process.wait(pid)
+      output = reader.read
+      expect(output.split("\n").size).to be >= 50
     end
   end
 

@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.14.10 (Unreleased)
+- [Fix] Background logger stops working after forking causing memory leaks (mensfeld).
+
 ## 0.14.9 (2024-01-29)
 - [Fix] Partition cache caches invalid `nil` result for `PARTITIONS_COUNT_TTL`.
 - [Enhancement] Report `-1` instead of `nil` in case `partition_count` failure.

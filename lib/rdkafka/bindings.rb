@@ -147,6 +147,8 @@ module Rdkafka
                  else
                    Logger::UNKNOWN
                  end
+
+      Rdkafka::Config.ensure_log_thread
       Rdkafka::Config.log_queue << [severity, "rdkafka: #{line}"]
     end
 

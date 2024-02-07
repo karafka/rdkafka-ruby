@@ -211,6 +211,11 @@ describe Rdkafka::Consumer do
 
         # 7. ensure same message is read again
         message2 = consumer.poll(timeout)
+
+        # This is needed because `enable.auto.offset.store` is true but when running in CI that
+        # is overloaded, offset store lags
+        sleep(1)
+
         consumer.commit
         expect(message1.offset).to eq message2.offset
         expect(message1.payload).to eq message2.payload

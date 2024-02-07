@@ -15,21 +15,37 @@ module Rdkafka
     @@opaques = ObjectSpace::WeakMap.new
     # @private
     @@log_queue = Queue.new
+    # We memoize thread on the first log flush
+    # This allows us also to restart logger thread on forks
+    @@log_thread = nil
+    # @private
+    @@log_mutex = Mutex.new
     # @private
     @@oauthbearer_token_refresh_callback = nil
-
-    Thread.start do
-      loop do
-        severity, msg = @@log_queue.pop
-        @@logger.add(severity, msg)
-      end
-    end
 
     # Returns the current logger, by default this is a logger to stdout.
     #
     # @return [Logger]
     def self.logger
       @@logger
+    end
+
+    # Makes sure that there is a thread for consuming logs
+    # We do not spawn thread immediately and we need to check if it operates to support forking
+    def self.ensure_log_thread
+      return if @@log_thread && @@log_thread.alive?
+
+      @@log_mutex.synchronize do
+        # Restart if dead (fork, crash)
+        @@log_thread = nil if @@log_thread && !@@log_thread.alive?
+
+        @@log_thread ||= Thread.start do
+          loop do
+            severity, msg = @@log_queue.pop
+            @@logger.add(severity, msg)
+          end
+        end
+      end
     end
 
     # Returns a queue whose contents will be passed to the configured logger. Each entry

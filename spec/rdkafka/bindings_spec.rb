@@ -134,6 +134,19 @@ describe Rdkafka::Bindings do
   end
 
   describe "oauthbearer callback" do
+
+    it "should fail to call librdkafka.rd_kafka_oauthbearer_set_token when args not given" do
+      expect {
+        Rdkafka::Bindings.rd_kafka_oauthbearer_set_token
+      }.to raise_error
+    end
+
+    it "should fail to call librdkafka.rd_kafka_oauthbearer_set_token_failure when args not given" do
+      expect {
+        Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure
+      }.to raise_error
+    end
+
     context "without an oauthbearer callback" do
       it "should do nothing" do
         expect {

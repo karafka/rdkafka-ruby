@@ -143,7 +143,7 @@ describe Rdkafka::Bindings do
 
     it "should successfully call librdkafka.rd_kafka_oauthbearer_set_token when args given" do
       expect {
-        handle = Rdkafka::Bindings.rd_kafka_new(
+        client_ptr = Rdkafka::Bindings.rd_kafka_new(
           :rd_kafka_consumer,
           nil,
           nil,
@@ -156,7 +156,7 @@ describe Rdkafka::Bindings do
         extension_size = 0
         errstr = nil
         errstr_size = 0
-        Rdkafka::Bindings.rd_kafka_oauthbearer_set_token(handle, token_value, md_lifetime_ms, md_principal_name, extensions, extension_size, errstr, errstr_size)
+        Rdkafka::Bindings.rd_kafka_oauthbearer_set_token(client_ptr, token_value, md_lifetime_ms, md_principal_name, extensions, extension_size, errstr, errstr_size)
       }.not_to raise_error
     end
 
@@ -168,14 +168,14 @@ describe Rdkafka::Bindings do
 
     it "should successfully call librdkafka.rd_kafka_oauthbearer_set_token_failure when args are given" do
       expect {
-        handle = Rdkafka::Bindings.rd_kafka_new(
+        client_ptr = Rdkafka::Bindings.rd_kafka_new(
           :rd_kafka_consumer,
           nil,
           nil,
           0
         )
         errstr = "error"
-        Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure(handle, errstr)
+        Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure(client_ptr, errstr)
       }.to_not raise_error
     end
 
@@ -189,15 +189,21 @@ describe Rdkafka::Bindings do
 
     context "with an oauthbearer callback" do
       before do
-        Rdkafka::Config.oauthbearer_token_refresh_callback = lambda do |oauth|
-          $received_oauth = oauth
+        Rdkafka::Config.oauthbearer_token_refresh_callback = lambda do |client, config|
+          $received_client = client
+          $received_config = config
         end
       end
 
-      it "should call the oauth bearer callback with an ???" do
-        Rdkafka::Bindings::OAuthbearerTokenRefreshCallback.call(nil, "oauth", nil)
-        expect($received_oauth)
-
+      it "should call the oauth bearer callback" do
+        client_ptr = Rdkafka::Bindings.rd_kafka_new(
+          :rd_kafka_consumer,
+          nil,
+          nil,
+          0
+        )
+        Rdkafka::Bindings::OAuthbearerTokenRefreshCallback.call(client_ptr, "oauth", nil)
+        expect($received_config).to eq("oauth")
       end
     end
   end

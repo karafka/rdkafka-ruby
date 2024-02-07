@@ -138,13 +138,45 @@ describe Rdkafka::Bindings do
     it "should fail to call librdkafka.rd_kafka_oauthbearer_set_token when args not given" do
       expect {
         Rdkafka::Bindings.rd_kafka_oauthbearer_set_token
-      }.to raise_error
+      }.to raise_error(ArgumentError)
+    end
+
+    it "should successfully call librdkafka.rd_kafka_oauthbearer_set_token when args given" do
+      expect {
+        handle = Rdkafka::Bindings.rd_kafka_new(
+          :rd_kafka_consumer,
+          nil,
+          nil,
+          0
+        )
+        token_value = "token"
+        md_lifetime_ms = 1000
+        md_principal_name = "principal"
+        extensions = nil
+        extension_size = 0
+        errstr = nil
+        errstr_size = 0
+        Rdkafka::Bindings.rd_kafka_oauthbearer_set_token(handle, token_value, md_lifetime_ms, md_principal_name, extensions, extension_size, errstr, errstr_size)
+      }.not_to raise_error
     end
 
     it "should fail to call librdkafka.rd_kafka_oauthbearer_set_token_failure when args not given" do
       expect {
         Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure
-      }.to raise_error
+      }.to raise_error(ArgumentError)
+    end
+
+    it "should successfully call librdkafka.rd_kafka_oauthbearer_set_token_failure when args are given" do
+      expect {
+        handle = Rdkafka::Bindings.rd_kafka_new(
+          :rd_kafka_consumer,
+          nil,
+          nil,
+          0
+        )
+        errstr = "error"
+        Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure(handle, errstr)
+      }.to_not raise_error
     end
 
     context "without an oauthbearer callback" do

@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.14.10 (Unreleased)
+## 0.14.10 (2024-02-08)
 - [Fix] Background logger stops working after forking causing memory leaks (mensfeld).
 
 ## 0.14.9 (2024-01-29)

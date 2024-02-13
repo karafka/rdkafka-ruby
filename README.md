@@ -18,7 +18,7 @@ become EOL.
 
 `rdkafka` was written because of the need for a reliable Ruby client for Kafka that supports modern Kafka at [AppSignal](https://appsignal.com). AppSignal runs it in production on very high-traffic systems.
 
-The most important pieces of a Kafka client are implemented, and we aim to provide all relevant consumer, producer, and admin APIs.
+The most essential pieces of a Kafka client are implemented, and we aim to provide all relevant consumer, producer, and admin APIs.
 
 ## Table of content
 
@@ -47,12 +47,13 @@ While rdkafka-ruby aims to simplify the use of librdkafka in Ruby applications, 
 
 ## Installation
 
-This gem downloads and compiles librdkafka when it is installed. If you
-If you have any problems installing the gem, please open an issue.
+When installed, this gem downloads and compiles librdkafka. If you have any problems installing the gem, please open an issue.
 
 ## Usage
 
-See the [documentation](https://karafka.io/docs/code/rdkafka-ruby/) for full details on how to use this gem. Two quick examples:
+Please see the [documentation](https://karafka.io/docs/code/rdkafka-ruby/) for full details on how to use this gem. Below are two quick examples.
+
+Unless you are seeking specific low-level capabilities, we **strongly** recommend using [Karafka](https://github.com/karafka/karafka) and [WaterDrop](https://github.com/karafka/waterdrop) when working with Kafka. These are higher-level libraries also maintained by us based on rdkafka-ruby.
 
 ### Consuming Messages
 
@@ -74,7 +75,7 @@ end
 
 ### Producing Messages
 
-Produce a number of messages, put the delivery handles in an array, and
+Produce several messages, put the delivery handles in an array, and
 wait for them before exiting. This way the messages will be batched and
 efficiently sent to Kafka.
 
@@ -95,13 +96,11 @@ end
 delivery_handles.each(&:wait)
 ```
 
-Note that creating a producer consumes some resources that will not be
-released until it `#close` is explicitly called, so be sure to call
-`Config#producer` only as necessary.
+Note that creating a producer consumes some resources that will not be released until it `#close` is explicitly called, so be sure to call `Config#producer` only as necessary.
 
 ## Higher Level Libraries
 
-Currently, there are two actively developed frameworks based on rdkafka-ruby, that provide higher-level API that can be used to work with Kafka messages and one library for publishing messages.
+Currently, there are two actively developed frameworks based on `rdkafka-ruby`, that provide higher-level API that can be used to work with Kafka messages and one library for publishing messages.
 
 ### Message Processing Frameworks
 
@@ -111,6 +110,16 @@ Currently, there are two actively developed frameworks based on rdkafka-ruby, th
 ### Message Publishing Libraries
 
 * [WaterDrop](https://github.com/karafka/waterdrop) – Standalone Karafka library for producing Kafka messages.
+
+## Forking
+
+When working with `rdkafka-ruby`, it's essential to know that the underlying `librdkafka` library does not support fork-safe operations, even though it is thread-safe. Forking a process after initializing librdkafka clients can lead to unpredictable behavior due to inherited file descriptors and memory states. This limitation requires careful handling, especially in Ruby applications that rely on forking.
+
+To address this, it's highly recommended to:
+
+- Never initialize any `rdkafka-ruby` producers or consumers before forking to avoid state corruption.
+- Before forking, always close any open producers or consumers if you've opened any.
+- Use high-level libraries like [WaterDrop](https://github.com/karafka/waterdrop) and [Karafka](https://github.com/karafka/karafka/), which provide abstractions for handling librdkafka's intricacies.
 
 ## Development
 

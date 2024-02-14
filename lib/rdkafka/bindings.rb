@@ -114,7 +114,7 @@ module Rdkafka
     callback :oauthbearer_token_refresh_cb, [:pointer, :string, :pointer], :void
     attach_function :rd_kafka_conf_set_oauthbearer_token_refresh_cb, [:pointer, :oauthbearer_token_refresh_cb], :void
     attach_function :rd_kafka_oauthbearer_set_token, [:pointer, :string, :int, :string, :pointer, :int, :pointer, :int ], :int
-    attach_function :rd_kafka_oauthbearer_set_token_failure, [:pointer, :pointer], :int
+    attach_function :rd_kafka_oauthbearer_set_token_failure, [:pointer, :string], :int
     # Log queue
     attach_function :rd_kafka_set_log_queue, [:pointer, :pointer], :void
     attach_function :rd_kafka_queue_get_main, [:pointer], :pointer

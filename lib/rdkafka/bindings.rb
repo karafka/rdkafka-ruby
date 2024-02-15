@@ -17,6 +17,7 @@ module Rdkafka
 
     RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS = -175
     RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS = -174
+    RD_KAFKA_RESP_ERR__STATE = -172
     RD_KAFKA_RESP_ERR__NOENT = -156
     RD_KAFKA_RESP_ERR_NO_ERROR = 0
 
@@ -113,7 +114,7 @@ module Rdkafka
     attach_function :rd_kafka_rebalance_protocol, [:pointer], :string
     callback :oauthbearer_token_refresh_cb, [:pointer, :string, :pointer], :void
     attach_function :rd_kafka_conf_set_oauthbearer_token_refresh_cb, [:pointer, :oauthbearer_token_refresh_cb], :void
-    attach_function :rd_kafka_oauthbearer_set_token, [:pointer, :string, :int, :pointer, :pointer, :int, :string, :int ], :int
+    attach_function :rd_kafka_oauthbearer_set_token, [:pointer, :string, :int, :pointer, :pointer, :int, :pointer, :int ], :int
     attach_function :rd_kafka_oauthbearer_set_token_failure, [:pointer, :string], :int
     # Log queue
     attach_function :rd_kafka_set_log_queue, [:pointer, :pointer], :void

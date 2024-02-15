@@ -133,51 +133,70 @@ describe Rdkafka::Bindings do
     end
   end
 
+  describe "oauthbearer set token" do
+
+    context "without args" do
+      it "should raise argument error" do
+        expect {
+          Rdkafka::Bindings.rd_kafka_oauthbearer_set_token
+        }.to raise_error(ArgumentError)
+      end
+    end
+
+    context "with args" do
+      before do
+        $client_ptr = Rdkafka::Bindings.rd_kafka_new(
+          :rd_kafka_consumer,
+          nil,
+          nil,
+          0
+        )
+        DEFAULT_TOKEN_EXPIRY_SECONDS = 900
+        $token_value = "token"
+        $md_lifetime_ms = Time.now.to_i*1000 + DEFAULT_TOKEN_EXPIRY_SECONDS * 1000
+        $md_principal_name = "kafka-cluster"
+        $extensions = nil
+        $extension_size = 0
+        $error_buffer = FFI::MemoryPointer.from_string(" " * 256)
+      end
+
+      it "should set token or capture failure" do
+          response = Rdkafka::Bindings.rd_kafka_oauthbearer_set_token($client_ptr, $token_value, $md_lifetime_ms, $md_principal_name, $extensions, $extension_size, $error_buffer, 256)
+          expect(response).to eq(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__STATE)
+          expect($error_buffer.read_string).to eq("SASL/OAUTHBEARER is not the configured authentication mechanism")
+      end
+    end
+  end
+
+  describe "oauthbearer set token failure" do
+
+    context "without args" do
+
+      it "should fail" do
+        expect {
+          Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure
+        }.to raise_error(ArgumentError)
+      end
+    end
+
+    context "with args" do
+
+      it "should succeed" do
+        expect {
+          client_ptr = Rdkafka::Bindings.rd_kafka_new(
+            :rd_kafka_consumer,
+            nil,
+            nil,
+            0
+          )
+          errstr = "error"
+          Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure(client_ptr, errstr)
+        }.to_not raise_error
+      end
+    end
+  end
+
   describe "oauthbearer callback" do
-
-    it "should fail to call librdkafka.rd_kafka_oauthbearer_set_token when args not given" do
-      expect {
-        Rdkafka::Bindings.rd_kafka_oauthbearer_set_token
-      }.to raise_error(ArgumentError)
-    end
-
-    it "should successfully call librdkafka.rd_kafka_oauthbearer_set_token when args given" do
-      expect {
-        client_ptr = Rdkafka::Bindings.rd_kafka_new(
-          :rd_kafka_consumer,
-          nil,
-          nil,
-          0
-        )
-        token_value = "token"
-        md_lifetime_ms = 1000
-        md_principal_name = "principal"
-        extensions = nil
-        extension_size = 0
-        errstr = nil
-        errstr_size = 0
-        Rdkafka::Bindings.rd_kafka_oauthbearer_set_token(client_ptr, token_value, md_lifetime_ms, md_principal_name, extensions, extension_size, errstr, errstr_size)
-      }.not_to raise_error
-    end
-
-    it "should fail to call librdkafka.rd_kafka_oauthbearer_set_token_failure when args not given" do
-      expect {
-        Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure
-      }.to raise_error(ArgumentError)
-    end
-
-    it "should successfully call librdkafka.rd_kafka_oauthbearer_set_token_failure when args are given" do
-      expect {
-        client_ptr = Rdkafka::Bindings.rd_kafka_new(
-          :rd_kafka_consumer,
-          nil,
-          nil,
-          0
-        )
-        errstr = "error"
-        Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure(client_ptr, errstr)
-      }.to_not raise_error
-    end
 
     context "without an oauthbearer callback" do
       it "should do nothing" do

@@ -295,6 +295,31 @@ module Rdkafka
       callback.method(:call).arity
     end
 
+    # Set the OAuthBearer token
+    #
+    # @param token [String] The token value
+    # @param lifetime_ms [Integer] The token lifetime in milliseconds since the epoch
+    # @param principal_name [String] The principal name
+    # @param extensions [String] The token extensions
+    # @param extension_size [Integer] The token extensions size
+    # @return [nil]
+    # @raise [Rdkafka::RdkafkaError] when setting the token fails
+    def oauthbearer_set_token(token, lifetime_ms, principal_name, extensions, extension_size)
+      error_buffer = FFI::MemoryPointer.from_string(" " * 256)
+      @native_kafka.with_inner do |inner|
+        response = Rdkafka::Bindings.rd_kafka_oauthbearer_set_token(
+          inner, token, lifetime_ms, principal_name,
+          extensions, extension_size, error_buffer, 256
+        )
+        if response != 0
+          Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure(
+            inner,
+            "Failed to set token: #{error_buffer.read_string}"
+          )
+        end
+      end
+    end
+
     private
 
     # Ensures, no operations can happen on a closed producer

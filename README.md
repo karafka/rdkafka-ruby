@@ -30,6 +30,7 @@ The most essential pieces of a Kafka client are implemented, and we aim to provi
 - [Higher Level Libraries](#higher-level-libraries)
   * [Message Processing Frameworks](#message-processing-frameworks)
   * [Message Publishing Libraries](#message-publishing-libraries)
+- [Forking](#forking)
 - [Development](#development)
 - [Example](#example)
 - [Versions](#versions)

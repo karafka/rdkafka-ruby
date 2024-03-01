@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'helpers/oauth'
-
 module Rdkafka
   # A producer for Kafka messages. To create a producer set up a {Config} and call {Config#producer producer} on that.
   class Producer

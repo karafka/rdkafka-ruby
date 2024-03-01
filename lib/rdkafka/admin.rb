@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'helpers/oauth'
-
 module Rdkafka
   class Admin
     # @private

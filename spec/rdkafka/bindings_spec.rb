@@ -222,6 +222,8 @@ describe Rdkafka::Bindings do
           0
         )
         Rdkafka::Bindings::OAuthbearerTokenRefreshCallback.call(client_ptr, "oauth", nil)
+        expect($received_client).to eq(client_ptr)
+        expect($received_client).to be_instance_of(FFI::Pointer)
         expect($received_config).to eq("oauth")
       end
     end

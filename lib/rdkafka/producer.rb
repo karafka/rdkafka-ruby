@@ -304,7 +304,7 @@ module Rdkafka
     # @param extension_size [Integer] The token extensions size
     # @return [nil]
     # @raise [Rdkafka::RdkafkaError] when setting the token fails
-    def oauthbearer_set_token(token, lifetime_ms, principal_name, extensions, extension_size)
+    def oauthbearer_set_token(token:, lifetime_ms:, principal_name:, extensions:nil, extension_size:0)
       error_buffer = FFI::MemoryPointer.from_string(" " * 256)
       @native_kafka.with_inner do |inner|
         response = Rdkafka::Bindings.rd_kafka_oauthbearer_set_token(
@@ -317,6 +317,8 @@ module Rdkafka
             "Failed to set token: #{error_buffer.read_string}"
           )
         end
+
+        response
       end
     end
 

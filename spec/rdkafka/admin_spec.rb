@@ -4,7 +4,11 @@ require "ostruct"
 
 describe Rdkafka::Admin do
   let(:config) { rdkafka_config }
+  let(:config_sasl) { rdkafka_config({
+                                       "security.protocol": "sasl_ssl",
+                                       "sasl.mechanisms": 'OAUTHBEARER'})}
   let(:admin)  { config.admin }
+  let(:admin_sasl) { config_sasl.admin }
 
   after do
     # Registry should always end up being empty
@@ -401,6 +405,30 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
       it 'expect to change number of partitions' do
         admin.create_partitions(topic_name, 10).wait
         expect(metadata[:partition_count]).to eq(10)
+      end
+    end
+  end
+
+  describe '#oauthbearer_set_token' do
+    context 'when sasl not configured' do
+      it 'should return RD_KAFKA_RESP_ERR__STATE' do
+        response = producer.oauthbearer_set_token(
+          token: "foo",
+          lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
+          principal_name: "kafka-cluster"
+        )
+        expect(response).to eq(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__STATE)
+      end
+    end
+
+    context 'when sasl configured' do
+      it 'should succeed' do
+        response = producer_sasl.oauthbearer_set_token(
+          token: "foo",
+          lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
+          principal_name: "kafka-cluster"
+        )
+        expect(response).to eq(0)
       end
     end
   end

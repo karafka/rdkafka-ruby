@@ -14,6 +14,7 @@ describe Rdkafka::Producer do
     registry = Rdkafka::Producer::DeliveryHandle::REGISTRY
     expect(registry).to be_empty, registry.inspect
     producer.close
+    producer_sasl.close
     consumer.close
   end
 
@@ -738,7 +739,7 @@ describe Rdkafka::Producer do
     end
   end
 
-  describe '#oauthbearer_set_token'
+  describe '#oauthbearer_set_token' do
     context 'when sasl not configured' do
       it 'should return RD_KAFKA_RESP_ERR__STATE' do
         response = producer.oauthbearer_set_token(
@@ -760,4 +761,5 @@ describe Rdkafka::Producer do
         expect(response).to eq(0)
       end
     end
+  end
 end

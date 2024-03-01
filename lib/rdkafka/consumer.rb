@@ -688,6 +688,15 @@ module Rdkafka
       end
     end
 
+    def oauthbearer_set_token(token:, lifetime_ms:, principal_name:, extensions: nil)
+      Helpers::OAuth.oauthbearer_set_token(
+        token: token,
+        lifetime_ms: lifetime_ms,
+        principal_name: principal_name,
+        extensions: extensions
+      )
+    end
+
     private
 
     def closed_consumer_check(method)

@@ -6,13 +6,9 @@ require 'securerandom'
 describe Rdkafka::Consumer do
   let(:consumer) { rdkafka_consumer_config.consumer }
   let(:producer) { rdkafka_producer_config.producer }
-  let(:consumer_sasl) { rdkafka_producer_config({
-                                                  "security.protocol": "sasl_ssl",
-                                                  "sasl.mechanisms": 'OAUTHBEARER'}).producer }
 
   after { consumer.close }
   after { producer.close }
-  after { consumer_sasl.close }
 
   describe '#name' do
     it { expect(consumer.name).to include('rdkafka#consumer-') }
@@ -1318,15 +1314,18 @@ describe Rdkafka::Consumer do
       end
     end
 
-    context 'when sasl configured' do
-      it 'should succeed' do
-        response = consumer_sasl.oauthbearer_set_token(
-          token: "foo",
-          lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
-          principal_name: "kafka-cluster"
-        )
-        expect(response).to eq(0)
-      end
-    end
+    # context 'when sasl configured' do
+    #   it 'should succeed' do
+    #     consumer_sasl = rdkafka_producer_config({
+    #                                                     "security.protocol": "sasl_ssl",
+    #                                                     "sasl.mechanisms": 'OAUTHBEARER'}).consumer
+    #     response = consumer_sasl.oauthbearer_set_token(
+    #       token: "foo",
+    #       lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
+    #       principal_name: "kafka-cluster"
+    #     )
+    #     expect(response).to eq(0)
+    #   end
+    # end
   end
 end

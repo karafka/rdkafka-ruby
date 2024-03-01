@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'helpers/oauth'
+
 module Rdkafka
   class Admin
     # @private
@@ -606,7 +608,8 @@ module Rdkafka
     end
 
     def oauthbearer_set_token(token:, lifetime_ms:, principal_name:, extensions: nil)
-      Helpers::OAuth.oauthbearer_set_token(
+      Helpers::OAuth.new.oauthbearer_set_token(
+        client: @native_kafka,
         token: token,
         lifetime_ms: lifetime_ms,
         principal_name: principal_name,

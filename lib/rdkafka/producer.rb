@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'helpers/oauth'
+
 module Rdkafka
   # A producer for Kafka messages. To create a producer set up a {Config} and call {Config#producer producer} on that.
   class Producer
@@ -296,7 +298,8 @@ module Rdkafka
     end
 
     def oauthbearer_set_token(token:, lifetime_ms:, principal_name:, extensions: nil)
-      Helpers::OAuth.oauthbearer_set_token(
+      Helpers::OAuth.new.oauthbearer_set_token(
+        client: @native_kafka,
         token: token,
         lifetime_ms: lifetime_ms,
         principal_name: principal_name,

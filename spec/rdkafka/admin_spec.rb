@@ -18,6 +18,7 @@ describe Rdkafka::Admin do
     expect(Rdkafka::Admin::CreateAclHandle::REGISTRY).to be_empty
     expect(Rdkafka::Admin::DeleteAclHandle::REGISTRY).to be_empty
     admin.close
+    admin_sasl.close
   end
 
   let(:topic_name)               { "test-topic-#{Random.new.rand(0..1_000_000)}" }
@@ -412,7 +413,7 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
   describe '#oauthbearer_set_token' do
     context 'when sasl not configured' do
       it 'should return RD_KAFKA_RESP_ERR__STATE' do
-        response = producer.oauthbearer_set_token(
+        response = admin.oauthbearer_set_token(
           token: "foo",
           lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
           principal_name: "kafka-cluster"
@@ -423,7 +424,7 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
 
     context 'when sasl configured' do
       it 'should succeed' do
-        response = producer_sasl.oauthbearer_set_token(
+        response = admin_sasl.oauthbearer_set_token(
           token: "foo",
           lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
           principal_name: "kafka-cluster"

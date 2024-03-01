@@ -119,8 +119,9 @@ describe Rdkafka::Config do
     context "with a proc/lambda" do
       it "should set the callback" do
         expect {
-          Rdkafka::Config.oauthbearer_token_refresh_callback = lambda do |oauth|
+          Rdkafka::Config.oauthbearer_token_refresh_callback = lambda do |oauth, instance_id|
             puts oauth
+            puts instance_id
           end
         }.not_to raise_error
         expect(Rdkafka::Config.oauthbearer_token_refresh_callback).to respond_to :call

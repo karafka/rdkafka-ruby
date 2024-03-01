@@ -201,30 +201,23 @@ describe Rdkafka::Bindings do
     context "without an oauthbearer callback" do
       it "should do nothing" do
         expect {
-          Rdkafka::Bindings::OAuthbearerTokenRefreshCallback.call(nil, "", nil)
+          Rdkafka::Bindings::OAuthbearerTokenRefreshCallback.call(nil, "", nil, "client_id")
         }.not_to raise_error
       end
     end
 
     context "with an oauthbearer callback" do
       before do
-        Rdkafka::Config.oauthbearer_token_refresh_callback = lambda do |client, config|
-          $received_client = client
+        Rdkafka::Config.oauthbearer_token_refresh_callback = lambda do |config, instance_id|
           $received_config = config
+          $received_instance_id = instance_id
         end
       end
 
       it "should call the oauth bearer callback" do
-        client_ptr = Rdkafka::Bindings.rd_kafka_new(
-          :rd_kafka_consumer,
-          nil,
-          nil,
-          0
-        )
-        Rdkafka::Bindings::OAuthbearerTokenRefreshCallback.call(client_ptr, "oauth", nil)
-        expect($received_client).to eq(client_ptr)
-        expect($received_client).to be_instance_of(FFI::Pointer)
-        expect($received_config).to eq("oauth")
+        Rdkafka::Bindings::OAuthbearerTokenRefreshCallback.call(nil, nil, nil, "consumer_id")
+        expect($received_config).to eq(nil)
+        expect($received_instance_id).to eq("consumer_id")
       end
     end
   end

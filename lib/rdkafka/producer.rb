@@ -297,19 +297,17 @@ module Rdkafka
 
     # Set the OAuthBearer token
     #
-    # @param token [String] The token value
-    # @param lifetime_ms [Integer] The token lifetime in milliseconds since the epoch
-    # @param principal_name [String] The principal name
-    # @param extensions [String] The token extensions
-    # @param extension_size [Integer] The token extensions size
-    # @return [nil]
-    # @raise [Rdkafka::RdkafkaError] when setting the token fails
-    def oauthbearer_set_token(token:, lifetime_ms:, principal_name:, extensions:nil, extension_size:0)
+    # @param token [String] the mandatory token value to set, often (but not necessarily) a JWS compact serialization as per https://tools.ietf.org/html/rfc7515#section-3.1.
+    # @param lifetime_ms [Integer] when the token expires, in terms of the number of milliseconds since the epoch. See https://currentmillis.com/.
+    # @param principal_name [String] the mandatory Kafka principal name associated with the token.
+    # @param extensions [Hash] optional SASL extensions key-value pairs to be communicated to the broker as additional key-value pairs during the initial client response as per https://tools.ietf.org/html/rfc7628#section-3.1.
+    # @return [Integer] 0 on success
+    def oauthbearer_set_token(token:, lifetime_ms:, principal_name:, extensions:nil)
       error_buffer = FFI::MemoryPointer.from_string(" " * 256)
       @native_kafka.with_inner do |inner|
         response = Rdkafka::Bindings.rd_kafka_oauthbearer_set_token(
           inner, token, lifetime_ms, principal_name,
-          extensions, extension_size, error_buffer, 256
+          flatten_extensions(extensions), extension_size(extensions), error_buffer, 256
         )
         if response != 0
           Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure(
@@ -330,6 +328,16 @@ module Rdkafka
     # @raise [Rdkafka::ClosedProducerError]
     def closed_producer_check(method)
       raise Rdkafka::ClosedProducerError.new(method) if closed?
+    end
+
+    def flatten_extensions(extensions)
+      return nil unless extensions
+      "\x01#{extensions.map {|e| e.join("=")}.join("\x01")}"
+    end
+
+    def extension_size(extensions)
+      return 0 unless extensions
+      extensions.size*2
     end
   end
 end

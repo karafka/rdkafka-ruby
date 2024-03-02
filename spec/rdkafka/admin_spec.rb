@@ -417,19 +417,20 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
       end
     end
 
-    # context 'when sasl configured' do
-    #   it 'should succeed' do
-    #     let(:config_sasl) { rdkafka_config({
-    #                                          "security.protocol": "sasl_ssl",
-    #                                          "sasl.mechanisms": 'OAUTHBEARER'})}
-    #     let(:admin_sasl) { config_sasl.admin }
-    #     response = admin_sasl.oauthbearer_set_token(
-    #       token: "foo",
-    #       lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
-    #       principal_name: "kafka-cluster"
-    #     )
-    #     expect(response).to eq(0)
-    #   end
-    # end
+    context 'when sasl configured' do
+      it 'should succeed' do
+        config_sasl = rdkafka_config(
+          "security.protocol": "sasl_ssl",
+          "sasl.mechanisms": 'OAUTHBEARER'
+        )
+        admin_sasl = config_sasl.admin
+        response = admin_sasl.oauthbearer_set_token(
+          token: "foo",
+          lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
+          principal_name: "kafka-cluster"
+        )
+        expect(response).to eq(0)
+      end
+    end
   end
 end

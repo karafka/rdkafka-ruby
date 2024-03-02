@@ -112,7 +112,7 @@ module Rdkafka
     callback :error_cb, [:pointer, :int, :string, :pointer], :void
     attach_function :rd_kafka_conf_set_error_cb, [:pointer, :error_cb], :void
     attach_function :rd_kafka_rebalance_protocol, [:pointer], :string
-    callback :oauthbearer_token_refresh_cb, [:pointer, :string, :pointer, :string], :void
+    callback :oauthbearer_token_refresh_cb, [:pointer, :string, :pointer], :void
     attach_function :rd_kafka_conf_set_oauthbearer_token_refresh_cb, [:pointer, :oauthbearer_token_refresh_cb], :void
     attach_function :rd_kafka_oauthbearer_set_token, [:pointer, :string, :int64, :pointer, :pointer, :int, :pointer, :int], :int
     attach_function :rd_kafka_oauthbearer_set_token_failure, [:pointer, :string], :int
@@ -166,10 +166,10 @@ module Rdkafka
     end
 
     OAuthbearerTokenRefreshCallback = FFI::Function.new(
-      :void, [:pointer, :string, :pointer, :string]
-    ) do |_client_ptr, config, _opaque, instance_id|
+      :void, [:pointer, :string, :pointer]
+    ) do |client_ptr, config, _opaque|
       if Rdkafka::Config.oauthbearer_token_refresh_callback
-        Rdkafka::Config.oauthbearer_token_refresh_callback.call(config, instance_id)
+        Rdkafka::Config.oauthbearer_token_refresh_callback.call(client_ptr, config)
       end
     end
 

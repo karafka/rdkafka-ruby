@@ -87,6 +87,10 @@ module Rdkafka
       end
     end
 
+    def broadcast
+      @resource.broadcast
+    end
+
     # @return [String] the name of the operation (e.g. "delivery")
     def operation_name
       raise "Must be implemented by subclass!"

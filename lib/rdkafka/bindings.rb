@@ -169,7 +169,8 @@ module Rdkafka
       :void, [:pointer, :string, :pointer]
     ) do |client_ptr, config, _opaque|
       if Rdkafka::Config.oauthbearer_token_refresh_callback
-        Rdkafka::Config.oauthbearer_token_refresh_callback.call(client_ptr, config)
+        client_name = !client_ptr.null? ? Rdkafka::Bindings.rd_kafka_name(client_ptr) : nil
+        Rdkafka::Config.oauthbearer_token_refresh_callback.call(config, client_name)
       end
     end
 

@@ -13,6 +13,7 @@ module Rdkafka
   class Consumer
     include Enumerable
     include Helpers::Time
+    include Helpers::OAuth
 
     # @private
     def initialize(native_kafka)
@@ -686,16 +687,6 @@ module Rdkafka
       @native_kafka.with_inner do |inner|
         Bindings.rd_kafka_consumer_group_metadata(inner)
       end
-    end
-
-    def oauthbearer_set_token(token:, lifetime_ms:, principal_name:, extensions: nil)
-      Helpers::OAuth.new.oauthbearer_set_token(
-        client: @native_kafka,
-        token: token,
-        lifetime_ms: lifetime_ms,
-        principal_name: principal_name,
-        extensions: extensions
-      )
     end
 
     private

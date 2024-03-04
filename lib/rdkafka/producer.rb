@@ -4,6 +4,7 @@ module Rdkafka
   # A producer for Kafka messages. To create a producer set up a {Config} and call {Config#producer producer} on that.
   class Producer
     include Helpers::Time
+    include Helpers::OAuth
 
     # Cache partitions count for 30 seconds
     PARTITIONS_COUNT_TTL = 30
@@ -293,16 +294,6 @@ module Rdkafka
       return callback.arity if callback.respond_to?(:arity)
 
       callback.method(:call).arity
-    end
-
-    def oauthbearer_set_token(token:, lifetime_ms:, principal_name:, extensions: nil)
-      Helpers::OAuth.new.oauthbearer_set_token(
-        client: @native_kafka,
-        token: token,
-        lifetime_ms: lifetime_ms,
-        principal_name: principal_name,
-        extensions: extensions
-      )
     end
 
     private

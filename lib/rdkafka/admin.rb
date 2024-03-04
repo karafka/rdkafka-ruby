@@ -2,6 +2,8 @@
 
 module Rdkafka
   class Admin
+    include Helpers::OAuth
+
     # @private
     def initialize(native_kafka)
       @native_kafka = native_kafka
@@ -603,16 +605,6 @@ module Rdkafka
       end
 
       describe_acl_handle
-    end
-
-    def oauthbearer_set_token(token:, lifetime_ms:, principal_name:, extensions: nil)
-      Helpers::OAuth.new.oauthbearer_set_token(
-        client: @native_kafka,
-        token: token,
-        lifetime_ms: lifetime_ms,
-        principal_name: principal_name,
-        extensions: extensions
-      )
     end
 
     private

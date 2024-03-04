@@ -1,7 +1,7 @@
 module Rdkafka
   module Helpers
 
-    class OAuth
+    module OAuth
 
       # Set the OAuthBearer token
       #
@@ -10,9 +10,9 @@ module Rdkafka
       # @param principal_name [String] the mandatory Kafka principal name associated with the token.
       # @param extensions [Hash] optional SASL extensions key-value pairs to be communicated to the broker as additional key-value pairs during the initial client response as per https://tools.ietf.org/html/rfc7628#section-3.1.
       # @return [Integer] 0 on success
-      def oauthbearer_set_token(client:, token:, lifetime_ms:, principal_name:, extensions: nil)
+      def oauthbearer_set_token(token:, lifetime_ms:, principal_name:, extensions: nil)
         error_buffer = FFI::MemoryPointer.from_string(" " * 256)
-        client.with_inner do |inner|
+        @native_kafka.with_inner do |inner|
           response = Rdkafka::Bindings.rd_kafka_oauthbearer_set_token(
             inner, token, lifetime_ms, principal_name,
             flatten_extensions(extensions), extension_size(extensions), error_buffer, 256

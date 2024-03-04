@@ -165,12 +165,30 @@ module Rdkafka
       end
     end
 
+    # Callbacks are currently global and contextless.
+    # The same callback object is assigned for statistics, errors, and potentially OAuth regardless of the instance to which it is associated.
+    # This means that the callback will be called for all instances, and the callback must be able to determine which instance it is associated with.
+    # The instance name will be provided in the callback, allowing the callback to reference the correct instance.
+    #
+    # An example of how to use the instance name in the callback is given below.
+    # The `refresh_token` is configured as the `oauthbearer_token_refresh_callback`.
+    # `instances` is a map of client names to client instances, maintained by the user.
+    #
+    # ```
+    #   def refresh_token(config, client_name)
+    #     client = instances[client_name]
+    #     client.oauthbearer_set_token(
+    #       token: 'new-token-value',
+    #       lifetime_ms: token-lifetime-ms,
+    #       principal_name: 'principal-name'
+    #     )
+    #   end
+    # ```
     OAuthbearerTokenRefreshCallback = FFI::Function.new(
       :void, [:pointer, :string, :pointer]
     ) do |client_ptr, config, _opaque|
       if Rdkafka::Config.oauthbearer_token_refresh_callback
-        client_name = !client_ptr.null? ? Rdkafka::Bindings.rd_kafka_name(client_ptr) : nil
-        Rdkafka::Config.oauthbearer_token_refresh_callback.call(config, client_name)
+        Rdkafka::Config.oauthbearer_token_refresh_callback.call(config, Rdkafka::Bindings.rd_kafka_name(client_ptr))
       end
     end
 

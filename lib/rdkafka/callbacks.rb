@@ -158,7 +158,7 @@ module Rdkafka
           create_topic_handle[:result_name] = create_topic_results[0].result_name
           create_topic_handle[:pending] = false
 
-          create_topic_handle.broadcast
+          create_topic_handle.unlock
         end
       end
 
@@ -177,7 +177,7 @@ module Rdkafka
           delete_group_handle[:result_name] = delete_group_results[0].result_name
           delete_group_handle[:pending] = false
 
-          delete_group_handle.broadcast
+          delete_group_handle.unlock
         end
       end
 
@@ -196,7 +196,7 @@ module Rdkafka
           delete_topic_handle[:result_name] = delete_topic_results[0].result_name
           delete_topic_handle[:pending] = false
 
-          delete_topic_handle.broadcast
+          delete_topic_handle.unlock
         end
       end
 
@@ -214,7 +214,8 @@ module Rdkafka
           create_partitions_handle[:error_string] = create_partitions_results[0].error_string
           create_partitions_handle[:result_name] = create_partitions_results[0].result_name
           create_partitions_handle[:pending] = false
-          create_partitions_handle.broadcast
+
+          create_partitions_handle.unlock
         end
       end
 
@@ -232,7 +233,7 @@ module Rdkafka
           create_acl_handle[:response_string] = create_acl_results[0].error_string
           create_acl_handle[:pending] = false
 
-          create_acl_handle.broadcast
+          create_acl_handle.unlock
         end
       end
 
@@ -255,7 +256,7 @@ module Rdkafka
             delete_acl_handle[:matching_acls_count] = delete_acl_results[0].matching_acls_count
           end
 
-          delete_acl_handle.broadcast
+          delete_acl_handle.unlock
         end
       end
 
@@ -273,7 +274,7 @@ module Rdkafka
             describe_acl_handle[:acls_count] = describe_acl.matching_acls_count
           end
 
-          describe_acl_handle.broadcast
+          describe_acl_handle.unlock
         end
       end
     end
@@ -314,7 +315,7 @@ module Rdkafka
             )
           end
 
-          delivery_handle.broadcast
+          delivery_handle.unlock
         end
       end
     end

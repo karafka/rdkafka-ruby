@@ -18,6 +18,8 @@ module Rdkafka
     # Default wait timeout is 31 years
     WAIT_TIMEOUT = 10_000_000_000
 
+    private_constant :WAIT_TIMEOUT
+
     class << self
       # Adds handle to the register
       #
@@ -54,7 +56,7 @@ module Rdkafka
     # on the operation. In this case it is possible to call wait again.
     #
     # @param max_wait_timeout [Numeric, nil] Amount of time to wait before timing out.
-    #   If this is nil we will use WAIT_TIMEOUT value
+    #   If this is nil we will wait forever
     # @param wait_timeout [Numeric] Amount of time we should wait before we recheck if the
     #   operation has completed
     # @param raise_response_error [Boolean] should we raise error when waiting finishes
@@ -87,7 +89,8 @@ module Rdkafka
       end
     end
 
-    def broadcast
+    # Unlock the resources
+    def unlock
       @resource.broadcast
     end
 

@@ -1315,12 +1315,20 @@ describe Rdkafka::Consumer do
     end
 
     context 'when sasl configured' do
-      it 'should succeed' do
-        consumer_sasl = rdkafka_producer_config(
+      before do
+        $consumer_sasl = rdkafka_producer_config(
           "security.protocol": "sasl_ssl",
           "sasl.mechanisms": 'OAUTHBEARER'
         ).consumer
-        response = consumer_sasl.oauthbearer_set_token(
+      end
+
+      after do
+        $consumer_sasl.close
+      end
+
+      it 'should succeed' do
+
+        response = $consumer_sasl.oauthbearer_set_token(
           token: "foo",
           lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
           principal_name: "kafka-cluster"

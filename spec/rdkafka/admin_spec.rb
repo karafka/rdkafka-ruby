@@ -418,13 +418,21 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
     end
 
     context 'when sasl configured' do
-      it 'should succeed' do
+      before do
         config_sasl = rdkafka_config(
           "security.protocol": "sasl_ssl",
           "sasl.mechanisms": 'OAUTHBEARER'
         )
-        admin_sasl = config_sasl.admin
-        response = admin_sasl.oauthbearer_set_token(
+        $admin_sasl = config_sasl.admin
+      end
+
+      after do
+        $admin_sasl.close
+      end
+
+      it 'should succeed' do
+
+        response = $admin_sasl.oauthbearer_set_token(
           token: "foo",
           lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
           principal_name: "kafka-cluster"

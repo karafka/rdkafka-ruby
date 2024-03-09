@@ -160,6 +160,10 @@ describe Rdkafka::Bindings do
         $error_buffer = FFI::MemoryPointer.from_string(" " * 256)
       end
 
+      after do
+        $client_ptr.free
+      end
+
       it "should set token or capture failure" do
           response = Rdkafka::Bindings.rd_kafka_oauthbearer_set_token($client_ptr, $token_value, $md_lifetime_ms, $md_principal_name, $extensions, $extension_size, $error_buffer, 256)
           expect(response).to eq(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__STATE)
@@ -180,17 +184,23 @@ describe Rdkafka::Bindings do
     end
 
     context "with args" do
+      before do
+        $client_ptr = Rdkafka::Bindings.rd_kafka_new(
+          :rd_kafka_consumer,
+          nil,
+          nil,
+          0
+        )
+      end
+
+      after do
+        $client_ptr.free
+      end
 
       it "should succeed" do
         expect {
-          client_ptr = Rdkafka::Bindings.rd_kafka_new(
-            :rd_kafka_consumer,
-            nil,
-            nil,
-            0
-          )
           errstr = "error"
-          Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure(client_ptr, errstr)
+          Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure($client_ptr, errstr)
         }.to_not raise_error
       end
     end
@@ -218,6 +228,10 @@ describe Rdkafka::Bindings do
           $received_config = config
           $received_client_name = client_name
         end
+      end
+
+      after do
+        $client_ptr.free
       end
 
       it "should call the oauth bearer callback and receive config and client name" do

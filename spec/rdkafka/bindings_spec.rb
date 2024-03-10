@@ -161,7 +161,7 @@ describe Rdkafka::Bindings do
       end
 
       after do
-        $client_ptr.free
+        Rdkafka::Bindings.rd_kafka_consumer_close($client_ptr)
       end
 
       it "should set token or capture failure" do
@@ -194,7 +194,7 @@ describe Rdkafka::Bindings do
       end
 
       after do
-        $client_ptr.free
+        Rdkafka::Bindings.rd_kafka_consumer_close($client_ptr)
       end
 
       it "should succeed" do
@@ -231,7 +231,7 @@ describe Rdkafka::Bindings do
       end
 
       after do
-        $client_ptr.free
+        Rdkafka::Bindings.rd_kafka_consumer_close($client_ptr)
       end
 
       it "should call the oauth bearer callback and receive config and client name" do

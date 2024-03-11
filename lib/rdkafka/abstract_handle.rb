@@ -16,9 +16,9 @@ module Rdkafka
     REGISTRY = {}
 
     # Default wait timeout is 31 years
-    WAIT_TIMEOUT = 10_000_000_000
+    MAX_WAIT_TIMEOUT_FOREVER = 10_000_000_000
 
-    private_constant :WAIT_TIMEOUT
+    private_constant :MAX_WAIT_TIMEOUT_FOREVER
 
     class << self
       # Adds handle to the register
@@ -66,7 +66,7 @@ module Rdkafka
     # @raise [RdkafkaError] When the operation failed
     # @raise [WaitTimeoutError] When the timeout has been reached and the handle is still pending
     def wait(max_wait_timeout: 60, wait_timeout: 0.1, raise_response_error: true)
-      timeout = max_wait_timeout ? monotonic_now + max_wait_timeout : WAIT_TIMEOUT
+      timeout = max_wait_timeout ? monotonic_now + max_wait_timeout : MAX_WAIT_TIMEOUT_FOREVER
 
       @mutex.synchronize do
         loop do

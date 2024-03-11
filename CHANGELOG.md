@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.14.11 (Unreleased)
+- [Enhancement] Replace time poll based wait engine with an event based to improve response times on blocking operations and wait (nijikon + mensfeld)
+
 ## 0.14.10 (2024-02-08)
 - [Fix] Background logger stops working after forking causing memory leaks (mensfeld).
 

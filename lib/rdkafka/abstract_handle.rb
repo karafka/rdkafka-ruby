@@ -14,9 +14,11 @@ module Rdkafka
 
     # Registry for registering all the handles.
     REGISTRY = {}
-
     # Default wait timeout is 31 years
     MAX_WAIT_TIMEOUT_FOREVER = 10_000_000_000
+    # Deprecation message for wait_timeout argument in wait method
+    WAIT_TIMEOUT_DEPRECATION_MESSAGE = "The 'wait_timeout' argument is deprecated and will be removed in future versions without replacement. " \
+      "Please refactor your code to remove references to it."
 
     private_constant :MAX_WAIT_TIMEOUT_FOREVER
 
@@ -57,15 +59,16 @@ module Rdkafka
     #
     # @param max_wait_timeout [Numeric, nil] Amount of time to wait before timing out.
     #   If this is nil we will wait forever
-    # @param wait_timeout [Numeric] Amount of time we should wait before we recheck if the
-    #   operation has completed
+    # @param wait_timeout [nil] deprecated
     # @param raise_response_error [Boolean] should we raise error when waiting finishes
     #
     # @return [Object] Operation-specific result
     #
     # @raise [RdkafkaError] When the operation failed
     # @raise [WaitTimeoutError] When the timeout has been reached and the handle is still pending
-    def wait(max_wait_timeout: 60, wait_timeout: 0.1, raise_response_error: true)
+    def wait(max_wait_timeout: 60, wait_timeout: nil, raise_response_error: true)
+      Kernel.warn(WAIT_TIMEOUT_DEPRECATION_MESSAGE) unless wait_timeout.nil?
+
       timeout = max_wait_timeout ? monotonic_now + max_wait_timeout : MAX_WAIT_TIMEOUT_FOREVER
 
       @mutex.synchronize do

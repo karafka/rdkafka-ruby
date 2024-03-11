@@ -157,6 +157,8 @@ module Rdkafka
           create_topic_handle[:error_string] = create_topic_results[0].error_string
           create_topic_handle[:result_name] = create_topic_results[0].result_name
           create_topic_handle[:pending] = false
+
+          create_topic_handle.unlock
         end
       end
 
@@ -174,6 +176,8 @@ module Rdkafka
           delete_group_handle[:error_string] = delete_group_results[0].error_string
           delete_group_handle[:result_name] = delete_group_results[0].result_name
           delete_group_handle[:pending] = false
+
+          delete_group_handle.unlock
         end
       end
 
@@ -191,6 +195,8 @@ module Rdkafka
           delete_topic_handle[:error_string] = delete_topic_results[0].error_string
           delete_topic_handle[:result_name] = delete_topic_results[0].result_name
           delete_topic_handle[:pending] = false
+
+          delete_topic_handle.unlock
         end
       end
 
@@ -208,6 +214,8 @@ module Rdkafka
           create_partitions_handle[:error_string] = create_partitions_results[0].error_string
           create_partitions_handle[:result_name] = create_partitions_results[0].result_name
           create_partitions_handle[:pending] = false
+
+          create_partitions_handle.unlock
         end
       end
 
@@ -224,6 +232,8 @@ module Rdkafka
           create_acl_handle[:response] = create_acl_results[0].result_error
           create_acl_handle[:response_string] = create_acl_results[0].error_string
           create_acl_handle[:pending] = false
+
+          create_acl_handle.unlock
         end
       end
 
@@ -240,10 +250,13 @@ module Rdkafka
           delete_acl_handle[:response] = delete_acl_results[0].result_error
           delete_acl_handle[:response_string] = delete_acl_results[0].error_string
           delete_acl_handle[:pending] = false
+
           if delete_acl_results[0].result_error == 0
             delete_acl_handle[:matching_acls] = delete_acl_results[0].matching_acls
             delete_acl_handle[:matching_acls_count] = delete_acl_results[0].matching_acls_count
           end
+
+          delete_acl_handle.unlock
         end
       end
 
@@ -255,16 +268,18 @@ module Rdkafka
           describe_acl_handle[:response] = describe_acl.result_error
           describe_acl_handle[:response_string] = describe_acl.error_string
           describe_acl_handle[:pending] = false
+
           if describe_acl.result_error == 0
             describe_acl_handle[:acls]       = describe_acl.matching_acls
             describe_acl_handle[:acls_count] = describe_acl.matching_acls_count
           end
+
+          describe_acl_handle.unlock
         end
       end
     end
 
     # FFI Function used for Message Delivery callbacks
-
     DeliveryCallbackFunction = FFI::Function.new(
         :void, [:pointer, :pointer, :pointer]
     ) do |client_ptr, message_ptr, opaque_ptr|
@@ -299,9 +314,10 @@ module Rdkafka
               delivery_handle
             )
           end
+
+          delivery_handle.unlock
         end
       end
     end
-
   end
 end

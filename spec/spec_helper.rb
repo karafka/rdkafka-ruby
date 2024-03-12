@@ -156,7 +156,7 @@ RSpec.configure do |config|
   end
 end
 
-class TestConsumer
+class RdKafkaTestConsumer
   def self.with
     consumer = Rdkafka::Bindings.rd_kafka_new(
       :rd_kafka_consumer,

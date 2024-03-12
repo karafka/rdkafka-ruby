@@ -155,7 +155,7 @@ describe Rdkafka::Bindings do
       end
 
       it "should set token or capture failure" do
-        TestConsumer.with do |consumer_ptr|
+        RdKafkaTestConsumer.with do |consumer_ptr|
           response = Rdkafka::Bindings.rd_kafka_oauthbearer_set_token(consumer_ptr, $token_value, $md_lifetime_ms, $md_principal_name, $extensions, $extension_size, $error_buffer, 256)
           expect(response).to eq(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__STATE)
           expect($error_buffer.read_string).to eq("SASL/OAUTHBEARER is not the configured authentication mechanism")
@@ -179,7 +179,7 @@ describe Rdkafka::Bindings do
       it "should succeed" do
         expect {
           errstr = "error"
-          TestConsumer.with do |consumer_ptr|
+          RdKafkaTestConsumer.with do |consumer_ptr|
             Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure(consumer_ptr, errstr)
           end
         }.to_not raise_error
@@ -206,7 +206,7 @@ describe Rdkafka::Bindings do
       end
 
       it "should call the oauth bearer callback and receive config and client name" do
-        TestConsumer.with do |consumer_ptr|
+        RdKafkaTestConsumer.with do |consumer_ptr|
           Rdkafka::Bindings::OAuthbearerTokenRefreshCallback.call(consumer_ptr, "{}", nil)
             expect($received_config).to eq("{}")
             expect($received_client_name).to match(/consumer/)

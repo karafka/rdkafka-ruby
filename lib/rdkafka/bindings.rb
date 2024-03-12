@@ -165,9 +165,8 @@ module Rdkafka
       end
     end
 
-    # Callbacks are currently global and contextless.
-    # The same callback object is assigned for statistics, errors, and potentially OAuth regardless of the instance to which it is associated.
-    # This means that the callback will be called for all instances, and the callback must be able to determine which instance it is associated with.
+    # The OAuth callback is currently global and contextless.
+    # This means that the callback will be called for all instances, and the callback must be able to determine to which instance it is associated.
     # The instance name will be provided in the callback, allowing the callback to reference the correct instance.
     #
     # An example of how to use the instance name in the callback is given below.

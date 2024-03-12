@@ -18,7 +18,7 @@ module Rdkafka
     MAX_WAIT_TIMEOUT_FOREVER = 10_000_000_000
     # Deprecation message for wait_timeout argument in wait method
     WAIT_TIMEOUT_DEPRECATION_MESSAGE = "The 'wait_timeout' argument is deprecated and will be removed in future versions without replacement. " \
-      "Please refactor your code to remove references to it."
+      "We don't rely on it's value anymore. Please refactor your code to remove references to it."
 
     private_constant :MAX_WAIT_TIMEOUT_FOREVER
 

@@ -1,7 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.15.2 (Unreleased)
-- [Change] The `wait_timeout` argument in `AbstractHandle.wait` method is deprecated and will be removed in future versions without replacement (nijikon)
+- [Change] The `wait_timeout` argument in `AbstractHandle.wait` method is deprecated and will be removed in future versions without replacement. We don't rely on it's value anymore (nijikon)
 - [Enhancement] Replace time poll based wait engine with an event based to improve response times on blocking operations and wait (nijikon + mensfeld)
 - [Fix] Background logger stops working after forking causing memory leaks (mensfeld)
 

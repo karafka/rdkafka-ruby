@@ -14,6 +14,13 @@ module Rdkafka
 
     # Registry for registering all the handles.
     REGISTRY = {}
+    # Default wait timeout is 31 years
+    MAX_WAIT_TIMEOUT_FOREVER = 10_000_000_000
+    # Deprecation message for wait_timeout argument in wait method
+    WAIT_TIMEOUT_DEPRECATION_MESSAGE = "The 'wait_timeout' argument is deprecated and will be removed in future versions without replacement. " \
+      "We don't rely on it's value anymore. Please refactor your code to remove references to it."
+
+    private_constant :MAX_WAIT_TIMEOUT_FOREVER
 
     class << self
       # Adds handle to the register
@@ -32,6 +39,12 @@ module Rdkafka
       end
     end
 
+    def initialize
+      @mutex = Thread::Mutex.new
+      @resource = Thread::ConditionVariable.new
+
+      super
+    end
 
     # Whether the handle is still pending.
     #
@@ -45,35 +58,43 @@ module Rdkafka
     # on the operation. In this case it is possible to call wait again.
     #
     # @param max_wait_timeout [Numeric, nil] Amount of time to wait before timing out.
-    #   If this is nil it does not time out.
-    # @param wait_timeout [Numeric] Amount of time we should wait before we recheck if the
-    #   operation has completed
+    #   If this is nil we will wait forever
+    # @param wait_timeout [nil] deprecated
     # @param raise_response_error [Boolean] should we raise error when waiting finishes
     #
     # @return [Object] Operation-specific result
     #
     # @raise [RdkafkaError] When the operation failed
     # @raise [WaitTimeoutError] When the timeout has been reached and the handle is still pending
-    def wait(max_wait_timeout: 60, wait_timeout: 0.1, raise_response_error: true)
-      timeout = if max_wait_timeout
-                  monotonic_now + max_wait_timeout
-                else
-                  nil
-                end
-      loop do
-        if pending?
-          if timeout && timeout <= monotonic_now
-            raise WaitTimeoutError.new(
-              "Waiting for #{operation_name} timed out after #{max_wait_timeout} seconds"
-            )
+    def wait(max_wait_timeout: 60, wait_timeout: nil, raise_response_error: true)
+      Kernel.warn(WAIT_TIMEOUT_DEPRECATION_MESSAGE) unless wait_timeout.nil?
+
+      timeout = max_wait_timeout ? monotonic_now + max_wait_timeout : MAX_WAIT_TIMEOUT_FOREVER
+
+      @mutex.synchronize do
+        loop do
+          if pending?
+            to_wait = (timeout - monotonic_now)
+
+            if to_wait.positive?
+              @resource.wait(@mutex, to_wait)
+            else
+              raise WaitTimeoutError.new(
+                "Waiting for #{operation_name} timed out after #{max_wait_timeout} seconds"
+              )
+            end
+          elsif self[:response] != 0 && raise_response_error
+            raise_error
+          else
+            return create_result
           end
-          sleep wait_timeout
-        elsif self[:response] != 0 && raise_response_error
-          raise_error
-        else
-          return create_result
         end
       end
+    end
+
+    # Unlock the resources
+    def unlock
+      @resource.broadcast
     end
 
     # @return [String] the name of the operation (e.g. "delivery")

@@ -141,6 +141,7 @@ describe Rdkafka::Admin do
       it { expect(resources_results.first.configs.size).to be > 25 }
       it { expect(resources_results.first.configs.first.name).to eq('compression.type') }
       it { expect(resources_results.first.configs.first.value).to eq('producer') }
+      it { expect(resources_results.first.configs.map(&:synonyms)).not_to be_empty }
     end
 
     context 'when describing config of a non-existing topic' do
@@ -204,6 +205,7 @@ describe Rdkafka::Admin do
       it { expect(resources_results.first.configs.size).to be > 230 }
       it { expect(resources_results.first.configs.first.name).to eq('log.cleaner.min.compaction.lag.ms') }
       it { expect(resources_results.first.configs.first.value).to eq('0') }
+      it { expect(resources_results.first.configs.map(&:synonyms)).not_to be_empty }
     end
 
     context 'when describing valid broker with topics in one request' do

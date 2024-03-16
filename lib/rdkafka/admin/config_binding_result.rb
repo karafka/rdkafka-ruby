@@ -22,7 +22,7 @@ module Rdkafka
         synonyms_ptr = synonym_ptr.read_array_of_pointer(pointer_to_size_t.read_int)
 
         (1..pointer_to_size_t.read_int).map do |ar|
-          self.class.new synonyms_ptr[ar - 1]
+          @synonyms << self.class.new(synonyms_ptr[ar - 1])
         end
       end
     end

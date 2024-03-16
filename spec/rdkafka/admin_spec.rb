@@ -129,6 +129,106 @@ describe Rdkafka::Admin do
     end
   end
 
+  describe "describe_config" do
+    subject(:resources_results) { admin.describe_configs(resources).wait.resources }
+
+    context 'when describing config of an existing topic' do
+      let(:resources) { [{ resource_type: 2, resource_name: 'example_topic' }] }
+
+      it { expect(resources_results.size).to eq(1) }
+      it { expect(resources_results.first.type).to eq(2) }
+      it { expect(resources_results.first.name).to eq('example_topic') }
+      it { expect(resources_results.first.configs.size).to be > 25 }
+      it { expect(resources_results.first.configs.first.name).to eq('compression.type') }
+      it { expect(resources_results.first.configs.first.value).to eq('producer') }
+    end
+
+    context 'when describing config of a non-existing topic' do
+      let(:resources) { [{ resource_type: 2, resource_name: SecureRandom.uuid }] }
+
+      it 'expect to raise error' do
+        expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /unknown_topic_or_part/)
+      end
+    end
+
+    context 'when describing both existing and non-existing topics' do
+      let(:resources) do
+        [
+          { resource_type: 2, resource_name: 'example_topic' },
+          { resource_type: 2, resource_name: SecureRandom.uuid }
+        ]
+      end
+
+      it 'expect to raise error' do
+        expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /unknown_topic_or_part/)
+      end
+    end
+
+    context 'when describing multiple existing topics' do
+      let(:resources) do
+        [
+          { resource_type: 2, resource_name: 'example_topic' },
+          { resource_type: 2, resource_name: 'produce_test_topic' }
+        ]
+      end
+
+      it { expect(resources_results.size).to eq(2) }
+      it { expect(resources_results.first.type).to eq(2) }
+      it { expect(resources_results.first.name).to eq('example_topic') }
+      it { expect(resources_results.last.type).to eq(2) }
+      it { expect(resources_results.last.name).to eq('produce_test_topic') }
+    end
+
+    context 'when trying to describe invalid resource type' do
+      let(:resources) { [{ resource_type: 0, resource_name: SecureRandom.uuid }] }
+
+      it 'expect to raise error' do
+        expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /invalid_request/)
+      end
+    end
+
+    context 'when trying to describe invalid broker' do
+      let(:resources) { [{ resource_type: 4, resource_name: 'non-existing' }] }
+
+      it 'expect to raise error' do
+        expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
+      end
+    end
+
+    context 'when trying to describe valid broker' do
+      let(:resources) { [{ resource_type: 4, resource_name: '1' }] }
+
+      it { expect(resources_results.size).to eq(1) }
+      it { expect(resources_results.first.type).to eq(4) }
+      it { expect(resources_results.first.name).to eq('1') }
+      it { expect(resources_results.first.configs.size).to be > 230 }
+      it { expect(resources_results.first.configs.first.name).to eq('log.cleaner.min.compaction.lag.ms') }
+      it { expect(resources_results.first.configs.first.value).to eq('0') }
+    end
+
+    context 'when describing valid broker with topics in one request' do
+      let(:resources) do
+        [
+          { resource_type: 4, resource_name: '1' },
+          { resource_type: 2, resource_name: 'produce_test_topic' }
+        ]
+      end
+
+      it { expect(resources_results.size).to eq(2) }
+      it { expect(resources_results.first.type).to eq(4) }
+      it { expect(resources_results.first.name).to eq('1') }
+      it { expect(resources_results.first.configs.size).to be > 230 }
+      it { expect(resources_results.first.configs.first.name).to eq('log.cleaner.min.compaction.lag.ms') }
+      it { expect(resources_results.first.configs.first.value).to eq('0') }
+
+      it { expect(resources_results.last.type).to eq(2) }
+      it { expect(resources_results.last.name).to eq('produce_test_topic') }
+      it { expect(resources_results.last.configs.size).to be > 25 }
+      it { expect(resources_results.last.configs.first.name).to eq('compression.type') }
+      it { expect(resources_results.last.configs.first.value).to eq('producer') }
+    end
+  end
+
   describe "#delete_topic" do
     describe "called with invalid input" do
       # https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/common/internals/Topic.java#L29

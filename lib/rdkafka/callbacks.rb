@@ -113,6 +113,24 @@ module Rdkafka
       end
     end
 
+    class DescribeConfigResult
+      attr_reader :result_error, :error_string, :results, :results_count
+
+      def initialize(event_ptr)
+        @results=[]
+        @result_error = Rdkafka::Bindings.rd_kafka_event_error(event_ptr)
+        @error_string = Rdkafka::Bindings.rd_kafka_event_error_string(event_ptr)
+
+        if @result_error == 0
+          acl_describe_result = Rdkafka::Bindings.rd_kafka_event_DescribeConfigs_result(event_ptr)
+          # Get the number of matching acls
+          pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+          @results = Rdkafka::Bindings.rd_kafka_DescribeConfigs_result_resources(acl_describe_result, pointer_to_size_t)
+          @results_count = pointer_to_size_t.read_int
+        end
+      end
+    end
+
     # FFI Function used for Create Topic and Delete Topic callbacks
     BackgroundEventCallbackFunction = FFI::Function.new(
         :void, [:pointer, :pointer, :pointer]
@@ -123,20 +141,22 @@ module Rdkafka
     # @private
     class BackgroundEventCallback
       def self.call(_, event_ptr, _)
-        event_type = Rdkafka::Bindings.rd_kafka_event_type(event_ptr)
-        if event_type == Rdkafka::Bindings::RD_KAFKA_EVENT_CREATETOPICS_RESULT
+        case Rdkafka::Bindings.rd_kafka_event_type(event_ptr)
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_CREATETOPICS_RESULT
           process_create_topic(event_ptr)
-        elsif event_type == Rdkafka::Bindings::RD_KAFKA_EVENT_DELETETOPICS_RESULT
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBECONFIGS_RESULT
+          process_describe_configs(event_ptr)
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETETOPICS_RESULT
           process_delete_topic(event_ptr)
-        elsif event_type == Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATEPARTITIONS_RESULT
+        when Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATEPARTITIONS_RESULT
           process_create_partitions(event_ptr)
-        elsif event_type == Rdkafka::Bindings::RD_KAFKA_EVENT_CREATEACLS_RESULT
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_CREATEACLS_RESULT
           process_create_acl(event_ptr)
-        elsif event_type == Rdkafka::Bindings::RD_KAFKA_EVENT_DELETEACLS_RESULT
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETEACLS_RESULT
           process_delete_acl(event_ptr)
-        elsif event_type == Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBEACLS_RESULT
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBEACLS_RESULT
           process_describe_acl(event_ptr)
-        elsif event_type == Rdkafka::Bindings::RD_KAFKA_EVENT_DELETEGROUPS_RESULT
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETEGROUPS_RESULT
           process_delete_groups(event_ptr)
         end
       end
@@ -159,6 +179,24 @@ module Rdkafka
           create_topic_handle[:pending] = false
 
           create_topic_handle.unlock
+        end
+      end
+
+      def self.process_describe_configs(event_ptr)
+        describe_configs = DescribeConfigResult.new(event_ptr)
+        describe_configs_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
+
+        if describe_configs_handle = Rdkafka::Admin::DescribeConfigsHandle.remove(describe_configs_handle_ptr.address)
+          describe_configs_handle[:response] = describe_configs.result_error
+          describe_configs_handle[:response_string] = describe_configs.error_string
+          describe_configs_handle[:pending] = false
+
+          if describe_configs.result_error == 0
+            describe_configs_handle[:config_entries] = describe_configs.results
+            describe_configs_handle[:entry_count] = describe_configs.results_count
+          end
+
+          describe_configs_handle.unlock
         end
       end
 
@@ -270,7 +308,7 @@ module Rdkafka
           describe_acl_handle[:pending] = false
 
           if describe_acl.result_error == 0
-            describe_acl_handle[:acls]       = describe_acl.matching_acls
+            describe_acl_handle[:acls] = describe_acl.matching_acls
             describe_acl_handle[:acls_count] = describe_acl.matching_acls_count
           end
 

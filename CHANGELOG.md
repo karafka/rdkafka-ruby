@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
-## 0.14.11 (Unreleased)
+## 0.15.0 (Unreleased)
+- [Feature] Introduce ability to discover cluster and topic configuration.
 - [Enhancement] Replace time poll based wait engine with an event based to improve response times on blocking operations and wait (nijikon + mensfeld)
 - [Change] The `wait_timeout` argument in `AbstractHandle.wait` method is deprecated and will be removed in future versions without replacement. We don't rely on it's value anymore (nijikon)
 

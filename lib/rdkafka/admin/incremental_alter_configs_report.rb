@@ -2,7 +2,7 @@
 
 module Rdkafka
   class Admin
-    class DescribeConfigsReport
+    class IncrementalAlterConfigsReport
       attr_reader :resources
 
       def initialize(config_entries:, entry_count:)

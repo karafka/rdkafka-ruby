@@ -113,7 +113,7 @@ module Rdkafka
       end
     end
 
-    class DescribeConfigResult
+    class DescribeConfigsResult
       attr_reader :result_error, :error_string, :results, :results_count
 
       def initialize(event_ptr)
@@ -122,10 +122,28 @@ module Rdkafka
         @error_string = Rdkafka::Bindings.rd_kafka_event_error_string(event_ptr)
 
         if @result_error == 0
-          acl_describe_result = Rdkafka::Bindings.rd_kafka_event_DescribeConfigs_result(event_ptr)
+          configs_describe_result = Rdkafka::Bindings.rd_kafka_event_DescribeConfigs_result(event_ptr)
           # Get the number of matching acls
           pointer_to_size_t = FFI::MemoryPointer.new(:int32)
-          @results = Rdkafka::Bindings.rd_kafka_DescribeConfigs_result_resources(acl_describe_result, pointer_to_size_t)
+          @results = Rdkafka::Bindings.rd_kafka_DescribeConfigs_result_resources(configs_describe_result, pointer_to_size_t)
+          @results_count = pointer_to_size_t.read_int
+        end
+      end
+    end
+
+    class IncrementalAlterConfigsResult
+      attr_reader :result_error, :error_string, :results, :results_count
+
+      def initialize(event_ptr)
+        @results=[]
+        @result_error = Rdkafka::Bindings.rd_kafka_event_error(event_ptr)
+        @error_string = Rdkafka::Bindings.rd_kafka_event_error_string(event_ptr)
+
+        if @result_error == 0
+          incremental_alter_result = Rdkafka::Bindings.rd_kafka_event_IncrementalAlterConfigs_result(event_ptr)
+          # Get the number of matching acls
+          pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+          @results = Rdkafka::Bindings.rd_kafka_IncrementalAlterConfigs_result_resources(incremental_alter_result, pointer_to_size_t)
           @results_count = pointer_to_size_t.read_int
         end
       end
@@ -146,6 +164,8 @@ module Rdkafka
           process_create_topic(event_ptr)
         when Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBECONFIGS_RESULT
           process_describe_configs(event_ptr)
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_INCREMENTALALTERCONFIGS_RESULT
+          process_incremental_alter_configs(event_ptr)
         when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETETOPICS_RESULT
           process_delete_topic(event_ptr)
         when Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATEPARTITIONS_RESULT
@@ -183,7 +203,7 @@ module Rdkafka
       end
 
       def self.process_describe_configs(event_ptr)
-        describe_configs = DescribeConfigResult.new(event_ptr)
+        describe_configs = DescribeConfigsResult.new(event_ptr)
         describe_configs_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
 
         if describe_configs_handle = Rdkafka::Admin::DescribeConfigsHandle.remove(describe_configs_handle_ptr.address)
@@ -197,6 +217,24 @@ module Rdkafka
           end
 
           describe_configs_handle.unlock
+        end
+      end
+
+      def self.process_incremental_alter_configs(event_ptr)
+        incremental_alter = IncrementalAlterConfigsResult.new(event_ptr)
+        incremental_alter_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
+
+        if incremental_alter_handle = Rdkafka::Admin::IncrementalAlterConfigsHandle.remove(incremental_alter_handle_ptr.address)
+          incremental_alter_handle[:response] = incremental_alter.result_error
+          incremental_alter_handle[:response_string] = incremental_alter.error_string
+          incremental_alter_handle[:pending] = false
+
+          if incremental_alter.result_error == 0
+            incremental_alter_handle[:config_entries] = incremental_alter.results
+            incremental_alter_handle[:entry_count] = incremental_alter.results_count
+          end
+
+          incremental_alter_handle.unlock
         end
       end
 

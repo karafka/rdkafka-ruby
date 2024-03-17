@@ -2,7 +2,7 @@
 
 module Rdkafka
   class Admin
-    class DescribeConfigsHandle < AbstractHandle
+    class IncrementalAlterConfigsHandle < AbstractHandle
       layout :pending, :bool,
              :response, :int,
              :response_string, :pointer,
@@ -11,12 +11,12 @@ module Rdkafka
 
       # @return [String] the name of the operation.
       def operation_name
-        "describe configs"
+        "incremental alter configs"
       end
 
       # @return [DescribeAclReport] instance with an array of acls that matches the request filters.
       def create_result
-        DescribeConfigsReport.new(
+        IncrementalAlterConfigsReport.new(
           config_entries: self[:config_entries],
           entry_count: self[:entry_count]
         )

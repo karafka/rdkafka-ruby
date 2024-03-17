@@ -94,7 +94,10 @@ module Rdkafka
 
     # Unlock the resources
     def unlock
-      @resource.broadcast
+      @mutex.synchronize do
+        self[:pending] = false
+        @resource.broadcast
+      end
     end
 
     # @return [String] the name of the operation (e.g. "delivery")

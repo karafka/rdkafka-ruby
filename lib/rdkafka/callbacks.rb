@@ -196,7 +196,6 @@ module Rdkafka
           create_topic_handle[:response] = create_topic_results[0].result_error
           create_topic_handle[:error_string] = create_topic_results[0].error_string
           create_topic_handle[:result_name] = create_topic_results[0].result_name
-          create_topic_handle[:pending] = false
 
           create_topic_handle.unlock
         end
@@ -251,7 +250,6 @@ module Rdkafka
           delete_group_handle[:response] = delete_group_results[0].result_error
           delete_group_handle[:error_string] = delete_group_results[0].error_string
           delete_group_handle[:result_name] = delete_group_results[0].result_name
-          delete_group_handle[:pending] = false
 
           delete_group_handle.unlock
         end
@@ -270,7 +268,6 @@ module Rdkafka
           delete_topic_handle[:response] = delete_topic_results[0].result_error
           delete_topic_handle[:error_string] = delete_topic_results[0].error_string
           delete_topic_handle[:result_name] = delete_topic_results[0].result_name
-          delete_topic_handle[:pending] = false
 
           delete_topic_handle.unlock
         end
@@ -289,7 +286,6 @@ module Rdkafka
           create_partitions_handle[:response] = create_partitions_results[0].result_error
           create_partitions_handle[:error_string] = create_partitions_results[0].error_string
           create_partitions_handle[:result_name] = create_partitions_results[0].result_name
-          create_partitions_handle[:pending] = false
 
           create_partitions_handle.unlock
         end
@@ -307,7 +303,6 @@ module Rdkafka
         if create_acl_handle = Rdkafka::Admin::CreateAclHandle.remove(create_acl_handle_ptr.address)
           create_acl_handle[:response] = create_acl_results[0].result_error
           create_acl_handle[:response_string] = create_acl_results[0].error_string
-          create_acl_handle[:pending] = false
 
           create_acl_handle.unlock
         end
@@ -325,7 +320,6 @@ module Rdkafka
         if delete_acl_handle = Rdkafka::Admin::DeleteAclHandle.remove(delete_acl_handle_ptr.address)
           delete_acl_handle[:response] = delete_acl_results[0].result_error
           delete_acl_handle[:response_string] = delete_acl_results[0].error_string
-          delete_acl_handle[:pending] = false
 
           if delete_acl_results[0].result_error == 0
             delete_acl_handle[:matching_acls] = delete_acl_results[0].matching_acls
@@ -343,7 +337,6 @@ module Rdkafka
         if describe_acl_handle = Rdkafka::Admin::DescribeAclHandle.remove(describe_acl_handle_ptr.address)
           describe_acl_handle[:response] = describe_acl.result_error
           describe_acl_handle[:response_string] = describe_acl.error_string
-          describe_acl_handle[:pending] = false
 
           if describe_acl.result_error == 0
             describe_acl_handle[:acls] = describe_acl.matching_acls
@@ -375,7 +368,6 @@ module Rdkafka
           delivery_handle[:partition] = message[:partition]
           delivery_handle[:offset] = message[:offset]
           delivery_handle[:topic_name] = FFI::MemoryPointer.from_string(topic_name)
-          delivery_handle[:pending] = false
 
           # Call delivery callback on opaque
           if opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]

@@ -36,6 +36,8 @@ module Rdkafka
         "\x01#{extensions.map { |e| e.join("=") }.join("\x01")}"
       end
 
+      # extension_size is the number of keys + values which should be a non-negative even number
+      # https://github.com/confluentinc/librdkafka/blob/master/src/rdkafka_sasl_oauthbearer.c#L327-L347
       def extension_size(extensions)
         return 0 unless extensions
         extensions.size * 2

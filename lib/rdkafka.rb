@@ -7,6 +7,7 @@ require "json"
 
 require "rdkafka/version"
 require "rdkafka/helpers/time"
+require "rdkafka/helpers/oauth"
 require "rdkafka/abstract_handle"
 require "rdkafka/admin"
 require "rdkafka/admin/create_topic_handle"

@@ -132,4 +132,86 @@ describe Rdkafka::Bindings do
       end
     end
   end
+
+  describe "oauthbearer set token" do
+
+    context "without args" do
+      it "should raise argument error" do
+        expect {
+          Rdkafka::Bindings.rd_kafka_oauthbearer_set_token
+        }.to raise_error(ArgumentError)
+      end
+    end
+
+    context "with args" do
+      before do
+        DEFAULT_TOKEN_EXPIRY_SECONDS = 900
+        $token_value = "token"
+        $md_lifetime_ms = Time.now.to_i*1000 + DEFAULT_TOKEN_EXPIRY_SECONDS * 1000
+        $md_principal_name = "kafka-cluster"
+        $extensions = nil
+        $extension_size = 0
+        $error_buffer = FFI::MemoryPointer.from_string(" " * 256)
+      end
+
+      it "should set token or capture failure" do
+        RdKafkaTestConsumer.with do |consumer_ptr|
+          response = Rdkafka::Bindings.rd_kafka_oauthbearer_set_token(consumer_ptr, $token_value, $md_lifetime_ms, $md_principal_name, $extensions, $extension_size, $error_buffer, 256)
+          expect(response).to eq(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__STATE)
+          expect($error_buffer.read_string).to eq("SASL/OAUTHBEARER is not the configured authentication mechanism")
+        end
+      end
+    end
+  end
+
+  describe "oauthbearer set token failure" do
+
+    context "without args" do
+
+      it "should fail" do
+        expect {
+          Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure
+        }.to raise_error(ArgumentError)
+      end
+    end
+
+    context "with args" do
+      it "should succeed" do
+        expect {
+          errstr = "error"
+          RdKafkaTestConsumer.with do |consumer_ptr|
+            Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure(consumer_ptr, errstr)
+          end
+        }.to_not raise_error
+      end
+    end
+  end
+
+  describe "oauthbearer callback" do
+
+    context "without an oauthbearer callback" do
+      it "should do nothing" do
+        expect {
+          Rdkafka::Bindings::OAuthbearerTokenRefreshCallback.call(nil, "", nil)
+        }.not_to raise_error
+      end
+    end
+
+    context "with an oauthbearer callback" do
+      before do
+        Rdkafka::Config.oauthbearer_token_refresh_callback = lambda do |config, client_name|
+          $received_config = config
+          $received_client_name = client_name
+        end
+      end
+
+      it "should call the oauth bearer callback and receive config and client name" do
+        RdKafkaTestConsumer.with do |consumer_ptr|
+          Rdkafka::Bindings::OAuthbearerTokenRefreshCallback.call(consumer_ptr, "{}", nil)
+            expect($received_config).to eq("{}")
+            expect($received_client_name).to match(/consumer/)
+        end
+      end
+    end
+  end
 end

@@ -15,12 +15,13 @@ module Rdkafka
     @@opaques = ObjectSpace::WeakMap.new
     # @private
     @@log_queue = Queue.new
-    # @private
     # We memoize thread on the first log flush
     # This allows us also to restart logger thread on forks
     @@log_thread = nil
     # @private
     @@log_mutex = Mutex.new
+    # @private
+    @@oauthbearer_token_refresh_callback = nil
 
     # Returns the current logger, by default this is a logger to stdout.
     #
@@ -102,6 +103,24 @@ module Rdkafka
     # @return [Proc, nil]
     def self.error_callback
       @@error_callback
+    end
+
+    # Sets the SASL/OAUTHBEARER token refresh callback.
+    # This callback will be triggered when it is time to refresh the client's OAUTHBEARER token
+    #
+    # @param callback [Proc, #call] The callback
+    #
+    # @return [nil]
+    def self.oauthbearer_token_refresh_callback=(callback)
+      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call) || callback == nil
+      @@oauthbearer_token_refresh_callback = callback
+    end
+
+    # Returns the current oauthbearer_token_refresh_callback callback, by default this is nil.
+    #
+    # @return [Proc, nil]
+    def self.oauthbearer_token_refresh_callback
+      @@oauthbearer_token_refresh_callback
     end
 
     # @private
@@ -300,6 +319,9 @@ module Rdkafka
 
         # Set error callback
         Rdkafka::Bindings.rd_kafka_conf_set_error_cb(config, Rdkafka::Bindings::ErrorCallback)
+
+        # Set oauth callback
+        Rdkafka::Bindings.rd_kafka_conf_set_oauthbearer_token_refresh_cb(config, Rdkafka::Bindings::OAuthbearerTokenRefreshCallback)
       end
     end
 

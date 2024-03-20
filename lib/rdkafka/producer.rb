@@ -4,6 +4,7 @@ module Rdkafka
   # A producer for Kafka messages. To create a producer set up a {Config} and call {Config#producer producer} on that.
   class Producer
     include Helpers::Time
+    include Helpers::OAuth
 
     # Cache partitions count for 30 seconds
     PARTITIONS_COUNT_TTL = 30

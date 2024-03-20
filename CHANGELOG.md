@@ -1,7 +1,8 @@
 # Rdkafka Changelog
 
 ## 0.15.0 (Unreleased)
-- [Feature] Support incremental config describe + alter API.
+- **[Feature]** Oauthbearer token refresh callback (bruce-szalwinski-he)
+- **[Feature]** Support incremental config describe + alter API (mensfeld)
 - [Enhancement] Replace time poll based wait engine with an event based to improve response times on blocking operations and wait (nijikon + mensfeld)
 - [Change] The `wait_timeout` argument in `AbstractHandle.wait` method is deprecated and will be removed in future versions without replacement. We don't rely on it's value anymore (nijikon)
 

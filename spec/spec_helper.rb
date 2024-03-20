@@ -155,3 +155,18 @@ RSpec.configure do |config|
     end
   end
 end
+
+class RdKafkaTestConsumer
+  def self.with
+    consumer = Rdkafka::Bindings.rd_kafka_new(
+      :rd_kafka_consumer,
+      nil,
+      nil,
+      0
+    )
+    yield consumer
+  ensure
+    Rdkafka::Bindings.rd_kafka_consumer_close(consumer)
+    Rdkafka::Bindings.rd_kafka_destroy(consumer)
+  end
+end

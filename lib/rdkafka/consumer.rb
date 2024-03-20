@@ -13,6 +13,7 @@ module Rdkafka
   class Consumer
     include Enumerable
     include Helpers::Time
+    include Helpers::OAuth
 
     # @private
     def initialize(native_kafka)

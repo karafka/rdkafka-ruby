@@ -17,6 +17,7 @@ module Rdkafka
 
     RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS = -175
     RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS = -174
+    RD_KAFKA_RESP_ERR__STATE = -172
     RD_KAFKA_RESP_ERR__NOENT = -156
     RD_KAFKA_RESP_ERR_NO_ERROR = 0
 
@@ -111,7 +112,10 @@ module Rdkafka
     callback :error_cb, [:pointer, :int, :string, :pointer], :void
     attach_function :rd_kafka_conf_set_error_cb, [:pointer, :error_cb], :void
     attach_function :rd_kafka_rebalance_protocol, [:pointer], :string
-
+    callback :oauthbearer_token_refresh_cb, [:pointer, :string, :pointer], :void
+    attach_function :rd_kafka_conf_set_oauthbearer_token_refresh_cb, [:pointer, :oauthbearer_token_refresh_cb], :void
+    attach_function :rd_kafka_oauthbearer_set_token, [:pointer, :string, :int64, :pointer, :pointer, :int, :pointer, :int], :int
+    attach_function :rd_kafka_oauthbearer_set_token_failure, [:pointer, :string], :int
     # Log queue
     attach_function :rd_kafka_set_log_queue, [:pointer, :pointer], :void
     attach_function :rd_kafka_queue_get_main, [:pointer], :pointer
@@ -158,6 +162,32 @@ module Rdkafka
         error = Rdkafka::RdkafkaError.new(err_code, broker_message: reason)
         error.set_backtrace(caller)
         Rdkafka::Config.error_callback.call(error)
+      end
+    end
+
+    # The OAuth callback is currently global and contextless.
+    # This means that the callback will be called for all instances, and the callback must be able to determine to which instance it is associated.
+    # The instance name will be provided in the callback, allowing the callback to reference the correct instance.
+    #
+    # An example of how to use the instance name in the callback is given below.
+    # The `refresh_token` is configured as the `oauthbearer_token_refresh_callback`.
+    # `instances` is a map of client names to client instances, maintained by the user.
+    #
+    # ```
+    #   def refresh_token(config, client_name)
+    #     client = instances[client_name]
+    #     client.oauthbearer_set_token(
+    #       token: 'new-token-value',
+    #       lifetime_ms: token-lifetime-ms,
+    #       principal_name: 'principal-name'
+    #     )
+    #   end
+    # ```
+    OAuthbearerTokenRefreshCallback = FFI::Function.new(
+      :void, [:pointer, :string, :pointer]
+    ) do |client_ptr, config, _opaque|
+      if Rdkafka::Config.oauthbearer_token_refresh_callback
+        Rdkafka::Config.oauthbearer_token_refresh_callback.call(config, Rdkafka::Bindings.rd_kafka_name(client_ptr))
       end
     end
 

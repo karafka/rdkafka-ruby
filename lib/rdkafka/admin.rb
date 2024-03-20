@@ -2,6 +2,8 @@
 
 module Rdkafka
   class Admin
+    include Helpers::OAuth
+
     # @private
     def initialize(native_kafka)
       @native_kafka = native_kafka

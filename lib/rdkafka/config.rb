@@ -22,6 +22,8 @@ module Rdkafka
     @@log_mutex = Mutex.new
     # @private
     @@oauthbearer_token_refresh_callback = nil
+    # @private
+    @@rd_kafka_instance_created_callback = nil
 
     # Returns the current logger, by default this is a logger to stdout.
     #
@@ -121,6 +123,23 @@ module Rdkafka
     # @return [Proc, nil]
     def self.oauthbearer_token_refresh_callback
       @@oauthbearer_token_refresh_callback
+    end
+
+    # Sets the callback that will run after each librdkafka native instance is successfully created
+    #
+    # Can be used to install hooks and other things before first polling or any other operations
+    #
+    # @param callback [Proc, #call] The callback
+    def self.rd_kafka_instance_created_callback=(callback)
+      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call) || callback == nil
+      @@rd_kafka_instance_created_callback = callback
+    end
+
+    # Returns the current native kafka creation callback, by default this is nil.
+    #
+    # @return [Proc, nil]
+    def self.rd_kafka_instance_created_callback
+      @@rd_kafka_instance_created_callback
     end
 
     # @private
@@ -343,6 +362,13 @@ module Rdkafka
         handle,
         Rdkafka::Bindings.rd_kafka_queue_get_main(handle)
       )
+
+      if self.class.rd_kafka_instance_created_callback
+        self.class.rd_kafka_instance_created_callback.call(
+          handle,
+          Rdkafka::Bindings.rd_kafka_name(handle)
+        )
+      end
 
       # Return handle which should be closed using rd_kafka_destroy after usage.
       handle

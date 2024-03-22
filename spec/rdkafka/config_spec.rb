@@ -115,6 +115,63 @@ describe Rdkafka::Config do
     end
   end
 
+  context "rd_kafka_instance_created_callback" do
+    context "with a proc/lambda" do
+      it "should set the callback" do
+        expect {
+          Rdkafka::Config.rd_kafka_instance_created_callback = lambda do |inner, client_name|
+            puts config
+            puts client_name
+          end
+        }.not_to raise_error
+        expect(Rdkafka::Config.rd_kafka_instance_created_callback).to respond_to :call
+      end
+    end
+
+    context "with a callable object" do
+      it "should set the callback" do
+        callback = Class.new do
+          def call(inner, client_name); end
+        end
+
+        expect {
+          Rdkafka::Config.rd_kafka_instance_created_callback = callback.new
+        }.not_to raise_error
+        expect(Rdkafka::Config.rd_kafka_instance_created_callback).to respond_to :call
+      end
+    end
+
+    it "should not accept a callback that's not callable" do
+      expect {
+        Rdkafka::Config.rd_kafka_instance_created_callback = 'not a callback'
+      }.to raise_error(TypeError)
+    end
+
+    context "usage check" do
+      let(:results) { [] }
+
+      before do
+        results_accu = results
+
+        Rdkafka::Config.rd_kafka_instance_created_callback = lambda do |inner, client_name|
+          results_accu << [inner, client_name]
+        end
+      end
+
+      # Prevent leaking
+      after { Rdkafka::Config.rd_kafka_instance_created_callback = nil }
+
+      it 'expect to run in creation' do
+        consumer = rdkafka_consumer_config.consumer
+
+        expect(results[0][0]).to be_a(FFI::Pointer)
+        expect(results[0][1]).to include('rdkafka#consumer')
+
+        consumer.close
+      end
+    end
+  end
+
   context "oauthbearer calllback" do
     context "with a proc/lambda" do
       it "should set the callback" do

@@ -27,6 +27,14 @@ task :default => :clean do
       :sha256 => Rdkafka::LIBRDKAFKA_SOURCE_SHA256
     }
     recipe.configure_options = ["--host=#{recipe.host}"]
+
+    # Disable using libc regex engine in favor of the embedded one
+    # The default regex engine of librdkafka does not always work exactly as most of the users
+    # would expect, hence this flag allows for changing it to the other one
+    if ENV['RDKAFKA_DISABLE_REGEX_EXT']
+      recipe.configure_options << '--disable-regex-ext'
+    end
+
     recipe.cook
     # Move dynamic library we're interested in
     if recipe.host.include?('darwin')

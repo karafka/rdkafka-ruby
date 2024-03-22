@@ -12,19 +12,30 @@ module Rdkafka
       # @return [Integer] 0 on success
       def oauthbearer_set_token(token:, lifetime_ms:, principal_name:, extensions: nil)
         error_buffer = FFI::MemoryPointer.from_string(" " * 256)
-        @native_kafka.with_inner do |inner|
-          response = Rdkafka::Bindings.rd_kafka_oauthbearer_set_token(
+
+        response = @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_oauthbearer_set_token(
             inner, token, lifetime_ms, principal_name,
             flatten_extensions(extensions), extension_size(extensions), error_buffer, 256
           )
-          if response != 0
-            Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure(
-              inner,
-              "Failed to set token: #{error_buffer.read_string}"
-            )
-          end
+        end
 
-          response
+        return response if response.zero?
+
+        oauthbearer_set_token_failure("Failed to set token: #{error_buffer.read_string}")
+
+        response
+      end
+
+      # Marks failed oauth token acquire in librdkafka
+      #
+      # @param reason [String] human readable error reason for failing to acquire token
+      def oauthbearer_set_token_failure(reason)
+        @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure(
+            inner,
+            reason
+          )
         end
       end
 

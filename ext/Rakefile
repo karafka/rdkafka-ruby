@@ -31,7 +31,7 @@ task :default => :clean do
     # Disable using libc regex engine in favor of the embedded one
     # The default regex engine of librdkafka does not always work exactly as most of the users
     # would expect, hence this flag allows for changing it to the other one
-    if ENV['RDKAFKA_DISABLE_REGEX_EXT']
+    if ENV.key?('RDKAFKA_DISABLE_REGEX_EXT')
       recipe.configure_options << '--disable-regex-ext'
     end
 

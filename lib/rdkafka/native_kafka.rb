@@ -30,7 +30,7 @@ module Rdkafka
 
       @run_polling_thread = run_polling_thread
 
-      start if start
+      self.start if start
 
       @closing = false
     end

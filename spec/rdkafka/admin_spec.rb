@@ -31,6 +31,19 @@ describe Rdkafka::Admin do
   let(:operation)             {Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ}
   let(:permission_type)       {Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW}
 
+  describe 'admin without auto-start' do
+    let(:admin) { config.admin(native_kafka_auto_start: false) }
+
+    it 'expect to be able to start it later and close' do
+      admin.start
+      admin.close
+    end
+
+    it 'expect to be able to close it without starting' do
+      admin.close
+    end
+  end
+
   describe "#create_topic" do
     describe "called with invalid input" do
       describe "with an invalid topic name" do

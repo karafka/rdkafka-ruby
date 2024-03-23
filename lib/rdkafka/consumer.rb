@@ -20,6 +20,12 @@ module Rdkafka
       @native_kafka = native_kafka
     end
 
+    # Starts the native Kafka polling thread and kicks off the init polling
+    # @note Not needed to run unless explicit start was disabled
+    def start
+      @native_kafka.start
+    end
+
     # @return [String] consumer name
     def name
       @name ||= @native_kafka.with_inner do |inner|

@@ -14,6 +14,19 @@ describe Rdkafka::Producer do
     consumer.close
   end
 
+  describe 'producer without auto-start' do
+    let(:producer) { rdkafka_producer_config.producer(native_kafka_auto_start: false) }
+
+    it 'expect to be able to start it later and close' do
+      producer.start
+      producer.close
+    end
+
+    it 'expect to be able to close it without starting' do
+      producer.close
+    end
+  end
+
   describe '#name' do
     it { expect(producer.name).to include('rdkafka#producer-') }
   end

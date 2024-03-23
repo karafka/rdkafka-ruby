@@ -195,11 +195,13 @@ module Rdkafka
 
     # Creates a consumer with this configuration.
     #
+    # @param native_kafka_auto_start [Boolean] should the native kafka operations be started
+    #   automatically. Defaults to true. Set to false only when doing complex initialization.
     # @return [Consumer] The created consumer
     #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    def consumer
+    def consumer(native_kafka_auto_start: true)
       opaque = Opaque.new
       config = native_config(opaque)
 
@@ -214,25 +216,26 @@ module Rdkafka
       # Redirect the main queue to the consumer queue
       Rdkafka::Bindings.rd_kafka_poll_set_consumer(kafka) if @consumer_poll_set
 
-      yield(kafka, Rdkafka::Bindings.rd_kafka_name(kafka)) if block_given?
-
       # Return consumer with Kafka client
       Rdkafka::Consumer.new(
         Rdkafka::NativeKafka.new(
           kafka,
           run_polling_thread: false,
-          opaque: opaque
+          opaque: opaque,
+          auto_start: native_kafka_auto_start
         )
       )
     end
 
     # Create a producer with this configuration.
     #
+    # @param native_kafka_auto_start [Boolean] should the native kafka operations be started
+    #   automatically. Defaults to true. Set to false only when doing complex initialization.
     # @return [Producer] The created producer
     #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    def producer
+    def producer(native_kafka_auto_start: true)
       # Create opaque
       opaque = Opaque.new
       # Create Kafka config
@@ -243,13 +246,13 @@ module Rdkafka
       partitioner_name = self[:partitioner] || self["partitioner"]
 
       kafka = native_kafka(config, :rd_kafka_producer)
-      yield(kafka, Rdkafka::Bindings.rd_kafka_name(kafka)) if block_given?
 
       Rdkafka::Producer.new(
         Rdkafka::NativeKafka.new(
           kafka,
           run_polling_thread: true,
-          opaque: opaque
+          opaque: opaque,
+          auto_start: native_kafka_auto_start
         ),
         partitioner_name
       ).tap do |producer|
@@ -259,23 +262,25 @@ module Rdkafka
 
     # Creates an admin instance with this configuration.
     #
+    # @param native_kafka_auto_start [Boolean] should the native kafka operations be started
+    #   automatically. Defaults to true. Set to false only when doing complex initialization.
     # @return [Admin] The created admin instance
     #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    def admin
+    def admin(native_kafka_auto_start: true)
       opaque = Opaque.new
       config = native_config(opaque)
       Rdkafka::Bindings.rd_kafka_conf_set_background_event_cb(config, Rdkafka::Callbacks::BackgroundEventCallbackFunction)
 
       kafka = native_kafka(config, :rd_kafka_producer)
-      yield(kafka, Rdkafka::Bindings.rd_kafka_name(kafka)) if block_given?
 
       Rdkafka::Admin.new(
         Rdkafka::NativeKafka.new(
           kafka,
           run_polling_thread: true,
-          opaque: opaque
+          opaque: opaque,
+          auto_start: native_kafka_auto_start
         )
       )
     end

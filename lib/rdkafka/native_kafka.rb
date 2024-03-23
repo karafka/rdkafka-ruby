@@ -4,7 +4,7 @@ module Rdkafka
   # @private
   # A wrapper around a native kafka that polls and cleanly exits
   class NativeKafka
-    def initialize(inner, run_polling_thread:, opaque:)
+    def initialize(inner, run_polling_thread:, opaque:, start: true)
       @inner = inner
       @opaque = opaque
       # Lock around external access
@@ -28,30 +28,42 @@ module Rdkafka
       # counter for operations in progress using inner
       @operations_in_progress = 0
 
-      # Trigger initial poll to make sure oauthbearer cb and other initial cb are handled
-      Rdkafka::Bindings.rd_kafka_poll(inner, 0)
+      @run_polling_thread = run_polling_thread
 
-      if run_polling_thread
-        # Start thread to poll client for delivery callbacks,
-        # not used in consumer.
-        @polling_thread = Thread.new do
-          loop do
-            @poll_mutex.synchronize do
-              Rdkafka::Bindings.rd_kafka_poll(inner, 100)
-            end
-
-            # Exit thread if closing and the poll queue is empty
-            if Thread.current[:closing] && Rdkafka::Bindings.rd_kafka_outq_len(inner) == 0
-              break
-            end
-          end
-        end
-
-        @polling_thread.abort_on_exception = true
-        @polling_thread[:closing] = false
-      end
+      start if start
 
       @closing = false
+    end
+
+    def start
+      synchronize do
+        @return if @started
+
+        @started = true
+
+        # Trigger initial poll to make sure oauthbearer cb and other initial cb are handled
+        Rdkafka::Bindings.rd_kafka_poll(@inner, 0)
+
+        if @run_polling_thread
+          # Start thread to poll client for delivery callbacks,
+          # not used in consumer.
+          @polling_thread = Thread.new do
+            loop do
+              @poll_mutex.synchronize do
+                Rdkafka::Bindings.rd_kafka_poll(@inner, 100)
+              end
+
+              # Exit thread if closing and the poll queue is empty
+              if Thread.current[:closing] && Rdkafka::Bindings.rd_kafka_outq_len(@inner) == 0
+                break
+              end
+            end
+          end
+
+          @polling_thread.abort_on_exception = true
+          @polling_thread[:closing] = false
+        end
+      end
     end
 
     def with_inner

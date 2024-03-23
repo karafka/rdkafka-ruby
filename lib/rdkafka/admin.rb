@@ -12,6 +12,19 @@ module Rdkafka
       ObjectSpace.define_finalizer(self, native_kafka.finalizer)
     end
 
+    # Starts the native Kafka polling thread and kicks off the init polling
+    # @note Not needed to run unless explicit start was disabled
+    def start
+      @native_kafka.start
+    end
+
+    # @return [String] admin name
+    def name
+      @name ||= @native_kafka.with_inner do |inner|
+        ::Rdkafka::Bindings.rd_kafka_name(inner)
+      end
+    end
+
     def finalizer
       ->(_) { close }
     end

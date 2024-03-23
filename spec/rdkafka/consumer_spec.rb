@@ -14,6 +14,19 @@ describe Rdkafka::Consumer do
     it { expect(consumer.name).to include('rdkafka#consumer-') }
   end
 
+  describe 'consumer without auto-start' do
+    let(:consumer) { rdkafka_consumer_config.consumer(native_kafka_auto_start: false) }
+
+    it 'expect to be able to start it later and close' do
+      consumer.start
+      consumer.close
+    end
+
+    it 'expect to be able to close it without starting' do
+      consumer.close
+    end
+  end
+
   describe "#subscribe, #unsubscribe and #subscription" do
     it "should subscribe, unsubscribe and return the subscription" do
       expect(consumer.subscription).to be_empty

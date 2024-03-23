@@ -214,6 +214,8 @@ module Rdkafka
       # Redirect the main queue to the consumer queue
       Rdkafka::Bindings.rd_kafka_poll_set_consumer(kafka) if @consumer_poll_set
 
+      yield(kafka, Rdkafka::Bindings.rd_kafka_name(kafka)) if block_given?
+
       # Return consumer with Kafka client
       Rdkafka::Consumer.new(
         Rdkafka::NativeKafka.new(
@@ -239,9 +241,13 @@ module Rdkafka
       Rdkafka::Bindings.rd_kafka_conf_set_dr_msg_cb(config, Rdkafka::Callbacks::DeliveryCallbackFunction)
       # Return producer with Kafka client
       partitioner_name = self[:partitioner] || self["partitioner"]
+
+      kafka = native_kafka(config, :rd_kafka_producer)
+      yield(kafka, Rdkafka::Bindings.rd_kafka_name(kafka)) if block_given?
+
       Rdkafka::Producer.new(
         Rdkafka::NativeKafka.new(
-          native_kafka(config, :rd_kafka_producer),
+          kafka,
           run_polling_thread: true,
           opaque: opaque
         ),
@@ -261,9 +267,13 @@ module Rdkafka
       opaque = Opaque.new
       config = native_config(opaque)
       Rdkafka::Bindings.rd_kafka_conf_set_background_event_cb(config, Rdkafka::Callbacks::BackgroundEventCallbackFunction)
+
+      kafka = native_kafka(config, :rd_kafka_producer)
+      yield(kafka, Rdkafka::Bindings.rd_kafka_name(kafka)) if block_given?
+
       Rdkafka::Admin.new(
         Rdkafka::NativeKafka.new(
-          native_kafka(config, :rd_kafka_producer),
+          kafka,
           run_polling_thread: true,
           opaque: opaque
         )

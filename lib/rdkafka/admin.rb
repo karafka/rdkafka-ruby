@@ -18,6 +18,13 @@ module Rdkafka
       @native_kafka.start
     end
 
+    # @return [String] admin name
+    def name
+      @name ||= @native_kafka.with_inner do |inner|
+        ::Rdkafka::Bindings.rd_kafka_name(inner)
+      end
+    end
+
     def finalizer
       ->(_) { close }
     end

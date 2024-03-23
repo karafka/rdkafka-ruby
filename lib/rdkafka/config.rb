@@ -195,13 +195,13 @@ module Rdkafka
 
     # Creates a consumer with this configuration.
     #
-    # @param native_kafka_start [Boolean] should the native kafka operations be started
+    # @param native_kafka_auto_start [Boolean] should the native kafka operations be started
     #   automatically. Defaults to true. Set to false only when doing complex initialization.
     # @return [Consumer] The created consumer
     #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    def consumer(native_kafka_start: true)
+    def consumer(native_kafka_auto_start: true)
       opaque = Opaque.new
       config = native_config(opaque)
 
@@ -222,20 +222,20 @@ module Rdkafka
           kafka,
           run_polling_thread: false,
           opaque: opaque,
-          start: native_kafka_start
+          auto_start: native_kafka_auto_start
         )
       )
     end
 
     # Create a producer with this configuration.
     #
-    # @param native_kafka_start [Boolean] should the native kafka operations be started
+    # @param native_kafka_auto_start [Boolean] should the native kafka operations be started
     #   automatically. Defaults to true. Set to false only when doing complex initialization.
     # @return [Producer] The created producer
     #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    def producer(native_kafka_start: true)
+    def producer(native_kafka_auto_start: true)
       # Create opaque
       opaque = Opaque.new
       # Create Kafka config
@@ -252,7 +252,7 @@ module Rdkafka
           kafka,
           run_polling_thread: true,
           opaque: opaque,
-          start: native_kafka_start
+          auto_start: native_kafka_auto_start
         ),
         partitioner_name
       ).tap do |producer|
@@ -262,13 +262,13 @@ module Rdkafka
 
     # Creates an admin instance with this configuration.
     #
-    # @param native_kafka_start [Boolean] should the native kafka operations be started
+    # @param native_kafka_auto_start [Boolean] should the native kafka operations be started
     #   automatically. Defaults to true. Set to false only when doing complex initialization.
     # @return [Admin] The created admin instance
     #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    def admin(native_kafka_start: true)
+    def admin(native_kafka_auto_start: true)
       opaque = Opaque.new
       config = native_config(opaque)
       Rdkafka::Bindings.rd_kafka_conf_set_background_event_cb(config, Rdkafka::Callbacks::BackgroundEventCallbackFunction)
@@ -280,7 +280,7 @@ module Rdkafka
           kafka,
           run_polling_thread: true,
           opaque: opaque,
-          start: native_kafka_start
+          auto_start: native_kafka_auto_start
         )
       )
     end

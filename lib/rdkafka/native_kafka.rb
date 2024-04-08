@@ -60,6 +60,7 @@ module Rdkafka
             end
           end
 
+          @polling_thread.name = "rdkafka.native_kafka##{Rdkafka::Bindings.rd_kafka_name(@inner).gsub('rdkafka', '')}"
           @polling_thread.abort_on_exception = true
           @polling_thread[:closing] = false
         end

@@ -10,8 +10,9 @@ describe Rdkafka::NativeKafka do
   subject(:client) { described_class.new(native, run_polling_thread: true, opaque: opaque) }
 
   before do
+    allow(Rdkafka::Bindings).to receive(:rd_kafka_name).and_return('producer-1')
     allow(Thread).to receive(:new).and_return(thread)
-
+    allow(thread).to receive(:name=).with("rdkafka.native_kafka#producer-1")
     allow(thread).to receive(:[]=).with(:closing, anything)
     allow(thread).to receive(:join)
     allow(thread).to receive(:abort_on_exception=).with(anything)
@@ -20,6 +21,12 @@ describe Rdkafka::NativeKafka do
   after { client.close }
 
   context "defaults" do
+    it "sets the thread name" do
+      expect(thread).to receive(:name=).with("rdkafka.native_kafka#producer-1")
+
+      client
+    end
+
     it "sets the thread to abort on exception" do
       expect(thread).to receive(:abort_on_exception=).with(true)
 

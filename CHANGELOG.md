@@ -3,6 +3,7 @@
 ## 0.15.0 (Unreleased)
 - **[Feature]** Oauthbearer token refresh callback (bruce-szalwinski-he)
 - **[Feature]** Support incremental config describe + alter API (mensfeld)
+- [Enhancement] name polling Thread as `rdkafka.native_kafka#<name>` (nijikon)
 - [Enhancement] Replace time poll based wait engine with an event based to improve response times on blocking operations and wait (nijikon + mensfeld)
 - [Enhancement] Allow for usage of the second regex engine of librdkafka by setting `RDKAFKA_DISABLE_REGEX_EXT` during build (mensfeld)
 - [Change] Allow for native kafka thread operations deferring and manual start for consumer, producer and admin.

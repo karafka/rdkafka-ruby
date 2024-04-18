@@ -37,7 +37,7 @@ module Rdkafka
 
     def start
       synchronize do
-        @return if @started
+        return if @started
 
         @started = true
 

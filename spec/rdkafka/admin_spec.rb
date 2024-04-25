@@ -288,6 +288,9 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
 
+        # Since we create and immediately check, this is slow on loaded CIs, hence we wait
+        sleep(2)
+
         #describe_acl
         describe_acl_handle = admin.describe_acl(resource_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_ANY, resource_name: nil, resource_pattern_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_ANY, principal: nil, host: nil, operation: Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_ANY, permission_type: Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ANY)
         describe_acl_report = describe_acl_handle.wait(max_wait_timeout: 15.0)

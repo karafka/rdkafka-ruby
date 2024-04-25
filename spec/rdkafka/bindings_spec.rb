@@ -36,6 +36,16 @@ describe Rdkafka::Bindings do
       expect(log_queue).to have_received(:<<).with([Logger::FATAL, "rdkafka: log line"])
     end
 
+    it "should log fatal messages" do
+      Rdkafka::Bindings::LogCallback.call(nil, 1, nil, "log line")
+      expect(log_queue).to have_received(:<<).with([Logger::FATAL, "rdkafka: log line"])
+    end
+
+    it "should log fatal messages" do
+      Rdkafka::Bindings::LogCallback.call(nil, 2, nil, "log line")
+      expect(log_queue).to have_received(:<<).with([Logger::FATAL, "rdkafka: log line"])
+    end
+
     it "should log error messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 3, nil, "log line")
       expect(log_queue).to have_received(:<<).with([Logger::ERROR, "rdkafka: log line"])
@@ -48,6 +58,11 @@ describe Rdkafka::Bindings do
 
     it "should log info messages" do
       Rdkafka::Bindings::LogCallback.call(nil, 5, nil, "log line")
+      expect(log_queue).to have_received(:<<).with([Logger::INFO, "rdkafka: log line"])
+    end
+
+    it "should log info messages" do
+      Rdkafka::Bindings::LogCallback.call(nil, 6, nil, "log line")
       expect(log_queue).to have_received(:<<).with([Logger::INFO, "rdkafka: log line"])
     end
 

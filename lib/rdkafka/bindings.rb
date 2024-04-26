@@ -180,13 +180,13 @@ module Rdkafka
       :void, [:pointer, :int, :string, :string]
     ) do |_client_ptr, level, _level_string, line|
       severity = case level
-                 when 0 || 1 || 2
+                 when 0, 1, 2
                    Logger::FATAL
                  when 3
                    Logger::ERROR
                  when 4
                    Logger::WARN
-                 when 5 || 6
+                 when 5, 6
                    Logger::INFO
                  when 7
                    Logger::DEBUG

@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.15.0 (Unreleased)
+## 0.15.0 (2024-04-26)
 - **[Feature]** Oauthbearer token refresh callback (bruce-szalwinski-he)
 - **[Feature]** Support incremental config describe + alter API (mensfeld)
 - [Enhancement] name polling Thread as `rdkafka.native_kafka#<name>` (nijikon)

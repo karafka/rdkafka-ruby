@@ -31,6 +31,50 @@ describe Rdkafka::Producer do
     it { expect(producer.name).to include('rdkafka#producer-') }
   end
 
+  describe '#produce with early topic alterations' do
+    context 'when config is not valid' do
+      it 'expect to raise error' do
+        expect do
+          producer.set_topic_config('test', { 'invalid': 'invalid' })
+        end.to raise_error(Rdkafka::Config::ConfigError)
+      end
+    end
+
+    context 'when config is valid' do
+      it 'expect to raise error' do
+        expect do
+          producer.set_topic_config('test', { 'acks': 1 })
+        end.not_to raise_error
+      end
+
+      context 'when alteration should change behavior' do
+        # This is set incorrectly for a reason
+        # If alteration would not work, this will hang the spec suite
+        let(:producer) { rdkafka_producer_config(
+          'message.timeout.ms': 1_000_000,
+          :"bootstrap.servers" => "localhost:9094",
+        ).producer }
+
+        it 'expect to give up on delivery fast based on alteration config' do
+          producer.set_topic_config(
+            'produce_config_test',
+            {
+              'compression.type': 'gzip',
+              'message.timeout.ms': 1
+            }
+          )
+
+          expect do
+            producer.produce(
+              topic: 'produce_config_test',
+              payload: 'test'
+            ).wait
+          end.to raise_error(Rdkafka::RdkafkaError, /msg_timed_out/)
+        end
+      end
+    end
+  end
+
   context "delivery callback" do
     context "with a proc/lambda" do
       it "should set the callback" do

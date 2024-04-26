@@ -119,6 +119,9 @@ module Rdkafka
     # Log queue
     attach_function :rd_kafka_set_log_queue, [:pointer, :pointer], :void
     attach_function :rd_kafka_queue_get_main, [:pointer], :pointer
+    # Per topic configs
+    attach_function :rd_kafka_topic_conf_new, [], :pointer
+    attach_function :rd_kafka_topic_conf_set, [:pointer, :string, :string, :pointer, :int], :kafka_config_response
 
     LogCallback = FFI::Function.new(
       :void, [:pointer, :int, :string, :string]

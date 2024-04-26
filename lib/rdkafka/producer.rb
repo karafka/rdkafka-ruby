@@ -28,6 +28,8 @@ module Rdkafka
     # @param partitioner_name [String, nil] name of the partitioner we want to use or nil to use
     #   the "consistent_random" default
     def initialize(native_kafka, partitioner_name)
+      @topics_refs_map = {}
+      @topics_configs = {}
       @native_kafka = native_kafka
       @partitioner_name = partitioner_name || "consistent_random"
 
@@ -51,6 +53,37 @@ module Rdkafka
                        else
                          [monotonic_now - PARTITIONS_COUNT_TTL + 5, partition_count]
                        end
+      end
+    end
+
+    # Sets alternative set of configuration details that can be set per topic
+    # @note It is not allowed to re-set the same topic config twice because of the underlying
+    #   librdkafka caching
+    def set_topic_config(topic, config)
+      # Ensure lock on topic reference just in case
+      @native_kafka.with_inner do |inner|
+        raise ArgumentError, "Topic #{topic} already has a config" if @topics_configs.key?(topic)
+        raise ArgumentError, "Topic #{topic} already in use" if @topics_refs_map.key?(topic)
+
+        topic_config = Rdkafka::Bindings.rd_kafka_topic_conf_new.tap do |topic_config|
+          config.each do |key, value|
+            error_buffer = FFI::MemoryPointer.from_string(" " * 256)
+            result = Rdkafka::Bindings.rd_kafka_topic_conf_set(
+              topic_config,
+              key.to_s,
+              value.to_s,
+              error_buffer,
+              256
+            )
+
+            unless result == :config_ok
+              raise Config::ConfigError.new(error_buffer.read_string)
+            end
+          end
+        end
+
+        @topics_configs[topic] = config
+        @topics_refs_map[topic] = Bindings.rd_kafka_topic_new(inner, topic, topic_config)
       end
     end
 
@@ -83,7 +116,14 @@ module Rdkafka
     def close
       return if closed?
       ObjectSpace.undefine_finalizer(self)
-      @native_kafka.close
+
+      @native_kafka.close do
+        @topics_refs_map.each do |ref|
+          Rdkafka::Bindings.rd_kafka_topic_destroy(ref)
+        end
+      end
+
+      @topics_refs_map.clear
     end
 
     # Whether this producer has closed
@@ -207,6 +247,15 @@ module Rdkafka
 
       if partition_key
         partition_count = partition_count(topic)
+
+        # Check if there are no overrides for the partitioner and use the default one only when
+        # no per-topic is present.
+        partitioner_name = if @topics_configs.key?(topic)
+          @topics_configs[topic][:partitioner] || @partitioner_name
+        else
+          @partitioner_name
+        end
+
         # If the topic is not present, set to -1
         partition = Rdkafka::Bindings.partitioner(partition_key, partition_count, @partitioner_name) if partition_count.positive?
       end
@@ -235,8 +284,25 @@ module Rdkafka
       delivery_handle[:offset] = -1
       DeliveryHandle.register(delivery_handle)
 
+      # Checks if we have the rdkafka topic reference object ready. It saves us on object
+      # allocation and allows to use custom config on demand.
+      topic_ref = if @topics_refs_map.key?(topic)
+        @topics_refs_map.fetch(topic)
+      else
+        @native_kafka.with_inner do |inner|
+          # If alteration to the topic config was defined, the topic reference itself also must
+          # already exist
+          if @topics_refs_map.key?(topic)
+            @topics_refs_map[topic]
+          else
+            # If no alteration, we build and cache reference without any config
+            @topics_refs_map[topic] = Bindings.rd_kafka_topic_new(inner, topic, nil)
+          end
+        end
+      end
+
       args = [
-        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_TOPIC, :string, topic,
+        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_RKT, :pointer, topic_ref,
         :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_MSGFLAGS, :int, Rdkafka::Bindings::RD_KAFKA_MSG_F_COPY,
         :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_VALUE, :buffer_in, payload, :size_t, payload_size,
         :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_KEY, :buffer_in, key, :size_t, key_size,

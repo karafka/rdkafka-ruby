@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.15.2 (Unreleased)
+## 0.16.0 (Unreleased)
 - **[Feature]** Oauthbearer token refresh callback (bruce-szalwinski-he)
 - [Enhancement] Replace time poll based wait engine with an event based to improve response times on blocking operations and wait (nijikon + mensfeld)
 - [Enhancement] Allow for usage of the second regex engine of librdkafka by setting `RDKAFKA_DISABLE_REGEX_EXT` during build (mensfeld)

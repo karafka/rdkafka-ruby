@@ -90,9 +90,15 @@ module Rdkafka
     attach_function :rd_kafka_topic_partition_list_copy, [:pointer], :pointer
 
     # Errors
+    class NativeErrorDesc < FFI::Struct
+      layout :code, :int,
+             :name, :pointer,
+             :desc, :pointer
+    end
 
     attach_function :rd_kafka_err2name, [:int], :string
     attach_function :rd_kafka_err2str, [:int], :string
+    attach_function :rd_kafka_get_err_descs, [:pointer, :pointer], :void
 
     # Configuration
 

@@ -4,6 +4,50 @@ module Rdkafka
   class Admin
     include Helpers::OAuth
 
+    class << self
+      # Allows us to retrieve librdkafka errors with descriptions
+      # Useful for debugging and building UIs, etc.
+      #
+      # @return [Hash<Integer, Hash>] hash with errors mapped by code
+      def describe_errors
+        # Memory pointers for the array of structures and count
+        p_error_descs = FFI::MemoryPointer.new(:pointer)
+        p_count = FFI::MemoryPointer.new(:size_t)
+
+        # Call the attached function
+        Bindings.rd_kafka_get_err_descs(p_error_descs, p_count)
+
+        # Retrieve the number of items in the array
+        count = p_count.read_uint
+
+        # Get the pointer to the array of error descriptions
+        array_of_errors = FFI::Pointer.new(Bindings::NativeErrorDesc, p_error_descs.read_pointer)
+
+        errors = {}
+
+        count.times do |i|
+          # Get the pointer to each struct
+          error_ptr = array_of_errors[i]
+
+          # Create a new instance of NativeErrorDesc for each item
+          error_desc = Bindings::NativeErrorDesc.new(error_ptr)
+
+          # Read values from the struct
+          code = error_desc[:code]
+
+          name = ''
+          desc = ''
+
+          name = error_desc[:name].read_string unless error_desc[:name].null?
+          desc = error_desc[:desc].read_string unless error_desc[:desc].null?
+
+          errors[code] = { code: code, name: name, description: desc }
+        end
+
+        errors
+      end
+    end
+
     # @private
     def initialize(native_kafka)
       @native_kafka = native_kafka

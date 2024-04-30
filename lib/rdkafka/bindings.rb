@@ -141,6 +141,11 @@ module Rdkafka
     RD_KAFKA_ALTER_CONFIG_OP_TYPE_SUBTRACT = 3
 
     # Errors
+    class NativeErrorDesc < FFI::Struct
+      layout :code, :int,
+             :name, :pointer,
+             :desc, :pointer
+    end
 
     attach_function :rd_kafka_err2name, [:int], :string
     attach_function :rd_kafka_err2str, [:int], :string
@@ -149,6 +154,7 @@ module Rdkafka
     attach_function :rd_kafka_error_txn_requires_abort, [:pointer], :int
     attach_function :rd_kafka_error_destroy, [:pointer], :void
     attach_function :rd_kafka_error_code, [:pointer], :int
+    attach_function :rd_kafka_get_err_descs, [:pointer, :pointer], :void
 
     # Configuration
 

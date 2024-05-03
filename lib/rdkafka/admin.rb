@@ -664,6 +664,84 @@ module Rdkafka
       describe_acl_handle
     end
 
+
+    # Describe configs
+    #
+    # @param resource_type - values of type rd_kafka_ResourceType_t that support configs
+    #        https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L7307
+    #        valid values are:
+    #           RD_KAFKA_RESOURCE_TOPIC   = 2
+    #           RD_KAFKA_RESOURCE_BROKER  = 4
+    # @param resources [Array<Hash>]  Array where elements are hashes with two keys:
+    #   - `:resource_type` - numerical resource type based on Kafka API
+    #   - `:resource_name` - string with resource name
+    # @return [DescribeConfigsHandle] Describe config handle that can be used to wait for the
+    #   result of fetching resources with their appropriate configs
+    #
+    # @raise [RdkafkaError]
+    #
+    # @note Several resources can be requested at one go, but only one broker at a time
+    def describe_configs(resources)
+      closed_admin_check(__method__)
+
+      handle = DescribeConfigsHandle.new
+      handle[:pending] = true
+      handle[:response] = -1
+
+      queue_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+      end
+
+      if queue_ptr.null?
+        raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
+      end
+
+      admin_options_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_AdminOptions_new(
+          inner,
+          Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DESCRIBECONFIGS
+        )
+      end
+
+      DescribeConfigsHandle.register(handle)
+      Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
+
+      pointer_array = resources.map do |resource_details|
+        Rdkafka::Bindings.rd_kafka_ConfigResource_new(
+          resource_details.fetch(:resource_type),
+          FFI::MemoryPointer.from_string(
+            resource_details.fetch(:resource_name)
+          )
+        )
+      end
+
+      configs_array_ptr = FFI::MemoryPointer.new(:pointer, pointer_array.size)
+      configs_array_ptr.write_array_of_pointer(pointer_array)
+
+      begin
+        @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_DescribeConfigs(
+            inner,
+            configs_array_ptr,
+            pointer_array.size,
+            admin_options_ptr,
+            queue_ptr
+          )
+        end
+      rescue Exception
+        DescribeConfigsHandle.remove(handle.to_ptr.address)
+
+        raise
+      ensure
+        Rdkafka::Bindings.rd_kafka_ConfigResource_destroy_array(
+          configs_array_ptr,
+          pointer_array.size
+        ) if configs_array_ptr
+      end
+
+      handle
+    end
+
     private
 
     def closed_admin_check(method)

@@ -89,6 +89,36 @@ module Rdkafka
     attach_function :rd_kafka_topic_partition_list_destroy, [:pointer], :void
     attach_function :rd_kafka_topic_partition_list_copy, [:pointer], :pointer
 
+    # Configs management
+    #
+    # Structs for management of configurations
+    # Each configuration is attached to a resource and one resource can have many configuration
+    # details. Each resource will also have separate errors results if obtaining configuration
+    # was not possible for any reason
+    class ConfigResource < FFI::Struct
+      layout :type, :int,
+             :name, :string
+    end
+
+    attach_function :rd_kafka_DescribeConfigs, [:pointer, :pointer, :size_t, :pointer, :pointer], :void, blocking: true
+    attach_function :rd_kafka_ConfigResource_new, [:int32, :pointer], :pointer
+    attach_function :rd_kafka_ConfigResource_destroy_array, [:pointer, :int32], :void
+    attach_function :rd_kafka_event_DescribeConfigs_result, [:pointer], :pointer
+    attach_function :rd_kafka_DescribeConfigs_result_resources, [:pointer, :pointer], :pointer
+    attach_function :rd_kafka_ConfigResource_configs, [:pointer, :pointer], :pointer
+    attach_function :rd_kafka_ConfigEntry_name, [:pointer], :string
+    attach_function :rd_kafka_ConfigEntry_value, [:pointer], :string
+    attach_function :rd_kafka_ConfigEntry_is_read_only, [:pointer], :int
+    attach_function :rd_kafka_ConfigEntry_is_default, [:pointer], :int
+    attach_function :rd_kafka_ConfigEntry_is_sensitive, [:pointer], :int
+    attach_function :rd_kafka_ConfigEntry_is_synonym, [:pointer], :int
+    attach_function :rd_kafka_ConfigEntry_synonyms, [:pointer, :pointer], :pointer
+    attach_function :rd_kafka_ConfigResource_error, [:pointer], :int
+    attach_function :rd_kafka_ConfigResource_error_string, [:pointer], :string
+
+    RD_KAFKA_ADMIN_OP_DESCRIBECONFIGS = 5
+    RD_KAFKA_EVENT_DESCRIBECONFIGS_RESULT = 104
+
     # Errors
     class NativeErrorDesc < FFI::Struct
       layout :code, :int,

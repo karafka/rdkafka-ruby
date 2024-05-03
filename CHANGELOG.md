@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.16.0 (Unreleased)
+- **[Feature]** Introduce ability to discover cluster and topic configuration.
 - **[Feature]** Oauthbearer token refresh callback (bruce-szalwinski-he)
 - [Enhancement] Provide `Rrdkafka::Admin#describe_errors` to get errors descriptions (mensfeld)
 - [Enhancement] Replace time poll based wait engine with an event based to improve response times on blocking operations and wait (nijikon + mensfeld)

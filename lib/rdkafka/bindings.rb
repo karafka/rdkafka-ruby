@@ -89,10 +89,58 @@ module Rdkafka
     attach_function :rd_kafka_topic_partition_list_destroy, [:pointer], :void
     attach_function :rd_kafka_topic_partition_list_copy, [:pointer], :pointer
 
+    # Configs management
+    #
+    # Structs for management of configurations
+    # Each configuration is attached to a resource and one resource can have many configuration
+    # details. Each resource will also have separate errors results if obtaining configuration
+    # was not possible for any reason
+    class ConfigResource < FFI::Struct
+      layout :type, :int,
+             :name, :string
+    end
+
+    attach_function :rd_kafka_DescribeConfigs, [:pointer, :pointer, :size_t, :pointer, :pointer], :void, blocking: true
+    attach_function :rd_kafka_ConfigResource_new, [:int32, :pointer], :pointer
+    attach_function :rd_kafka_ConfigResource_destroy_array, [:pointer, :int32], :void
+    attach_function :rd_kafka_event_DescribeConfigs_result, [:pointer], :pointer
+    attach_function :rd_kafka_DescribeConfigs_result_resources, [:pointer, :pointer], :pointer
+    attach_function :rd_kafka_ConfigResource_configs, [:pointer, :pointer], :pointer
+    attach_function :rd_kafka_ConfigEntry_name, [:pointer], :string
+    attach_function :rd_kafka_ConfigEntry_value, [:pointer], :string
+    attach_function :rd_kafka_ConfigEntry_is_read_only, [:pointer], :int
+    attach_function :rd_kafka_ConfigEntry_is_default, [:pointer], :int
+    attach_function :rd_kafka_ConfigEntry_is_sensitive, [:pointer], :int
+    attach_function :rd_kafka_ConfigEntry_is_synonym, [:pointer], :int
+    attach_function :rd_kafka_ConfigEntry_synonyms, [:pointer, :pointer], :pointer
+    attach_function :rd_kafka_ConfigResource_error, [:pointer], :int
+    attach_function :rd_kafka_ConfigResource_error_string, [:pointer], :string
+    attach_function :rd_kafka_IncrementalAlterConfigs, [:pointer, :pointer, :size_t, :pointer, :pointer], :void, blocking: true
+    attach_function :rd_kafka_IncrementalAlterConfigs_result_resources, [:pointer, :pointer], :pointer
+    attach_function :rd_kafka_ConfigResource_add_incremental_config, [:pointer, :string, :int32, :string], :pointer
+    attach_function :rd_kafka_event_IncrementalAlterConfigs_result, [:pointer], :pointer
+
+    RD_KAFKA_ADMIN_OP_DESCRIBECONFIGS = 5
+    RD_KAFKA_EVENT_DESCRIBECONFIGS_RESULT = 104
+
+    RD_KAFKA_ADMIN_OP_INCREMENTALALTERCONFIGS = 16
+    RD_KAFKA_EVENT_INCREMENTALALTERCONFIGS_RESULT = 131072
+
+    RD_KAFKA_ALTER_CONFIG_OP_TYPE_SET      = 0
+    RD_KAFKA_ALTER_CONFIG_OP_TYPE_DELETE   = 1
+    RD_KAFKA_ALTER_CONFIG_OP_TYPE_APPEND   = 2
+    RD_KAFKA_ALTER_CONFIG_OP_TYPE_SUBTRACT = 3
+
     # Errors
+    class NativeErrorDesc < FFI::Struct
+      layout :code, :int,
+             :name, :pointer,
+             :desc, :pointer
+    end
 
     attach_function :rd_kafka_err2name, [:int], :string
     attach_function :rd_kafka_err2str, [:int], :string
+    attach_function :rd_kafka_get_err_descs, [:pointer, :pointer], :void
 
     # Configuration
 
@@ -127,13 +175,13 @@ module Rdkafka
       :void, [:pointer, :int, :string, :string]
     ) do |_client_ptr, level, _level_string, line|
       severity = case level
-                 when 0 || 1 || 2
+                 when 0, 1, 2
                    Logger::FATAL
                  when 3
                    Logger::ERROR
                  when 4
                    Logger::WARN
-                 when 5 || 6
+                 when 5, 6
                    Logger::INFO
                  when 7
                    Logger::DEBUG

@@ -16,12 +16,12 @@ describe Rdkafka::Admin do
     admin.close
   end
 
-  let(:topic_name)               { "test-topic-#{Random.new.rand(0..1_000_000)}" }
+  let(:topic_name)               { "test-topic-#{SecureRandom.uuid}" }
   let(:topic_partition_count)    { 3 }
   let(:topic_replication_factor) { 1 }
   let(:topic_config)             { {"cleanup.policy" => "compact", "min.cleanable.dirty.ratio" => 0.8} }
   let(:invalid_topic_config)     { {"cleeeeenup.policee" => "campact"} }
-  let(:group_name)               { "test-group-#{Random.new.rand(0..1_000_000)}" }
+  let(:group_name)               { "test-group-#{SecureRandom.uuid}" }
 
   let(:resource_name)         {"acl-test-topic"}
   let(:resource_type)         {Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC}
@@ -30,6 +30,14 @@ describe Rdkafka::Admin do
   let(:host)                  {"*"}
   let(:operation)             {Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ}
   let(:permission_type)       {Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW}
+
+  describe '#describe_errors' do
+    let(:errors) { admin.class.describe_errors }
+
+    it { expect(errors.size).to eq(162) }
+    it { expect(errors[-184]).to eq(code: -184, description: 'Local: Queue full', name: '_QUEUE_FULL') }
+    it { expect(errors[21]).to eq(code: 21, description: 'Broker: Invalid required acks value', name: 'INVALID_REQUIRED_ACKS') }
+  end
 
   describe 'admin without auto-start' do
     let(:admin) { config.admin(native_kafka_auto_start: false) }
@@ -139,6 +147,275 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
       create_topic_report = create_topic_handle.wait(max_wait_timeout: 15.0)
       expect(create_topic_report.error_string).to be_nil
       expect(create_topic_report.result_name).to eq(topic_name)
+    end
+  end
+
+  describe "describe_configs" do
+    subject(:resources_results) { admin.describe_configs(resources).wait.resources }
+
+    before do
+      admin.create_topic(topic_name, 2, 1).wait
+      sleep(1)
+    end
+
+    context 'when describing config of an existing topic' do
+      let(:resources) { [{ resource_type: 2, resource_name: topic_name }] }
+
+      it do
+        expect(resources_results.size).to eq(1)
+        expect(resources_results.first.type).to eq(2)
+        expect(resources_results.first.name).to eq(topic_name)
+        expect(resources_results.first.configs.size).to be > 25
+        expect(resources_results.first.configs.first.name).to eq('compression.type')
+        expect(resources_results.first.configs.first.value).to eq('producer')
+        expect(resources_results.first.configs.map(&:synonyms)).not_to be_empty
+      end
+    end
+
+    context 'when describing config of a non-existing topic' do
+      let(:resources) { [{ resource_type: 2, resource_name: SecureRandom.uuid }] }
+
+      it 'expect to raise error' do
+        expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /unknown_topic_or_part/)
+      end
+    end
+
+    context 'when describing both existing and non-existing topics' do
+      let(:resources) do
+        [
+          { resource_type: 2, resource_name: topic_name },
+          { resource_type: 2, resource_name: SecureRandom.uuid }
+        ]
+      end
+
+      it 'expect to raise error' do
+        expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /unknown_topic_or_part/)
+      end
+    end
+
+    context 'when describing multiple existing topics' do
+      let(:resources) do
+        [
+          { resource_type: 2, resource_name: 'example_topic' },
+          { resource_type: 2, resource_name: topic_name }
+        ]
+      end
+
+      it do
+        expect(resources_results.size).to eq(2)
+        expect(resources_results.first.type).to eq(2)
+        expect(resources_results.first.name).to eq('example_topic')
+        expect(resources_results.last.type).to eq(2)
+        expect(resources_results.last.name).to eq(topic_name)
+      end
+    end
+
+    context 'when trying to describe invalid resource type' do
+      let(:resources) { [{ resource_type: 0, resource_name: SecureRandom.uuid }] }
+
+      it 'expect to raise error' do
+        expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /invalid_request/)
+      end
+    end
+
+    context 'when trying to describe invalid broker' do
+      let(:resources) { [{ resource_type: 4, resource_name: 'non-existing' }] }
+
+      it 'expect to raise error' do
+        expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
+      end
+    end
+
+    context 'when trying to describe valid broker' do
+      let(:resources) { [{ resource_type: 4, resource_name: '1' }] }
+
+      it do
+        expect(resources_results.size).to eq(1)
+        expect(resources_results.first.type).to eq(4)
+        expect(resources_results.first.name).to eq('1')
+        expect(resources_results.first.configs.size).to be > 230
+        expect(resources_results.first.configs.first.name).to eq('log.cleaner.min.compaction.lag.ms')
+        expect(resources_results.first.configs.first.value).to eq('0')
+        expect(resources_results.first.configs.map(&:synonyms)).not_to be_empty
+      end
+    end
+
+    context 'when describing valid broker with topics in one request' do
+      let(:resources) do
+        [
+          { resource_type: 4, resource_name: '1' },
+          { resource_type: 2, resource_name: topic_name }
+        ]
+      end
+
+      it do
+        expect(resources_results.size).to eq(2)
+        expect(resources_results.first.type).to eq(4)
+        expect(resources_results.first.name).to eq('1')
+        expect(resources_results.first.configs.size).to be > 230
+        expect(resources_results.first.configs.first.name).to eq('log.cleaner.min.compaction.lag.ms')
+        expect(resources_results.first.configs.first.value).to eq('0')
+        expect(resources_results.last.type).to eq(2)
+        expect(resources_results.last.name).to eq(topic_name)
+        expect(resources_results.last.configs.size).to be > 25
+        expect(resources_results.last.configs.first.name).to eq('compression.type')
+        expect(resources_results.last.configs.first.value).to eq('producer')
+      end
+    end
+  end
+
+  describe "incremental_alter_configs" do
+    subject(:resources_results) { admin.incremental_alter_configs(resources_with_configs).wait.resources }
+
+    before do
+      admin.create_topic(topic_name, 2, 1).wait
+      sleep(1)
+    end
+
+    context 'when altering one topic with one valid config via set' do
+      let(:target_retention) { (86400002 + rand(10_000)).to_s }
+      let(:resources_with_configs) do
+        [
+          {
+            resource_type: 2,
+            resource_name: topic_name,
+            configs: [
+              {
+                name: 'delete.retention.ms',
+                value: target_retention,
+                op_type: 0
+              }
+            ]
+          }
+        ]
+      end
+
+      it do
+        expect(resources_results.size).to eq(1)
+        expect(resources_results.first.type).to eq(2)
+        expect(resources_results.first.name).to eq(topic_name)
+
+        ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
+          config.name == 'delete.retention.ms'
+        end
+
+        expect(ret_config.value).to eq(target_retention)
+      end
+    end
+
+    context 'when altering one topic with one valid config via delete' do
+      let(:target_retention) { (8640002 + rand(10_000)).to_s }
+      let(:resources_with_configs) do
+        [
+          {
+            resource_type: 2,
+            resource_name: topic_name,
+            configs: [
+              {
+                name: 'delete.retention.ms',
+                value: target_retention,
+                op_type: 1
+              }
+            ]
+          }
+        ]
+      end
+
+      it do
+        expect(resources_results.size).to eq(1)
+        expect(resources_results.first.type).to eq(2)
+        expect(resources_results.first.name).to eq(topic_name)
+        ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
+          config.name == 'delete.retention.ms'
+        end
+
+        expect(ret_config.value).to eq('86400000')
+      end
+    end
+
+    context 'when altering one topic with one valid config via append' do
+      let(:target_policy) { 'compact' }
+      let(:resources_with_configs) do
+        [
+          {
+            resource_type: 2,
+            resource_name: topic_name,
+            configs: [
+              {
+                name: 'cleanup.policy',
+                value: target_policy,
+                op_type: 2
+              }
+            ]
+          }
+        ]
+      end
+
+      it do
+        expect(resources_results.size).to eq(1)
+        expect(resources_results.first.type).to eq(2)
+        expect(resources_results.first.name).to eq(topic_name)
+
+        ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
+          config.name == 'cleanup.policy'
+        end
+
+        expect(ret_config.value).to eq("delete,#{target_policy}")
+      end
+    end
+
+    context 'when altering one topic with one valid config via subtrack' do
+      let(:target_policy) { 'delete' }
+      let(:resources_with_configs) do
+        [
+          {
+            resource_type: 2,
+            resource_name: topic_name,
+            configs: [
+              {
+                name: 'cleanup.policy',
+                value: target_policy,
+                op_type: 3
+              }
+            ]
+          }
+        ]
+      end
+
+      it do
+        expect(resources_results.size).to eq(1)
+        expect(resources_results.first.type).to eq(2)
+        expect(resources_results.first.name).to eq(topic_name)
+
+        ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
+          config.name == 'cleanup.policy'
+        end
+
+        expect(ret_config.value).to eq('')
+      end
+    end
+
+    context 'when altering one topic with invalid config' do
+      let(:target_retention) { '-10' }
+      let(:resources_with_configs) do
+        [
+          {
+            resource_type: 2,
+            resource_name: topic_name,
+            configs: [
+              {
+                name: 'delete.retention.ms',
+                value: target_retention,
+                op_type: 0
+              }
+            ]
+          }
+        ]
+      end
+
+      it 'expect to raise error' do
+        expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /invalid_config/)
+      end
     end
   end
 
@@ -412,7 +689,10 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
     end
 
     context 'when topic has less then desired number of partitions' do
-      before { admin.create_topic(topic_name, 1, 1).wait }
+      before do
+        admin.create_topic(topic_name, 1, 1).wait
+        sleep(1)
+      end
 
       it 'expect to change number of partitions' do
         admin.create_partitions(topic_name, 10).wait

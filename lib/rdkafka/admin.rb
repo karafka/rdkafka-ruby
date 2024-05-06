@@ -4,6 +4,50 @@ module Rdkafka
   class Admin
     include Helpers::OAuth
 
+    class << self
+      # Allows us to retrieve librdkafka errors with descriptions
+      # Useful for debugging and building UIs, etc.
+      #
+      # @return [Hash<Integer, Hash>] hash with errors mapped by code
+      def describe_errors
+        # Memory pointers for the array of structures and count
+        p_error_descs = FFI::MemoryPointer.new(:pointer)
+        p_count = FFI::MemoryPointer.new(:size_t)
+
+        # Call the attached function
+        Bindings.rd_kafka_get_err_descs(p_error_descs, p_count)
+
+        # Retrieve the number of items in the array
+        count = p_count.read_uint
+
+        # Get the pointer to the array of error descriptions
+        array_of_errors = FFI::Pointer.new(Bindings::NativeErrorDesc, p_error_descs.read_pointer)
+
+        errors = {}
+
+        count.times do |i|
+          # Get the pointer to each struct
+          error_ptr = array_of_errors[i]
+
+          # Create a new instance of NativeErrorDesc for each item
+          error_desc = Bindings::NativeErrorDesc.new(error_ptr)
+
+          # Read values from the struct
+          code = error_desc[:code]
+
+          name = ''
+          desc = ''
+
+          name = error_desc[:name].read_string unless error_desc[:name].null?
+          desc = error_desc[:desc].read_string unless error_desc[:desc].null?
+
+          errors[code] = { code: code, name: name, description: desc }
+        end
+
+        errors
+      end
+    end
+
     # @private
     def initialize(native_kafka)
       @native_kafka = native_kafka
@@ -618,6 +662,166 @@ module Rdkafka
       end
 
       describe_acl_handle
+    end
+
+
+    # Describe configs
+    #
+    # @param resources [Array<Hash>]  Array where elements are hashes with two keys:
+    #   - `:resource_type` - numerical resource type based on Kafka API
+    #   - `:resource_name` - string with resource name
+    # @return [DescribeConfigsHandle] Describe config handle that can be used to wait for the
+    #   result of fetching resources with their appropriate configs
+    #
+    # @raise [RdkafkaError]
+    #
+    # @note Several resources can be requested at one go, but only one broker at a time
+    def describe_configs(resources)
+      closed_admin_check(__method__)
+
+      handle = DescribeConfigsHandle.new
+      handle[:pending] = true
+      handle[:response] = -1
+
+      queue_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+      end
+
+      if queue_ptr.null?
+        raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
+      end
+
+      admin_options_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_AdminOptions_new(
+          inner,
+          Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DESCRIBECONFIGS
+        )
+      end
+
+      DescribeConfigsHandle.register(handle)
+      Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
+
+      pointer_array = resources.map do |resource_details|
+        Rdkafka::Bindings.rd_kafka_ConfigResource_new(
+          resource_details.fetch(:resource_type),
+          FFI::MemoryPointer.from_string(
+            resource_details.fetch(:resource_name)
+          )
+        )
+      end
+
+      configs_array_ptr = FFI::MemoryPointer.new(:pointer, pointer_array.size)
+      configs_array_ptr.write_array_of_pointer(pointer_array)
+
+      begin
+        @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_DescribeConfigs(
+            inner,
+            configs_array_ptr,
+            pointer_array.size,
+            admin_options_ptr,
+            queue_ptr
+          )
+        end
+      rescue Exception
+        DescribeConfigsHandle.remove(handle.to_ptr.address)
+
+        raise
+      ensure
+        Rdkafka::Bindings.rd_kafka_ConfigResource_destroy_array(
+          configs_array_ptr,
+          pointer_array.size
+        ) if configs_array_ptr
+      end
+
+      handle
+    end
+
+    # Alters in an incremental way all the configs provided for given resources
+    #
+    # @param resources_with_configs [Array<Hash>] resources with the configs key that contains
+    # name, value and the proper op_type to perform on this value.
+    #
+    # @return [IncrementalAlterConfigsHandle] Incremental alter configs handle that can be used to
+    #   wait for the result of altering resources with their appropriate configs
+    #
+    # @raise [RdkafkaError]
+    #
+    # @note Several resources can be requested at one go, but only one broker at a time
+    # @note The results won't contain altered values but only the altered resources
+    def incremental_alter_configs(resources_with_configs)
+      closed_admin_check(__method__)
+
+      handle = IncrementalAlterConfigsHandle.new
+      handle[:pending] = true
+      handle[:response] = -1
+
+      queue_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+      end
+
+      if queue_ptr.null?
+        raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
+      end
+
+      admin_options_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_AdminOptions_new(
+          inner,
+          Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_INCREMENTALALTERCONFIGS
+        )
+      end
+
+      IncrementalAlterConfigsHandle.register(handle)
+      Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
+
+      # Tu poprawnie tworzyc
+      pointer_array = resources_with_configs.map do |resource_details|
+        # First build the appropriate resource representation
+        resource_ptr = Rdkafka::Bindings.rd_kafka_ConfigResource_new(
+          resource_details.fetch(:resource_type),
+          FFI::MemoryPointer.from_string(
+            resource_details.fetch(:resource_name)
+          )
+        )
+
+        resource_details.fetch(:configs).each do |config|
+          Bindings.rd_kafka_ConfigResource_add_incremental_config(
+            resource_ptr,
+            config.fetch(:name),
+            config.fetch(:op_type),
+            config.fetch(:value)
+          )
+        end
+
+        resource_ptr
+      end
+
+      configs_array_ptr = FFI::MemoryPointer.new(:pointer, pointer_array.size)
+      configs_array_ptr.write_array_of_pointer(pointer_array)
+
+
+      begin
+        @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_IncrementalAlterConfigs(
+            inner,
+            configs_array_ptr,
+            pointer_array.size,
+            admin_options_ptr,
+            queue_ptr
+          )
+        end
+      rescue Exception
+        IncrementalAlterConfigsHandle.remove(handle.to_ptr.address)
+
+        raise
+      ensure
+        Rdkafka::Bindings.rd_kafka_ConfigResource_destroy_array(
+          configs_array_ptr,
+          pointer_array.size
+        ) if configs_array_ptr
+      end
+
+      handle
     end
 
     private

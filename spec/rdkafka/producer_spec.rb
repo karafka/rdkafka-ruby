@@ -50,10 +50,12 @@ describe Rdkafka::Producer do
       context 'when alteration should change behavior' do
         # This is set incorrectly for a reason
         # If alteration would not work, this will hang the spec suite
-        let(:producer) { rdkafka_producer_config(
-          'message.timeout.ms': 1_000_000,
-          :"bootstrap.servers" => "localhost:9094",
-        ).producer }
+        let(:producer) do
+          rdkafka_producer_config(
+            'message.timeout.ms': 1_000_000,
+            :"bootstrap.servers" => "localhost:9094",
+          ).producer
+        end
 
         it 'expect to give up on delivery fast based on alteration config' do
           expect do

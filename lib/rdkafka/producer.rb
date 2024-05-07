@@ -75,31 +75,29 @@ module Rdkafka
         return if @topics_configs[topic].key?(config_hash)
 
         # If config is empty, we create an empty reference that will be used with defaults
-        if config.empty?
-          rd_t_config = Bindings.rd_kafka_topic_new(inner, topic, nil)
-        else
-          topic_config = Rdkafka::Bindings.rd_kafka_topic_conf_new.tap do |topic_config|
-            config.each do |key, value|
-              error_buffer = FFI::MemoryPointer.from_string(" " * 256)
-              result = Rdkafka::Bindings.rd_kafka_topic_conf_set(
-                topic_config,
-                key.to_s,
-                value.to_s,
-                error_buffer,
-                256
-              )
+        rd_topic_config = if config.empty?
+                            nil
+                          else
+                            Rdkafka::Bindings.rd_kafka_topic_conf_new.tap do |topic_config|
+                              config.each do |key, value|
+                                error_buffer = FFI::MemoryPointer.from_string(" " * 256)
+                                result = Rdkafka::Bindings.rd_kafka_topic_conf_set(
+                                  topic_config,
+                                  key.to_s,
+                                  value.to_s,
+                                  error_buffer,
+                                  256
+                                )
 
-              unless result == :config_ok
-                raise Config::ConfigError.new(error_buffer.read_string)
-              end
-            end
-          end
-
-          rd_t_config = Bindings.rd_kafka_topic_new(inner, topic, topic_config)
-        end
+                                unless result == :config_ok
+                                  raise Config::ConfigError.new(error_buffer.read_string)
+                                end
+                              end
+                            end
+                          end
 
         @topics_configs[topic][config_hash] = config
-        @topics_refs_map[topic][config_hash] = rd_t_config
+        @topics_refs_map[topic][config_hash] = Bindings.rd_kafka_topic_new(inner, topic, rd_topic_config)
       end
     end
 

@@ -62,6 +62,10 @@ module Rdkafka
     # Sets alternative set of configuration details that can be set per topic
     # @note It is not allowed to re-set the same topic config twice because of the underlying
     #   librdkafka caching
+    # @param topic [String] The topic name
+    # @param config [Hash] config we want to use per topic basis
+    # @param config_hash [Integer] hash of the config. We expect it here instead of computing it,
+    #   because it is already computed during the retrieval attempt in the `#produce` flow.
     def set_topic_config(topic, config, config_hash)
       # Ensure lock on topic reference just in case
       @native_kafka.with_inner do |inner|

@@ -9,7 +9,10 @@ module Rdkafka
     # Cache partitions count for 30 seconds
     PARTITIONS_COUNT_TTL = 30
 
-    private_constant :PARTITIONS_COUNT_TTL
+    # Empty hash used as a default
+    EMPTY_HASH = {}.freeze
+
+    private_constant :PARTITIONS_COUNT_TTL, :EMPTY_HASH
 
     # @private
     # Returns the current delivery callback, by default this is nil.
@@ -59,31 +62,40 @@ module Rdkafka
     # Sets alternative set of configuration details that can be set per topic
     # @note It is not allowed to re-set the same topic config twice because of the underlying
     #   librdkafka caching
-    def set_topic_config(topic, config)
+    def set_topic_config(topic, config, config_hash)
       # Ensure lock on topic reference just in case
       @native_kafka.with_inner do |inner|
-        raise ArgumentError, "Topic #{topic} already has a config" if @topics_configs.key?(topic)
-        raise ArgumentError, "Topic #{topic} already in use" if @topics_refs_map.key?(topic)
+        @topics_refs_map[topic] ||= {}
+        @topics_configs[topic] ||= {}
 
-        topic_config = Rdkafka::Bindings.rd_kafka_topic_conf_new.tap do |topic_config|
-          config.each do |key, value|
-            error_buffer = FFI::MemoryPointer.from_string(" " * 256)
-            result = Rdkafka::Bindings.rd_kafka_topic_conf_set(
-              topic_config,
-              key.to_s,
-              value.to_s,
-              error_buffer,
-              256
-            )
+        return if @topics_configs[topic].key?(config_hash)
 
-            unless result == :config_ok
-              raise Config::ConfigError.new(error_buffer.read_string)
+        # If config is empty, we create an empty reference that will be used with defaults
+        if config.empty?
+          rd_t_config = Bindings.rd_kafka_topic_new(inner, topic, nil)
+        else
+          topic_config = Rdkafka::Bindings.rd_kafka_topic_conf_new.tap do |topic_config|
+            config.each do |key, value|
+              error_buffer = FFI::MemoryPointer.from_string(" " * 256)
+              result = Rdkafka::Bindings.rd_kafka_topic_conf_set(
+                topic_config,
+                key.to_s,
+                value.to_s,
+                error_buffer,
+                256
+              )
+
+              unless result == :config_ok
+                raise Config::ConfigError.new(error_buffer.read_string)
+              end
             end
           end
+
+          rd_t_config = Bindings.rd_kafka_topic_new(inner, topic, topic_config)
         end
 
-        @topics_configs[topic] = config
-        @topics_refs_map[topic] = Bindings.rd_kafka_topic_new(inner, topic, topic_config)
+        @topics_configs[topic][config_hash] = config
+        @topics_refs_map[topic][config_hash] = rd_t_config
       end
     end
 
@@ -118,8 +130,12 @@ module Rdkafka
       ObjectSpace.undefine_finalizer(self)
 
       @native_kafka.close do
-        @topics_refs_map.each do |ref|
-          Rdkafka::Bindings.rd_kafka_topic_destroy(ref)
+        # We need to remove the topics references objects before we destroy the producer,
+        # otherwise they would leak out
+        @topics_refs_map.each_value do |refs|
+          refs.each_value do |ref|
+            Rdkafka::Bindings.rd_kafka_topic_destroy(ref)
+          end
         end
       end
 
@@ -222,11 +238,22 @@ module Rdkafka
     # @param timestamp [Time,Integer,nil] Optional timestamp of this message. Integer timestamp is in milliseconds since Jan 1 1970.
     # @param headers [Hash<String,String>] Optional message headers
     # @param label [Object, nil] a label that can be assigned when producing a message that will be part of the delivery handle and the delivery report
+    # @param topic_config [Hash] topic config for given message dispatch. Allows to send messages to topics with different configuration
     #
     # @return [DeliveryHandle] Delivery handle that can be used to wait for the result of producing this message
     #
     # @raise [RdkafkaError] When adding the message to rdkafka's queue failed
-    def produce(topic:, payload: nil, key: nil, partition: nil, partition_key: nil, timestamp: nil, headers: nil, label: nil)
+    def produce(
+      topic:,
+      payload: nil,
+      key: nil,
+      partition: nil,
+      partition_key: nil,
+      timestamp: nil,
+      headers: nil,
+      label: nil,
+      topic_config: EMPTY_HASH
+    )
       closed_producer_check(__method__)
 
       # Start by checking and converting the input
@@ -245,16 +272,19 @@ module Rdkafka
                    key.bytesize
                  end
 
+      topic_config_hash = topic_config.hash
+
+      # Checks if we have the rdkafka topic reference object ready. It saves us on object
+      # allocation and allows to use custom config on demand.
+      set_topic_config(topic, topic_config, topic_config_hash) unless @topics_refs_map.dig(topic, topic_config_hash)
+      topic_ref = @topics_refs_map.dig(topic, topic_config_hash)
+
       if partition_key
         partition_count = partition_count(topic)
 
         # Check if there are no overrides for the partitioner and use the default one only when
         # no per-topic is present.
-        partitioner_name = if @topics_configs.key?(topic)
-          @topics_configs[topic][:partitioner] || @partitioner_name
-        else
-          @partitioner_name
-        end
+        partitioner_name = @topics_configs.dig(topic, topic_config_hash, :partitioner) || @partitioner_name
 
         # If the topic is not present, set to -1
         partition = Rdkafka::Bindings.partitioner(partition_key, partition_count, @partitioner_name) if partition_count.positive?
@@ -283,23 +313,6 @@ module Rdkafka
       delivery_handle[:partition] = -1
       delivery_handle[:offset] = -1
       DeliveryHandle.register(delivery_handle)
-
-      # Checks if we have the rdkafka topic reference object ready. It saves us on object
-      # allocation and allows to use custom config on demand.
-      topic_ref = if @topics_refs_map.key?(topic)
-        @topics_refs_map.fetch(topic)
-      else
-        @native_kafka.with_inner do |inner|
-          # If alteration to the topic config was defined, the topic reference itself also must
-          # already exist
-          if @topics_refs_map.key?(topic)
-            @topics_refs_map[topic]
-          else
-            # If no alteration, we build and cache reference without any config
-            @topics_refs_map[topic] = Bindings.rd_kafka_topic_new(inner, topic, nil)
-          end
-        end
-      end
 
       args = [
         :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_RKT, :pointer, topic_ref,

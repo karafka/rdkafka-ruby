@@ -31,11 +31,11 @@ describe Rdkafka::Producer do
     it { expect(producer.name).to include('rdkafka#producer-') }
   end
 
-  describe '#produce with early topic alterations' do
+  describe '#produce with topic config alterations' do
     context 'when config is not valid' do
       it 'expect to raise error' do
         expect do
-          producer.set_topic_config('test', { 'invalid': 'invalid' })
+          producer.produce(topic: 'test', payload: '', topic_config: { 'invalid': 'invalid' })
         end.to raise_error(Rdkafka::Config::ConfigError)
       end
     end
@@ -43,7 +43,7 @@ describe Rdkafka::Producer do
     context 'when config is valid' do
       it 'expect to raise error' do
         expect do
-          producer.set_topic_config('test', { 'acks': 1 })
+          producer.produce(topic: 'test', payload: '', topic_config: { 'acks': 1 }).wait
         end.not_to raise_error
       end
 
@@ -56,18 +56,14 @@ describe Rdkafka::Producer do
         ).producer }
 
         it 'expect to give up on delivery fast based on alteration config' do
-          producer.set_topic_config(
-            'produce_config_test',
-            {
-              'compression.type': 'gzip',
-              'message.timeout.ms': 1
-            }
-          )
-
           expect do
             producer.produce(
               topic: 'produce_config_test',
-              payload: 'test'
+              payload: 'test',
+              topic_config: {
+                'compression.type': 'gzip',
+                'message.timeout.ms': 1
+              }
             ).wait
           end.to raise_error(Rdkafka::RdkafkaError, /msg_timed_out/)
         end

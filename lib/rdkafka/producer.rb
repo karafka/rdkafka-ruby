@@ -14,6 +14,11 @@ module Rdkafka
 
     private_constant :PARTITIONS_COUNT_TTL, :EMPTY_HASH
 
+    # Raised when there was a critical issue when invoking rd_kafka_topic_new
+    # This is a temporary solution until https://github.com/karafka/rdkafka-ruby/issues/451 is
+    # resolved and this is normalized in all the places
+    class TopicHandleCreationError < RuntimeError; end
+
     # @private
     # Returns the current delivery callback, by default this is nil.
     #
@@ -80,7 +85,7 @@ module Rdkafka
                           else
                             Rdkafka::Bindings.rd_kafka_topic_conf_new.tap do |topic_config|
                               config.each do |key, value|
-                                error_buffer = FFI::MemoryPointer.from_string(" " * 256)
+                                error_buffer = FFI::MemoryPointer.new(:char, 256)
                                 result = Rdkafka::Bindings.rd_kafka_topic_conf_set(
                                   topic_config,
                                   key.to_s,
@@ -96,8 +101,12 @@ module Rdkafka
                             end
                           end
 
+        topic_handle = Bindings.rd_kafka_topic_new(inner, topic, rd_topic_config)
+
+        raise TopicHandleCreationError.new("Error creating topic handle for topic #{topic}") if topic_handle.null?
+
         @topics_configs[topic][config_hash] = config
-        @topics_refs_map[topic][config_hash] = Bindings.rd_kafka_topic_new(inner, topic, rd_topic_config)
+        @topics_refs_map[topic][config_hash] = topic_handle
       end
     end
 

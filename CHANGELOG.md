@@ -3,6 +3,8 @@
 ## 0.16.0 (Unreleased)
 - **[Feature]** Support incremental config describe + alter API.
 - **[Feature]** Oauthbearer token refresh callback (bruce-szalwinski-he)
+- **[Feature]** Provide ability to use topic config on a producer for custom behaviors per dispatch.
+- [Enhancement] Use topic config reference cache for messages production to prevent topic objects allocation with each message.
 - [Enhancement] Provide `Rrdkafka::Admin#describe_errors` to get errors descriptions (mensfeld)
 - [Enhancement] Replace time poll based wait engine with an event based to improve response times on blocking operations and wait (nijikon + mensfeld)
 - [Enhancement] Allow for usage of the second regex engine of librdkafka by setting `RDKAFKA_DISABLE_REGEX_EXT` during build (mensfeld)

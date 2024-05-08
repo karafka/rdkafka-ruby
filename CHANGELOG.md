@@ -1,6 +1,8 @@
 # Rdkafka Changelog
 
 ## 0.15.1 (Unreleased)
+- **[Feature]** Provide ability to use topic config on a producer for custom behaviors per dispatch.
+- [Enhancement] Use topic config reference cache for messages production to prevent topic objects allocation with each message.
 - [Enhancement] Provide `Rrdkafka::Admin#describe_errors` to get errors descriptions (mensfeld)
 
 ## 0.15.0 (2024-04-26)

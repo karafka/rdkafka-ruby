@@ -15,7 +15,7 @@ Gem::Specification.new do |gem|
   gem.name = 'karafka-rdkafka'
   gem.require_paths = ['lib']
   gem.version = Rdkafka::VERSION
-  gem.required_ruby_version = '>= 2.7'
+  gem.required_ruby_version = '>= 3.0'
   gem.extensions = %w(ext/Rakefile)
   gem.cert_chain = %w[certs/cert_chain.pem]
 

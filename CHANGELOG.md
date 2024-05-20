@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.16.0 (Unreleased)
+- **[Breaking]** Retire support for Ruby 2.7.
 - **[Feature]** Support incremental config describe + alter API.
 - **[Feature]** Oauthbearer token refresh callback (bruce-szalwinski-he)
 - **[Feature]** Provide ability to use topic config on a producer for custom behaviors per dispatch.

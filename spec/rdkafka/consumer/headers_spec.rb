@@ -50,11 +50,8 @@ describe Rdkafka::Consumer::Headers do
       expect(subject['version']).to eq("2.1.3")
     end
 
-    it 'allows Symbol key, but warns' do
-      expect(Kernel).to \
-        receive(:warn).with("rdkafka deprecation warning: header access with Symbol key :version treated as a String. " \
-                            "Please change your code to use String keys to avoid this warning. Symbol keys will break in version 1.")
-      expect(subject[:version]).to eq("2.1.3")
+    it 'does not support symbols mappings' do
+      expect(subject.key?(:version)).to eq(false)
     end
   end
 end

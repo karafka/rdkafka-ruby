@@ -319,6 +319,7 @@ module Rdkafka
 
       delivery_handle = DeliveryHandle.new
       delivery_handle.label = label
+      delivery_handle.topic = topic
       delivery_handle[:pending] = true
       delivery_handle[:response] = -1
       delivery_handle[:partition] = -1
@@ -342,7 +343,7 @@ module Rdkafka
           args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
           args << :string << key
           args << :pointer << value
-          args << :size_t << value.bytes.size
+          args << :size_t << value.bytesize
         end
       end
 

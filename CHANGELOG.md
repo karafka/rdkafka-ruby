@@ -2,6 +2,8 @@
 
 ## 0.16.0 (Unreleased)
 - **[Breaking]** Retire support for Ruby 2.7.
+- **[Breaking]** Messages without headers returned by `#poll` contain frozen empty hash.
+- **[Breaking]** `HashWithSymbolKeysTreatedLikeStrings` has been removed so headers are regular hashes with string keys.
 - **[Feature]** Support incremental config describe + alter API.
 - **[Feature]** Oauthbearer token refresh callback (bruce-szalwinski-he)
 - **[Feature]** Provide ability to use topic config on a producer for custom behaviors per dispatch.
@@ -10,6 +12,7 @@
 - [Enhancement] Replace time poll based wait engine with an event based to improve response times on blocking operations and wait (nijikon + mensfeld)
 - [Enhancement] Allow for usage of the second regex engine of librdkafka by setting `RDKAFKA_DISABLE_REGEX_EXT` during build (mensfeld)
 - [Enhancement] name polling Thread as `rdkafka.native_kafka#<name>` (nijikon)
+- [Enhancement] Save two objects on message produced and lower CPU usage on message produced with small improvements.
 - [Change] Allow for native kafka thread operations deferring and manual start for consumer, producer and admin.
 - [Change] The `wait_timeout` argument in `AbstractHandle.wait` method is deprecated and will be removed in future versions without replacement. We don't rely on it's value anymore (nijikon)
 - [Fix] Background logger stops working after forking causing memory leaks (mensfeld)

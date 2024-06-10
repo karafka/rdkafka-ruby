@@ -4,17 +4,7 @@ module Rdkafka
   class Consumer
     # Interface to return headers for a consumer message
     module Headers
-      class HashWithSymbolKeysTreatedLikeStrings < Hash
-        def [](key)
-          if key.is_a?(Symbol)
-            Kernel.warn("rdkafka deprecation warning: header access with Symbol key #{key.inspect} treated as a String. " \
-                        "Please change your code to use String keys to avoid this warning. Symbol keys will break in version 1.")
-            super(key.to_s)
-          else
-            super
-          end
-        end
-      end
+      EMPTY_HEADERS = {}.freeze
 
       # Reads a librdkafka native message's headers and returns them as a Ruby Hash
       #
@@ -28,7 +18,7 @@ module Rdkafka
         err = Rdkafka::Bindings.rd_kafka_message_headers(native_message, headers_ptrptr)
 
         if err == Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT
-          return {}
+          return EMPTY_HEADERS
         elsif err != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
           raise Rdkafka::RdkafkaError.new(err, "Error reading message headers")
         end
@@ -39,7 +29,7 @@ module Rdkafka
         value_ptrptr = FFI::MemoryPointer.new(:pointer)
         size_ptr = Rdkafka::Bindings::SizePtr.new
 
-        headers = HashWithSymbolKeysTreatedLikeStrings.new
+        headers = {}
 
         idx = 0
         loop do

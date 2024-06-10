@@ -9,7 +9,7 @@ describe Rdkafka::Producer::DeliveryHandle do
       handle[:response] = response
       handle[:partition] = 2
       handle[:offset] = 100
-      handle[:topic_name] = FFI::MemoryPointer.from_string("produce_test_topic")
+      handle.topic = "produce_test_topic"
     end
   end
 

@@ -1,8 +1,9 @@
 # Rdkafka Changelog
 
-## 0.15.2 (Unreleased)
+## 0.16.0 (Unreleased)
 - **[Breaking]** Messages without headers returned by `#poll` contain frozen empty hash.
 - **[Breaking]** `HashWithSymbolKeysTreatedLikeStrings` has been removed so headers are regular hashes with string keys.
+- [Enhancement] Bump librdkafka to 2.4.0
 - [Enhancement] Save two objects on message produced and lower CPU usage on message produced with small improvements.
 - [Fix] Remove support for Ruby 2.7. Supporting it was a bug since rest of the karafka ecosystem no longer supports it.
 

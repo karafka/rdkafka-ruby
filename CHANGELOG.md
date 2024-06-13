@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.16.0 (Unreleased)
+## 0.16.0 (2024-06-13)
 - **[Breaking]** Retire support for Ruby 2.7.
 - **[Breaking]** Messages without headers returned by `#poll` contain frozen empty hash.
 - **[Breaking]** `HashWithSymbolKeysTreatedLikeStrings` has been removed so headers are regular hashes with string keys.

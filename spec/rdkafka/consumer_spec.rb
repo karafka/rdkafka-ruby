@@ -274,7 +274,7 @@ describe Rdkafka::Consumer do
       let(:timeout) { 1000 }
 
       before do
-        consumer.subscribe("consume_test_topic")
+        consumer.subscribe(topic)
 
         # 1. partitions are assigned
         wait_for_assignment(consumer)
@@ -287,7 +287,7 @@ describe Rdkafka::Consumer do
 
       def send_one_message(val)
         producer.produce(
-          topic:     "consume_test_topic",
+          topic:     topic,
           payload:   "payload #{val}",
           key:       "key 1",
           partition: 0
@@ -302,7 +302,7 @@ describe Rdkafka::Consumer do
 
         # 4. pause the subscription
         tpl = Rdkafka::Consumer::TopicPartitionList.new
-        tpl.add_topic("consume_test_topic", 1)
+        tpl.add_topic(topic, 1)
         consumer.pause(tpl)
 
         # 5. seek by the previous message fields
@@ -310,7 +310,7 @@ describe Rdkafka::Consumer do
 
         # 6. resume the subscription
         tpl = Rdkafka::Consumer::TopicPartitionList.new
-        tpl.add_topic("consume_test_topic", 1)
+        tpl.add_topic(topic, 1)
         consumer.resume(tpl)
 
         # 7. ensure same message is read again

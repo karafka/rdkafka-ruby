@@ -435,6 +435,19 @@ module Rdkafka
     # @return [nil]
     # @raise [RdkafkaError] When seeking fails
     def seek(message)
+      seek_by(message.topic, message.partition, message.offset)
+    end
+
+    # Seek to a particular message by providing the topic, partition and offset.
+    # The next poll on the topic/partition will return the
+    # message at the given offset.
+    #
+    # @param topic [String] The topic in which to seek
+    # @param partition [Integer] The partition number to seek
+    # @param offset [Integer] The partition offset to seek
+    # @return [nil]
+    # @raise [RdkafkaError] When seeking fails
+    def seek_by(topic, partition, offset)
       closed_consumer_check(__method__)
 
       # rd_kafka_offset_store is one of the few calls that does not support
@@ -442,14 +455,14 @@ module Rdkafka
       native_topic = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_topic_new(
           inner,
-          message.topic,
+          topic,
           nil
         )
       end
       response = Rdkafka::Bindings.rd_kafka_seek(
         native_topic,
-        message.partition,
-        message.offset,
+        partition,
+        offset,
         0 # timeout
       )
       Rdkafka::RdkafkaError.validate!(response)

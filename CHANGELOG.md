@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.16.1 (Unreleased)
+- [Feature] Add `#seek_by` to be able to seek for a message by topic, partition and offset (zinahia)
+
 ## 0.16.0 (2024-06-17)
 - **[Breaking]** Messages without headers returned by `#poll` contain frozen empty hash.
 - **[Breaking]** `HashWithSymbolKeysTreatedLikeStrings` has been removed so headers are regular hashes with string keys.

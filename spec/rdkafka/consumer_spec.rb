@@ -336,7 +336,7 @@ describe Rdkafka::Consumer do
         expect(message&.payload).to eq "payload a"
 
         # 5. seek over one message
-        consumer.seek(message.topic, message.partition, message.offset + 2)
+        consumer.seek_by(message.topic, message.partition, message.offset + 2)
 
         # 6. ensure that only one message is available
         records = consumer.poll(timeout)

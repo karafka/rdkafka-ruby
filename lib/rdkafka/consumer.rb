@@ -63,6 +63,8 @@ module Rdkafka
     def subscribe(*topics)
       closed_consumer_check(__method__)
 
+      raise ArgumentError.new("'topics' should not contain nil") if topics.any?(&:nil?)
+
       # Create topic partition list with topics and no partition set
       tpl = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(topics.length)
 

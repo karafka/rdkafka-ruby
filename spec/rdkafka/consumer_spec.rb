@@ -52,6 +52,13 @@ describe Rdkafka::Consumer do
       }.to raise_error(Rdkafka::RdkafkaError)
     end
 
+    it "should raise an error when a topic is nil" do
+      # otherwise a segfault happens in librdkafka - hard to troubleshoot
+      expect {
+        consumer.subscribe('test-topic', nil)
+      }.to raise_error(ArgumentError, "'topics' should not contain nil")
+    end
+
     it "should raise an error when unsubscribing fails" do
       expect(Rdkafka::Bindings).to receive(:rd_kafka_unsubscribe).and_return(20)
 

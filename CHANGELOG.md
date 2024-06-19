@@ -2,6 +2,7 @@
 
 ## 0.17.0 (Unreleased)
 - [Enhancement] Update `librdkafka` to `2.4.0`
+- [Enhancement] Raise ArgumentError if a nil passed to Consumer#subscribe to prevent segfault and get informative error message (eugene-nikolaev)
 - [Feature] Add `#seek_by` to be able to seek for a message by topic, partition and offset (zinahia)
 
 ## 0.16.0 (2024-06-13)

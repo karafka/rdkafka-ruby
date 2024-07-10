@@ -3,6 +3,7 @@
 ## 0.17.0 (Unreleased)
 - [Enhancement] Update `librdkafka` to `2.4.0`
 - [Feature] Add `#seek_by` to be able to seek for a message by topic, partition and offset (zinahia)
+- [Fix] Switch to local release of librdkafka to mitigate its unavailability.
 
 ## 0.16.0 (2024-06-13)
 - **[Breaking]** Retire support for Ruby 2.7.

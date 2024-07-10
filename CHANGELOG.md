@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.15.2 (2024-07-10)
+- [Fix] Switch to local release of librdkafka to mitigate its unavailability.
+
 ## 0.15.1 (2024-01-30)
 - [Enhancement] Provide support for Nix OS (alexandriainfantino)
 - [Enhancement] Replace `rd_kafka_offset_store` with `rd_kafka_offsets_store` (mensfeld)

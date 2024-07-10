@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.16.1 (2024-07-10)
+- [Fix] Switch to local release of librdkafka to mitigate its unavailability.
+
 ## 0.16.0 (2024-06-13)
 - **[Breaking]** Retire support for Ruby 2.7.
 - **[Breaking]** Messages without headers returned by `#poll` contain frozen empty hash.

@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.14.1 (2024-07-10)
+- [Fix] Switch to local release of librdkafka to mitigate its unavailability.
+
 ## 0.14.0 (2023-11-21)
 - [Enhancement] Add `raise_response_error` flag to the `Rdkafka::AbstractHandle`.
 - [Enhancement] Allow for setting `statistics_callback` as nil to reset predefined settings configured by a different gem (mensfeld)

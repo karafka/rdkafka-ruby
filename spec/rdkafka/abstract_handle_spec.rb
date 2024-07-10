@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+require "spec_helper"
 
 describe Rdkafka::AbstractHandle do
   let(:response) { 0 }
@@ -76,51 +76,39 @@ describe Rdkafka::AbstractHandle do
   end
 
   describe "#wait" do
-    context 'when pending_handle true' do
-      let(:pending_handle) { true }
+    let(:pending_handle) { true }
 
-      it "should wait until the timeout and then raise an error" do
-        expect(Kernel).not_to receive(:warn)
-        expect {
-          subject.wait(max_wait_timeout: 0.1)
-        }.to raise_error Rdkafka::AbstractHandle::WaitTimeoutError, /test_operation/
+    it "should wait until the timeout and then raise an error" do
+      expect {
+        subject.wait(max_wait_timeout: 0.1)
+      }.to raise_error Rdkafka::AbstractHandle::WaitTimeoutError, /test_operation/
+    end
+
+    context "when not pending anymore and no error" do
+      let(:pending_handle) { false }
+      let(:result) { 1 }
+
+      it "should return a result" do
+        wait_result = subject.wait
+        expect(wait_result).to eq(result)
+      end
+
+      it "should wait without a timeout" do
+        wait_result = subject.wait(max_wait_timeout: nil)
+        expect(wait_result).to eq(result)
       end
     end
 
-    context 'when pending_handle false' do
+    context "when not pending anymore and there was an error" do
       let(:pending_handle) { false }
+      let(:response) { 20 }
 
-      it 'should show a deprecation warning when wait_timeout is set' do
-        expect(Kernel).to receive(:warn).with(Rdkafka::AbstractHandle::WAIT_TIMEOUT_DEPRECATION_MESSAGE)
-        subject.wait(wait_timeout: 0.1)
-      end
-
-      context "without error" do
-        let(:result) { 1 }
-
-        it "should return a result" do
-          expect(Kernel).not_to receive(:warn)
-          wait_result = subject.wait
-          expect(wait_result).to eq(result)
-        end
-
-        it "should wait without a timeout" do
-          expect(Kernel).not_to receive(:warn)
-          wait_result = subject.wait(max_wait_timeout: nil)
-          expect(wait_result).to eq(result)
-        end
-      end
-
-      context "with error" do
-        let(:response) { 20 }
-
-        it "should raise an rdkafka error" do
-          expect(Kernel).not_to receive(:warn)
-          expect {
-            subject.wait
-          }.to raise_error Rdkafka::RdkafkaError
-        end
+      it "should raise an rdkafka error" do
+        expect {
+          subject.wait
+        }.to raise_error Rdkafka::RdkafkaError
       end
     end
   end
 end
+

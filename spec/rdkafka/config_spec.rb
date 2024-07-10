@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+require "spec_helper"
 
 describe Rdkafka::Config do
   context "logger" do
@@ -22,7 +22,6 @@ describe Rdkafka::Config do
     it "supports logging queue" do
       log = StringIO.new
       Rdkafka::Config.logger = Logger.new(log)
-      Rdkafka::Config.ensure_log_thread
 
       Rdkafka::Config.log_queue << [Logger::FATAL, "I love testing"]
       20.times do
@@ -31,25 +30,6 @@ describe Rdkafka::Config do
       end
 
       expect(log.string).to include "FATAL -- : I love testing"
-    end
-
-    it "expect to start new logger thread after fork and work" do
-      reader, writer = IO.pipe
-
-      pid = fork do
-        $stdout.reopen(writer)
-        Rdkafka::Config.logger = Logger.new($stdout)
-        reader.close
-        producer = rdkafka_producer_config(debug: 'all').producer
-        producer.close
-        writer.close
-        sleep(1)
-      end
-
-      writer.close
-      Process.wait(pid)
-      output = reader.read
-      expect(output.split("\n").size).to be >= 20
     end
   end
 
@@ -115,39 +95,6 @@ describe Rdkafka::Config do
     end
   end
 
-  context "oauthbearer calllback" do
-    context "with a proc/lambda" do
-      it "should set the callback" do
-        expect {
-          Rdkafka::Config.oauthbearer_token_refresh_callback = lambda do |config, client_name|
-            puts config
-            puts client_name
-          end
-        }.not_to raise_error
-        expect(Rdkafka::Config.oauthbearer_token_refresh_callback).to respond_to :call
-      end
-    end
-
-    context "with a callable object" do
-      it "should set the callback" do
-        callback = Class.new do
-          def call(config, client_name); end
-        end
-
-        expect {
-          Rdkafka::Config.oauthbearer_token_refresh_callback = callback.new
-        }.not_to raise_error
-        expect(Rdkafka::Config.oauthbearer_token_refresh_callback).to respond_to :call
-      end
-    end
-
-    it "should not accept a callback that's not callable" do
-      expect {
-        Rdkafka::Config.oauthbearer_token_refresh_callback = 'not a callback'
-      }.to raise_error(TypeError)
-    end
-  end
-
   context "configuration" do
     it "should store configuration" do
       config = Rdkafka::Config.new
@@ -161,15 +108,7 @@ describe Rdkafka::Config do
     end
 
     it "should create a consumer with valid config" do
-      consumer = rdkafka_consumer_config.consumer
-      expect(consumer).to be_a Rdkafka::Consumer
-      consumer.close
-    end
-
-    it "should create a consumer with consumer_poll_set set to false" do
-      config = rdkafka_consumer_config
-      config.consumer_poll_set = false
-      consumer = config.consumer
+      consumer = rdkafka_config.consumer
       expect(consumer).to be_a Rdkafka::Consumer
       consumer.close
     end
@@ -197,7 +136,7 @@ describe Rdkafka::Config do
     end
 
     it "should create a producer with valid config" do
-      producer = rdkafka_consumer_config.producer
+      producer = rdkafka_config.producer
       expect(producer).to be_a Rdkafka::Producer
       producer.close
     end
@@ -209,24 +148,11 @@ describe Rdkafka::Config do
       }.to raise_error(Rdkafka::Config::ConfigError, "No such configuration property: \"invalid.key\"")
     end
 
-    it "allows string partitioner key" do
-      expect(Rdkafka::Producer).to receive(:new).with(kind_of(Rdkafka::NativeKafka), "murmur2").and_call_original
-      config = Rdkafka::Config.new("partitioner" => "murmur2")
-      config.producer.close
-    end
-
-    it "allows symbol partitioner key" do
-      expect(Rdkafka::Producer).to receive(:new).with(kind_of(Rdkafka::NativeKafka), "murmur2").and_call_original
-      config = Rdkafka::Config.new(:partitioner => "murmur2")
-      config.producer.close
-    end
-
     it "should allow configuring zstd compression" do
       config = Rdkafka::Config.new('compression.codec' => 'zstd')
       begin
-        producer = config.producer
-        expect(producer).to be_a Rdkafka::Producer
-        producer.close
+        expect(config.producer).to be_a Rdkafka::Producer
+        config.producer.close
       rescue Rdkafka::Config::ConfigError => ex
         pending "Zstd compression not supported on this machine"
         raise ex

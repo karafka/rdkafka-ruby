@@ -1,31 +1,14 @@
-# frozen_string_literal: true
-
+require "spec_helper"
 require "ostruct"
 require 'securerandom'
 
 describe Rdkafka::Consumer do
-  let(:consumer) { rdkafka_consumer_config.consumer }
-  let(:producer) { rdkafka_producer_config.producer }
+  let(:config) { rdkafka_config }
+  let(:consumer) { config.consumer }
+  let(:producer) { config.producer }
 
   after { consumer.close }
   after { producer.close }
-
-  describe '#name' do
-    it { expect(consumer.name).to include('rdkafka#consumer-') }
-  end
-
-  describe 'consumer without auto-start' do
-    let(:consumer) { rdkafka_consumer_config.consumer(native_kafka_auto_start: false) }
-
-    it 'expect to be able to start it later and close' do
-      consumer.start
-      consumer.close
-    end
-
-    it 'expect to be able to close it without starting' do
-      consumer.close
-    end
-  end
 
   describe "#subscribe, #unsubscribe and #subscription" do
     it "should subscribe, unsubscribe and return the subscription" do
@@ -67,35 +50,11 @@ describe Rdkafka::Consumer do
         consumer.subscription
       }.to raise_error(Rdkafka::RdkafkaError)
     end
-
-    context "when using consumer without the poll set" do
-      let(:consumer) do
-        config = rdkafka_consumer_config
-        config.consumer_poll_set = false
-        config.consumer
-      end
-
-      it "should subscribe, unsubscribe and return the subscription" do
-        expect(consumer.subscription).to be_empty
-
-        consumer.subscribe("consume_test_topic")
-
-        expect(consumer.subscription).not_to be_empty
-        expected_subscription = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-          list.add_topic("consume_test_topic")
-        end
-        expect(consumer.subscription).to eq expected_subscription
-
-        consumer.unsubscribe
-
-        expect(consumer.subscription).to be_empty
-      end
-    end
   end
 
   describe "#pause and #resume" do
     context "subscription" do
-      let(:timeout) { 2000 }
+      let(:timeout) { 1000 }
 
       before { consumer.subscribe("consume_test_topic") }
       after { consumer.unsubscribe }
@@ -224,11 +183,6 @@ describe Rdkafka::Consumer do
 
         # 7. ensure same message is read again
         message2 = consumer.poll(timeout)
-
-        # This is needed because `enable.auto.offset.store` is true but when running in CI that
-        # is overloaded, offset store lags
-        sleep(2)
-
         consumer.commit
         expect(message1.offset).to eq message2.offset
         expect(message1.payload).to eq message2.payload
@@ -248,95 +202,6 @@ describe Rdkafka::Consumer do
         fake_msg = message.dup
         fake_msg.instance_variable_set(:@offset, fake_msg.offset + 2)
         consumer.seek(fake_msg)
-
-        # 6. ensure that only one message is available
-        records = consumer.poll(timeout)
-        expect(records&.payload).to eq "payload c"
-        records = consumer.poll(timeout)
-        expect(records).to be_nil
-      end
-    end
-  end
-
-  describe "#seek_by" do
-    let(:topic) { "consume_test_topic" }
-    let(:partition) { 0 }
-    let(:offset) { 0 }
-
-    it "should raise an error when seeking fails" do
-      expect(Rdkafka::Bindings).to receive(:rd_kafka_seek).and_return(20)
-      expect {
-        consumer.seek_by(topic, partition, offset)
-      }.to raise_error Rdkafka::RdkafkaError
-    end
-
-    context "subscription" do
-      let(:timeout) { 1000 }
-
-      before do
-        consumer.subscribe(topic)
-
-        # 1. partitions are assigned
-        wait_for_assignment(consumer)
-        expect(consumer.assignment).not_to be_empty
-
-        # 2. eat unrelated messages
-        while(consumer.poll(timeout)) do; end
-      end
-      after { consumer.unsubscribe }
-
-      def send_one_message(val)
-        producer.produce(
-          topic:     topic,
-          payload:   "payload #{val}",
-          key:       "key 1",
-          partition: 0
-        ).wait
-      end
-
-      it "works when a partition is paused" do
-        # 3. get reference message
-        send_one_message(:a)
-        message1 = consumer.poll(timeout)
-        expect(message1&.payload).to eq "payload a"
-
-        # 4. pause the subscription
-        tpl = Rdkafka::Consumer::TopicPartitionList.new
-        tpl.add_topic(topic, 1)
-        consumer.pause(tpl)
-
-        # 5. seek by the previous message fields
-        consumer.seek_by(message1.topic, message1.partition, message1.offset)
-
-        # 6. resume the subscription
-        tpl = Rdkafka::Consumer::TopicPartitionList.new
-        tpl.add_topic(topic, 1)
-        consumer.resume(tpl)
-
-        # 7. ensure same message is read again
-        message2 = consumer.poll(timeout)
-
-        # This is needed because `enable.auto.offset.store` is true but when running in CI that
-        # is overloaded, offset store lags
-        sleep(2)
-
-        consumer.commit
-        expect(message1.offset).to eq message2.offset
-        expect(message1.payload).to eq message2.payload
-      end
-
-      it "allows skipping messages" do
-        # 3. send messages
-        send_one_message(:a)
-        send_one_message(:b)
-        send_one_message(:c)
-
-        # 4. get reference message
-        message = consumer.poll(timeout)
-        expect(message&.payload).to eq "payload a"
-
-        # 5. seek over one message
-        consumer.seek_by(message.topic, message.partition, message.offset + 2)
 
         # 6. ensure that only one message is available
         records = consumer.poll(timeout)
@@ -377,7 +242,7 @@ describe Rdkafka::Consumer do
 
     it "should return the assignment when subscribed" do
       # Make sure there's a message
-      producer.produce(
+      report = producer.produce(
         topic:     "consume_test_topic",
         payload:   "payload 1",
         key:       "key 1",
@@ -404,33 +269,11 @@ describe Rdkafka::Consumer do
     end
   end
 
-  describe '#assignment_lost?' do
-    it "should not return true as we do have an assignment" do
-      consumer.subscribe("consume_test_topic")
-      expected_subscription = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-        list.add_topic("consume_test_topic")
-      end
-
-      expect(consumer.assignment_lost?).to eq false
-      consumer.unsubscribe
-    end
-
-    it "should not return true after voluntary unsubscribing" do
-      consumer.subscribe("consume_test_topic")
-      expected_subscription = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-        list.add_topic("consume_test_topic")
-      end
-
-      consumer.unsubscribe
-      expect(consumer.assignment_lost?).to eq false
-    end
-  end
-
   describe "#close" do
     it "should close a consumer" do
       consumer.subscribe("consume_test_topic")
       100.times do |i|
-        producer.produce(
+        report = producer.produce(
           topic:     "consume_test_topic",
           payload:   "payload #{i}",
           key:       "key #{i}",
@@ -442,36 +285,12 @@ describe Rdkafka::Consumer do
         consumer.poll(100)
       }.to raise_error(Rdkafka::ClosedConsumerError, /poll/)
     end
-
-    context 'when there are outgoing operations in other threads' do
-      it 'should wait and not crash' do
-        times = []
-
-        # Run a long running poll
-        thread = Thread.new do
-          times << Time.now
-          consumer.subscribe("empty_test_topic")
-          times << Time.now
-          consumer.poll(1_000)
-          times << Time.now
-        end
-
-        # Make sure it starts before we close
-        sleep(0.1)
-        consumer.close
-        close_time = Time.now
-        thread.join
-
-        times.each { |op_time| expect(op_time).to be < close_time }
-      end
-    end
   end
 
-
-  describe "#position, #commit, #committed and #store_offset" do
-    # Make sure there are messages to work with
+  describe "#commit, #committed and #store_offset" do
+    # Make sure there's a stored offset
     let!(:report) do
-      producer.produce(
+      report = producer.produce(
         topic:     "consume_test_topic",
         payload:   "payload 1",
         key:       "key 1",
@@ -487,26 +306,22 @@ describe Rdkafka::Consumer do
       )
     end
 
-    describe "#position" do
-      it "should only accept a topic partition list in position if not nil" do
-        expect {
-          consumer.position("list")
-        }.to raise_error TypeError
-      end
+    it "should only accept a topic partition list in committed" do
+      expect {
+        consumer.committed("list")
+      }.to raise_error TypeError
     end
 
-    describe "#committed" do
-      it "should only accept a topic partition list in commit if not nil" do
-        expect {
-          consumer.commit("list")
-        }.to raise_error TypeError
-      end
+    it "should commit in sync mode" do
+      expect {
+        consumer.commit(nil, true)
+      }.not_to raise_error
+    end
 
-      it "should commit in sync mode" do
-        expect {
-          consumer.commit(nil, true)
-        }.not_to raise_error
-      end
+    it "should only accept a topic partition list in commit if not nil" do
+      expect {
+        consumer.commit("list")
+      }.to raise_error TypeError
     end
 
     context "with a committed consumer" do
@@ -557,43 +372,39 @@ describe Rdkafka::Consumer do
         }.to raise_error(Rdkafka::RdkafkaError)
       end
 
-      describe "#committed" do
-        it "should fetch the committed offsets for the current assignment" do
-          partitions = consumer.committed.to_h["consume_test_topic"]
-          expect(partitions).not_to be_nil
-          expect(partitions[0].offset).to eq 1
-        end
+      it "should fetch the committed offsets for the current assignment" do
+        partitions = consumer.committed.to_h["consume_test_topic"]
+        expect(partitions).not_to be_nil
+        expect(partitions[0].offset).to eq 1
+      end
 
-        it "should fetch the committed offsets for a specified topic partition list" do
-          list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-            list.add_topic("consume_test_topic", [0, 1, 2])
-          end
-          partitions = consumer.committed(list).to_h["consume_test_topic"]
-          expect(partitions).not_to be_nil
-          expect(partitions[0].offset).to eq 1
-          expect(partitions[1].offset).to eq 1
-          expect(partitions[2].offset).to eq 1
+      it "should fetch the committed offsets for a specified topic partition list" do
+        list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic("consume_test_topic", [0, 1, 2])
         end
+        partitions = consumer.committed(list).to_h["consume_test_topic"]
+        expect(partitions).not_to be_nil
+        expect(partitions[0].offset).to eq 1
+        expect(partitions[1].offset).to eq 1
+        expect(partitions[2].offset).to eq 1
+      end
 
-        it "should raise an error when getting committed fails" do
-          expect(Rdkafka::Bindings).to receive(:rd_kafka_committed).and_return(20)
-          list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-            list.add_topic("consume_test_topic", [0, 1, 2])
-          end
-          expect {
-            consumer.committed(list)
-          }.to raise_error Rdkafka::RdkafkaError
+      it "should raise an error when getting committed fails" do
+        expect(Rdkafka::Bindings).to receive(:rd_kafka_committed).and_return(20)
+        list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic("consume_test_topic", [0, 1, 2])
         end
+        expect {
+          consumer.committed(list)
+        }.to raise_error Rdkafka::RdkafkaError
       end
 
       describe "#store_offset" do
-        let(:consumer) { rdkafka_consumer_config('enable.auto.offset.store': false).consumer }
-
         before do
           config = {}
           config[:'enable.auto.offset.store'] = false
           config[:'enable.auto.commit'] = false
-          @new_consumer = rdkafka_consumer_config(config).consumer
+          @new_consumer = rdkafka_config(config).consumer
           @new_consumer.subscribe("consume_test_topic")
           wait_for_assignment(@new_consumer)
         end
@@ -605,8 +416,6 @@ describe Rdkafka::Consumer do
         it "should store the offset for a message" do
           @new_consumer.store_offset(message)
           @new_consumer.commit
-
-          # TODO use position here, should be at offset
 
           list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
             list.add_topic("consume_test_topic", [0, 1, 2])
@@ -621,43 +430,6 @@ describe Rdkafka::Consumer do
           expect {
             @new_consumer.store_offset(message)
           }.to raise_error Rdkafka::RdkafkaError
-        end
-
-        describe "#position" do
-          it "should fetch the positions for the current assignment" do
-            consumer.store_offset(message)
-
-            partitions = consumer.position.to_h["consume_test_topic"]
-            expect(partitions).not_to be_nil
-            expect(partitions[0].offset).to eq message.offset + 1
-          end
-
-          it "should fetch the positions for a specified assignment" do
-            consumer.store_offset(message)
-
-            list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-              list.add_topic_and_partitions_with_offsets("consume_test_topic", 0 => nil, 1 => nil, 2 => nil)
-            end
-            partitions = consumer.position(list).to_h["consume_test_topic"]
-            expect(partitions).not_to be_nil
-            expect(partitions[0].offset).to eq message.offset + 1
-          end
-
-          it "should raise an error when getting the position fails" do
-            expect(Rdkafka::Bindings).to receive(:rd_kafka_position).and_return(20)
-
-            expect {
-              consumer.position
-            }.to raise_error(Rdkafka::RdkafkaError)
-          end
-        end
-
-        context "when trying to use with enable.auto.offset.store set to true" do
-          let(:consumer) { rdkafka_consumer_config('enable.auto.offset.store': true).consumer }
-
-          it "expect to raise invalid configuration error" do
-            expect { consumer.store_offset(message) }.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
-          end
         end
       end
     end
@@ -687,13 +459,13 @@ describe Rdkafka::Consumer do
   end
 
   describe "#lag" do
-    let(:consumer) { rdkafka_consumer_config(:"enable.partition.eof" => true).consumer }
+    let(:config) { rdkafka_config(:"enable.partition.eof" => true) }
 
     it "should calculate the consumer lag" do
       # Make sure there's a message in every partition and
       # wait for the message to make sure everything is committed.
       (0..2).each do |i|
-        producer.produce(
+        report = producer.produce(
           topic:     "consume_test_topic",
           key:       "key lag #{i}",
           partition: i
@@ -736,7 +508,7 @@ describe Rdkafka::Consumer do
 
       # Produce message on every topic again
       (0..2).each do |i|
-        producer.produce(
+        report = producer.produce(
           topic:     "consume_test_topic",
           key:       "key lag #{i}",
           partition: i
@@ -822,7 +594,7 @@ describe Rdkafka::Consumer do
   end
 
   describe "#poll with headers" do
-    it "should return message with headers using string keys (when produced with symbol keys)" do
+    it "should return message with headers" do
       report = producer.produce(
         topic:     "consume_test_topic",
         key:       "key headers",
@@ -832,20 +604,7 @@ describe Rdkafka::Consumer do
       message = wait_for_message(topic: "consume_test_topic", consumer: consumer, delivery_report: report)
       expect(message).to be
       expect(message.key).to eq('key headers')
-      expect(message.headers).to include('foo' => 'bar')
-    end
-
-    it "should return message with headers using string keys (when produced with string keys)" do
-      report = producer.produce(
-        topic:     "consume_test_topic",
-        key:       "key headers",
-        headers:   { 'foo' => 'bar' }
-      ).wait
-
-      message = wait_for_message(topic: "consume_test_topic", consumer: consumer, delivery_report: report)
-      expect(message).to be
-      expect(message.key).to eq('key headers')
-      expect(message.headers).to include('foo' => 'bar')
+      expect(message.headers).to include(foo: 'bar')
     end
 
     it "should return message with no headers" do
@@ -940,7 +699,7 @@ describe Rdkafka::Consumer do
       n.times do |i|
         handles << producer.produce(
           topic:     topic_name,
-          payload:   i % 10 == 0 ? nil : Time.new.to_f.to_s,
+          payload:   Time.new.to_f.to_s,
           key:       i.to_s,
           partition: 0
         )
@@ -965,8 +724,7 @@ describe Rdkafka::Consumer do
       #
       # This is, in effect, an integration test and the subsequent specs are
       # unit tests.
-      admin = rdkafka_config.admin
-      create_topic_handle = admin.create_topic(topic_name, 1, 1)
+      create_topic_handle = rdkafka_config.admin.create_topic(topic_name, 1, 1)
       create_topic_handle.wait(max_wait_timeout: 15.0)
       consumer.subscribe(topic_name)
       produce_n 42
@@ -979,7 +737,6 @@ describe Rdkafka::Consumer do
       expect(all_yields.flatten.size).to eq 42
       expect(all_yields.size).to be > 4
       expect(all_yields.flatten.map(&:key)).to eq (0..41).map { |x| x.to_s }
-      admin.close
     end
 
     it "should batch poll results and yield arrays of messages" do
@@ -1022,15 +779,13 @@ describe Rdkafka::Consumer do
     end
 
     it "should yield [] if nothing is received before the timeout" do
-      admin = rdkafka_config.admin
-      create_topic_handle = admin.create_topic(topic_name, 1, 1)
+      create_topic_handle = rdkafka_config.admin.create_topic(topic_name, 1, 1)
       create_topic_handle.wait(max_wait_timeout: 15.0)
       consumer.subscribe(topic_name)
       consumer.each_batch do |batch|
         expect(batch).to eq([])
         break
       end
-      admin.close
     end
 
     it "should yield batchs of max_items in size if messages are already fetched" do
@@ -1069,14 +824,11 @@ describe Rdkafka::Consumer do
 
     context "error raised from poll and yield_on_error is true" do
       it "should yield buffered exceptions on rebalance, then break" do
-        config = rdkafka_consumer_config(
-          {
-            :"enable.auto.commit" => false,
-            :"enable.auto.offset.store" => false
-          }
-        )
+        config = rdkafka_config({:"enable.auto.commit" => false,
+                                 :"enable.auto.offset.store" => false })
         consumer = config.consumer
         consumer.subscribe(topic_name)
+        loop_count = 0
         batches_yielded = []
         exceptions_yielded = []
         each_batch_iterations = 0
@@ -1107,20 +859,16 @@ describe Rdkafka::Consumer do
         expect(batches_yielded.first.size).to eq 2
         expect(exceptions_yielded.flatten.size).to eq 1
         expect(exceptions_yielded.flatten.first).to be_instance_of(Rdkafka::RdkafkaError)
-        consumer.close
       end
     end
 
     context "error raised from poll and yield_on_error is false" do
       it "should yield buffered exceptions on rebalance, then break" do
-        config = rdkafka_consumer_config(
-          {
-            :"enable.auto.commit" => false,
-            :"enable.auto.offset.store" => false
-          }
-        )
+        config = rdkafka_config({:"enable.auto.commit" => false,
+                                 :"enable.auto.offset.store" => false })
         consumer = config.consumer
         consumer.subscribe(topic_name)
+        loop_count = 0
         batches_yielded = []
         exceptions_yielded = []
         each_batch_iterations = 0
@@ -1149,162 +897,64 @@ describe Rdkafka::Consumer do
         expect(each_batch_iterations).to eq 0
         expect(batches_yielded.size).to eq 0
         expect(exceptions_yielded.size).to eq 0
-        consumer.close
       end
-    end
-  end
-
-  describe "#offsets_for_times" do
-    it "should raise when not TopicPartitionList" do
-      expect { consumer.offsets_for_times([]) }.to raise_error(TypeError)
-    end
-
-    it "should raise an error when offsets_for_times fails" do
-      tpl = Rdkafka::Consumer::TopicPartitionList.new
-
-      expect(Rdkafka::Bindings).to receive(:rd_kafka_offsets_for_times).and_return(7)
-
-      expect { consumer.offsets_for_times(tpl) }.to raise_error(Rdkafka::RdkafkaError)
-    end
-
-    context "when subscribed" do
-      let(:timeout) { 1000 }
-
-      before do
-        consumer.subscribe("consume_test_topic")
-
-        # 1. partitions are assigned
-        wait_for_assignment(consumer)
-        expect(consumer.assignment).not_to be_empty
-
-        # 2. eat unrelated messages
-        while(consumer.poll(timeout)) do; end
-      end
-
-      after { consumer.unsubscribe }
-
-      def send_one_message(val)
-        producer.produce(
-          topic:     "consume_test_topic",
-          payload:   "payload #{val}",
-          key:       "key 0",
-          partition: 0
-        ).wait
-      end
-
-      it "returns a TopicParticionList with updated offsets" do
-        send_one_message("a")
-        send_one_message("b")
-        send_one_message("c")
-
-        consumer.poll(timeout)
-        message = consumer.poll(timeout)
-        consumer.poll(timeout)
-
-        tpl = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-          list.add_topic_and_partitions_with_offsets(
-            "consume_test_topic",
-            [
-              [0, message.timestamp]
-            ]
-          )
-        end
-
-        tpl_response = consumer.offsets_for_times(tpl)
-
-        expect(tpl_response.to_h["consume_test_topic"][0].offset).to eq message.offset
-      end
-    end
-  end
-
-  # Only relevant in case of a consumer with separate queues
-  describe '#events_poll' do
-    let(:stats) { [] }
-
-    before { Rdkafka::Config.statistics_callback = ->(published) { stats << published } }
-
-    after { Rdkafka::Config.statistics_callback = nil }
-
-    let(:consumer) do
-      config = rdkafka_consumer_config('statistics.interval.ms': 100)
-      config.consumer_poll_set = false
-      config.consumer
-    end
-
-    it "expect to run events_poll, operate and propagate stats on events_poll and not poll" do
-      consumer.subscribe("consume_test_topic")
-      consumer.poll(1_000)
-      expect(stats).to be_empty
-      consumer.events_poll(-1)
-      expect(stats).not_to be_empty
-    end
-  end
-
-  describe '#consumer_group_metadata_pointer' do
-    let(:pointer) { consumer.consumer_group_metadata_pointer }
-
-    after { Rdkafka::Bindings.rd_kafka_consumer_group_metadata_destroy(pointer) }
-
-    it 'expect to return a pointer' do
-      expect(pointer).to be_a(FFI::Pointer)
     end
   end
 
   describe "a rebalance listener" do
-    let(:consumer) do
-      config = rdkafka_consumer_config
+    it "should get notifications" do
+      listener = Struct.new(:queue) do
+        def on_partitions_assigned(consumer, list)
+          collect(:assign, list)
+        end
+
+        def on_partitions_revoked(consumer, list)
+          collect(:revoke, list)
+        end
+
+        def collect(name, list)
+          partitions = list.to_h.map { |key, values| [key, values.map(&:partition)] }.flatten
+          queue << ([name] + partitions)
+        end
+      end.new([])
+
+      notify_listener(listener)
+
+      expect(listener.queue).to eq([
+        [:assign, "consume_test_topic", 0, 1, 2],
+        [:revoke, "consume_test_topic", 0, 1, 2]
+      ])
+    end
+
+    it 'should handle callback exceptions' do
+      listener = Struct.new(:queue) do
+        def on_partitions_assigned(consumer, list)
+          queue << :assigned
+          raise 'boom'
+        end
+
+        def on_partitions_revoked(consumer, list)
+          queue << :revoked
+          raise 'boom'
+        end
+      end.new([])
+
+      notify_listener(listener)
+
+      expect(listener.queue).to eq([:assigned, :revoked])
+    end
+
+    def notify_listener(listener)
+      # 1. subscribe and poll
       config.consumer_rebalance_listener = listener
-      config.consumer
-    end
+      consumer.subscribe("consume_test_topic")
+      wait_for_assignment(consumer)
+      consumer.poll(100)
 
-    context "with a working listener" do
-      let(:listener) do
-        Struct.new(:queue) do
-          def on_partitions_assigned(list)
-            collect(:assign, list)
-          end
-
-          def on_partitions_revoked(list)
-            collect(:revoke, list)
-          end
-
-          def collect(name, list)
-            partitions = list.to_h.map { |key, values| [key, values.map(&:partition)] }.flatten
-            queue << ([name] + partitions)
-          end
-        end.new([])
-      end
-
-      it "should get notifications" do
-        notify_listener(listener)
-
-        expect(listener.queue).to eq([
-          [:assign, "consume_test_topic", 0, 1, 2],
-          [:revoke, "consume_test_topic", 0, 1, 2]
-        ])
-      end
-    end
-
-    context "with a broken listener" do
-      let(:listener) do
-        Struct.new(:queue) do
-          def on_partitions_assigned(list)
-            queue << :assigned
-            raise 'boom'
-          end
-
-          def on_partitions_revoked(list)
-            queue << :revoked
-            raise 'boom'
-          end
-        end.new([])
-      end
-
-      it 'should handle callback exceptions' do
-        notify_listener(listener)
-
-        expect(listener.queue).to eq([:assigned, :revoked])
-      end
+      # 2. unsubscribe
+      consumer.unsubscribe
+      wait_for_unassignment(consumer)
+      consumer.close
     end
   end
 
@@ -1324,7 +974,7 @@ describe Rdkafka::Consumer do
         :assign                  => [ nil ],
         :assignment              => nil,
         :committed               => [],
-        :query_watermark_offsets => [ nil, nil ]
+        :query_watermark_offsets => [ nil, nil ],
     }.each do |method, args|
       it "raises an exception if #{method} is called" do
         expect {
@@ -1334,108 +984,6 @@ describe Rdkafka::Consumer do
             consumer.public_send(method, *args)
           end
         }.to raise_exception(Rdkafka::ClosedConsumerError, /#{method.to_s}/)
-      end
-    end
-  end
-
-  it "provides a finalizer that closes the native kafka client" do
-    expect(consumer.closed?).to eq(false)
-
-    consumer.finalizer.call("some-ignored-object-id")
-
-    expect(consumer.closed?).to eq(true)
-  end
-
-  context "when the rebalance protocol is cooperative" do
-    let(:consumer) do
-      config = rdkafka_consumer_config(
-        {
-          :"partition.assignment.strategy" => "cooperative-sticky",
-          :"debug" => "consumer",
-        }
-      )
-      config.consumer_rebalance_listener = listener
-      config.consumer
-    end
-
-    let(:listener) do
-      Struct.new(:queue) do
-        def on_partitions_assigned(list)
-          collect(:assign, list)
-        end
-
-        def on_partitions_revoked(list)
-          collect(:revoke, list)
-        end
-
-        def collect(name, list)
-          partitions = list.to_h.map { |key, values| [key, values.map(&:partition)] }.flatten
-          queue << ([name] + partitions)
-        end
-      end.new([])
-    end
-
-    it "should be able to assign and unassign partitions using the cooperative partition assignment APIs" do
-      notify_listener(listener) do
-        handles = []
-        10.times do
-          handles << producer.produce(
-            topic:     "consume_test_topic",
-            payload:   "payload 1",
-            key:       "key 1",
-            partition: 0
-          )
-        end
-        handles.each(&:wait)
-
-        consumer.subscribe("consume_test_topic")
-        # Check the first 10 messages. Then close the consumer, which
-        # should break the each loop.
-        consumer.each_with_index do |message, i|
-          expect(message).to be_a Rdkafka::Consumer::Message
-          break if i == 10
-        end
-      end
-
-      expect(listener.queue).to eq([
-        [:assign, "consume_test_topic", 0, 1, 2],
-        [:revoke, "consume_test_topic", 0, 1, 2]
-      ])
-    end
-  end
-
-  describe '#oauthbearer_set_token' do
-    context 'when sasl not configured' do
-      it 'should return RD_KAFKA_RESP_ERR__STATE' do
-        response = consumer.oauthbearer_set_token(
-          token: "foo",
-          lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
-          principal_name: "kafka-cluster"
-        )
-        expect(response).to eq(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__STATE)
-      end
-    end
-
-    context 'when sasl configured' do
-      before do
-        $consumer_sasl = rdkafka_producer_config(
-          "security.protocol": "sasl_ssl",
-          "sasl.mechanisms": 'OAUTHBEARER'
-        ).consumer
-      end
-
-      after do
-        $consumer_sasl.close
-      end
-
-      it 'should succeed' do
-
-        response = $consumer_sasl.oauthbearer_set_token(
-          token: "foo",
-          lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
-          principal_name: "kafka-cluster"
-        )
-        expect(response).to eq(0)
       end
     end
   end

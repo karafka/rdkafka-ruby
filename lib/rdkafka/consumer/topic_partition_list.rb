@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 module Rdkafka
   class Consumer
     # A list of topics with their partition information
@@ -36,11 +34,6 @@ module Rdkafka
       # Add a topic with optionally partitions to the list.
       # Calling this method multiple times for the same topic will overwrite the previous configuraton.
       #
-      # @param topic [String] The topic's name
-      # @param partitions [Array<Integer>, Range<Integer>, Integer] The topic's partitions or partition count
-      #
-      # @return [nil]
-      #
       # @example Add a topic with unassigned partitions
       #   tpl.add_topic("topic")
       #
@@ -50,6 +43,10 @@ module Rdkafka
       # @example Add a topic with all topics up to a count
       #   tpl.add_topic("topic", 9)
       #
+      # @param topic [String] The topic's name
+      # @param partitions [Array<Integer>, Range<Integer>, Integer] The topic's partitions or partition count
+      #
+      # @return [nil]
       def add_topic(topic, partitions=nil)
         if partitions.nil?
           @data[topic.to_s] = nil
@@ -91,11 +88,11 @@ module Rdkafka
 
       # Create a new topic partition list based of a native one.
       #
-      # @private
-      #
       # @param pointer [FFI::Pointer] Optional pointer to an existing native list. Its contents will be copied.
       #
       # @return [TopicPartitionList]
+      #
+      # @private
       def self.from_native_tpl(pointer)
         # Data to be moved into the tpl
         data = {}
@@ -128,8 +125,8 @@ module Rdkafka
       #
       # The pointer will be cleaned by `rd_kafka_topic_partition_list_destroy` when GC releases it.
       #
-      # @private
       # @return [FFI::Pointer]
+      # @private
       def to_native_tpl
         tpl = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(count)
 
@@ -143,13 +140,11 @@ module Rdkafka
               )
 
               if p.offset
-                offset = p.offset.is_a?(Time) ? p.offset.to_f * 1_000 : p.offset
-
                 Rdkafka::Bindings.rd_kafka_topic_partition_list_set_offset(
                   tpl,
                   topic,
                   p.partition,
-                  offset
+                  p.offset
                 )
               end
             end

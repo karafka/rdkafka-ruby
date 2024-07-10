@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+require "spec_helper"
 
 describe Rdkafka::Admin::DeleteTopicHandle do
   let(:response) { 0 }

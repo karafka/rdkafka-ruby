@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 module Rdkafka
   class Admin
     class CreateTopicReport
@@ -16,7 +14,7 @@ module Rdkafka
           @error_string = error_string.read_string
         end
         if result_name != FFI::Pointer::NULL
-          @result_name = result_name.read_string
+          @result_name = @result_name = result_name.read_string
         end
       end
     end

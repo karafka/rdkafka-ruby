@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+require "spec_helper"
 
 describe Rdkafka::Admin::CreateTopicReport do
   subject { Rdkafka::Admin::CreateTopicReport.new(

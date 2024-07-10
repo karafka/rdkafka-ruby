@@ -1,24 +1,20 @@
-# frozen_string_literal: true
-
 module Rdkafka
   class Consumer
-    # Interface to return headers for a consumer message
-    module Headers
-      EMPTY_HEADERS = {}.freeze
-
-      # Reads a librdkafka native message's headers and returns them as a Ruby Hash
+    # A message headers
+    class Headers
+      # Reads a native kafka's message header into ruby's hash
+      #
+      # @return [Hash<String, String>] a message headers
+      #
+      # @raise [Rdkafka::RdkafkaError] when fail to read headers
       #
       # @private
-      #
-      # @param [Rdkafka::Bindings::Message] native_message
-      # @return [Hash<String, String>] headers Hash for the native_message
-      # @raise [Rdkafka::RdkafkaError] when fail to read headers
       def self.from_native(native_message)
         headers_ptrptr = FFI::MemoryPointer.new(:pointer)
         err = Rdkafka::Bindings.rd_kafka_message_headers(native_message, headers_ptrptr)
 
         if err == Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT
-          return EMPTY_HEADERS
+          return {}
         elsif err != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
           raise Rdkafka::RdkafkaError.new(err, "Error reading message headers")
         end
@@ -28,7 +24,6 @@ module Rdkafka
         name_ptrptr = FFI::MemoryPointer.new(:pointer)
         value_ptrptr = FFI::MemoryPointer.new(:pointer)
         size_ptr = Rdkafka::Bindings::SizePtr.new
-
         headers = {}
 
         idx = 0
@@ -56,12 +51,12 @@ module Rdkafka
 
           value = value_ptr.read_string(size)
 
-          headers[name] = value
+          headers[name.to_sym] = value
 
           idx += 1
         end
 
-        headers.freeze
+        headers
       end
     end
   end

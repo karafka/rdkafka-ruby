@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+require "spec_helper"
 
 describe Rdkafka::Consumer::TopicPartitionList do
   it "should create a new list and add unassigned topics" do
@@ -218,25 +218,6 @@ describe Rdkafka::Consumer::TopicPartitionList do
       other = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
 
       expect(list).to eq other
-    end
-
-    it "should create a native list with timetamp offsets if offsets are Time" do
-      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-        list.add_topic_and_partitions_with_offsets("topic", 0 => Time.at(1505069646, 250_000))
-      end
-
-      tpl = list.to_native_tpl
-
-      compare_list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-        list.add_topic_and_partitions_with_offsets(
-          "topic",
-          0 => (Time.at(1505069646, 250_000).to_f * 1000).floor
-        )
-      end
-
-      native_list = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
-
-      expect(native_list).to eq compare_list
     end
   end
 end

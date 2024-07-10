@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+require "spec_helper"
 
 describe Rdkafka::RdkafkaError do
   it "should raise a type error for a nil response" do

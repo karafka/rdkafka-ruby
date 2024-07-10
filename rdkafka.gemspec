@@ -1,13 +1,12 @@
-# frozen_string_literal: true
-
 require File.expand_path('lib/rdkafka/version', __dir__)
 
 Gem::Specification.new do |gem|
-  gem.authors = ['Thijs Cadier', 'Maciej Mensfeld']
-  gem.email = ["contact@karafka.io"]
+  gem.authors = ['Thijs Cadier']
+  gem.email = ["thijs@appsignal.com"]
   gem.description = "Modern Kafka client library for Ruby based on librdkafka"
-  gem.summary = "The rdkafka gem is a modern Kafka client library for Ruby based on librdkafka. It wraps the production-ready C client using the ffi gem and targets Kafka 1.0+ and Ruby 2.7+."
+  gem.summary = "The rdkafka gem is a modern Kafka client library for Ruby based on librdkafka. It wraps the production-ready C client using the ffi gem and targets Kafka 1.0+ and Ruby 2.4+."
   gem.license = 'MIT'
+  gem.homepage = 'https://github.com/thijsc/rdkafka-ruby'
 
   gem.files = `git ls-files`.split($\)
   gem.executables = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
@@ -15,32 +14,15 @@ Gem::Specification.new do |gem|
   gem.name = 'rdkafka'
   gem.require_paths = ['lib']
   gem.version = Rdkafka::VERSION
-  gem.required_ruby_version = '>= 3.0'
+  gem.required_ruby_version = '>= 2.4'
   gem.extensions = %w(ext/Rakefile)
-  gem.cert_chain = %w[certs/cert_chain.pem]
 
-  if $PROGRAM_NAME.end_with?('gem')
-    gem.signing_key = File.expand_path('~/.ssh/gem-private_key.pem')
-  end
+  gem.add_dependency 'ffi', '~> 1.9'
+  gem.add_dependency 'mini_portile2', '~> 2.1'
+  gem.add_dependency 'rake', '>= 12.3'
 
-  gem.add_dependency 'ffi', '~> 1.15'
-  gem.add_dependency 'mini_portile2', '~> 2.6'
-  gem.add_dependency 'rake', '> 12'
-
-  gem.add_development_dependency 'pry'
+  gem.add_development_dependency 'pry', '~> 0.10'
   gem.add_development_dependency 'rspec', '~> 3.5'
-  gem.add_development_dependency 'rake'
-  gem.add_development_dependency 'simplecov'
-  gem.add_development_dependency 'guard'
-  gem.add_development_dependency 'guard-rspec'
-
-  gem.metadata = {
-    'funding_uri' => 'https://karafka.io/#become-pro',
-    'homepage_uri' => 'https://karafka.io',
-    'changelog_uri' => 'https://github.com/karafka/rdkafka-ruby/blob/main/CHANGELOG.md',
-    'bug_tracker_uri' => 'https://github.com/karafka/rdkafka-ruby/issues',
-    'source_code_uri' => 'https://github.com/karafka/rdkafka-ruby',
-    'documentation_uri' => 'https://github.com/karafka/rdkafka-ruby/blob/main/README.md',
-    'rubygems_mfa_required' => 'true'
-  }
+  gem.add_development_dependency 'rake', '~> 12.0'
+  gem.add_development_dependency 'simplecov', '~> 0.15'
 end

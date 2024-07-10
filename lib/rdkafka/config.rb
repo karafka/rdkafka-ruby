@@ -1,9 +1,9 @@
-# frozen_string_literal: true
+require "logger"
 
 module Rdkafka
   # Configuration for a Kafka consumer or producer. You can create an instance and use
   # the consumer and producer methods to create a client. Documentation of the available
-  # configuration options is available on https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md.
+  # configuration options is available on https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md.
   class Config
     # @private
     @@logger = Logger.new(STDOUT)
@@ -12,16 +12,16 @@ module Rdkafka
     # @private
     @@error_callback = nil
     # @private
-    @@opaques = ObjectSpace::WeakMap.new
+    @@opaques = {}
     # @private
     @@log_queue = Queue.new
-    # We memoize thread on the first log flush
-    # This allows us also to restart logger thread on forks
-    @@log_thread = nil
-    # @private
-    @@log_mutex = Mutex.new
-    # @private
-    @@oauthbearer_token_refresh_callback = nil
+
+    Thread.start do
+      loop do
+        severity, msg = @@log_queue.pop
+        @@logger.add(severity, msg)
+      end
+    end
 
     # Returns the current logger, by default this is a logger to stdout.
     #
@@ -30,23 +30,6 @@ module Rdkafka
       @@logger
     end
 
-    # Makes sure that there is a thread for consuming logs
-    # We do not spawn thread immediately and we need to check if it operates to support forking
-    def self.ensure_log_thread
-      return if @@log_thread && @@log_thread.alive?
-
-      @@log_mutex.synchronize do
-        # Restart if dead (fork, crash)
-        @@log_thread = nil if @@log_thread && !@@log_thread.alive?
-
-        @@log_thread ||= Thread.start do
-          loop do
-            severity, msg = @@log_queue.pop
-            @@logger.add(severity, msg)
-          end
-        end
-      end
-    end
 
     # Returns a queue whose contents will be passed to the configured logger. Each entry
     # should follow the format [Logger::Severity, String]. The benefit over calling the
@@ -64,18 +47,18 @@ module Rdkafka
     # @return [nil]
     def self.logger=(logger)
       raise NoLoggerError if logger.nil?
-      @@logger = logger
+      @@logger=logger
     end
 
     # Set a callback that will be called every time the underlying client emits statistics.
     # You can configure if and how often this happens using `statistics.interval.ms`.
-    # The callback is called with a hash that's documented here: https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
+    # The callback is called with a hash that's documented here: https://github.com/edenhill/librdkafka/blob/master/STATISTICS.md
     #
     # @param callback [Proc, #call] The callback
     #
     # @return [nil]
     def self.statistics_callback=(callback)
-      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call) || callback == nil
+      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call)
       @@statistics_callback = callback
     end
 
@@ -105,24 +88,6 @@ module Rdkafka
       @@error_callback
     end
 
-    # Sets the SASL/OAUTHBEARER token refresh callback.
-    # This callback will be triggered when it is time to refresh the client's OAUTHBEARER token
-    #
-    # @param callback [Proc, #call] The callback
-    #
-    # @return [nil]
-    def self.oauthbearer_token_refresh_callback=(callback)
-      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call) || callback == nil
-      @@oauthbearer_token_refresh_callback = callback
-    end
-
-    # Returns the current oauthbearer_token_refresh_callback callback, by default this is nil.
-    #
-    # @return [Proc, nil]
-    def self.oauthbearer_token_refresh_callback
-      @@oauthbearer_token_refresh_callback
-    end
-
     # @private
     def self.opaques
       @@opaques
@@ -148,7 +113,6 @@ module Rdkafka
     def initialize(config_hash = {})
       @config_hash = DEFAULT_CONFIG.merge(config_hash)
       @consumer_rebalance_listener = nil
-      @consumer_poll_set = true
     end
 
     # Set a config option.
@@ -177,31 +141,13 @@ module Rdkafka
       @consumer_rebalance_listener = listener
     end
 
-    # Should we use a single queue for the underlying consumer and events.
-    #
-    # This is an advanced API that allows for more granular control of the polling process.
-    # When this value is set to `false` (`true` by defualt), there will be two queues that need to
-    # be polled:
-    #   - main librdkafka queue for events
-    #   - consumer queue with messages and rebalances
-    #
-    # It is recommended to use the defaults and only set it to `false` in advance multi-threaded
-    # and complex cases where granular events handling control is needed.
-    #
-    # @param poll_set [Boolean]
-    def consumer_poll_set=(poll_set)
-      @consumer_poll_set = poll_set
-    end
-
-    # Creates a consumer with this configuration.
-    #
-    # @param native_kafka_auto_start [Boolean] should the native kafka operations be started
-    #   automatically. Defaults to true. Set to false only when doing complex initialization.
-    # @return [Consumer] The created consumer
+    # Create a consumer with this configuration.
     #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    def consumer(native_kafka_auto_start: true)
+    #
+    # @return [Consumer] The created consumer
+    def consumer
       opaque = Opaque.new
       config = native_config(opaque)
 
@@ -210,32 +156,22 @@ module Rdkafka
         Rdkafka::Bindings.rd_kafka_conf_set_rebalance_cb(config, Rdkafka::Bindings::RebalanceCallback)
       end
 
-      # Create native client
       kafka = native_kafka(config, :rd_kafka_consumer)
 
-      # Redirect the main queue to the consumer queue
-      Rdkafka::Bindings.rd_kafka_poll_set_consumer(kafka) if @consumer_poll_set
+      # Redirect the main queue to the consumer
+      Rdkafka::Bindings.rd_kafka_poll_set_consumer(kafka)
 
       # Return consumer with Kafka client
-      Rdkafka::Consumer.new(
-        Rdkafka::NativeKafka.new(
-          kafka,
-          run_polling_thread: false,
-          opaque: opaque,
-          auto_start: native_kafka_auto_start
-        )
-      )
+      Rdkafka::Consumer.new(kafka)
     end
 
     # Create a producer with this configuration.
     #
-    # @param native_kafka_auto_start [Boolean] should the native kafka operations be started
-    #   automatically. Defaults to true. Set to false only when doing complex initialization.
-    # @return [Producer] The created producer
-    #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    def producer(native_kafka_auto_start: true)
+    #
+    # @return [Producer] The created producer
+    def producer
       # Create opaque
       opaque = Opaque.new
       # Create Kafka config
@@ -243,46 +179,22 @@ module Rdkafka
       # Set callback to receive delivery reports on config
       Rdkafka::Bindings.rd_kafka_conf_set_dr_msg_cb(config, Rdkafka::Callbacks::DeliveryCallbackFunction)
       # Return producer with Kafka client
-      partitioner_name = self[:partitioner] || self["partitioner"]
-
-      kafka = native_kafka(config, :rd_kafka_producer)
-
-      Rdkafka::Producer.new(
-        Rdkafka::NativeKafka.new(
-          kafka,
-          run_polling_thread: true,
-          opaque: opaque,
-          auto_start: native_kafka_auto_start
-        ),
-        partitioner_name
-      ).tap do |producer|
+      Rdkafka::Producer.new(native_kafka(config, :rd_kafka_producer)).tap do |producer|
         opaque.producer = producer
       end
     end
 
-    # Creates an admin instance with this configuration.
-    #
-    # @param native_kafka_auto_start [Boolean] should the native kafka operations be started
-    #   automatically. Defaults to true. Set to false only when doing complex initialization.
-    # @return [Admin] The created admin instance
+    # Create an admin instance with this configuration.
     #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    def admin(native_kafka_auto_start: true)
+    #
+    # @return [Admin] The created admin instance
+    def admin
       opaque = Opaque.new
       config = native_config(opaque)
       Rdkafka::Bindings.rd_kafka_conf_set_background_event_cb(config, Rdkafka::Callbacks::BackgroundEventCallbackFunction)
-
-      kafka = native_kafka(config, :rd_kafka_producer)
-
-      Rdkafka::Admin.new(
-        Rdkafka::NativeKafka.new(
-          kafka,
-          run_polling_thread: true,
-          opaque: opaque,
-          auto_start: native_kafka_auto_start
-        )
-      )
+      Rdkafka::Admin.new(native_kafka(config, :rd_kafka_producer))
     end
 
     # Error that is returned by the underlying rdkafka error if an invalid configuration option is present.
@@ -298,7 +210,7 @@ module Rdkafka
 
     # This method is only intended to be used to create a client,
     # using it in another way will leak memory.
-    def native_config(opaque = nil)
+    def native_config(opaque=nil)
       Rdkafka::Bindings.rd_kafka_conf_new.tap do |config|
         # Create config
         @config_hash.merge(REQUIRED_CONFIG).each do |key, value|
@@ -334,9 +246,6 @@ module Rdkafka
 
         # Set error callback
         Rdkafka::Bindings.rd_kafka_conf_set_error_cb(config, Rdkafka::Bindings::ErrorCallback)
-
-        # Set oauth callback
-        Rdkafka::Bindings.rd_kafka_conf_set_oauthbearer_token_refresh_cb(config, Rdkafka::Bindings::OAuthbearerTokenRefreshCallback)
       end
     end
 
@@ -369,22 +278,22 @@ module Rdkafka
     attr_accessor :producer
     attr_accessor :consumer_rebalance_listener
 
-    def call_delivery_callback(delivery_report, delivery_handle)
-      producer.call_delivery_callback(delivery_report, delivery_handle) if producer
+    def call_delivery_callback(delivery_handle)
+      producer.call_delivery_callback(delivery_handle) if producer
     end
 
-    def call_on_partitions_assigned(list)
+    def call_on_partitions_assigned(consumer, list)
       return unless consumer_rebalance_listener
       return unless consumer_rebalance_listener.respond_to?(:on_partitions_assigned)
 
-      consumer_rebalance_listener.on_partitions_assigned(list)
+      consumer_rebalance_listener.on_partitions_assigned(consumer, list)
     end
 
-    def call_on_partitions_revoked(list)
+    def call_on_partitions_revoked(consumer, list)
       return unless consumer_rebalance_listener
       return unless consumer_rebalance_listener.respond_to?(:on_partitions_revoked)
 
-      consumer_rebalance_listener.on_partitions_revoked(list)
+      consumer_rebalance_listener.on_partitions_revoked(consumer, list)
     end
   end
 end

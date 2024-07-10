@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 module Rdkafka
   class Consumer
     # A message that was consumed from a topic.
@@ -20,7 +18,7 @@ module Rdkafka
       # @return [String, nil]
       attr_reader :key
 
-      # This message's offset in its partition
+      # This message's offset in it's partition
       # @return [Integer]
       attr_reader :offset
 

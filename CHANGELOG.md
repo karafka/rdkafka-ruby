@@ -1,7 +1,8 @@
 # Rdkafka Changelog
 
-## 0.16.1 (Unreleased)
+## 0.16.1 (2024-07-10)
 - [Feature] Add `#seek_by` to be able to seek for a message by topic, partition and offset (zinahia)
+- [Fix] Switch to local release of librdkafka to mitigate its unavailability.
 
 ## 0.16.0 (2024-06-17)
 - **[Breaking]** Messages without headers returned by `#poll` contain frozen empty hash.

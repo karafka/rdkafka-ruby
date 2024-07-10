@@ -22,8 +22,10 @@ task :default => :clean do
       ENV["LDFLAGS"] = "-L#{homebrew_prefix}/lib" unless ENV["LDFLAGS"]
     end
 
+    releases = File.expand_path(File.join(File.dirname(__FILE__), '../dist'))
+
     recipe.files << {
-      :url => "https://codeload.github.com/edenhill/librdkafka/tar.gz/v#{Rdkafka::LIBRDKAFKA_VERSION}",
+      :url => "file://#{releases}/librdkafka_#{Rdkafka::LIBRDKAFKA_VERSION}.tar.gz",
       :sha256 => Rdkafka::LIBRDKAFKA_SOURCE_SHA256
     }
     recipe.configure_options = ["--host=#{recipe.host}"]

@@ -11,6 +11,9 @@
 - [Enhancement] Save two objects on message produced and lower CPU usage on message produced with small improvements.
 - [Fix] Remove support for Ruby 2.7. Supporting it was a bug since rest of the karafka ecosystem no longer supports it.
 
+## 0.15.2 (2024-07-10)
+- [Fix] Switch to local release of librdkafka to mitigate its unavailability.
+
 ## 0.15.1 (2024-05-09)
 - **[Feature]** Provide ability to use topic config on a producer for custom behaviors per dispatch.
 - [Enhancement] Use topic config reference cache for messages production to prevent topic objects allocation with each message.

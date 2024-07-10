@@ -24,6 +24,9 @@
 - **[Feature]** Support incremental config describe + alter API (mensfeld)
 - [Enhancement] name polling Thread as `rdkafka.native_kafka#<name>` (nijikon)
 
+## 0.14.11 (2024-07-10)
+- [Fix] Switch to local release of librdkafka to mitigate its unavailability.
+
 ## 0.14.10 (2024-02-08)
 - [Fix] Background logger stops working after forking causing memory leaks (mensfeld).
 

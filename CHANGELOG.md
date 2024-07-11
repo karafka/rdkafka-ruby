@@ -74,6 +74,9 @@
 - [Change] Update Kafka Docker with Confluent KRaft (mensfeld)
 - [Change] Update librdkafka repo reference from edenhill to confluentinc (mensfeld)
 
+## 0.13.1 (2024-07-10)
+- [Fix] Switch to local release of librdkafka to mitigate its unavailability.
+
 ## 0.13.0 (2023-07-24)
 - Support cooperative sticky partition assignment in the rebalance callback (methodmissing)
 - Support both string and symbol header keys (ColinDKelley)

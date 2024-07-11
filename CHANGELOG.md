@@ -93,6 +93,9 @@
 - Make metadata request timeout configurable (mensfeld)
 - call_on_partitions_assigned and call_on_partitions_revoked only get a tpl passed in (thijsc)
 
+## 0.12.1 (2024-07-11)
+- [Fix] Switch to local release of librdkafka to mitigate its unavailability.
+
 ## 0.12.0 (2022-06-17)
 - Bumps librdkafka to 1.9.0
 - Fix crash on empty partition key (mensfeld)

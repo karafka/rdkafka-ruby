@@ -1,3 +1,6 @@
+# 0.12.1 (2024-07-11)
+- [Fix] Switch to local release of librdkafka to mitigate its unavailability.
+
 # 0.12.0
 * Bumps librdkafka to 1.9.0
 

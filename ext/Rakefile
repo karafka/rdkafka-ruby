@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require File.expand_path('../../lib/rdkafka/version', __FILE__)
+require "digest"
 require "fileutils"
 require "open-uri"
 
@@ -71,6 +72,42 @@ task :clean do
   FileUtils.rm_rf File.join(File.dirname(__FILE__), "tmp")
 end
 
+namespace :dist do
+  task :dir do
+    ENV["RDKAFKA_DIST_PATH"] ||= File.expand_path(File.join(File.dirname(__FILE__), '..', 'dist'))
+  end
+
+  task :file => "dist:dir" do
+    ENV["RDKAFKA_DIST_FILE"] ||= File.join(ENV["RDKAFKA_DIST_PATH"], "librdkafka_#{Rdkafka::LIBRDKAFKA_VERSION}.tar.gz")
+  end
+
+  task :clean => "dist:file" do
+    Dir.glob(File.join("#{ENV['RDKAFKA_DIST_PATH']}", "*")).each do |filename|
+      next if filename.include? ENV["RDKAFKA_DIST_FILE"]
+
+      FileUtils.rm_rf filename
+    end
+  end
+
+  task :download => "dist:file" do
+    version = Rdkafka::LIBRDKAFKA_VERSION
+    librdkafka_download = "https://codeload.github.com/confluentinc/librdkafka/tar.gz/v#{version}"
+
+    URI.open(librdkafka_download) do |file|
+      filename = ENV["RDKAFKA_DIST_FILE"]
+      data     = file.read
+
+      if Digest::SHA256.hexdigest(data) != Rdkafka::LIBRDKAFKA_SOURCE_SHA256
+        raise "SHA256 does not match downloaded file"
+      end
+
+      File.write(filename, data)
+    end
+  end
+
+  task :update => %w[dist:download dist:clean]
+end
+
 namespace :build do
   desc "Build librdkafka at the given git sha or tag"
   task :git, [:ref] do |task, args|
@@ -78,7 +115,7 @@ namespace :build do
     version = "git-#{ref}"
 
     recipe = MiniPortile.new("librdkafka", version)
-    recipe.files << "https://github.com/edenhill/librdkafka/archive/#{ref}.tar.gz"
+    recipe.files << "https://github.com/confluentinc/librdkafka/archive/#{ref}.tar.gz"
     recipe.configure_options = ["--host=#{recipe.host}","--enable-static", "--enable-zstd"]
     recipe.cook
 

@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.17.0 (Unreleased)
+- [Enhancement] Bump librdkafka to 2.5.0
+
 ## 0.16.1 (2024-07-10)
 - [Feature] Add `#seek_by` to be able to seek for a message by topic, partition and offset (zinahia)
 - [Fix] Switch to local release of librdkafka to mitigate its unavailability.

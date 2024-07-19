@@ -34,7 +34,7 @@ describe Rdkafka::Admin do
   describe '#describe_errors' do
     let(:errors) { admin.class.describe_errors }
 
-    it { expect(errors.size).to eq(168) }
+    it { expect(errors.size).to eq(170) }
     it { expect(errors[-184]).to eq(code: -184, description: 'Local: Queue full', name: '_QUEUE_FULL') }
     it { expect(errors[21]).to eq(code: 21, description: 'Broker: Invalid required acks value', name: 'INVALID_REQUIRED_ACKS') }
   end

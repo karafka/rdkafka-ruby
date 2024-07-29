@@ -26,6 +26,12 @@
 - **[Feature]** Oauthbearer token refresh callback (bruce-szalwinski-he)
 - **[Feature]** Support incremental config describe + alter API (mensfeld)
 - [Enhancement] name polling Thread as `rdkafka.native_kafka#<name>` (nijikon)
+- [Enhancement] Replace time poll based wait engine with an event based to improve response times on blocking operations and wait (nijikon + mensfeld)
+- [Enhancement] Allow for usage of the second regex engine of librdkafka by setting `RDKAFKA_DISABLE_REGEX_EXT` during build (mensfeld)
+- [Enhancement] name polling Thread as `rdkafka.native_kafka#<name>` (nijikon)
+- [Change] Allow for native kafka thread operations deferring and manual start for consumer, producer and admin.
+- [Change] The `wait_timeout` argument in `AbstractHandle.wait` method is deprecated and will be removed in future versions without replacement. We don't rely on it's value anymore (nijikon)
+- [Fix] Fix bogus case/when syntax. Levels 1, 2, and 6 previously defaulted to UNKNOWN (jjowdy)
 
 ## 0.14.11 (2024-07-10)
 - [Fix] Switch to local release of librdkafka to mitigate its unavailability.

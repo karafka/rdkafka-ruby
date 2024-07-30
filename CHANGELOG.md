@@ -3,6 +3,7 @@
 ## 0.17.0 (Unreleased)
 - [Enhancement] Update `librdkafka` to `2.4.0`
 - [Feature] Add `#seek_by` to be able to seek for a message by topic, partition and offset (zinahia)
+- [Change] Remove old producer timeout API warnings.
 - [Fix] Switch to local release of librdkafka to mitigate its unavailability.
 
 ## 0.16.1 (2024-07-10)

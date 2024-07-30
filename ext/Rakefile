@@ -31,6 +31,8 @@ task :default => :clean do
     }
     recipe.configure_options = ["--host=#{recipe.host}"]
 
+    recipe.patch_files = Dir[File.join(releases, 'patches', "*.patch")].sort
+
     # Disable using libc regex engine in favor of the embedded one
     # The default regex engine of librdkafka does not always work exactly as most of the users
     # would expect, hence this flag allows for changing it to the other one
@@ -117,6 +119,7 @@ namespace :build do
     recipe = MiniPortile.new("librdkafka", version)
     recipe.files << "https://github.com/confluentinc/librdkafka/archive/#{ref}.tar.gz"
     recipe.configure_options = ["--host=#{recipe.host}","--enable-static", "--enable-zstd"]
+    recipe.patch_files = Dir[File.join(releases, 'patches', "*.patch")].sort
     recipe.cook
 
     ext = recipe.host.include?("darwin") ? "dylib" : "so"

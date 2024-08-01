@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.17.1 (Unreleased)
+## 0.17.1 (2024-08-01)
 - [Enhancement] Support ability to release patches to librdkafka.
 - [Patch] Patch cooperative-sticky assignments in librdkafka.
 

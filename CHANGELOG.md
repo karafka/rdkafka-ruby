@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.17.0 (Unreleased)
+## 0.17.0 (2024-08-03)
 - [Feature] Add `#seek_by` to be able to seek for a message by topic, partition and offset (zinahia)
 - [Enhancement] Update `librdkafka` to `2.4.0`
 - [Enhancement] Support ability to release patches to librdkafka.

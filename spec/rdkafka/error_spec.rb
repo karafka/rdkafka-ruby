@@ -11,6 +11,12 @@ describe Rdkafka::RdkafkaError do
     expect(Rdkafka::RdkafkaError.new(10, "message prefix").message_prefix).to eq "message prefix"
   end
 
+  it "should have empty frozen details by default" do
+    error = Rdkafka::RdkafkaError.new(10, "message prefix")
+    expect(error.details).to eq({})
+    expect(error.details).to be_frozen
+  end
+
   it "should create an error with a broker message" do
     expect(Rdkafka::RdkafkaError.new(10, broker_message: "broker message").broker_message).to eq "broker message"
   end

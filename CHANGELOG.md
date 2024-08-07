@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.17.2 (Unreleased)
+- [Enhancement] Support returning `#details` for errors that do have topic/partition related extra info.
+
 ## 0.17.1 (2024-08-01)
 - [Enhancement] Support ability to release patches to librdkafka.
 - [Patch] Patch cooperative-sticky assignments in librdkafka.

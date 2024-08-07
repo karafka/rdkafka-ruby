@@ -6,6 +6,9 @@ module Rdkafka
 
   # Error returned by the underlying rdkafka library.
   class RdkafkaError < BaseError
+    # Empty hash for details default allocation
+    EMPTY_HASH = {}.freeze
+
     # The underlying raw error response
     # @return [Integer]
     attr_reader :rdkafka_response
@@ -17,6 +20,10 @@ module Rdkafka
     # Error message sent by the broker
     # @return [String]
     attr_reader :broker_message
+
+    # Optional details hash specific to a given error or empty hash if none or not supported
+    # @return [Hash]
+    attr_reader :details
 
     class << self
       def build_from_c(response_ptr, message_prefix = nil, broker_message: nil)
@@ -54,7 +61,21 @@ module Rdkafka
             message_prefix ||= response_ptr_or_code[:payload].read_string(response_ptr_or_code[:len])
           end
 
-          new(response_ptr_or_code[:err], message_prefix, broker_message: broker_message)
+          details = if response_ptr_or_code[:rkt].null?
+                      EMPTY_HASH
+                    else
+                      {
+                        partition: response_ptr_or_code[:partition],
+                        offset: response_ptr_or_code[:offset],
+                        topic: Bindings.rd_kafka_topic_name(response_ptr_or_code[:rkt])
+                      }.freeze
+                    end
+          new(
+            response_ptr_or_code[:err],
+            message_prefix,
+            broker_message: broker_message,
+            details: details
+          )
         else
           build_from_c(response_ptr_or_code, message_prefix)
         end
@@ -73,7 +94,8 @@ module Rdkafka
       broker_message: nil,
       fatal: false,
       retryable: false,
-      abortable: false
+      abortable: false,
+      details: EMPTY_HASH
     )
       raise TypeError.new("Response has to be an integer") unless response.is_a? Integer
       @rdkafka_response = response
@@ -82,6 +104,7 @@ module Rdkafka
       @fatal = fatal
       @retryable = retryable
       @abortable = abortable
+      @details = details
     end
 
     # This error's code, for example `:partition_eof`, `:msg_size_too_large`.

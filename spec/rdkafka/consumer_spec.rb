@@ -1467,4 +1467,39 @@ describe Rdkafka::Consumer do
       end
     end
   end
+
+  describe "when reaching eof on a topic and eof reporting enabled" do
+    let(:consumer) { rdkafka_consumer_config(:"enable.partition.eof" => true).consumer }
+
+    it "should return proper details" do
+      (0..2).each do |i|
+        producer.produce(
+          topic:     "consume_test_topic",
+          key:       "key lag #{i}",
+          partition: i
+        ).wait
+      end
+
+      # Consume to the end
+      consumer.subscribe("consume_test_topic")
+      eof_count = 0
+      eof_error = nil
+
+      loop do
+        begin
+          consumer.poll(100)
+        rescue Rdkafka::RdkafkaError => error
+          if error.is_partition_eof?
+            eof_error = error
+          end
+          break if eof_error
+        end
+      end
+
+      expect(eof_error.code).to eq(:partition_eof)
+      expect(eof_error.details[:topic]).to eq('consume_test_topic')
+      expect(eof_error.details[:partition]).to be_a(Integer)
+      expect(eof_error.details[:offset]).to be_a(Integer)
+    end
+  end
 end

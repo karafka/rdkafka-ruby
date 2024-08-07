@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.17.2 (Unreleased)
+## 0.17.2 (2024-08-07)
 - [Enhancement] Support returning `#details` for errors that do have topic/partition related extra info.
 
 ## 0.17.1 (2024-08-01)

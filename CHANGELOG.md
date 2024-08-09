@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.17.3 (Unreleased)
+## 0.17.3 (2024-08-09)
 - [Fix] Mitigate a case where FFI would not restart the background events callback dispatcher in forks.
 
 ## 0.17.2 (2024-08-07)

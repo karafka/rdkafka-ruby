@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.17.3 (Unreleased)
+- [Fix] Mitigate a case where FFI would not restart the background events callback dispatcher in forks.
+
 ## 0.17.2 (2024-08-07)
 - [Enhancement] Support returning `#details` for errors that do have topic/partition related extra info.
 

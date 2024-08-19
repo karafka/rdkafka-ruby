@@ -146,6 +146,8 @@ module Rdkafka
     #
     # @return [Config]
     def initialize(config_hash = {})
+      Callbacks.ensure_ffi_running
+
       @config_hash = DEFAULT_CONFIG.merge(config_hash)
       @consumer_rebalance_listener = nil
       @consumer_poll_set = true

@@ -2,7 +2,6 @@
 
 module Rdkafka
   module Callbacks
-
     # Extracts attributes of a rd_kafka_topic_result_t
     #
     # @private
@@ -147,13 +146,6 @@ module Rdkafka
           @results_count = pointer_to_size_t.read_int
         end
       end
-    end
-
-    # FFI Function used for Create Topic and Delete Topic callbacks
-    BackgroundEventCallbackFunction = FFI::Function.new(
-        :void, [:pointer, :pointer, :pointer]
-    ) do |client_ptr, event_ptr, opaque_ptr|
-      BackgroundEventCallback.call(client_ptr, event_ptr, opaque_ptr)
     end
 
     # @private
@@ -348,13 +340,6 @@ module Rdkafka
       end
     end
 
-    # FFI Function used for Message Delivery callbacks
-    DeliveryCallbackFunction = FFI::Function.new(
-        :void, [:pointer, :pointer, :pointer]
-    ) do |client_ptr, message_ptr, opaque_ptr|
-      DeliveryCallback.call(client_ptr, message_ptr, opaque_ptr)
-    end
-
     # @private
     class DeliveryCallback
       def self.call(_, message_ptr, opaque_ptr)
@@ -384,6 +369,45 @@ module Rdkafka
           end
 
           delivery_handle.unlock
+        end
+      end
+    end
+
+    @@mutex = Mutex.new
+    @@current_pid = nil
+
+    class << self
+      # Defines or recreates after fork callbacks that require FFI thread so the callback thread
+      # is always correctly initialized
+      #
+      # @see https://github.com/ffi/ffi/issues/1114
+      def ensure_ffi_running
+        @@mutex.synchronize do
+          return if @@current_pid == ::Process.pid
+
+          if const_defined?(:BackgroundEventCallbackFunction, false)
+            send(:remove_const, :BackgroundEventCallbackFunction)
+            send(:remove_const, :DeliveryCallbackFunction)
+          end
+
+          # FFI Function used for Create Topic and Delete Topic callbacks
+          background_event_callback_function = FFI::Function.new(
+              :void, [:pointer, :pointer, :pointer]
+          ) do |client_ptr, event_ptr, opaque_ptr|
+            BackgroundEventCallback.call(client_ptr, event_ptr, opaque_ptr)
+          end
+
+          # FFI Function used for Message Delivery callbacks
+          delivery_callback_function = FFI::Function.new(
+              :void, [:pointer, :pointer, :pointer]
+          ) do |client_ptr, message_ptr, opaque_ptr|
+            DeliveryCallback.call(client_ptr, message_ptr, opaque_ptr)
+          end
+
+          const_set(:BackgroundEventCallbackFunction, background_event_callback_function)
+          const_set(:DeliveryCallbackFunction, delivery_callback_function)
+
+          @@current_pid = ::Process.pid
         end
       end
     end

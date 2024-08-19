@@ -737,4 +737,18 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
       end
     end
   end
+
+  context "when operating from a fork" do
+    # @see https://github.com/ffi/ffi/issues/1114
+    it 'expect to be able to create topics and run other admin operations without hanging' do
+      # If the FFI issue is not mitigated, this will hang forever
+      pid = fork do
+        admin
+          .create_topic(topic_name, topic_partition_count, topic_replication_factor)
+          .wait
+      end
+
+      Process.wait(pid)
+    end
+  end
 end

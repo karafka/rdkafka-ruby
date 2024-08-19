@@ -2,6 +2,7 @@
 
 ## 0.18.0 (Unreleased)
 - [Enhancement] Update `librdkafka` to `2.5.0`
+- [Fix] Mitigate a case where FFI would not restart the background events callback dispatcher in forks
 
 ## 0.17.0 (2024-08-03)
 - [Feature] Add `#seek_by` to be able to seek for a message by topic, partition and offset (zinahia)

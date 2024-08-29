@@ -360,7 +360,7 @@ module Rdkafka
         partitioner_name = @topics_configs.dig(topic, topic_config_hash, :partitioner) || @partitioner_name
 
         # If the topic is not present, set to -1
-        partition = Rdkafka::Bindings.partitioner(partition_key, partition_count, @partitioner_name) if partition_count.positive?
+        partition = Rdkafka::Bindings.partitioner(partition_key, partition_count, partitioner_name) if partition_count.positive?
       end
 
       # If partition is nil, use -1 to let librdafka set the partition randomly or

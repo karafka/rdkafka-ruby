@@ -2,6 +2,7 @@
 
 ## 0.18.0 (Unreleased)
 - [Enhancement] Update `librdkafka` to `2.5.0`
+- [Patch] Patch cooperative-sticky assignments in librdkafka.
 - [Fix] Mitigate a case where FFI would not restart the background events callback dispatcher in forks
 
 ## 0.17.0 (2024-08-03)

@@ -4,6 +4,7 @@
 - [Enhancement] Update `librdkafka` to `2.5.0`
 - [Patch] Patch cooperative-sticky assignments in librdkafka.
 - [Fix] Mitigate a case where FFI would not restart the background events callback dispatcher in forks
+- [Fix] Fix unused variable reference in producer (lucasmvnascimento)
 
 ## 0.17.0 (2024-08-03)
 - [Feature] Add `#seek_by` to be able to seek for a message by topic, partition and offset (zinahia)

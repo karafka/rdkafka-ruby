@@ -2,6 +2,7 @@
 
 ## 0.18.0 (Unreleased)
 - [Enhancement] Update `librdkafka` to `2.5.0`
+- [Enhancement] Do not release GVL on `rd_kafka_name` (ferrous26)
 - [Patch] Patch cooperative-sticky assignments in librdkafka.
 - [Fix] Mitigate a case where FFI would not restart the background events callback dispatcher in forks
 - [Fix] Fix unused variable reference in producer (lucasmvnascimento)

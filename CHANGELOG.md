@@ -4,6 +4,7 @@
 - [Enhancement] Bump librdkafka to 2.5.3
 - [Enhancement] Do not release GVL on `rd_kafka_name` (ferrous26)
 - [Fix] Fix unused variable reference in producer (lucasmvnascimento)
+- [Patch] Patch with "Add forward declaration to fix compilation without ssl" fix
 
 ## 0.17.3 (2024-08-09)
 - [Fix] Mitigate a case where FFI would not restart the background events callback dispatcher in forks.

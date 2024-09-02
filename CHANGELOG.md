@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.17.4 (Unreleased)
+## 0.17.4 (2024-09-02)
 - [Enhancement] Bump librdkafka to 2.5.3
 - [Enhancement] Do not release GVL on `rd_kafka_name` (ferrous26)
 - [Fix] Fix unused variable reference in producer (lucasmvnascimento)

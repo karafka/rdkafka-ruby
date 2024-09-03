@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.17.6 (2024-09-03)
+- [Fix] Fix incorrectly behaving CI on failures. 
+
 ## 0.17.5 (2024-09-03)
 - [Patch] Patch with "Add forward declaration to fix compilation without ssl" fix
 

@@ -1,0 +1,11 @@
+# ref https://github.com/confluentinc/librdkafka/pull/4794/files
+--- librdkafka_2.5.0/src/rdkafka_op.h  2024-07-08 09:47:43.000000000 +0200
++++ librdkafka_2.5.0/src/rdkafka_op.h  2024-07-30 09:44:38.529759640 +0200
+@@ -39,6 +39,7 @@
+ typedef struct rd_kafka_q_s rd_kafka_q_t;
+ typedef struct rd_kafka_toppar_s rd_kafka_toppar_t;
+ typedef struct rd_kafka_op_s rd_kafka_op_t;
++typedef struct rd_kafka_broker_s rd_kafka_broker_t;
+ 
+ /* One-off reply queue + reply version.
+  * All APIs that take a rd_kafka_replyq_t makes a copy of the

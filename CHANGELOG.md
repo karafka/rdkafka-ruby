@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.18.0 (Unreleased)
+- [Patch] Patch with "Add forward declaration to fix compilation without ssl" fix
+
 ## 0.18.0 (2024-09-02)
 - [Enhancement] Update `librdkafka` to `2.5.0`
 - [Enhancement] Do not release GVL on `rd_kafka_name` (ferrous26)

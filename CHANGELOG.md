@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.17.5 (Unreleased)
+## 0.17.5 (2024-09-03)
 - [Patch] Patch with "Add forward declaration to fix compilation without ssl" fix
 
 ## 0.17.4 (2024-09-02)

@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.18.1 (Unreleased)
+- [Enhancement] Use default oauth callback if none is passed (bachmanity1)
 - [Fix] Fix incorrectly behaving CI on failures. 
 - [Patch] Patch with "Add forward declaration to fix compilation without ssl" fix
 

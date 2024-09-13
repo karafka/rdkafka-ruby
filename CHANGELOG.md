@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
-## 0.17.7 (Unreleased)
+## 0.18.0 (Unreleased)
+- **[Breaking]** Drop Ruby 3.0 support
 - [Enhancement] Use default oauth callback if none is passed (bachmanity1)
 
 ## 0.17.6 (2024-09-03)

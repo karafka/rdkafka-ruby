@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.17.7 (Unreleased)
+- [Enhancement] Use default oauth callback if none is passed (bachmanity1)
+
 ## 0.17.6 (2024-09-03)
 - [Fix] Fix incorrectly behaving CI on failures. 
 - [Fix] Fix invalid patches librdkafka references.

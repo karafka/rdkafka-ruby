@@ -1,8 +1,8 @@
 # This patch is released under the 2-clause BSD license, same as librdkafka
 # Fixes: https://github.com/confluentinc/librdkafka/issues/4783
 #
---- librdkafka_2.5.0/src/rdkafka_sticky_assignor.c	2024-07-08 09:47:43.000000000 +0200
-+++ librdkafka_2.5.0/src/rdkafka_sticky_assignor.c	2024-07-30 09:44:38.529759640 +0200
+--- librdkafka_2.5.3/src/rdkafka_sticky_assignor.c	2024-07-08 09:47:43.000000000 +0200
++++ librdkafka_2.5.3/src/rdkafka_sticky_assignor.c	2024-07-30 09:44:38.529759640 +0200
 @@ -769,7 +769,7 @@
          const rd_kafka_topic_partition_list_t *partitions;
          const char *consumer;

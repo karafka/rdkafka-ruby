@@ -2,6 +2,7 @@
 
 ## 0.19.0 (Unreleased)
 - **[Breaking]** Drop Ruby 3.0 support
+- [Enhancement] Update `librdkafka` to `2.5.3`
 - [Enhancement] Use default oauth callback if none is passed (bachmanity1)
 - [Fix] Fix incorrectly behaving CI on failures. 
 - [Patch] Patch with "Add forward declaration to fix compilation without ssl" fix

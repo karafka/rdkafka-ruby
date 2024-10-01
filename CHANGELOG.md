@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.19.0 (Unreleased)
+## 0.19.0 (2024-10-01)
 - **[Breaking]** Drop Ruby 3.0 support
 - [Enhancement] Update `librdkafka` to `2.5.3`
 - [Enhancement] Use default oauth callback if none is passed (bachmanity1)

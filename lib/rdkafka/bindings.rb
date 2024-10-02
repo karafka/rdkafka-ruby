@@ -30,6 +30,11 @@ module Rdkafka
       layout :value, :size_t
     end
 
+    # This function comes from our patch on top of librdkafka. It allows os to load all the
+    # librdkafka components without initializing the client
+    # @see https://github.com/confluentinc/librdkafka/issues/4590
+    attach_function :rd_kafka_global_init, [], :void
+
     # Polling
 
     attach_function :rd_kafka_flush, [:pointer, :int], :int, blocking: true

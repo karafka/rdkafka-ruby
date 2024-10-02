@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.19.1 (Unreleased)
+- [Enhancement] Expose `rd_kafka_global_init` to mitigate macos forking issues.
+
 ## 0.19.0 (2024-10-01)
 - **[Breaking]** Drop Ruby 3.0 support
 - [Enhancement] Update `librdkafka` to `2.5.3`

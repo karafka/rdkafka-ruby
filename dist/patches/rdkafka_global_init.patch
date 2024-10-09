@@ -1,0 +1,15 @@
+# This patch is released under the 2-clause BSD license, same as librdkafka
+#
+--- librdkafka_2.5.3/src/rdkafka.h
++++ librdkafka_2.5.3/src/rdkafka.h
+@@ -1101,6 +1101,10 @@ rd_kafka_topic_partition_t *rd_kafka_topic_partition_list_find(
+     const char *topic,
+     int32_t partition);
+ 
++/**
++ * @brief Allows for the global init of rdkafka when required in the Ruby process.
++ */
++RD_EXPORT void rd_kafka_global_init(void);
+ 
+ /**
+  * @brief Sort list using comparator \p cmp.

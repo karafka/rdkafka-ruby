@@ -114,11 +114,17 @@ describe Rdkafka::Consumer::TopicPartitionList do
   end
 
   describe "#to_s" do
+    let(:expected) do
+      if RUBY_VERSION >= '3.4.0'
+        "<TopicPartitionList: {\"topic1\" => [<Partition 0>, <Partition 1>]}>"
+      else
+        "<TopicPartitionList: {\"topic1\"=>[<Partition 0>, <Partition 1>]}>"
+      end
+    end
+
     it "should return a human readable representation" do
       list = Rdkafka::Consumer::TopicPartitionList.new
       list.add_topic("topic1", [0, 1])
-
-      expected = "<TopicPartitionList: {\"topic1\"=>[<Partition 0>, <Partition 1>]}>"
 
       expect(list.to_s).to eq expected
     end

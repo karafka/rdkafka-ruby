@@ -3,6 +3,7 @@
 ## 0.18.0 (Unreleased)
 - **[Breaking]** Drop Ruby 3.0 support
 - [Enhancement] Use default oauth callback if none is passed (bachmanity1)
+- [Enhancement] Expose `rd_kafka_global_init` to mitigate macos forking issues.
 
 ## 0.17.6 (2024-09-03)
 - [Fix] Fix incorrectly behaving CI on failures. 

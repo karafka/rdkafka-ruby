@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         ruby:
-          - '3.4.0-preview1'
+          - '3.4.0-preview2'
           - '3.3'
           - '3.2'
           - '3.1'

@@ -163,7 +163,7 @@ bundle exec rake produce_messages
 
 | rdkafka-ruby | librdkafka | patches |
 |-|-|-|
-| 0.18.0 (Unreleased) | 2.5.3 (2024-09-02) | yes |
+| 0.18.0 (Unreleased) | 2.6.1 (2024-11-18) | yes |
 | 0.17.4 (2024-09-02) | 2.5.3 (2024-09-02) | yes |
 | 0.17.0 (2024-08-01) | 2.5.0 (2024-07-10) | yes |
 | 0.16.0 (2024-06-13) | 2.4.0 (2024-05-07) | no  |

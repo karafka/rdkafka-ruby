@@ -26,7 +26,7 @@ task :default => :clean do
     releases = File.expand_path(File.join(File.dirname(__FILE__), '../dist'))
 
     recipe.files << {
-      :url => "file://#{releases}/librdkafka_#{Rdkafka::LIBRDKAFKA_VERSION}.tar.gz",
+      :url => "file://#{releases}/librdkafka-#{Rdkafka::LIBRDKAFKA_VERSION}.tar.gz",
       :sha256 => Rdkafka::LIBRDKAFKA_SOURCE_SHA256
     }
     recipe.configure_options = ["--host=#{recipe.host}"]

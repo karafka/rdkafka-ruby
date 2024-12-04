@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.18.1 (2024-12-04)
+- [Fix] Do not run `Rdkafka::Bindings.rd_kafka_global_init` on require to prevent some of macos versions from hanging on Puma fork.
+
 ## 0.18.0 (2024-11-26)
 - **[Breaking]** Drop Ruby 3.0 support
 - [Enhancement] Bump librdkafka to 2.6.1

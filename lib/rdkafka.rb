@@ -49,5 +49,3 @@ require "rdkafka/producer/delivery_report"
 # Main Rdkafka namespace of this gem
 module Rdkafka
 end
-
-Rdkafka::Bindings.rd_kafka_global_init

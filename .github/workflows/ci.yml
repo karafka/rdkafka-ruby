@@ -13,7 +13,7 @@ env:
 jobs:
   macos-specs:
     timeout-minutes: 30
-    runs-on: macos-13
+    runs-on: macos-12
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker
@@ -23,7 +23,8 @@ jobs:
           ln -sfn /opt/homebrew/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose
 
           mkdir -p ~/.colima/default
-          echo "vm-type: vz" > ~/.colima/default/colima.yaml
+           echo "vm-type: vz
+           arch: aarch64" > ~/.colima/default/colima.yaml
 
           brew services start colima
 

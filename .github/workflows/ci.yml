@@ -51,6 +51,10 @@ jobs:
     timeout-minutes: 30
     runs-on: macos-latest
     steps:
+      - name: Set up Docker
+	uses: crazy-max/ghaction-setup-docker@v2
+	with:
+	  version: latest
       - uses: actions/checkout@v4
 #      - name: Set up Docker
 #        run: |
@@ -58,10 +62,6 @@ jobs:
 #          mkdir -p ~/.docker/cli-plugins
 #          ln -sfn /opt/homebrew/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose
 #          /opt/homebrew/opt/colima/bin/colima start -f --mount-type 9p
-      - name: Set up Docker
-	uses: crazy-max/ghaction-setup-docker@v2
-	with:
-	  version: latest
       - name: Start Kafka with docker compose
         run: |
           docker compose up -d || (sleep 5 && docker compose up -d)

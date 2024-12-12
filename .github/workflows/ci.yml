@@ -13,7 +13,7 @@ env:
 jobs:
   macos-specs:
     timeout-minutes: 30
-    runs-on: macos-14
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker
@@ -27,13 +27,13 @@ jobs:
           echo '{"cliPluginsExtraDirs": ["/opt/homebrew/lib/docker/cli-plugins"]}' > ~/.docker/config.json
 
           # Wait for Colima to be ready
-          for i in {1..120}; do
+          for i in {1..36}; do
             colima status || true
             if colima status > /dev/null 2>&1; then
               break
             fi
-            echo "Waiting for Colima to be ready... ($i/30)"
-            sleep 2
+            echo "Waiting for Colima to be ready... ($i/36)"
+            sleep 5
           done
 
           # Set Docker socket location

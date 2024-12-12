@@ -57,6 +57,8 @@ jobs:
           brew install docker docker-compose colima
           mkdir -p ~/.docker/cli-plugins
           ln -sfn /opt/homebrew/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose
+          colima start
+          sudo ln -sf $HOME/.colima/default/docker.sock /var/run/docker.sock
       - name: Start Kafka with docker compose
         run: |
           docker compose up -d || (sleep 5 && docker compose up -d)

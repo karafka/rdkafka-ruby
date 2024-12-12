@@ -6,7 +6,7 @@ on:
   pull_request:
   push:
   schedule:
-    - cron:  '0 1 * **'
+    - cron:  '0 1 * * *'
 env:
   BUNDLE_RETRY: 6
   BUNDLE_JOBS: 4

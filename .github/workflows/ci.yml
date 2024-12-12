@@ -27,7 +27,8 @@ jobs:
           echo '{"cliPluginsExtraDirs": ["/opt/homebrew/lib/docker/cli-plugins"]}' > ~/.docker/config.json
 
           # Wait for Colima to be ready
-          for i in {1..30}; do
+          for i in {1..120}; do
+            colima status || true
             if colima status > /dev/null 2>&1; then
               break
             fi

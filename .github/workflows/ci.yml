@@ -58,10 +58,10 @@ jobs:
 #          mkdir -p ~/.docker/cli-plugins
 #          ln -sfn /opt/homebrew/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose
 #          /opt/homebrew/opt/colima/bin/colima start -f --mount-type 9p
-      - name: Set up Docker
-        run: |
-          brew install docker docker-compose colima
-          colima start
+      - name: Install package dependencies
+        run: brew install docker docker-compose colima
+      - name: Start Colima
+        run: colima start -f
       - name: Start Kafka with docker compose
         run: |
           docker compose up -d || (sleep 5 && docker compose up -d)

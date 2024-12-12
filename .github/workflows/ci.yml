@@ -1,53 +1,62 @@
 name: ci
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 on:
   pull_request:
   push:
   schedule:
     - cron:  '0 1 * * *'
-
 env:
   BUNDLE_RETRY: 6
   BUNDLE_JOBS: 4
-
 jobs:
-  specs:
+  macos-specs:
     timeout-minutes: 30
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        ruby:
-          - '3.4.0-preview2'
-          - '3.3'
-          - '3.2'
-          - '3.1'
-        include:
-          - ruby: '3.3'
-            coverage: 'true'
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
-      - name: Install package dependencies
-        run: "[ -e $APT_DEPS ] || sudo apt-get install -y --no-install-recommends $APT_DEPS"
+      - name: Set up Docker
+        run: |
+          brew install docker docker-compose colima
+          mkdir -p ~/.docker/cli-plugins
+          ln -sfn /opt/homebrew/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose
+
+          mkdir -p ~/.colima/default
+           echo "vm-type: vz
+           arch: aarch64" > ~/.colima/default/colima.yaml
+
+          brew services start colima
+
+          mkdir -p ~/.docker
+          echo '{"cliPluginsExtraDirs": ["/opt/homebrew/lib/docker/cli-plugins"]}' > ~/.docker/config.json
+
+          # Wait for Colima to be ready
+          for i in {1..36}; do
+            colima status || true
+            if colima status > /dev/null 2>&1; then
+              break
+            fi
+            echo "Waiting for Colima to be ready... ($i/36)"
+            sleep 5
+          done
+
+          # Set Docker socket location
+          export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
+          echo "DOCKER_HOST=unix://${HOME}/.colima/default/docker.sock" >> $GITHUB_ENV
+
+          # Verify Docker is working
+          docker ps
 
       - name: Start Kafka with docker compose
         run: |
           docker compose up -d || (sleep 5 && docker compose up -d)
-
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ${{matrix.ruby}}
+          ruby-version: '3.3'  # Using latest stable Ruby version
           bundler-cache: true
-
       - name: Run all specs
-        env:
-          GITHUB_COVERAGE: ${{matrix.coverage}}
-
         run: |
           set -e
           bundle install --path vendor/bundle

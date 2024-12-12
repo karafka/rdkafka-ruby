@@ -49,17 +49,15 @@ jobs:
 
   macos-specs:
     timeout-minutes: 30
-    runs-on: macos-latest
+    runs-on: macos-14
     steps:
-      - name: Set up Docker
-        uses: docker/setup-docker-action@v4
       - uses: actions/checkout@v4
-#      - name: Set up Docker
-#        run: |
-#          brew install docker docker-compose colima
-#          mkdir -p ~/.docker/cli-plugins
-#          ln -sfn /opt/homebrew/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose
-#          /opt/homebrew/opt/colima/bin/colima start -f --mount-type 9p
+      - name: Set up Docker
+        run: |
+          brew install docker docker-compose colima
+          mkdir -p ~/.docker/cli-plugins
+          ln -sfn /opt/homebrew/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose
+          /opt/homebrew/opt/colima/bin/colima start -f --mount-type 9p
       - name: Start Kafka with docker compose
         run: |
           docker compose up -d || (sleep 5 && docker compose up -d)

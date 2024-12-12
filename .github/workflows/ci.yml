@@ -60,7 +60,7 @@ jobs:
 #          /opt/homebrew/opt/colima/bin/colima start -f --mount-type 9p
       - name: Set up Docker
         run: |
-          brew install docker docker-compose
+          brew install docker docker-compose colima
           colima start
       - name: Start Kafka with docker compose
         run: |

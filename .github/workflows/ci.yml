@@ -53,10 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker
-        run: |
-          brew install docker docker-compose colima
-          colima start
-          sudo ln -sf $HOME/.colima/default/docker.sock /var/run/docker.sock
+        uses: docker/setup-buildx-action@v2
       - name: Start Kafka with docker compose
         run: |
           docker compose up -d || (sleep 5 && docker compose up -d)

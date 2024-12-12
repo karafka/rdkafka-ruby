@@ -54,7 +54,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set up Docker
         run: |
-          brew install docker docker-compose
+          brew install docker docker-compose colima
           mkdir -p ~/.docker/cli-plugins
           ln -sfn /opt/homebrew/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose
           colima start --mount-type 9p

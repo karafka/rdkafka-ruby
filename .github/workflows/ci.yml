@@ -13,7 +13,7 @@ env:
 jobs:
   macos-specs:
     timeout-minutes: 30
-    runs-on: macos-12
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker

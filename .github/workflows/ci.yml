@@ -54,7 +54,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set up Docker
         run: |
-          brew install docker docker-compose
+          brew install docker docker-compose colima
           colima start
           sudo ln -sf $HOME/.colima/default/docker.sock /var/run/docker.sock
       - name: Start Kafka with docker compose

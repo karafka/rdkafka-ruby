@@ -22,7 +22,26 @@ jobs:
           mkdir -p ~/.docker/cli-plugins
           ln -sfn /opt/homebrew/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose
           brew services start colima
-          sleep 10
+
+          mkdir -p ~/.docker
+          echo '{"cliPluginsExtraDirs": ["/opt/homebrew/lib/docker/cli-plugins"]}' > ~/.docker/config.json
+
+          # Wait for Colima to be ready
+          for i in {1..30}; do
+            if colima status > /dev/null 2>&1; then
+              break
+            fi
+            echo "Waiting for Colima to be ready... ($i/30)"
+            sleep 2
+          done
+
+          # Set Docker socket location
+          export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
+          echo "DOCKER_HOST=unix://${HOME}/.colima/default/docker.sock" >> $GITHUB_ENV
+
+          # Verify Docker is working
+          docker ps
+
       - name: Start Kafka with docker compose
         run: |
           docker compose up -d || (sleep 5 && docker compose up -d)

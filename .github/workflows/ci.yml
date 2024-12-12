@@ -17,6 +17,8 @@ jobs:
     steps:
       - uses: docker/setup-docker-action@v4
       - uses: actions/checkout@v4
+      - name: Install docker-compose
+        run: brew install docker-compose
       - name: Start Kafka with docker compose
         run: |
           docker compose up -d || (sleep 5 && docker compose up -d)

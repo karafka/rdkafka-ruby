@@ -22,7 +22,7 @@ jobs:
           mkdir -p ~/.docker/cli-plugins
           ln -sfn /opt/homebrew/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose
 
-          mkdir -p ~/.colima
+          mkdir -p ~/.colima/default
           echo "vm-type: vz" > ~/.colima/default/colima.yaml
 
           brew services start colima

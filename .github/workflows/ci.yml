@@ -54,3 +54,24 @@ jobs:
           cd ext && bundle exec rake
           cd ..
           bundle exec rspec
+
+
+  macos_build:
+    timeout-minutes: 30
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+          - '3.4'
+          - '3.3'
+          - '3.2'
+          - '3.1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{matrix.ruby}}
+          bundler-cache: false

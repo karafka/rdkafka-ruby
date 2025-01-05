@@ -75,3 +75,12 @@ jobs:
         with:
           ruby-version: ${{matrix.ruby}}
           bundler-cache: false
+
+      - name: Run all specs
+        env:
+          GITHUB_COVERAGE: ${{matrix.coverage}}
+
+        run: |
+          set -e
+          bundle install --path vendor/bundle
+          cd ext && bundle exec rake

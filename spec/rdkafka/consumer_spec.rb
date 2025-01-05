@@ -1091,7 +1091,6 @@ describe Rdkafka::Consumer do
     {
         :subscribe               => [ nil ],
         :unsubscribe             => nil,
-        :each_batch              => nil,
         :pause                   => [ nil ],
         :resume                  => [ nil ],
         :subscription            => nil,

@@ -76,10 +76,7 @@ jobs:
           ruby-version: ${{matrix.ruby}}
           bundler-cache: false
 
-      - name: Run all specs
-        env:
-          GITHUB_COVERAGE: ${{matrix.coverage}}
-
+      - name: Build rdkafka-ruby
         run: |
           set -e
           bundle install --path vendor/bundle

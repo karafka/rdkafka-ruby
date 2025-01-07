@@ -1,5 +1,9 @@
 # Rdkafka Changelog
 
+## 0.19.0 (Unreleased)
+- **[Breaking]** Deprecate and remove `#each_batch` due to data consistency concerns.
+- [Fix] Restore `Rdkafka::Bindings.rd_kafka_global_init` as it was not the source of the original issue.
+
 ## 0.18.1 (2024-12-04)
 - [Fix] Do not run `Rdkafka::Bindings.rd_kafka_global_init` on require to prevent some of macos versions from hanging on Puma fork.
 

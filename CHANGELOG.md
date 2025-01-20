@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.21.0 (Unreleased)
+- [Enhancement] Bump librdkafka to `2.8.0`
+
 ## 0.20.0 (2025-01-07)
 - **[Breaking]** Deprecate and remove `#each_batch` due to data consistency concerns.
 - [Enhancement] Bump librdkafka to `2.6.1`

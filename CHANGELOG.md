@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.19.0 (Unreleased)
+## 0.19.0 (2025-01-20)
 - **[Breaking]** Deprecate and remove `#each_batch` due to data consistency concerns.
 - [Enhancement] Bump librdkafka to 2.8.0
 - [Fix] Restore `Rdkafka::Bindings.rd_kafka_global_init` as it was not the source of the original issue.

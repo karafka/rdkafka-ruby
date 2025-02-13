@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.21.0 (Unreleased)
+## 0.21.0 (2025-02-13)
 - [Enhancement] Bump librdkafka to `2.8.0`
 
 ## 0.20.0 (2025-01-07)

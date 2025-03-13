@@ -6,9 +6,14 @@ concurrency:
 
 on:
   pull_request:
+    branches: [ main, master ]
   push:
+    branches: [ main, master ]
   schedule:
-    - cron:  '0 1 * * *'
+    - cron: '0 1 * * *'
+
+permissions:
+  contents: read
 
 env:
   BUNDLE_RETRY: 6
@@ -30,16 +35,19 @@ jobs:
           - ruby: '3.4'
             coverage: 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@85e6279cec87321a52edac9c87bce653a07cf6c2
+        with:
+          fetch-depth: 0
+
       - name: Install package dependencies
         run: "[ -e $APT_DEPS ] || sudo apt-get install -y --no-install-recommends $APT_DEPS"
 
-      - name: Start Kafka with docker compose
+      - name: Start Kafka with Docker Compose
         run: |
           docker compose up -d || (sleep 5 && docker compose up -d)
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@f0a4d6bddd8e71bd3268c611f7ea6f41dce6d7fd
         with:
           ruby-version: ${{matrix.ruby}}
           bundler-cache: true
@@ -47,14 +55,12 @@ jobs:
       - name: Run all specs
         env:
           GITHUB_COVERAGE: ${{matrix.coverage}}
-
         run: |
           set -e
-          bundle install --path vendor/bundle
+          bundle install --jobs 4 --retry 3
           cd ext && bundle exec rake
           cd ..
           bundle exec rspec
-
 
   macos_build:
     timeout-minutes: 30
@@ -68,10 +74,10 @@ jobs:
           - '3.2'
           - '3.1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@85e6279cec87321a52edac9c87bce653a07cf6c2
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@f0a4d6bddd8e71bd3268c611f7ea6f41dce6d7fd
         with:
           ruby-version: ${{matrix.ruby}}
           bundler-cache: false
@@ -79,5 +85,5 @@ jobs:
       - name: Build rdkafka-ruby
         run: |
           set -e
-          bundle install --path vendor/bundle
+          bundle install --jobs 4 --retry 3
           cd ext && bundle exec rake

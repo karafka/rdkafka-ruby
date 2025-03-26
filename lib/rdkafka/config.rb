@@ -233,11 +233,12 @@ module Rdkafka
     #
     # @param native_kafka_auto_start [Boolean] should the native kafka operations be started
     #   automatically. Defaults to true. Set to false only when doing complex initialization.
+    # @param native_kafka_poll_timeout_ms [Integer] ms poll time of the native Kafka
     # @return [Producer] The created producer
     #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    def producer(native_kafka_auto_start: true)
+    def producer(native_kafka_auto_start: true, native_kafka_poll_timeout_ms: 100)
       # Create opaque
       opaque = Opaque.new
       # Create Kafka config
@@ -254,7 +255,8 @@ module Rdkafka
           kafka,
           run_polling_thread: true,
           opaque: opaque,
-          auto_start: native_kafka_auto_start
+          auto_start: native_kafka_auto_start,
+          timeout_ms: native_kafka_poll_timeout_ms
         ),
         partitioner_name
       ).tap do |producer|
@@ -266,11 +268,12 @@ module Rdkafka
     #
     # @param native_kafka_auto_start [Boolean] should the native kafka operations be started
     #   automatically. Defaults to true. Set to false only when doing complex initialization.
+    # @param native_kafka_poll_timeout_ms [Integer] ms poll time of the native Kafka
     # @return [Admin] The created admin instance
     #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    def admin(native_kafka_auto_start: true)
+    def admin(native_kafka_auto_start: true, native_kafka_poll_timeout_ms: 100)
       opaque = Opaque.new
       config = native_config(opaque)
       Rdkafka::Bindings.rd_kafka_conf_set_background_event_cb(config, Rdkafka::Callbacks::BackgroundEventCallbackFunction)
@@ -282,7 +285,8 @@ module Rdkafka
           kafka,
           run_polling_thread: true,
           opaque: opaque,
-          auto_start: native_kafka_auto_start
+          auto_start: native_kafka_auto_start,
+          timeout_ms: native_kafka_poll_timeout_ms
         )
       )
     end

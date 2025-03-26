@@ -339,11 +339,23 @@ module Rdkafka
       if headers
         headers.each do |key0, value0|
           key = key0.to_s
-          value = value0.to_s
-          args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
-          args << :string << key
-          args << :pointer << value
-          args << :size_t << value.bytesize
+          if value0.is_a?(Array)
+            # Handle array of values per KIP-82
+            value0.each do |value|
+              value = value.to_s
+              args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
+              args << :string << key
+              args << :pointer << value
+              args << :size_t << value.bytesize
+            end
+          else
+            # Handle single value
+            value = value0.to_s
+            args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
+            args << :string << key
+            args << :pointer << value
+            args << :size_t << value.bytesize
+          end
         end
       end
 

@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.19.1 (Unreleased)
+- [Enhancement] Support producing (consuming tba) of headers with mulitple values (KIP-82).
 - [Enhancement] Allow native Kafka customization poll time.
 
 ## 0.19.0 (2025-01-20)

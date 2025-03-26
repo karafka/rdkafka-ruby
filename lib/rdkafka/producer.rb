@@ -247,7 +247,7 @@ module Rdkafka
     # @param partition [Integer,nil] Optional partition to produce to
     # @param partition_key [String, nil] Optional partition key based on which partition assignment can happen
     # @param timestamp [Time,Integer,nil] Optional timestamp of this message. Integer timestamp is in milliseconds since Jan 1 1970.
-    # @param headers [Hash<String,String>] Optional message headers
+    # @param headers [Hash<String,String|Array<String>>] Optional message headers. Values can be either a single string or an array of strings to support duplicate headers per KIP-82
     # @param label [Object, nil] a label that can be assigned when producing a message that will be part of the delivery handle and the delivery report
     # @param topic_config [Hash] topic config for given message dispatch. Allows to send messages to topics with different configuration
     #
@@ -339,11 +339,23 @@ module Rdkafka
       if headers
         headers.each do |key0, value0|
           key = key0.to_s
-          value = value0.to_s
-          args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
-          args << :string << key
-          args << :pointer << value
-          args << :size_t << value.bytesize
+          if value0.is_a?(Array)
+            # Handle array of values per KIP-82
+            value0.each do |value|
+              value = value.to_s
+              args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
+              args << :string << key
+              args << :pointer << value
+              args << :size_t << value.bytesize
+            end
+          else
+            # Handle single value
+            value = value0.to_s
+            args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
+            args << :string << key
+            args << :pointer << value
+            args << :size_t << value.bytesize
+          end
         end
       end
 

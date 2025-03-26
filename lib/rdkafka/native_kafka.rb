@@ -4,7 +4,7 @@ module Rdkafka
   # @private
   # A wrapper around a native kafka that polls and cleanly exits
   class NativeKafka
-    def initialize(inner, run_polling_thread:, opaque:, auto_start: true)
+    def initialize(inner, run_polling_thread:, opaque:, auto_start: true, timeout_ms: 100)
       @inner = inner
       @opaque = opaque
       # Lock around external access
@@ -30,6 +30,8 @@ module Rdkafka
 
       @run_polling_thread = run_polling_thread
 
+      @timeout_ms = timeout_ms
+
       start if auto_start
 
       @closing = false
@@ -50,7 +52,7 @@ module Rdkafka
           @polling_thread = Thread.new do
             loop do
               @poll_mutex.synchronize do
-                Rdkafka::Bindings.rd_kafka_poll(@inner, 100)
+                Rdkafka::Bindings.rd_kafka_poll(@inner, @timeout_ms)
               end
 
               # Exit thread if closing and the poll queue is empty

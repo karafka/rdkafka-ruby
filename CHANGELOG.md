@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.19.1 (Unreleased)
+- [Enhancement] Allow native Kafka customization poll time.
+
 ## 0.19.0 (2025-01-20)
 - **[Breaking]** Deprecate and remove `#each_batch` due to data consistency concerns.
 - [Enhancement] Bump librdkafka to 2.8.0

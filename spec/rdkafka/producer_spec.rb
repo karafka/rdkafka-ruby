@@ -837,8 +837,7 @@ describe Rdkafka::Producer do
       expect(message).to be
       expect(message.key).to eq('key headers')
       expect(message.headers['type']).to eq('String')
-      # This will not be an array until consumer supports KIP-82
-      expect(message.headers['version']).to eq('2.1.4')
+      expect(message.headers['version']).to eq(["2.1.3", "2.1.4"])
     end
 
     it "should produce a message with single value headers" do

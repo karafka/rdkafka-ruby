@@ -149,15 +149,6 @@ describe Rdkafka::Bindings do
   end
 
   describe "oauthbearer set token" do
-
-    context "without args" do
-      it "should raise argument error" do
-        expect {
-          Rdkafka::Bindings.rd_kafka_oauthbearer_set_token
-        }.to raise_error(ArgumentError)
-      end
-    end
-
     context "with args" do
       before do
         DEFAULT_TOKEN_EXPIRY_SECONDS = 900

@@ -3,6 +3,7 @@
 ## 0.19.1 (2025-04-07)
 - [Enhancement] Support producing and consuming of headers with mulitple values (KIP-82).
 - [Enhancement] Allow native Kafka customization poll time.
+- [Enhancement] Roll out experimental jruby support.
 
 ## 0.19.0 (2025-01-20)
 - **[Breaking]** Deprecate and remove `#each_batch` due to data consistency concerns.

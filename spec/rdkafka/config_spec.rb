@@ -33,23 +33,25 @@ describe Rdkafka::Config do
       expect(log.string).to include "FATAL -- : I love testing"
     end
 
-    it "expect to start new logger thread after fork and work" do
-      reader, writer = IO.pipe
+    unless RUBY_PLATFORM == 'java'
+      it "expect to start new logger thread after fork and work" do
+        reader, writer = IO.pipe
 
-      pid = fork do
-        $stdout.reopen(writer)
-        Rdkafka::Config.logger = Logger.new($stdout)
-        reader.close
-        producer = rdkafka_producer_config(debug: 'all').producer
-        producer.close
+        pid = fork do
+          $stdout.reopen(writer)
+          Rdkafka::Config.logger = Logger.new($stdout)
+          reader.close
+          producer = rdkafka_producer_config(debug: 'all').producer
+          producer.close
+          writer.close
+          sleep(1)
+        end
+
         writer.close
-        sleep(1)
+        Process.wait(pid)
+        output = reader.read
+        expect(output.split("\n").size).to be >= 20
       end
-
-      writer.close
-      Process.wait(pid)
-      output = reader.read
-      expect(output.split("\n").size).to be >= 20
     end
   end
 

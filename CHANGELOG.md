@@ -3,6 +3,7 @@
 ## 0.21.1 (Unreleased)
 - [Enhancement] Support producing and consuming of headers with mulitple values (KIP-82).
 - [Enhancement] Allow native Kafka customization poll time.
+- [Enhancement] Roll out experimental jruby support.
 
 ## 0.21.0 (2025-02-13)
 - [Enhancement] Bump librdkafka to `2.8.0`

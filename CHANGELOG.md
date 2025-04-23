@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
-## 0.19.2 (Unreleased)
+## 0.20.0 (Unreleased)
+- [Enhancement] Bump librdkafka to 2.10.0
 - [Enhancement] Roll out experimental jruby support.
 
 ## 0.19.1 (2025-04-07)

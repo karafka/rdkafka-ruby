@@ -842,9 +842,9 @@ describe Rdkafka::Consumer do
       missing_topic = SecureRandom.uuid
       consumer.subscribe(missing_topic)
 
-      expect {
-        consumer.poll(1_000)
-      }.to raise_error Rdkafka::RdkafkaError, /Subscribed topic not available: #{missing_topic}/
+      # @note it used to raise "Subscribed topic not available" in previous librdkafka versions
+      #   but this behaviour has been changed
+      expect { consumer.poll(1_000) }.not_to raise_error
     end
   end
 

@@ -1,7 +1,9 @@
 name: ci
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 on:
   pull_request:
     branches: [ main, master ]
@@ -9,11 +11,14 @@ on:
     branches: [ main, master ]
   schedule:
     - cron: '0 1 * * *'
+
 permissions:
   contents: read
+
 env:
   BUNDLE_RETRY: 6
   BUNDLE_JOBS: 4
+
 jobs:
   specs:
     timeout-minutes: 30
@@ -32,6 +37,7 @@ jobs:
             coverage: 'true'
           - ruby: 'jruby-10.0'
             continue-on-error: true
+
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -56,6 +62,7 @@ jobs:
           cd ext && bundle exec rake
           cd ..
           bundle exec rspec
+
   macos_build:
     timeout-minutes: 30
     runs-on: macos-latest

@@ -1,8 +1,10 @@
 # Rdkafka Changelog
 
 ## 0.20.0 (Unreleased)
-- [Enhancement] Bump librdkafka to 2.10.0
+- [Enhancement] Align default configuration with deprecation warnings of librdkafka `2.10.0`
+- [Enhancement] Bump librdkafka to `2.10.0`.
 - [Enhancement] Roll out experimental jruby support.
+- [Enhancement] Add `logger` gem to dependencies since moved out of Ruby.
 
 ## 0.19.1 (2025-04-07)
 - [Enhancement] Support producing and consuming of headers with mulitple values (KIP-82).

@@ -15,7 +15,9 @@ require "securerandom"
 
 def rdkafka_base_config
   {
-    :"bootstrap.servers" => "localhost:9092"
+    :"api.version.request" => false,
+    :"broker.version.fallback" => "1.0",
+    :"bootstrap.servers" => "localhost:9092",
   }
 end
 

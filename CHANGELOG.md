@@ -1,8 +1,7 @@
 # Rdkafka Changelog
 
-## 0.20.0 (Unreleased)
+## 0.19.2 (Unreleased)
 - [Enhancement] Align default configuration with deprecation warnings of librdkafka `2.10.0`
-- [Enhancement] Bump librdkafka to `2.10.0`.
 - [Enhancement] Roll out experimental jruby support.
 - [Enhancement] Add `logger` gem to dependencies since moved out of Ruby.
 

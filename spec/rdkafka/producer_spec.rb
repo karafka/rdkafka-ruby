@@ -263,6 +263,8 @@ describe Rdkafka::Producer do
     expect(message.partition).to eq 1
     expect(message.payload).to eq "payload"
     expect(message.key).to eq "key"
+    # Since api.version.request is on by default we will get
+    # the message creation timestamp if it's not set.
     expect(message.timestamp).to be_within(10).of(Time.now)
   end
 

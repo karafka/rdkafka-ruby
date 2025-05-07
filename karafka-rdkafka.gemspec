@@ -26,7 +26,6 @@ Gem::Specification.new do |gem|
   gem.add_dependency 'ffi', '~> 1.15'
   gem.add_dependency 'mini_portile2', '~> 2.6'
   gem.add_dependency 'rake', '> 12'
-  gem.add_dependency 'logger', '>= 1.5'
 
   gem.add_development_dependency 'pry'
   gem.add_development_dependency 'rspec', '~> 3.5'

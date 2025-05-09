@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.19.2 (Unreleased)
+- [Enhancement] Replace TTL-based partition count cache with a global cache that reuses `librdkafka` statistics data when possible.
 - [Enhancement] Align default configuration with deprecation warnings of librdkafka `2.10.0`
 - [Enhancement] Roll out experimental jruby support.
 - [Enhancement] Add `logger` gem to dependencies since moved out of Ruby.

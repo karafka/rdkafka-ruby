@@ -2,9 +2,7 @@
 
 ## 0.19.2 (Unreleased)
 - [Enhancement] Replace TTL-based partition count cache with a global cache that reuses `librdkafka` statistics data when possible.
-- [Enhancement] Align default configuration with deprecation warnings of librdkafka `2.10.0`
 - [Enhancement] Roll out experimental jruby support.
-- [Enhancement] Add `logger` gem to dependencies since moved out of Ruby.
 
 ## 0.19.1 (2025-04-07)
 - [Enhancement] Support producing and consuming of headers with mulitple values (KIP-82).

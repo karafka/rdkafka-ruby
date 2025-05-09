@@ -6,13 +6,31 @@ module Rdkafka
     include Helpers::Time
     include Helpers::OAuth
 
-    # Cache partitions count for 30 seconds
-    PARTITIONS_COUNT_TTL = 30
-
     # Empty hash used as a default
     EMPTY_HASH = {}.freeze
 
-    private_constant :PARTITIONS_COUNT_TTL, :EMPTY_HASH
+    # @private
+    @@partitions_count_cache = PartitionsCountCache.new
+
+    # Global (process wide) partitions cache. We use it to store number of topics partitions,
+    # either from the librdkafka statistics (if enabled) or via direct inline calls every now and
+    # then. Since the partitions count can only grow and should be same for all consumers and
+    # producers, we can use a global cache as long as we ensure that updates only move up.
+    #
+    # @note It is critical to remember, that not all users may have statistics callbacks enabled,
+    #   hence we should not make assumption that this cache is always updated from the stats.
+    #
+    # @return [Rdkafka::Producer::PartitionsCountCache]
+    def self.partitions_count_cache
+      @@partitions_count_cache
+    end
+
+    # @param partitions_count_cache [Rdkafka::Producer::PartitionsCountCache]
+    def self.partitions_count_cache=(partitions_count_cache)
+      @@partitions_count_cache = partitions_count_cache
+    end
+
+    private_constant :EMPTY_HASH
 
     # Raised when there was a critical issue when invoking rd_kafka_topic_new
     # This is a temporary solution until https://github.com/karafka/rdkafka-ruby/issues/451 is
@@ -43,25 +61,6 @@ module Rdkafka
 
       # Makes sure, that native kafka gets closed before it gets GCed by Ruby
       ObjectSpace.define_finalizer(self, native_kafka.finalizer)
-
-      @_partitions_count_cache = Hash.new do |cache, topic|
-        topic_metadata = nil
-
-        @native_kafka.with_inner do |inner|
-          topic_metadata = ::Rdkafka::Metadata.new(inner, topic).topics&.first
-        end
-
-        partition_count = topic_metadata ? topic_metadata[:partition_count] : -1
-
-        # This approach caches the failure to fetch only for 1 second. This will make sure, that
-        # we do not cache the failure for too long but also "buys" us a bit of time in case there
-        # would be issues in the cluster so we won't overaload it with consecutive requests
-        cache[topic] = if partition_count.positive?
-                         [monotonic_now, partition_count]
-                       else
-                         [monotonic_now - PARTITIONS_COUNT_TTL + 5, partition_count]
-                       end
-      end
     end
 
     # Sets alternative set of configuration details that can be set per topic
@@ -222,18 +221,24 @@ module Rdkafka
     # @note If 'allow.auto.create.topics' is set to true in the broker, the topic will be
     #   auto-created after returning nil.
     #
-    # @note We cache the partition count for a given topic for given time.
+    # @note We cache the partition count for a given topic for given time. If statistics are
+    #   enabled for any producer or consumer, it will take precedence over per instance fetching.
+    #
     #   This prevents us in case someone uses `partition_key` from querying for the count with
-    #   each message. Instead we query once every 30 seconds at most if we have a valid partition
-    #   count or every 5 seconds in case we were not able to obtain number of partitions
+    #   each message. Instead we query at most once every 30 seconds at most if we have a valid
+    #   partition count or every 5 seconds in case we were not able to obtain number of partitions.
     def partition_count(topic)
       closed_producer_check(__method__)
 
-      @_partitions_count_cache.delete_if do |_, cached|
-        monotonic_now - cached.first > PARTITIONS_COUNT_TTL
-      end
+      self.class.partitions_count_cache.get(topic) do
+        topic_metadata = nil
 
-      @_partitions_count_cache[topic].last
+        @native_kafka.with_inner do |inner|
+          topic_metadata = ::Rdkafka::Metadata.new(inner, topic).topics&.first
+        end
+
+        topic_metadata ? topic_metadata[:partition_count] : -1
+      end
     end
 
     # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.

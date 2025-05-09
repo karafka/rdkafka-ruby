@@ -129,10 +129,7 @@ module Rdkafka
     end
 
     # Default config that can be overwritten.
-    DEFAULT_CONFIG = {
-      # Request api version so advanced features work
-      :"api.version.request" => true
-    }.freeze
+    DEFAULT_CONFIG = {}.freeze
 
     # Required config that cannot be overwritten.
     REQUIRED_CONFIG = {

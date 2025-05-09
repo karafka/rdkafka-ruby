@@ -654,12 +654,11 @@ describe Rdkafka::Producer do
 
     context 'when the partition count value was cached but time expired' do
       before do
-        allow(::Process).to receive(:clock_gettime).and_return(0, 30.02)
-        producer.partition_count('example_topic')
+        ::Rdkafka::Producer.partitions_count_cache = Rdkafka::Producer::PartitionsCountCache.new
         allow(::Rdkafka::Metadata).to receive(:new).and_call_original
       end
 
-      it 'expect not to query it again' do
+      it 'expect to query it again' do
         producer.partition_count('example_topic')
         expect(::Rdkafka::Metadata).to have_received(:new)
       end
@@ -1040,6 +1039,120 @@ describe Rdkafka::Producer do
       expect(message.key).to eq('key headers')
       expect(message.headers['type']).to eq('String')
       expect(message.headers['version']).to eq('2.1.3')
+    end
+  end
+
+  describe 'with active statistics callback' do
+    let(:producer) do
+      rdkafka_producer_config('statistics.interval.ms': 1_000).producer
+    end
+
+    let(:count_cache_hash) { described_class.partitions_count_cache.to_h }
+    let(:pre_statistics_ttl) { count_cache_hash.fetch('produce_test_topic', [])[0] }
+    let(:post_statistics_ttl) { count_cache_hash.fetch('produce_test_topic', [])[0] }
+
+    context "when using partition key" do
+      before do
+        Rdkafka::Config.statistics_callback = ->(*) {}
+
+        # This call will make a blocking request to the metadata cache
+        producer.produce(
+          topic:         "produce_test_topic",
+          payload:       "payload headers",
+          partition_key: "test"
+        ).wait
+
+        pre_statistics_ttl
+
+        # We wait to make sure that statistics are triggered and that there is a refresh
+        sleep(1.5)
+
+        post_statistics_ttl
+      end
+
+      it 'expect to update ttl on the partitions count cache via statistics' do
+        expect(pre_statistics_ttl).to be < post_statistics_ttl
+      end
+    end
+
+    context "when not using partition key" do
+      before do
+        Rdkafka::Config.statistics_callback = ->(*) {}
+
+        # This call will make a blocking request to the metadata cache
+        producer.produce(
+          topic:         "produce_test_topic",
+          payload:       "payload headers"
+        ).wait
+
+        pre_statistics_ttl
+
+        # We wait to make sure that statistics are triggered and that there is a refresh
+        sleep(1.5)
+
+        # This will anyhow be populated from statistic
+        post_statistics_ttl
+      end
+
+      it 'expect not to update ttl on the partitions count cache via blocking but via use stats' do
+        expect(pre_statistics_ttl).to be_nil
+        expect(post_statistics_ttl).not_to be_nil
+      end
+    end
+  end
+
+  describe 'without active statistics callback' do
+    let(:producer) do
+      rdkafka_producer_config('statistics.interval.ms': 1_000).producer
+    end
+
+    let(:count_cache_hash) { described_class.partitions_count_cache.to_h }
+    let(:pre_statistics_ttl) { count_cache_hash.fetch('produce_test_topic', [])[0] }
+    let(:post_statistics_ttl) { count_cache_hash.fetch('produce_test_topic', [])[0] }
+
+    context "when using partition key" do
+      before do
+        # This call will make a blocking request to the metadata cache
+        producer.produce(
+          topic:         "produce_test_topic",
+          payload:       "payload headers",
+          partition_key: "test"
+        ).wait
+
+        pre_statistics_ttl
+
+        # We wait to make sure that statistics are triggered and that there is a refresh
+        sleep(1.5)
+
+        post_statistics_ttl
+      end
+
+      it 'expect not to update ttl on the partitions count cache via statistics' do
+        expect(pre_statistics_ttl).to eq post_statistics_ttl
+      end
+    end
+
+    context "when not using partition key" do
+      before do
+        # This call will make a blocking request to the metadata cache
+        producer.produce(
+          topic:         "produce_test_topic",
+          payload:       "payload headers"
+        ).wait
+
+        pre_statistics_ttl
+
+        # We wait to make sure that statistics are triggered and that there is a refresh
+        sleep(1.5)
+
+        # This should not be populated because stats are not in use
+        post_statistics_ttl
+      end
+
+      it 'expect not to update ttl on the partitions count cache via anything' do
+        expect(pre_statistics_ttl).to be_nil
+        expect(post_statistics_ttl).to be_nil
+      end
     end
   end
 end

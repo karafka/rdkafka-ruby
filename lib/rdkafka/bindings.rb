@@ -35,6 +35,8 @@ module Rdkafka
     RD_KAFKA_OFFSET_STORED    = -1000
     RD_KAFKA_OFFSET_INVALID   = -1001
 
+    EMPTY_HASH = {}.freeze
+
     class SizePtr < FFI::Struct
       layout :value, :size_t
     end
@@ -215,9 +217,32 @@ module Rdkafka
     StatsCallback = FFI::Function.new(
       :int, [:pointer, :string, :int, :pointer]
     ) do |_client_ptr, json, _json_len, _opaque|
-      # Pass the stats hash to callback in config
+
       if Rdkafka::Config.statistics_callback
         stats = JSON.parse(json)
+
+        # If user requested statistics callbacks, we can use the statistics data to get the
+        # partitions count for each topic when this data is published. That way we do not have
+        # to query this information when user is using `partition_key`. This takes around 0.02ms
+        # every statistics interval period (most likely every 5 seconds) and saves us from making
+        # any queries to the cluster for the partition count.
+        #
+        # One edge case is if user would set the `statistics.interval.ms` much higher than the
+        # default current partition count refresh (30 seconds). This is taken care of as the lack
+        # of reporting to the partitions cache will cause cache expire and blocking refresh.
+        #
+        # If user sets `topic.metadata.refresh.interval.ms` too high this is on the user.
+        #
+        # Since this cache is shared, having few consumers and/or producers in one process will
+        # automatically improve the querying times even with low refresh times.
+        (stats['topics'] || EMPTY_HASH).each do |topic_name, details|
+          partitions_count = details['partitions'].keys.reject { |k| k == '-1' }.size
+
+          next unless partitions_count.positive?
+
+          Rdkafka::Producer.partitions_count_cache.set(topic_name, partitions_count)
+        end
+
         Rdkafka::Config.statistics_callback.call(stats)
       end
 

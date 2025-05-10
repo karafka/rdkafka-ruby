@@ -217,7 +217,6 @@ module Rdkafka
     StatsCallback = FFI::Function.new(
       :int, [:pointer, :string, :int, :pointer]
     ) do |_client_ptr, json, _json_len, _opaque|
-
       if Rdkafka::Config.statistics_callback
         stats = JSON.parse(json)
 

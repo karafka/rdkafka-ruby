@@ -3,6 +3,7 @@
 ## 0.19.2 (Unreleased)
 - [Enhancement] Replace TTL-based partition count cache with a global cache that reuses `librdkafka` statistics data when possible.
 - [Enhancement] Roll out experimental jruby support.
+- [Fix] Fix issue where post-closed producer C topics refs would not be cleaned.
 
 ## 0.19.1 (2025-04-07)
 - [Enhancement] Support producing and consuming of headers with mulitple values (KIP-82).

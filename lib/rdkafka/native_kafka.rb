@@ -126,6 +126,8 @@ module Rdkafka
         # and would continue to run, trying to destroy inner twice
         return unless @inner
 
+        yield if block_given?
+
         Rdkafka::Bindings.rd_kafka_destroy(@inner)
         @inner = nil
         @opaque = nil

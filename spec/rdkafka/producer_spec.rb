@@ -1155,4 +1155,19 @@ describe Rdkafka::Producer do
       end
     end
   end
+
+  describe 'with other fiber closing' do
+    context 'when we create many fibers and close producer in some of them' do
+      it 'expect not to crash ruby' do
+        10.times do |i|
+          producer = rdkafka_producer_config.producer
+
+          Fiber.new do
+            GC.start
+            producer.close
+          end.resume
+        end
+      end
+    end
+  end
 end

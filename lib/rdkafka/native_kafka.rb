@@ -131,6 +131,8 @@ module Rdkafka
         Rdkafka::Bindings.rd_kafka_destroy(@inner)
         @inner = nil
         @opaque = nil
+        @poll_mutex.unlock
+        @poll_mutex = nil
       end
     end
   end

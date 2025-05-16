@@ -6,6 +6,7 @@
 - [Enhancement] Allow native Kafka customization poll time.
 - [Enhancement] Roll out experimental jruby support.
 - [Fix] Fix issue where post-closed producer C topics refs would not be cleaned.
+- [Fix] Fiber causes Segmentation Fault.
 
 ## 0.21.0 (2025-02-13)
 - [Enhancement] Bump librdkafka to `2.8.0`

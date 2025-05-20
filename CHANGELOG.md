@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.19.2 (Unreleased)
+## 0.19.2 (2025-05-20)
 - [Enhancement] Replace TTL-based partition count cache with a global cache that reuses `librdkafka` statistics data when possible.
 - [Enhancement] Roll out experimental jruby support.
 - [Fix] Fix issue where post-closed producer C topics refs would not be cleaned.

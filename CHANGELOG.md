@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.19.3 (Unreleased)
+- [Enhancement] Include broker message in the error full message if provided.
+
 ## 0.19.2 (2025-05-20)
 - [Enhancement] Replace TTL-based partition count cache with a global cache that reuses `librdkafka` statistics data when possible.
 - [Enhancement] Roll out experimental jruby support.

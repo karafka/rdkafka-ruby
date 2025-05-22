@@ -126,7 +126,14 @@ module Rdkafka
                      else
                        ''
                      end
-      "#{message_prefix_part}#{Rdkafka::Bindings.rd_kafka_err2str(@rdkafka_response)} (#{code})"
+
+      err_str = Rdkafka::Bindings.rd_kafka_err2str(@rdkafka_response)
+      base = "#{message_prefix_part}#{err_str} (#{code})"
+
+      return base if broker_message.nil?
+      return base if broker_message.empty?
+
+      "#{base}\n#{broker_message}"
     end
 
     # Whether this error indicates the partition is EOF.

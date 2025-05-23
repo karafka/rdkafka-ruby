@@ -37,10 +37,10 @@ Gem::Specification.new do |gem|
   gem.metadata = {
     'funding_uri' => 'https://karafka.io/#become-pro',
     'homepage_uri' => 'https://karafka.io',
-    'changelog_uri' => 'https://github.com/karafka/rdkafka-ruby/blob/main/CHANGELOG.md',
+    'changelog_uri' => 'https://karafka.io/docs/Changelog-Rdkafka',
     'bug_tracker_uri' => 'https://github.com/karafka/rdkafka-ruby/issues',
     'source_code_uri' => 'https://github.com/karafka/rdkafka-ruby',
-    'documentation_uri' => 'https://github.com/karafka/rdkafka-ruby/blob/main/README.md',
+    'documentation_uri' => 'https://karafka.io/docs',
     'rubygems_mfa_required' => 'true'
   }
 end

@@ -12,6 +12,7 @@ jobs:
   push:
     if: github.repository_owner == 'karafka'
     runs-on: ubuntu-latest
+    environment: deployment
 
     permissions:
       contents: write

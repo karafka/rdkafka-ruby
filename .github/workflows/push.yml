@@ -28,5 +28,11 @@ jobs:
         with:
           bundler-cache: true
 
+      - name: Build rdkafka-ruby
+        run: |
+          set -e
+          bundle install --jobs 4 --retry 3
+          cd ext && bundle exec rake
+
       # Release
       - uses: rubygems/release-gem@9e85cb11501bebc2ae661c1500176316d3987059 # v1

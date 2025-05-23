@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   push:
-    if: github.repository_owner == 'karafka-rdkafka'
+    if: github.repository_owner == 'karafka'
     runs-on: ubuntu-latest
     environment: deployment
 

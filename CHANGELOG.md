@@ -8,6 +8,7 @@
 - [Enhancement] Roll out experimental jruby support.
 - [Fix] Fix issue where post-closed producer C topics refs would not be cleaned.
 - [Fix] Fiber causes Segmentation Fault.
+- [Change] Move to trusted-publishers and remove signing since no longer needed.
 
 ## 0.19.1 (2025-04-07)
 - [Enhancement] Support producing and consuming of headers with mulitple values (KIP-82).

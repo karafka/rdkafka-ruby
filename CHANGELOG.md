@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.19.4 (2025-05-23)
+- [Change] Move to trusted-publishers and remove signing since no longer needed.
+
 ## 0.19.3 (2025-05-23)
 - [Enhancement] Include broker message in the error full message if provided.
 

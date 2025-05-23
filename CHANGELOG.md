@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.19.3 (Unreleased)
+## 0.19.3 (2025-05-23)
 - [Enhancement] Include broker message in the error full message if provided.
 
 ## 0.19.2 (2025-05-20)

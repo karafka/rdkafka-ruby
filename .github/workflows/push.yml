@@ -26,7 +26,13 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@84684c07c1965536eb4802c8daf1a77968df0cb1 # v1.239.0
         with:
-          bundler-cache: true
+          bundler-cache: false
+
+      - name: Build rdkafka-ruby
+        run: |
+          set -e
+          bundle install --jobs 4 --retry 3
+          cd ext && bundle exec rake
 
       # Release
       - uses: rubygems/release-gem@9e85cb11501bebc2ae661c1500176316d3987059 # v1

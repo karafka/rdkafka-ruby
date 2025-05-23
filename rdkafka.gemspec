@@ -17,11 +17,6 @@ Gem::Specification.new do |gem|
   gem.version = Rdkafka::VERSION
   gem.required_ruby_version = '>= 3.1'
   gem.extensions = %w(ext/Rakefile)
-  gem.cert_chain = %w[certs/cert.pem]
-
-  if $PROGRAM_NAME.end_with?('gem')
-    gem.signing_key = File.expand_path('~/.ssh/gem-private_key.pem')
-  end
 
   gem.add_dependency 'ffi', '~> 1.15'
   gem.add_dependency 'mini_portile2', '~> 2.6'

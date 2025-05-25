@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# Rakefile
-
 require 'bundler/gem_tasks'
 require "./lib/rdkafka"
 

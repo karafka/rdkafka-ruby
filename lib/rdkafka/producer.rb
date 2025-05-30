@@ -239,6 +239,13 @@ module Rdkafka
 
         topic_metadata ? topic_metadata[:partition_count] : -1
       end
+    rescue Rdkafka::RdkafkaError => e
+      # If the topic does not exist, it will be created or if not allowed another error will be
+      # raised. We here return -1 so this can happen without early error happening on metadata
+      # discovery.
+      return -1 if e.code == :unknown_topic_or_part
+
+      raise(e)
     end
 
     # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.

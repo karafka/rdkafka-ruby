@@ -364,6 +364,48 @@ describe Rdkafka::Producer do
     expect(message.key).to eq "key utf8"
   end
 
+  it "should produce a message to a non-existing topic with key and partition key" do
+    new_topic = "it-#{SecureRandom.uuid}"
+
+    handle = producer.produce(
+      # Needs to be a new topic each time
+      topic:   new_topic,
+      payload: "payload",
+      key:     "key",
+      partition_key: "partition_key",
+      label:   "label"
+    )
+
+    # Should be pending at first
+    expect(handle.pending?).to be true
+    expect(handle.label).to eq "label"
+
+    # Check delivery handle and report
+    report = handle.wait(max_wait_timeout: 5)
+    expect(handle.pending?).to be false
+    expect(report).not_to be_nil
+    expect(report.partition).to eq 0
+    expect(report.offset).to be >= 0
+    expect(report.label).to eq "label"
+
+    # Flush and close producer
+    producer.flush
+    producer.close
+
+    # Consume message and verify its content
+    message = wait_for_message(
+      topic: new_topic,
+      delivery_report: report,
+      consumer: consumer
+    )
+    expect(message.partition).to eq 0
+    expect(message.payload).to eq "payload"
+    expect(message.key).to eq "key"
+    # Since api.version.request is on by default we will get
+    # the message creation timestamp if it's not set.
+    expect(message.timestamp).to be_within(10).of(Time.now)
+  end
+
   context "timestamp" do
     it "should raise a type error if not nil, integer or time" do
       expect {

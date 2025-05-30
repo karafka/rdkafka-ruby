@@ -679,6 +679,25 @@ describe Rdkafka::Producer do
     end
   end
 
+  context "when topic does not exist and allow.auto.create.topics is false" do
+    let(:producer) do
+      rdkafka_producer_config(
+        "bootstrap.servers": "localhost:9092",
+        "message.timeout.ms": 100,
+        "allow.auto.create.topics": false
+      ).producer
+    end
+
+    it "should contain the error in the response when not deliverable" do
+      handler = producer.produce(topic: "it-#{SecureRandom.uuid}", payload: nil, label: 'na')
+      # Wait for the async callbacks and delivery registry to update
+      sleep(2)
+      expect(handler.create_result.error).to be_a(Rdkafka::RdkafkaError)
+      expect(handler.create_result.error.code).to eq(:msg_timed_out)
+      expect(handler.create_result.label).to eq('na')
+    end
+  end
+
   describe '#partition_count' do
     it { expect(producer.partition_count('consume_test_topic')).to eq(3) }
 

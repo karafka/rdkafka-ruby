@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.19.5 (Unreleased)
+## 0.19.5 (2025-05-30)
 - [Enhancement] Allow for producing to non-existing topics with `key` and `partition_key` present.
 
 ## 0.19.4 (2025-05-23)

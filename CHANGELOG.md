@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.21.1 (Unreleased)
+- [Enhancement] Allow for producing to non-existing topics with `key` and `partition_key` present.
 - [Enhancement] Replace TTL-based partition count cache with a global cache that reuses `librdkafka` statistics data when possible.
 - [Enhancement] Support producing and consuming of headers with mulitple values (KIP-82).
 - [Enhancement] Allow native Kafka customization poll time.

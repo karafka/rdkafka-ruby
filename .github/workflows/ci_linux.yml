@@ -1,0 +1,248 @@
+name: Linux CI
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    branches: [ main, master ]
+  push:
+    branches: [ main, master ]
+  schedule:
+    - cron: '0 1 * * *'
+
+permissions:
+  contents: read
+
+env:
+  BUNDLE_RETRY: 6
+  BUNDLE_JOBS: 4
+
+jobs:
+  build_install:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Install package dependencies
+        run: "[ -e $APT_DEPS ] || sudo apt-get install -y --no-install-recommends $APT_DEPS"
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@a4effe49ee8ee5b8b5091268c473a4628afb5651 # v1.245.0
+        with:
+          ruby-version: '3.4'  # Use one Ruby version for building
+          bundler-cache: false
+      - name: Build gem with mini_portile
+        run: |
+          set -e
+          bundle install --jobs 4 --retry 3
+          cd ext && bundle exec rake
+          cd ..
+      - name: Upload built gem and bundle
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: rdkafka-built-gem
+          path: |
+            vendor/bundle/
+            .bundle/
+            ext/
+            lib/
+          retention-days: 1
+
+  specs_install:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    needs: build_install
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+          - '3.5.0-preview1'
+          - '3.4'
+          - '3.3'
+          - '3.2'
+          - '3.1'
+          - 'jruby-10.0'
+        include:
+          - ruby: '3.4'
+            coverage: 'true'
+          - ruby: 'jruby-10.0'
+            continue-on-error: true
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Download built gem
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: rdkafka-built-gem
+          path: ./
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@a4effe49ee8ee5b8b5091268c473a4628afb5651 # v1.245.0
+        with:
+          ruby-version: ${{matrix.ruby}}
+          bundler-cache: false
+      - name: Start Kafka with Docker Compose
+        run: |
+          docker compose up -d
+          echo "Waiting for Kafka to be ready..."
+
+          sleep 10
+
+          echo "=== Container status ==="
+          docker compose ps kafka
+
+          for i in {1..30}; do
+            echo "=== Attempt $i/30 ==="
+
+            echo "Testing kafka-topics command..."
+            if docker compose exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1; then
+              echo "Kafka topics command succeeded!"
+              break
+            else
+              echo "Kafka topics command failed (exit code: $?)"
+            fi
+
+            echo "Sleeping 2 seconds..."
+            sleep 2
+          done
+      - name: Install remaining dependencies
+        env:
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+        run: |
+          # Only install gems that aren't Ruby-version specific
+          bundle install --jobs 4 --retry 3
+      - name: Run all specs
+        env:
+          GITHUB_COVERAGE: ${{matrix.coverage}}
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+        continue-on-error: ${{ matrix.continue-on-error || false }}
+        run: |
+          bundle exec rspec
+
+  build_precompiled:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            gcc \
+            make \
+            patch \
+            tar \
+            wget \
+            ca-certificates \
+            libsasl2-dev \
+            libssl-dev \
+            zlib1g-dev \
+            libzstd-dev
+      - name: Cache build-tmp directory
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ext/build-tmp
+          key: build-tmp-${{ runner.os }}-${{ hashFiles('ext/*.sh', 'ext/Rakefile') }}-v2
+      - name: Build precompiled librdkafka.so
+        run: |
+          cd ext
+          ./build_linux_x86_64.sh
+      - name: Upload precompiled library
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: librdkafka-precompiled
+          path: ext/
+          retention-days: 1
+
+  specs_precompiled:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    needs: build_precompiled
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+          - '3.5.0-preview1'
+          - '3.4'
+          - '3.3'
+          - '3.2'
+          - '3.1'
+        include:
+          - ruby: '3.4'
+            coverage: 'true'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Download precompiled library
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: librdkafka-precompiled
+          path: ext/
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@a4effe49ee8ee5b8b5091268c473a4628afb5651 # v1.245.0
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: false
+      - name: Start Kafka with Docker Compose
+        run: |
+          docker compose up -d
+          echo "Waiting for Kafka to be ready..."
+
+          sleep 10
+
+          echo "=== Container status ==="
+          docker compose ps kafka
+
+          for i in {1..30}; do
+            echo "=== Attempt $i/30 ==="
+
+            echo "Testing kafka-topics command..."
+            if docker compose exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1; then
+              echo "Kafka topics command succeeded!"
+              break
+            else
+              echo "Kafka topics command failed (exit code: $?)"
+            fi
+
+            echo "Sleeping 2 seconds..."
+            sleep 2
+          done
+      - name: Install bundle with precompiled library
+        env:
+          GITHUB_COVERAGE: ${{ matrix.coverage }}
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+        run: |
+          bundle install --jobs 4 --retry 3
+          echo "Bundle install completed with precompiled library"
+      - name: Remove build dependencies to test static linking
+        continue-on-error: true
+        run: |
+          echo "Removing build dependencies to verify precompiled library is truly self-contained..."
+
+          # Remove packages one by one to avoid dependency conflicts
+          packages_to_remove="build-essential gcc g++ make patch tar wget libsasl2-dev libssl-dev zlib1g-dev libzstd-dev"
+
+          for package in $packages_to_remove; do
+            if dpkg -l | grep -q "^ii.*$package "; then
+              echo "Removing $package..."
+              sudo dpkg --remove --force-depends $package 2>/dev/null || echo "Could not remove $package"
+            else
+              echo "$package is not installed"
+            fi
+          done
+
+          echo "Build dependencies removal completed"
+          echo "Remaining build tools:"
+          which gcc g++ make 2>/dev/null || echo "No build tools found in PATH (good!)"
+      - name: Run specs with precompiled library
+        env:
+          GITHUB_COVERAGE: ${{ matrix.coverage }}
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+        run: |
+          bundle exec rspec

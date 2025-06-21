@@ -18,7 +18,7 @@ task :default => :clean do
 
     # Use default homebrew openssl if we're on mac and the directory exists, is not using nix-prepared libraries
     # and each of flags is not already set
-    if recipe.host&.include?("darwin") && system("which brew &> /dev/null") && Dir.exist?("#{homebrew_prefix = %x(brew --prefix openssl).strip}") && ENV.key?("NIX_LDFLAGS")
+    if recipe.host&.include?("darwin") && system("which brew &> /dev/null") && Dir.exist?("#{homebrew_prefix = %x(brew --prefix openssl).strip}") && !ENV.key?("NIX_LDFLAGS")
       ENV["CPPFLAGS"] = "-I#{homebrew_prefix}/include" unless ENV.key?("CPPFLAGS")
       ENV["LDFLAGS"] = "-L#{homebrew_prefix}/lib" unless ENV.key?("LDFLAGS")
     end

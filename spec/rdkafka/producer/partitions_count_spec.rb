@@ -257,7 +257,7 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
       cache.get(topic) { partition_count }
 
       # Wait just under TTL
-      sleep(default_ttl - 0.1)
+      sleep(default_ttl - 0.2)
 
       # Value should still be cached (block should not be called)
       result = cache.get(topic) { fail "Should not be called when cache is valid" }

@@ -1,4 +1,4 @@
-name: Linux CI
+name: CI Linux x86_64 GNU
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -155,7 +155,7 @@ jobs:
       - name: Upload precompiled library
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: librdkafka-precompiled
+          name: librdkafka-precompiled-linux
           path: ext/
           retention-days: 1
 
@@ -182,7 +182,7 @@ jobs:
       - name: Download precompiled library
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: librdkafka-precompiled
+          name: librdkafka-precompiled-linux
           path: ext/
       - name: Set up Ruby
         uses: ruby/setup-ruby@a4effe49ee8ee5b8b5091268c473a4628afb5651 # v1.245.0

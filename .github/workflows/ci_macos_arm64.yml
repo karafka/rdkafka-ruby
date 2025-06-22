@@ -1,0 +1,297 @@
+name: CI macOS ARM64
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+on:
+  pull_request:
+    branches: [ main, master ]
+  push:
+    branches: [ main, master ]
+  schedule:
+    - cron: '0 1 * * *'
+permissions:
+  contents: read
+env:
+  BUNDLE_RETRY: 6
+  BUNDLE_JOBS: 4
+  # Renovate can track and update this version
+  CONFLUENT_VERSION: "8.0.0"
+jobs:
+  build_install:
+    timeout-minutes: 30
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Install Bash 4+ and Kerberos
+        run: |
+          brew install bash krb5
+          echo "/opt/homebrew/bin" >> $GITHUB_PATH
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@a4effe49ee8ee5b8b5091268c473a4628afb5651 # v1.245.0
+        with:
+          ruby-version: '3.4'  # Use one Ruby version for building
+          bundler-cache: false
+      - name: Build gem with mini_portile
+        run: |
+          set -e
+          bundle install --jobs 4 --retry 3
+          cd ext && bundle exec rake
+          cd ..
+      - name: Upload built gem and bundle
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: rdkafka-built-gem-macos
+          path: |
+            vendor/bundle/
+            .bundle/
+            ext/
+            lib/
+          retention-days: 1
+
+  specs_install:
+    timeout-minutes: 30
+    runs-on: macos-latest
+    needs: build_install
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+          - '3.5.0-preview1'
+          - '3.4'
+          - '3.3'
+          - '3.2'
+          - '3.1'
+        include:
+          - ruby: '3.4'
+            coverage: 'true'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Download built gem
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: rdkafka-built-gem-macos
+          path: ./
+      - name: Install Bash 4+ and Kerberos
+        run: |
+          brew install bash krb5
+          echo "/opt/homebrew/bin" >> $GITHUB_PATH
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@a4effe49ee8ee5b8b5091268c473a4628afb5651 # v1.245.0
+        with:
+          ruby-version: ${{matrix.ruby}}
+          bundler-cache: false
+      - name: Install and Start Confluent Community Kafka (KRaft)
+        run: |
+          brew install openjdk@17
+          export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"
+          export JAVA_HOME="/opt/homebrew/opt/openjdk@17"
+
+          curl -O "https://packages.confluent.io/archive/8.0/confluent-community-${CONFLUENT_VERSION}.tar.gz"
+          tar -xzf "confluent-community-${CONFLUENT_VERSION}.tar.gz"
+
+          export CONFLUENT_HOME="$(pwd)/confluent-${CONFLUENT_VERSION}"
+          export PATH="$CONFLUENT_HOME/bin:$PATH"
+          cd "$CONFLUENT_HOME"
+
+          # Find the correct server config
+          KRAFT_CONFIG=""
+          for config in "etc/kafka/kraft/server.properties" "config/kraft/server.properties" "etc/kafka/server.properties"; do
+            if [ -f "$config" ]; then
+              KRAFT_CONFIG="$config"
+              echo "Found config: $KRAFT_CONFIG"
+              break
+            fi
+          done
+
+          if [ -z "$KRAFT_CONFIG" ]; then
+            echo "❌ No server config found"
+            exit 1
+          fi
+
+          # Configure KRaft for single-node setup
+          cat >> "$KRAFT_CONFIG" << 'EOF'
+
+          # KRaft mode configuration for single-node setup
+          process.roles=broker,controller
+          node.id=1
+          controller.quorum.voters=1@127.0.0.1:9093
+          listeners=PLAINTEXT://127.0.0.1:9092,CONTROLLER://127.0.0.1:9093
+          controller.listener.names=CONTROLLER
+          inter.broker.listener.name=PLAINTEXT
+          log.dirs=/tmp/kraft-combined-logs
+
+          # Enable simple ACL authorization for testing
+          authorizer.class.name=org.apache.kafka.metadata.authorizer.StandardAuthorizer
+          super.users=User:ANONYMOUS
+          allow.everyone.if.no.acl.found=true
+          EOF
+
+          echo "Updated KRaft configuration"
+
+          CLUSTER_ID=$(bin/kafka-storage random-uuid)
+          bin/kafka-storage format -t "$CLUSTER_ID" -c "$KRAFT_CONFIG"
+          bin/kafka-server-start "$KRAFT_CONFIG" &
+
+          sleep 20
+
+          for i in {1..30}; do
+            if bin/kafka-topics --bootstrap-server 127.0.0.1:9092 --list >/dev/null 2>&1; then
+              echo "✅ Confluent Community ${CONFLUENT_VERSION} (KRaft) is ready!"
+              break
+            fi
+            [ $i -eq 30 ] && { echo "❌ Kafka failed to start"; exit 1; }
+            sleep 2
+          done
+      - name: Install remaining dependencies
+        env:
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+        run: |
+          # Only install gems that aren't Ruby-version specific
+          bundle install --jobs 4 --retry 3
+      - name: Run all specs
+        env:
+          GITHUB_COVERAGE: ${{matrix.coverage}}
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+        run: |
+          bundle exec rspec
+
+  build_precompiled:
+    timeout-minutes: 45
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Install Bash 4+ and Kerberos
+        run: |
+          brew install bash krb5
+          echo "/opt/homebrew/bin" >> $GITHUB_PATH
+      - name: Cache build-tmp directory
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ext/build-tmp-macos
+          key: build-tmp-${{ runner.os }}-${{ hashFiles('ext/*.sh', 'ext/Rakefile') }}-v2
+      - name: Build precompiled librdkafka for macOS ARM64
+        run: |
+          cd ext
+          /opt/homebrew/bin/bash ./build_macos_arm64.sh
+      - name: Upload precompiled library
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: librdkafka-precompiled-macos
+          path: ext/
+          retention-days: 1
+
+  specs_precompiled:
+    timeout-minutes: 30
+    runs-on: macos-latest
+    needs: build_precompiled
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+          - '3.5.0-preview1'
+          - '3.4'
+          - '3.3'
+          - '3.2'
+          - '3.1'
+        include:
+          - ruby: '3.4'
+            coverage: 'true'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Download precompiled library
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: librdkafka-precompiled-macos
+          path: ext/
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@a4effe49ee8ee5b8b5091268c473a4628afb5651 # v1.245.0
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: false
+      - name: Install Bash 4+ and Kerberos
+        run: |
+          brew install bash krb5
+          echo "/opt/homebrew/bin" >> $GITHUB_PATH
+      - name: Install and Start Confluent Community Kafka (KRaft)
+        run: |
+          brew install openjdk@17
+          export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"
+          export JAVA_HOME="/opt/homebrew/opt/openjdk@17"
+
+          curl -O "https://packages.confluent.io/archive/8.0/confluent-community-${CONFLUENT_VERSION}.tar.gz"
+          tar -xzf "confluent-community-${CONFLUENT_VERSION}.tar.gz"
+
+          export CONFLUENT_HOME="$(pwd)/confluent-${CONFLUENT_VERSION}"
+          export PATH="$CONFLUENT_HOME/bin:$PATH"
+          cd "$CONFLUENT_HOME"
+
+          # Find the correct server config
+          KRAFT_CONFIG=""
+          for config in "etc/kafka/kraft/server.properties" "config/kraft/server.properties" "etc/kafka/server.properties"; do
+            if [ -f "$config" ]; then
+              KRAFT_CONFIG="$config"
+              echo "Found config: $KRAFT_CONFIG"
+              break
+            fi
+          done
+
+          if [ -z "$KRAFT_CONFIG" ]; then
+            echo "❌ No server config found"
+            exit 1
+          fi
+
+          # Configure KRaft for single-node setup
+          cat >> "$KRAFT_CONFIG" << 'EOF'
+
+          # KRaft mode configuration for single-node setup
+          process.roles=broker,controller
+          node.id=1
+          controller.quorum.voters=1@127.0.0.1:9093
+          listeners=PLAINTEXT://127.0.0.1:9092,CONTROLLER://127.0.0.1:9093
+          controller.listener.names=CONTROLLER
+          inter.broker.listener.name=PLAINTEXT
+          log.dirs=/tmp/kraft-combined-logs
+
+          # Enable simple ACL authorization for testing
+          authorizer.class.name=org.apache.kafka.metadata.authorizer.StandardAuthorizer
+          super.users=User:ANONYMOUS
+          allow.everyone.if.no.acl.found=true
+          EOF
+
+          echo "Updated KRaft configuration"
+
+          CLUSTER_ID=$(bin/kafka-storage random-uuid)
+          bin/kafka-storage format -t "$CLUSTER_ID" -c "$KRAFT_CONFIG"
+          bin/kafka-server-start "$KRAFT_CONFIG" &
+
+          sleep 20
+
+          for i in {1..30}; do
+            if bin/kafka-topics --bootstrap-server 127.0.0.1:9092 --list >/dev/null 2>&1; then
+              echo "✅ Confluent Community ${CONFLUENT_VERSION} (KRaft) is ready!"
+              break
+            fi
+            [ $i -eq 30 ] && { echo "❌ Kafka failed to start"; exit 1; }
+            sleep 2
+          done
+      - name: Install bundle with precompiled library
+        env:
+          GITHUB_COVERAGE: ${{ matrix.coverage }}
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+        run: |
+          bundle install --jobs 4 --retry 3
+          echo "Bundle install completed with precompiled library"
+      - name: Run specs with precompiled library
+        env:
+          GITHUB_COVERAGE: ${{ matrix.coverage }}
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+        run: |
+          bundle exec rspec

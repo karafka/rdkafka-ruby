@@ -181,6 +181,9 @@ describe Rdkafka::Consumer do
 
     context "subscription" do
       let(:timeout) { 1000 }
+      # Some specs here test the manual offset commit hence we want to ensure, that we have some
+      # offsets in-memory that we can manually commit
+      let(:consumer) { rdkafka_consumer_config('auto.commit.interval.ms': 60_000).consumer }
 
       before do
         consumer.subscribe("consume_test_topic")
@@ -227,7 +230,7 @@ describe Rdkafka::Consumer do
 
         # This is needed because `enable.auto.offset.store` is true but when running in CI that
         # is overloaded, offset store lags
-        sleep(2)
+        sleep(1)
 
         consumer.commit
         expect(message1.offset).to eq message2.offset
@@ -259,6 +262,7 @@ describe Rdkafka::Consumer do
   end
 
   describe "#seek_by" do
+    let(:consumer) { rdkafka_consumer_config('auto.commit.interval.ms': 60_000).consumer }
     let(:topic) { "consume_test_topic" }
     let(:partition) { 0 }
     let(:offset) { 0 }

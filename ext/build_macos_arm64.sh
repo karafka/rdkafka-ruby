@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Simple librdkafka build script for macOS
+# Simple librdkafka build script for macOS with Kerberos support
 # Usage: ./build-librdkafka-macos.sh
 #
 # Expected directory structure:
@@ -109,24 +109,81 @@ build_openssl_macos() {
     fi
 }
 
-# Build static Cyrus SASL for macOS
+# Build static MIT Kerberos for macOS
+build_krb5_macos() {
+    local arch="$1"
+    local krb5_prefix="$2"
+    local krb5_dir="$3"
+
+    cd "$krb5_dir/src"
+
+    if [ ! -f "$krb5_prefix/lib/libgssapi_krb5.a" ]; then
+        log "Configuring and building static MIT Kerberos..."
+        make clean 2>/dev/null || true
+
+        setup_macos_compiler "$arch"
+
+        # Configure MIT Kerberos for macOS
+        ./configure \
+            --disable-shared \
+            --enable-static \
+            --prefix="$krb5_prefix" \
+            --without-ldap \
+            --without-tcl \
+            --without-keyutils \
+            --disable-rpath \
+            --without-system-verto \
+            --disable-thread-support \
+            --disable-aesni
+
+        # Build everything except the problematic kadmin tools (same as Linux)
+        log "Building Kerberos (will ignore kadmin build failures)..."
+        make -j$(get_cpu_count) || {
+            log "Full build failed (expected due to kadmin), continuing with libraries..."
+            # The libraries should be built even if kadmin fails
+            true
+        }
+
+        # Install what was successfully built
+        make install || {
+            log "Full install failed, installing individual components..."
+            # Try to install the core libraries manually
+            make install-mkdirs 2>/dev/null || true
+            make -C util install 2>/dev/null || true
+            make -C lib install 2>/dev/null || true
+            make -C plugins/kdb/db2 install 2>/dev/null || true
+        }
+
+        # Verify we got the essential libraries
+        if [ ! -f "$krb5_prefix/lib/libgssapi_krb5.a" ]; then
+            error "Failed to build essential Kerberos libraries"
+        fi
+
+        log "✅ Static MIT Kerberos built successfully at $krb5_prefix"
+    else
+        log "Static MIT Kerberos already built, skipping..."
+    fi
+}
+
+# Build static Cyrus SASL for macOS with Kerberos support
 build_sasl_macos() {
     local arch="$1"
     local sasl_prefix="$2"
     local sasl_dir="$3"
     local openssl_prefix="$4"
+    local krb5_prefix="$5"
 
     cd "$sasl_dir"
 
     if [ ! -f "$sasl_prefix/lib/libsasl2.a" ]; then
-        log "Configuring and building static Cyrus SASL..."
+        log "Configuring and building static Cyrus SASL with Kerberos support..."
         make clean 2>/dev/null || true
 
         setup_macos_compiler "$arch"
-        export CPPFLAGS="$CPPFLAGS -I$openssl_prefix/include"
-        export LDFLAGS="-L$openssl_prefix/lib"
+        export CPPFLAGS="$CPPFLAGS -I$openssl_prefix/include -I$krb5_prefix/include"
+        export LDFLAGS="-L$openssl_prefix/lib -L$krb5_prefix/lib"
 
-        # Configure SASL with minimal features for Kafka
+        # Configure SASL with Kerberos/GSSAPI support (now ENABLED)
         ./configure \
             --disable-shared \
             --enable-static \
@@ -137,6 +194,8 @@ build_sasl_macos() {
             --disable-sample \
             --disable-obsolete_cram_attr \
             --disable-obsolete_digest_attr \
+            --enable-gssapi="$krb5_prefix" \
+            --disable-krb4 \
             --with-openssl="$openssl_prefix"
 
         make -j$(get_cpu_count)
@@ -147,7 +206,7 @@ build_sasl_macos() {
             error "Failed to build static Cyrus SASL"
         fi
 
-        log "✅ Static Cyrus SASL built successfully at $sasl_prefix"
+        log "✅ Static Cyrus SASL with Kerberos support built successfully at $sasl_prefix"
     else
         log "Static Cyrus SASL already built, skipping..."
     fi
@@ -192,9 +251,12 @@ check_common_dependencies
 check_macos_dependencies
 
 # Auto-detect librdkafka tarball
+log "Looking for librdkafka tarball in $DIST_DIR..."
 LIBRDKAFKA_TARBALL=$(find_librdkafka_tarball "$DIST_DIR")
-LIBRDKAFKA_VERSION=$(basename "$LIBRDKAFKA_TARBALL" .tar.gz)
-log "Version detected: $LIBRDKAFKA_VERSION"
+log "Found librdkafka tarball: $LIBRDKAFKA_TARBALL"
+
+# Verify librdkafka tarball checksum if available
+verify_librdkafka_checksum "$LIBRDKAFKA_TARBALL"
 
 # Find patches
 PATCHES_FOUND=()
@@ -204,7 +266,14 @@ find_patches "$PATCHES_DIR" PATCHES_FOUND
 ARCH=$(uname -m)
 log "Detected architecture: $ARCH"
 
-log "Building librdkafka for macOS"
+security_log "Starting secure build with checksum verification enabled"
+log "Building self-contained librdkafka for macOS with Kerberos support"
+log "Dependencies to build:"
+log "  - OpenSSL: $OPENSSL_VERSION"
+log "  - Cyrus SASL: $CYRUS_SASL_VERSION (with Kerberos support)"
+log "  - MIT Kerberos: $KRB5_VERSION"
+log "  - zlib: $ZLIB_VERSION"
+log "  - ZStd: $ZSTD_VERSION"
 log "librdkafka source: $LIBRDKAFKA_TARBALL"
 log "Build directory: $BUILD_DIR"
 
@@ -224,15 +293,27 @@ build_openssl_macos "$ARCH" "$OPENSSL_PREFIX" "$OPENSSL_DIR"
 
 cd "$BUILD_DIR"
 
-# Build static Cyrus SASL (after OpenSSL since it might need crypto functions)
-log "Building static Cyrus SASL $CYRUS_SASL_VERSION..."
+# Build static MIT Kerberos (before SASL since SASL needs it)
+log "Building static MIT Kerberos $KRB5_VERSION..."
+KRB5_PREFIX="$DEPS_PREFIX/static-krb5-$KRB5_VERSION"
+KRB5_TARBALL="krb5-$KRB5_VERSION.tar.gz"
+KRB5_DIR="krb5-$KRB5_VERSION"
+
+secure_download "$(get_krb5_url)" "$KRB5_TARBALL"
+extract_if_needed "$KRB5_TARBALL" "$KRB5_DIR"
+build_krb5_macos "$ARCH" "$KRB5_PREFIX" "$KRB5_DIR"
+
+cd "$BUILD_DIR"
+
+# Build static Cyrus SASL (after OpenSSL and Kerberos since it needs both)
+log "Building static Cyrus SASL $CYRUS_SASL_VERSION with Kerberos support..."
 SASL_PREFIX="$DEPS_PREFIX/static-sasl-$CYRUS_SASL_VERSION"
 SASL_TARBALL="cyrus-sasl-$CYRUS_SASL_VERSION.tar.gz"
 SASL_DIR="cyrus-sasl-$CYRUS_SASL_VERSION"
 
 secure_download "$(get_sasl_url)" "$SASL_TARBALL"
 extract_if_needed "$SASL_TARBALL" "$SASL_DIR"
-build_sasl_macos "$ARCH" "$SASL_PREFIX" "$SASL_DIR" "$OPENSSL_PREFIX"
+build_sasl_macos "$ARCH" "$SASL_PREFIX" "$SASL_DIR" "$OPENSSL_PREFIX" "$KRB5_PREFIX"
 
 cd "$BUILD_DIR"
 
@@ -280,10 +361,30 @@ build_static_lib_macos "z" "$ARCH" "$ZLIB_PREFIX" "$ZLIB_DIR" "--static"
 
 cd "$BUILD_DIR"
 
+# Completely disable pkg-config to prevent Homebrew library detection
+log "Disabling pkg-config to prevent Homebrew interference..."
+export PKG_CONFIG=""
+export PKG_CONFIG_PATH=""
+export PKG_CONFIG_LIBDIR=""
+
+# Create a dummy pkg-config that always fails
+mkdir -p "$BUILD_DIR/no-pkg-config"
+cat > "$BUILD_DIR/no-pkg-config/pkg-config" << 'EOF'
+#!/bin/sh
+# Dummy pkg-config that always fails to prevent Homebrew detection
+exit 1
+EOF
+chmod +x "$BUILD_DIR/no-pkg-config/pkg-config"
+
+# Put our dummy pkg-config first in PATH
+export PATH="$BUILD_DIR/no-pkg-config:$PATH"
+
+log "pkg-config disabled - configure will use manual library detection only"
+
 # Extract librdkafka
 log "Extracting librdkafka..."
 tar xzf "$LIBRDKAFKA_TARBALL"
-cd "$LIBRDKAFKA_VERSION"
+cd "librdkafka-$LIBRDKAFKA_VERSION"
 
 # Fix permissions and apply patches
 fix_configure_permissions
@@ -292,54 +393,75 @@ apply_patches PATCHES_FOUND
 # Set compiler flags for librdkafka
 setup_macos_compiler "$ARCH"
 
-# Configure librdkafka with static dependencies
-log "Configuring librdkafka with static dependencies..."
+# Configure librdkafka with static dependencies INCLUDING Kerberos
+log "Configuring librdkafka with static dependencies including Kerberos..."
 
-# Use our static libraries instead of system versions
-export CPPFLAGS="$CPPFLAGS -I$OPENSSL_PREFIX/include -I$SASL_PREFIX/include -I$ZLIB_PREFIX/include -I$ZSTD_PREFIX/include"
-export LDFLAGS="-L$OPENSSL_PREFIX/lib -L$SASL_PREFIX/lib -L$ZLIB_PREFIX/lib -L$ZSTD_PREFIX/lib"
+# Tell configure that math functions don't need -lm on macOS
+export ac_cv_lib_m_floor=yes
+export ac_cv_lib_m_ceil=yes
+export ac_cv_lib_m_sqrt=yes
+export ac_cv_lib_m_pow=yes
+export LIBS=""  # Clear any LIBS that might include -lm
+
+# Use our static libraries instead of system versions (now including Kerberos)
+export CPPFLAGS="$CPPFLAGS -I$OPENSSL_PREFIX/include -I$SASL_PREFIX/include -I$KRB5_PREFIX/include -I$ZLIB_PREFIX/include -I$ZSTD_PREFIX/include"
+export LDFLAGS="-L$OPENSSL_PREFIX/lib -L$SASL_PREFIX/lib -L$KRB5_PREFIX/lib -L$ZLIB_PREFIX/lib -L$ZSTD_PREFIX/lib"
 
 if [ -f configure ]; then
-    log "Using standard configure (autotools)"
+    log "Using mklove configure script"
     ./configure \
         --enable-static \
-        --enable-shared \
-        --disable-lz4-ext \
-        --enable-sasl
+        --disable-shared \
+        --disable-curl \
+        --enable-gssapi
 else
     error "No configure script found"
 fi
 
+# Fix system library path for linking
+MACOS_SDK_PATH=$(xcrun --show-sdk-path)
+export LDFLAGS="$LDFLAGS -L$MACOS_SDK_PATH/usr/lib"
+
 # Build librdkafka
 log "Compiling librdkafka..."
 make clean || true
-make -j$(get_cpu_count)
 
-# Verify build products exist
+# Build with LIBS override, but ignore dylib build failures
+make -j$(get_cpu_count) LIBS="" || {
+    log "Build failed (expected - dylib linking issue), checking if static library was created..."
+}
+
+# Verify static library exists (this is what we actually need)
 if [ ! -f src/librdkafka.a ]; then
     error "librdkafka.a not found after build"
 fi
 
-if [ ! -f src/librdkafka.1.dylib ]; then
-    error "librdkafka.dylib not found after build"
-fi
+log "✅ Static librdkafka.a built successfully"
 
-log "librdkafka built successfully"
+# Remove the dylib check since we're building our own
+# Don't check for src/librdkafka.1.dylib
 
-# Create self-contained dylib (equivalent to Linux gcc -shared step)
-log "Creating self-contained librdkafka.dylib..."
+log "librdkafka built successfully - proceeding to create custom self-contained dylib"
 
-# Create self-contained shared library by linking all static dependencies
+# Create self-contained dylib with Kerberos libraries included
+log "Creating self-contained librdkafka.dylib with Kerberos support..."
+
+# Create self-contained shared library by linking all static dependencies (NOW INCLUDING KERBEROS)
 # This is the macOS equivalent of your Linux gcc -shared command
 clang -dynamiclib -fPIC \
     -Wl,-force_load,src/librdkafka.a \
     -Wl,-force_load,"$SASL_PREFIX/lib/libsasl2.a" \
+    -Wl,-force_load,"$KRB5_PREFIX/lib/libgssapi_krb5.a" \
+    -Wl,-force_load,"$KRB5_PREFIX/lib/libkrb5.a" \
+    -Wl,-force_load,"$KRB5_PREFIX/lib/libk5crypto.a" \
+    -Wl,-force_load,"$KRB5_PREFIX/lib/libcom_err.a" \
+    -Wl,-force_load,"$KRB5_PREFIX/lib/libkrb5support.a" \
     -Wl,-force_load,"$OPENSSL_PREFIX/lib/libssl.a" \
     -Wl,-force_load,"$OPENSSL_PREFIX/lib/libcrypto.a" \
     -Wl,-force_load,"$ZLIB_PREFIX/lib/libz.a" \
     -Wl,-force_load,"$ZSTD_PREFIX/lib/libzstd.a" \
     -o librdkafka.dylib \
-    -lpthread -lm -lc -arch $ARCH \
+    -lpthread -lc -arch $ARCH -lresolv \
     -install_name @rpath/librdkafka.dylib \
     -Wl,-undefined,dynamic_lookup
 
@@ -347,7 +469,7 @@ if [ ! -f librdkafka.dylib ]; then
     error "Failed to create self-contained librdkafka.dylib"
 fi
 
-log "✅ Self-contained librdkafka.dylib created successfully"
+log "✅ Self-contained librdkafka.dylib with Kerberos support created successfully"
 
 # Verify the self-contained build
 log "Verifying self-contained build..."
@@ -395,16 +517,17 @@ sleep 1
 # Print summaries
 print_security_summary
 
-# Enhanced summary for macOS
+# Enhanced summary for macOS with Kerberos
 sync
 echo ""
 echo "🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉"
 log "Build completed successfully!"
-log "📦 Self-contained librdkafka built for macOS $ARCH:"
+log "📦 Self-contained librdkafka built for macOS $ARCH with Kerberos support:"
 log "   ✅ Static library: librdkafka.a"
 log "   ✅ Self-contained dylib: librdkafka.dylib (with bundled dependencies)"
 log "   ✅ Static OpenSSL: $OPENSSL_VERSION (SSL/TLS support) - bundled"
 log "   ✅ Static Cyrus SASL: $CYRUS_SASL_VERSION (authentication for AWS MSK) - bundled"
+log "   ✅ Static MIT Kerberos: $KRB5_VERSION (GSSAPI/Kerberos authentication) - bundled"
 log "   ✅ Static zlib: $ZLIB_VERSION (compression) - bundled"
 log "   ✅ Static ZStd: $ZSTD_VERSION (high-performance compression) - bundled"
 log ""
@@ -412,6 +535,7 @@ log "🎯 Ready for deployment on macOS systems"
 log "☁️  Compatible with AWS MSK and other secured Kafka clusters"
 log "🔐 Supply chain security: All dependencies cryptographically verified"
 log "📦 Self-contained: Ready for Ruby FFI distribution"
+log "🔑 Kerberos/GSSAPI support: Full feature parity with Linux build"
 log ""
 log "Location: $OUTPUT_DIR/librdkafka.dylib"
 echo "🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉"

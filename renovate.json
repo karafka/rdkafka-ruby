@@ -9,13 +9,18 @@
   },
   "packageRules": [
     {
-      "matchManagers": ["github-actions"],
+      "matchManagers": [
+        "github-actions"
+      ],
       "minimumReleaseAge": "7 days"
     }
   ],
-  "regexManagers": [
+  "customManagers": [
     {
-      "fileMatch": ["^ext/build_common\\.sh$"],
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ext/build_common\\.sh$/"
+      ],
       "matchStrings": [
         "readonly OPENSSL_VERSION=\"(?<currentValue>.*)\""
       ],
@@ -24,7 +29,10 @@
       "extractVersionTemplate": "^OpenSSL_(?<version>.*)$"
     },
     {
-      "fileMatch": ["^ext/build_common\\.sh$"],
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ext/build_common\\.sh$/"
+      ],
       "matchStrings": [
         "readonly CYRUS_SASL_VERSION=\"(?<currentValue>.*)\""
       ],
@@ -33,7 +41,10 @@
       "extractVersionTemplate": "^cyrus-sasl-(?<version>.*)$"
     },
     {
-      "fileMatch": ["^ext/build_common\\.sh$"],
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ext/build_common\\.sh$/"
+      ],
       "matchStrings": [
         "readonly ZLIB_VERSION=\"(?<currentValue>.*)\""
       ],
@@ -42,7 +53,10 @@
       "extractVersionTemplate": "^v(?<version>.*)$"
     },
     {
-      "fileMatch": ["^ext/build_common\\.sh$"],
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ext/build_common\\.sh$/"
+      ],
       "matchStrings": [
         "readonly ZSTD_VERSION=\"(?<currentValue>.*)\""
       ],
@@ -51,7 +65,10 @@
       "extractVersionTemplate": "^v(?<version>.*)$"
     },
     {
-      "fileMatch": ["^ext/build_common\\.sh$"],
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ext/build_common\\.sh$/"
+      ],
       "matchStrings": [
         "readonly KRB5_VERSION=\"(?<currentValue>.*)\""
       ],
@@ -60,7 +77,10 @@
       "extractVersionTemplate": "^krb5-(?<version>.*)$"
     },
     {
-      "fileMatch": ["^ext/build_common\\.sh$"],
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ext/build_common\\.sh$/"
+      ],
       "matchStrings": [
         "readonly LIBRDKAFKA_VERSION=\"(?<currentValue>.*)\""
       ],

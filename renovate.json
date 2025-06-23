@@ -9,22 +9,11 @@
   },
   "packageRules": [
     {
-      "matchManagers": [
-        "github-actions"
-      ],
+      "matchManagers": ["github-actions"],
       "minimumReleaseAge": "7 days"
     }
   ],
   "regexManagers": [
-    {
-      "fileMatch": ["^\\.github/workflows/.*\\.ya?ml$"],
-      "matchStrings": [
-        "# Renovate can track and update this version\\s+CONFLUENT_VERSION: \"(?<currentValue>.*)\""
-      ],
-      "depNameTemplate": "confluentinc/confluent-platform",
-      "datasourceTemplate": "github-releases",
-      "extractVersionTemplate": "^v?(?<version>.*)$"
-    },
     {
       "fileMatch": ["^ext/build_common\\.sh$"],
       "matchStrings": [

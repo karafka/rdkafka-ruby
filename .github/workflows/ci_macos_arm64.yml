@@ -26,7 +26,8 @@ jobs:
           fetch-depth: 0
       - name: Install Bash 4+ and Kerberos
         run: |
-          brew install bash krb5
+          brew install bash
+          brew list krb5 &>/dev/null || brew install krb5
           echo "/opt/homebrew/bin" >> $GITHUB_PATH
       - name: Set up Ruby
         uses: ruby/setup-ruby@a4effe49ee8ee5b8b5091268c473a4628afb5651 # v1.245.0
@@ -77,7 +78,8 @@ jobs:
           path: ./
       - name: Install Bash 4+ and Kerberos
         run: |
-          brew install bash krb5
+          brew install bash
+          brew list krb5 &>/dev/null || brew install krb5
           echo "/opt/homebrew/bin" >> $GITHUB_PATH
       - name: Set up Ruby
         uses: ruby/setup-ruby@a4effe49ee8ee5b8b5091268c473a4628afb5651 # v1.245.0
@@ -168,7 +170,8 @@ jobs:
           fetch-depth: 0
       - name: Install Bash 4+ and Kerberos
         run: |
-          brew install bash krb5
+          brew install bash
+          brew list krb5 &>/dev/null || brew install krb5
           echo "/opt/homebrew/bin" >> $GITHUB_PATH
       - name: Cache build-tmp directory
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
@@ -218,7 +221,8 @@ jobs:
           bundler-cache: false
       - name: Install Bash 4+ and Kerberos
         run: |
-          brew install bash krb5
+          brew install bash
+          brew list krb5 &>/dev/null || brew install krb5
           echo "/opt/homebrew/bin" >> $GITHUB_PATH
       - name: Install and Start Confluent Community Kafka (KRaft)
         run: |

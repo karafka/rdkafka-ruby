@@ -4,7 +4,7 @@
 # Usage: ./build-librdkafka-linux.sh
 #
 # Expected directory structure:
-#   ext/build_linux_x86_64.sh            (this script)
+#   ext/build_linux_x86_64_gnu.sh            (this script)
 #   ext/build-common.sh                   (shared functions)
 #   dist/librdkafka-*.tar.gz              (librdkafka source tarball)
 #   dist/patches/*.patch                  (optional Ruby-specific patches)
@@ -41,7 +41,7 @@ PATCHES_FOUND=()
 find_patches "$PATCHES_DIR" PATCHES_FOUND
 
 security_log "Starting secure build with checksum verification enabled"
-log "Building self-contained librdkafka.so for Linux x86_64"
+log "Building self-contained librdkafka.so for Linux x86_64 GNU"
 log "Dependencies to build:"
 log "  - OpenSSL: $OPENSSL_VERSION"
 log "  - Cyrus SASL: $CYRUS_SASL_VERSION"

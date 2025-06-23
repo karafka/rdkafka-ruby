@@ -2,6 +2,7 @@
 
 ## 0.20.0 (Unreleased)
 - **[Feature]** Add precompiled `x86_64-linux-gnu` setup.
+- **[Feature]** Add precompiled `macos_arm64` setup.
 
 ## 0.19.5 (2025-05-30)
 - [Enhancement] Allow for producing to non-existing topics with `key` and `partition_key` present.

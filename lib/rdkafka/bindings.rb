@@ -280,7 +280,7 @@ module Rdkafka
     OAuthbearerTokenRefreshCallback = FFI::Function.new(
       :void, [:pointer, :string, :pointer]
     ) do |client_ptr, config, _opaque|
-      if Rdkafka::Config.oauthbearer_token_refresh_callback
+      if Rdkafka::Config.oauthbearer_token_refresh_callback && !client_ptr.null?
         Rdkafka::Config.oauthbearer_token_refresh_callback.call(config, Rdkafka::Bindings.rd_kafka_name(client_ptr))
       end
     end

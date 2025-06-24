@@ -9,14 +9,36 @@ Gem::Specification.new do |gem|
   gem.summary = "The rdkafka gem is a modern Kafka client library for Ruby based on librdkafka. It wraps the production-ready C client using the ffi gem and targets Kafka 1.0+ and Ruby 2.7+."
   gem.license = 'MIT'
 
-  gem.files = `git ls-files`.split($\)
-  gem.executables = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
   gem.test_files = gem.files.grep(%r{^(test|spec|features)/})
   gem.name = 'karafka-rdkafka'
   gem.require_paths = ['lib']
   gem.version = Rdkafka::VERSION
   gem.required_ruby_version = '>= 3.1'
-  gem.extensions = %w(ext/Rakefile)
+
+  if ENV['RUBY_PLATFORM']
+    gem.platform = ENV['RUBY_PLATFORM']
+    gem.files = `git ls-files`.split($\)
+  else
+    gem.extensions = %w(ext/Rakefile)
+    gem.platform = Gem::Platform::RUBY
+    gem.files = `git ls-files`.split($\)
+
+    # Do not include the source code for librdkafka as it should be precompiled already per
+    # platform. Same applies to any possible patches.
+    gem.files = gem.files.reject do |file|
+      file.match?(%r{^dist/librdkafka-.*\.tar\.gz$}) ||
+      file.match?(%r{^dist/patches/})
+    end
+
+    # Add the compiled extensions that exist (not in git)
+    if File.exist?('ext/librdkafka.so')
+      gem.files << 'ext/librdkafka.so'
+    end
+
+    if File.exist?('ext/librdkafka.dylib')
+      gem.files << 'ext/librdkafka.dylib'
+    end
+  end
 
   gem.add_dependency 'ffi', '~> 1.15'
   gem.add_dependency 'mini_portile2', '~> 2.6'

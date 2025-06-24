@@ -37,7 +37,7 @@ jobs:
       - name: Build gem with mini_portile
         run: |
           set -e
-          bundle install --jobs 4 --retry 3
+          bundle install
           cd ext && bundle exec rake
           cd ..
       - name: Upload built gem and bundle
@@ -153,7 +153,7 @@ jobs:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
         run: |
           # Only install gems that aren't Ruby-version specific
-          bundle install --jobs 4 --retry 3
+          bundle install
       - name: Run all specs
         env:
           GITHUB_COVERAGE: ${{matrix.coverage}}
@@ -291,7 +291,7 @@ jobs:
           GITHUB_COVERAGE: ${{ matrix.coverage }}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
         run: |
-          bundle install --jobs 4 --retry 3
+          bundle install
           echo "Bundle install completed with precompiled library"
       - name: Run specs with precompiled library
         env:

@@ -18,6 +18,12 @@ Gem::Specification.new do |gem|
   gem.required_ruby_version = '>= 3.1'
   gem.extensions = %w(ext/Rakefile)
 
+  if ENV['RUBY_PLATFORM']
+    gem.platform = ENV['RUBY_PLATFORM']
+  else
+    gem.platform = Gem::Platform::RUBY
+  end
+
   gem.add_dependency 'ffi', '~> 1.15'
   gem.add_dependency 'mini_portile2', '~> 2.6'
   gem.add_dependency 'rake', '> 12'

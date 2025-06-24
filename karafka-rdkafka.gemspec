@@ -44,6 +44,7 @@ Gem::Specification.new do |gem|
   gem.add_dependency 'mini_portile2', '~> 2.6'
   gem.add_dependency 'rake', '> 12'
 
+  gem.add_development_dependency 'logger'
   gem.add_development_dependency 'pry'
   gem.add_development_dependency 'rspec', '~> 3.5'
   gem.add_development_dependency 'rake'

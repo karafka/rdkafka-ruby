@@ -18,10 +18,6 @@ Gem::Specification.new do |gem|
   if ENV['RUBY_PLATFORM']
     gem.platform = ENV['RUBY_PLATFORM']
     gem.files = `git ls-files`.split($\)
-  else
-    gem.extensions = %w(ext/Rakefile)
-    gem.platform = Gem::Platform::RUBY
-    gem.files = `git ls-files`.split($\)
 
     # Do not include the source code for librdkafka as it should be precompiled already per
     # platform. Same applies to any possible patches.
@@ -38,6 +34,10 @@ Gem::Specification.new do |gem|
     if File.exist?('ext/librdkafka.dylib')
       gem.files << 'ext/librdkafka.dylib'
     end
+  else
+    gem.platform = Gem::Platform::RUBY
+    gem.files = `git ls-files`.split($\)
+    gem.extensions = %w(ext/Rakefile)
   end
 
   gem.add_dependency 'ffi', '~> 1.15'
@@ -48,8 +48,6 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency 'rspec', '~> 3.5'
   gem.add_development_dependency 'rake'
   gem.add_development_dependency 'simplecov'
-  gem.add_development_dependency 'guard'
-  gem.add_development_dependency 'guard-rspec'
 
   gem.metadata = {
     'funding_uri' => 'https://karafka.io/#become-pro',

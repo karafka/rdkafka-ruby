@@ -51,7 +51,7 @@ jobs:
           cd ext
           ./build_linux_x86_64_gnu.sh
       - name: Configure trusted publishing credentials
-        uses: rubygems/configure-rubygems-credentials@v1.0.0
+        uses: rubygems/configure-rubygems-credentials@bc6dd217f8a4f919d6835fcfefd470ef821f5c44 # v1.0.0
       - name: Build and push platform-specific gem
         run: |
           gem build *.gemspec

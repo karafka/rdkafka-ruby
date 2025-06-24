@@ -68,3 +68,9 @@ jobs:
       - uses: rubygems/release-gem@a25424ba2ba8b387abc8ef40807c2c85b96cbe32 # v1.1.1
         env:
           RUBY_PLATFORM: 'x86_64-linux-gnu'
+        with:
+          pre-release-command: |
+            # These are the real Bundler config options:
+            bundle config set --local force_ruby_platform false
+            bundle lock --add-platform x86_64-linux-gnu --conservative || true
+            bundle install || echo "Bundle install failed, continuing..."

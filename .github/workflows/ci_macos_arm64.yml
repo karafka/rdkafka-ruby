@@ -1,7 +1,9 @@
 name: CI macOS ARM64
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 on:
   pull_request:
     branches: [ main, master ]
@@ -9,13 +11,16 @@ on:
     branches: [ main, master ]
   schedule:
     - cron: '0 1 * * *'
+
 permissions:
   contents: read
+
 env:
   BUNDLE_RETRY: 6
   BUNDLE_JOBS: 4
   # Renovate can track and update this version
   CONFLUENT_VERSION: "8.0.0"
+
 jobs:
   build_install:
     timeout-minutes: 30

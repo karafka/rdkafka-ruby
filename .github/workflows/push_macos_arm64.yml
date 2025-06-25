@@ -1,13 +1,17 @@
 name: Push macOS ARM64 Platform Gem
+
 on:
   push:
     tags:
       - v*
+
 permissions:
   contents: read
+
 env:
   BUNDLE_RETRY: 6
   BUNDLE_JOBS: 4
+
 jobs:
   push:
     if: github.repository_owner == 'karafka'

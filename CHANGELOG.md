@@ -5,6 +5,9 @@
 - **[Feature]** Add precompiled `x86_64-linux-musl` setup.
 - **[Feature]** Add precompiled `macos_arm64` setup.
 - [Enhancement] Run all specs on each of the platforms with and without precompilation.
+- [Fix] Fix a case where using empty key on the `musl` architecture would cause a segfault.
+
+**Note**: Precompiled extensions are a new feature in this release. While they significantly improve installation speed and reduce build dependencies, they should be thoroughly tested in your staging environment before deploying to production. If you encounter any issues with precompiled extensions, you can fall back to building from sources.
 
 ## 0.19.5 (2025-05-30)
 - [Enhancement] Allow for producing to non-existing topics with `key` and `partition_key` present.

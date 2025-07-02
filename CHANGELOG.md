@@ -2,6 +2,7 @@
 
 ## 0.20.0 (Unreleased)
 - **[Feature]** Add precompiled `x86_64-linux-gnu` setup.
+- **[Feature]** Add precompiled `x86_64-linux-musl` setup.
 - **[Feature]** Add precompiled `macos_arm64` setup.
 - [Enhancement] Run all specs on each of the platforms with and without precompilation.
 

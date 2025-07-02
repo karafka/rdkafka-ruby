@@ -227,7 +227,7 @@ describe Rdkafka::Consumer do
 
         # This is needed because `enable.auto.offset.store` is true but when running in CI that
         # is overloaded, offset store lags
-        sleep(2)
+        sleep(1)
 
         consumer.commit
         expect(message1.offset).to eq message2.offset
@@ -259,6 +259,7 @@ describe Rdkafka::Consumer do
   end
 
   describe "#seek_by" do
+    let(:consumer) { rdkafka_consumer_config('auto.commit.interval.ms': 60_000).consumer }
     let(:topic) { "consume_test_topic" }
     let(:partition) { 0 }
     let(:offset) { 0 }

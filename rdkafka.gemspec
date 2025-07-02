@@ -26,8 +26,6 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency 'rspec', '~> 3.5'
   gem.add_development_dependency 'rake'
   gem.add_development_dependency 'simplecov'
-  gem.add_development_dependency 'guard'
-  gem.add_development_dependency 'guard-rspec'
 
   gem.metadata = {
     'funding_uri' => 'https://karafka.io/#become-pro',

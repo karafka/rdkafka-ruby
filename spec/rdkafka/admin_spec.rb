@@ -295,6 +295,8 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
         expect(resources_results.first.type).to eq(2)
         expect(resources_results.first.name).to eq(topic_name)
 
+        sleep(1)
+
         ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
           config.name == 'delete.retention.ms'
         end
@@ -325,6 +327,9 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
         expect(resources_results.size).to eq(1)
         expect(resources_results.first.type).to eq(2)
         expect(resources_results.first.name).to eq(topic_name)
+
+        sleep(1)
+
         ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
           config.name == 'delete.retention.ms'
         end
@@ -356,6 +361,8 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
         expect(resources_results.first.type).to eq(2)
         expect(resources_results.first.name).to eq(topic_name)
 
+        sleep(1)
+
         ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
           config.name == 'cleanup.policy'
         end
@@ -386,6 +393,8 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
         expect(resources_results.size).to eq(1)
         expect(resources_results.first.type).to eq(2)
         expect(resources_results.first.name).to eq(topic_name)
+
+        sleep(1)
 
         ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
           config.name == 'cleanup.policy'
@@ -622,7 +631,12 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
 
           consumer.subscribe(topic_name)
           wait_for_assignment(consumer)
-          message = consumer.poll(100)
+
+          message = nil
+
+          10.times do
+            message ||= consumer.poll(100)
+          end
 
           expect(message).to_not be_nil
 

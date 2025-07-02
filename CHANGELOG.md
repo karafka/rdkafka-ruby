@@ -1,14 +1,21 @@
 # Rdkafka Changelog
 
-## 0.21.1 (Unreleased)
+## 0.22.0 (Unreleased)
+- **[Feature]** Add precompiled `x86_64-linux-gnu` setup.
+- **[Feature]** Add precompiled `x86_64-linux-musl` setup.
+- **[Feature]** Add precompiled `macos_arm64` setup.
+- [Fix] Fix a case where using empty key on the `musl` architecture would cause a segfault.
 - [Enhancement] Allow for producing to non-existing topics with `key` and `partition_key` present.
 - [Enhancement] Replace TTL-based partition count cache with a global cache that reuses `librdkafka` statistics data when possible.
 - [Enhancement] Support producing and consuming of headers with mulitple values (KIP-82).
 - [Enhancement] Allow native Kafka customization poll time.
 - [Enhancement] Roll out experimental jruby support.
+- [Enhancement] Run all specs on each of the platforms with and without precompilation.
 - [Fix] Fix issue where post-closed producer C topics refs would not be cleaned.
 - [Fix] Fiber causes Segmentation Fault.
 - [Change] Move to trusted-publishers and remove signing since no longer needed.
+
+**Note**: Precompiled extensions are a new feature in this release. While they significantly improve installation speed and reduce build dependencies, they should be thoroughly tested in your staging environment before deploying to production. If you encounter any issues with precompiled extensions, you can fall back to building from sources.
 
 ## 0.21.0 (2025-02-13)
 - [Enhancement] Bump librdkafka to `2.8.0`

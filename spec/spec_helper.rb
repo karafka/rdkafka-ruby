@@ -78,18 +78,32 @@ end
 
 def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, consumer: nil)
   new_consumer = consumer.nil?
-  consumer ||= rdkafka_consumer_config.consumer
+  consumer ||= rdkafka_consumer_config('allow.auto.create.topics': true).consumer
   consumer.subscribe(topic)
   timeout = Time.now.to_i + timeout_in_seconds
+  retry_count = 0
+  max_retries = 10
+
   loop do
     if timeout <= Time.now.to_i
       raise "Timeout of #{timeout_in_seconds} seconds reached in wait_for_message"
     end
-    message = consumer.poll(100)
-    if message &&
-        message.partition == delivery_report.partition &&
-        message.offset == delivery_report.offset
-      return message
+
+    begin
+      message = consumer.poll(100)
+      if message &&
+          message.partition == delivery_report.partition &&
+          message.offset == delivery_report.offset
+        return message
+      end
+    rescue Rdkafka::RdkafkaError => e
+      if e.code == :unknown_topic_or_part && retry_count < max_retries
+        retry_count += 1
+        sleep(0.1) # Small delay before retry
+        next
+      else
+        raise
+      end
     end
   end
 ensure

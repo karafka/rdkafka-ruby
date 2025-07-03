@@ -170,8 +170,16 @@ describe Rdkafka::Consumer do
   end
 
   describe "#seek" do
+    let(:topic) { "it-#{SecureRandom.uuid}" }
+
+    before do
+      admin = rdkafka_producer_config.admin
+      admin.create_topic(topic, 1, 1).wait
+      admin.close
+    end
+
     it "should raise an error when seeking fails" do
-      fake_msg = OpenStruct.new(topic: "consume_test_topic", partition: 0, offset: 0)
+      fake_msg = OpenStruct.new(topic: topic, partition: 0, offset: 0)
 
       expect(Rdkafka::Bindings).to receive(:rd_kafka_seek).and_return(20)
       expect {
@@ -181,9 +189,12 @@ describe Rdkafka::Consumer do
 
     context "subscription" do
       let(:timeout) { 1000 }
+      # Some specs here test the manual offset commit hence we want to ensure, that we have some
+      # offsets in-memory that we can manually commit
+      let(:consumer) { rdkafka_consumer_config('auto.commit.interval.ms': 60_000).consumer }
 
       before do
-        consumer.subscribe("consume_test_topic")
+        consumer.subscribe(topic)
 
         # 1. partitions are assigned
         wait_for_assignment(consumer)
@@ -196,7 +207,7 @@ describe Rdkafka::Consumer do
 
       def send_one_message(val)
         producer.produce(
-          topic:     "consume_test_topic",
+          topic:     topic,
           payload:   "payload #{val}",
           key:       "key 1",
           partition: 0
@@ -211,7 +222,7 @@ describe Rdkafka::Consumer do
 
         # 4. pause the subscription
         tpl = Rdkafka::Consumer::TopicPartitionList.new
-        tpl.add_topic("consume_test_topic", 1)
+        tpl.add_topic(topic, 1)
         consumer.pause(tpl)
 
         # 5. seek to previous message
@@ -219,7 +230,7 @@ describe Rdkafka::Consumer do
 
         # 6. resume the subscription
         tpl = Rdkafka::Consumer::TopicPartitionList.new
-        tpl.add_topic("consume_test_topic", 1)
+        tpl.add_topic(topic, 1)
         consumer.resume(tpl)
 
         # 7. ensure same message is read again
@@ -227,7 +238,7 @@ describe Rdkafka::Consumer do
 
         # This is needed because `enable.auto.offset.store` is true but when running in CI that
         # is overloaded, offset store lags
-        sleep(2)
+        sleep(1)
 
         consumer.commit
         expect(message1.offset).to eq message2.offset
@@ -259,9 +270,16 @@ describe Rdkafka::Consumer do
   end
 
   describe "#seek_by" do
-    let(:topic) { "consume_test_topic" }
+    let(:consumer) { rdkafka_consumer_config('auto.commit.interval.ms': 60_000).consumer }
+    let(:topic) { "it-#{SecureRandom.uuid}" }
     let(:partition) { 0 }
     let(:offset) { 0 }
+
+    before do
+      admin = rdkafka_producer_config.admin
+      admin.create_topic(topic, 1, 1).wait
+      admin.close
+    end
 
     it "should raise an error when seeking fails" do
       expect(Rdkafka::Bindings).to receive(:rd_kafka_seek).and_return(20)
@@ -588,12 +606,18 @@ describe Rdkafka::Consumer do
 
       describe "#store_offset" do
         let(:consumer) { rdkafka_consumer_config('enable.auto.offset.store': false).consumer }
+        let(:metadata) { SecureRandom.uuid }
+        let(:group_id) { SecureRandom.uuid }
+        let(:base_config) do
+          {
+            'group.id': group_id,
+            'enable.auto.offset.store': false,
+            'enable.auto.commit': false
+          }
+        end
 
         before do
-          config = {}
-          config[:'enable.auto.offset.store'] = false
-          config[:'enable.auto.commit'] = false
-          @new_consumer = rdkafka_consumer_config(config).consumer
+          @new_consumer = rdkafka_consumer_config(base_config).consumer
           @new_consumer.subscribe("consume_test_topic")
           wait_for_assignment(@new_consumer)
         end
@@ -795,12 +819,14 @@ describe Rdkafka::Consumer do
     end
 
     it "should return a message if there is one" do
+      topic = "it-#{SecureRandom.uuid}"
+
       producer.produce(
-        topic:     "consume_test_topic",
+        topic:     topic,
         payload:   "payload 1",
         key:       "key 1"
       ).wait
-      consumer.subscribe("consume_test_topic")
+      consumer.subscribe(topic)
       message = consumer.each {|m| break m}
 
       expect(message).to be_a Rdkafka::Consumer::Message
@@ -1000,7 +1026,7 @@ describe Rdkafka::Consumer do
     after { Rdkafka::Config.statistics_callback = nil }
 
     let(:consumer) do
-      config = rdkafka_consumer_config('statistics.interval.ms': 100)
+      config = rdkafka_consumer_config('statistics.interval.ms': 500)
       config.consumer_poll_set = false
       config.consumer
     end
@@ -1097,7 +1123,8 @@ describe Rdkafka::Consumer do
         :assign                  => [ nil ],
         :assignment              => nil,
         :committed               => [],
-        :query_watermark_offsets => [ nil, nil ]
+        :query_watermark_offsets => [ nil, nil ],
+        :assignment_lost?        => []
     }.each do |method, args|
       it "raises an exception if #{method} is called" do
         expect {
@@ -1210,6 +1237,38 @@ describe Rdkafka::Consumer do
         )
         expect(response).to eq(0)
       end
+    end
+  end
+
+  describe "when reaching eof on a topic and eof reporting enabled" do
+    let(:consumer) { rdkafka_consumer_config(:"enable.partition.eof" => true).consumer }
+
+    it "should return proper details" do
+      (0..2).each do |i|
+        producer.produce(
+          topic:     "consume_test_topic",
+          key:       "key lag #{i}",
+          partition: i
+        ).wait
+      end
+
+      # Consume to the end
+      consumer.subscribe("consume_test_topic")
+      eof_count = 0
+      eof_error = nil
+
+      loop do
+        begin
+          consumer.poll(100)
+        rescue Rdkafka::RdkafkaError => error
+          if error.is_partition_eof?
+            eof_error = error
+          end
+          break if eof_error
+        end
+      end
+
+      expect(eof_error.code).to eq(:partition_eof)
     end
   end
 end

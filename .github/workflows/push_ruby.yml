@@ -1,4 +1,4 @@
-name: Push Gem
+name: Push Ruby Platform Gem
 
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
       - name: Build rdkafka-ruby
         run: |
           set -e
-          bundle install --jobs 4 --retry 3
+          bundle install
           cd ext && bundle exec rake
 
       - uses: rubygems/release-gem@a25424ba2ba8b387abc8ef40807c2c85b96cbe32 # v1.1.1

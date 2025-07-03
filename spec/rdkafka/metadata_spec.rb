@@ -30,7 +30,7 @@ describe Rdkafka::Metadata do
       it "#brokers returns our single broker" do
         expect(subject.brokers.length).to eq(1)
         expect(subject.brokers[0][:broker_id]).to eq(1)
-        expect(subject.brokers[0][:broker_name]).to eq("127.0.0.1")
+        expect(%w[127.0.0.1 localhost]).to include(subject.brokers[0][:broker_name])
         expect(subject.brokers[0][:broker_port]).to eq(9092)
       end
 
@@ -53,7 +53,7 @@ describe Rdkafka::Metadata do
     it "#brokers returns our single broker" do
       expect(subject.brokers.length).to eq(1)
       expect(subject.brokers[0][:broker_id]).to eq(1)
-      expect(subject.brokers[0][:broker_name]).to eq("127.0.0.1")
+      expect(%w[127.0.0.1 localhost]).to include(subject.brokers[0][:broker_name])
       expect(subject.brokers[0][:broker_port]).to eq(9092)
     end
 

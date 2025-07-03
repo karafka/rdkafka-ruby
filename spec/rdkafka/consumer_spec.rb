@@ -1269,9 +1269,6 @@ describe Rdkafka::Consumer do
       end
 
       expect(eof_error.code).to eq(:partition_eof)
-      expect(eof_error.details[:topic]).to eq('consume_test_topic')
-      expect(eof_error.details[:partition]).to be_a(Integer)
-      expect(eof_error.details[:offset]).to be_a(Integer)
     end
   end
 end

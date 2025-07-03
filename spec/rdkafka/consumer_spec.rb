@@ -170,8 +170,16 @@ describe Rdkafka::Consumer do
   end
 
   describe "#seek" do
+    let(:topic) { "it-#{SecureRandom.uuid}" }
+
+    before do
+      admin = rdkafka_producer_config.admin
+      admin.create_topic(topic, 1, 1).wait
+      admin.close
+    end
+
     it "should raise an error when seeking fails" do
-      fake_msg = OpenStruct.new(topic: "consume_test_topic", partition: 0, offset: 0)
+      fake_msg = OpenStruct.new(topic: topic, partition: 0, offset: 0)
 
       expect(Rdkafka::Bindings).to receive(:rd_kafka_seek).and_return(20)
       expect {
@@ -183,7 +191,7 @@ describe Rdkafka::Consumer do
       let(:timeout) { 1000 }
 
       before do
-        consumer.subscribe("consume_test_topic")
+        consumer.subscribe(topic)
 
         # 1. partitions are assigned
         wait_for_assignment(consumer)
@@ -196,7 +204,7 @@ describe Rdkafka::Consumer do
 
       def send_one_message(val)
         producer.produce(
-          topic:     "consume_test_topic",
+          topic:     topic,
           payload:   "payload #{val}",
           key:       "key 1",
           partition: 0
@@ -211,7 +219,7 @@ describe Rdkafka::Consumer do
 
         # 4. pause the subscription
         tpl = Rdkafka::Consumer::TopicPartitionList.new
-        tpl.add_topic("consume_test_topic", 1)
+        tpl.add_topic(topic, 1)
         consumer.pause(tpl)
 
         # 5. seek to previous message
@@ -219,7 +227,7 @@ describe Rdkafka::Consumer do
 
         # 6. resume the subscription
         tpl = Rdkafka::Consumer::TopicPartitionList.new
-        tpl.add_topic("consume_test_topic", 1)
+        tpl.add_topic(topic, 1)
         consumer.resume(tpl)
 
         # 7. ensure same message is read again
@@ -260,7 +268,7 @@ describe Rdkafka::Consumer do
 
   describe "#seek_by" do
     let(:consumer) { rdkafka_consumer_config('auto.commit.interval.ms': 60_000).consumer }
-    let(:topic) { "consume_test_topic" }
+    let(:topic) { "it-#{SecureRandom.uuid}" }
     let(:partition) { 0 }
     let(:offset) { 0 }
 

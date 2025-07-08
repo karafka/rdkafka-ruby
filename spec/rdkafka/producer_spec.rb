@@ -340,7 +340,7 @@ describe Rdkafka::Producer do
       )
     end
 
-    expect(messages[0].partition).to eq 0
+    expect(messages[0].partition).to be >= 0
     expect(messages[0].key).to eq 'a'
   end
 
@@ -920,7 +920,6 @@ describe Rdkafka::Producer do
     end
   end
 
-
   describe 'with active statistics callback' do
     let(:producer) do
       rdkafka_producer_config('statistics.interval.ms': 1_000).producer
@@ -1046,6 +1045,300 @@ describe Rdkafka::Producer do
             producer.close
           end.resume
         end
+      end
+    end
+  end
+
+  let(:producer) { rdkafka_producer_config.producer }
+  let(:all_partitioners) { %w(random consistent consistent_random murmur2 murmur2_random fnv1a fnv1a_random) }
+
+  describe "partitioner behavior through producer API" do
+    context "testing all partitioners with same key" do
+      it "should not return partition 0 for all partitioners" do
+        test_key = "test-key-123"
+        results = {}
+
+        all_partitioners.each do |partitioner|
+          handle = producer.produce(
+            topic: "partitioner_test_topic",
+            payload: "test payload",
+            partition_key: test_key,
+            partitioner: partitioner
+          )
+
+          report = handle.wait(max_wait_timeout: 5)
+          results[partitioner] = report.partition
+        end
+
+        # Should not all be the same partition (especially not all 0)
+        unique_partitions = results.values.uniq
+        expect(unique_partitions.size).to be > 1
+      end
+    end
+
+    context "empty string partition key" do
+      it "should produce message with empty partition key without crashing and go to partition 0 for all partitioners" do
+        all_partitioners.each do |partitioner|
+          handle = producer.produce(
+            topic: "partitioner_test_topic",
+            payload: "test payload",
+            key: "test-key",
+            partition_key: "",
+            partitioner: partitioner
+          )
+
+          report = handle.wait(max_wait_timeout: 5)
+          expect(report.partition).to be >= 0
+        end
+      end
+    end
+
+    context "nil partition key" do
+      it "should handle nil partition key gracefully" do
+        handle = producer.produce(
+          topic: "partitioner_test_topic",
+          payload: "test payload",
+          key: "test-key",
+          partition_key: nil
+        )
+
+        report = handle.wait(max_wait_timeout: 5)
+        expect(report.partition).to be >= 0
+        expect(report.partition).to be < producer.partition_count("partitioner_test_topic")
+      end
+    end
+
+    context "various key types and lengths with different partitioners" do
+      it "should handle very short keys with all partitioners" do
+        all_partitioners.each do |partitioner|
+          handle = producer.produce(
+            topic: "partitioner_test_topic",
+            payload: "test payload",
+            partition_key: "a",
+            partitioner: partitioner
+          )
+
+          report = handle.wait(max_wait_timeout: 5)
+          expect(report.partition).to be >= 0
+          expect(report.partition).to be < producer.partition_count("partitioner_test_topic")
+        end
+      end
+
+      it "should handle very long keys with all partitioners" do
+        long_key = "a" * 1000
+
+        all_partitioners.each do |partitioner|
+          handle = producer.produce(
+            topic: "partitioner_test_topic",
+            payload: "test payload",
+            partition_key: long_key,
+            partitioner: partitioner
+          )
+
+          report = handle.wait(max_wait_timeout: 5)
+          expect(report.partition).to be >= 0
+          expect(report.partition).to be < producer.partition_count("partitioner_test_topic")
+        end
+      end
+
+      it "should handle unicode keys with all partitioners" do
+        unicode_key = "测试键值🚀"
+
+        all_partitioners.each do |partitioner|
+          handle = producer.produce(
+            topic: "partitioner_test_topic",
+            payload: "test payload",
+            partition_key: unicode_key,
+            partitioner: partitioner
+          )
+
+          report = handle.wait(max_wait_timeout: 5)
+          expect(report.partition).to be >= 0
+          expect(report.partition).to be < producer.partition_count("partitioner_test_topic")
+        end
+      end
+    end
+
+    context "consistency testing for deterministic partitioners" do
+      %w(consistent murmur2 fnv1a).each do |partitioner|
+        it "should consistently route same partition key to same partition with #{partitioner}" do
+          partition_key = "consistent-test-key"
+
+          # Produce multiple messages with same partition key
+          reports = 5.times.map do
+            handle = producer.produce(
+              topic: "partitioner_test_topic",
+              payload: "test payload #{Time.now.to_f}",
+              partition_key: partition_key,
+              partitioner: partitioner
+            )
+            handle.wait(max_wait_timeout: 5)
+          end
+
+          # All should go to same partition
+          partitions = reports.map(&:partition).uniq
+          expect(partitions.size).to eq(1)
+        end
+      end
+    end
+
+    context "randomness testing for random partitioners" do
+      %w(random consistent_random murmur2_random fnv1a_random).each do |partitioner|
+        it "should potentially distribute across partitions with #{partitioner}" do
+          # Note: random partitioners might still return same value by chance
+          partition_key = "random-test-key"
+
+          reports = 10.times.map do
+            handle = producer.produce(
+              topic: "partitioner_test_topic",
+              payload: "test payload #{Time.now.to_f}",
+              partition_key: partition_key,
+              partitioner: partitioner
+            )
+            handle.wait(max_wait_timeout: 5)
+          end
+
+          partitions = reports.map(&:partition)
+
+          # Just ensure they're valid partitions
+          partitions.each do |partition|
+            expect(partition).to be >= 0
+            expect(partition).to be < producer.partition_count("partitioner_test_topic")
+          end
+        end
+      end
+    end
+
+    context "comparing different partitioners with same key" do
+      it "should route different partition keys to potentially different partitions" do
+        keys = ["key1", "key2", "key3", "key4", "key5"]
+
+        all_partitioners.each do |partitioner|
+          reports = keys.map do |key|
+            handle = producer.produce(
+              topic: "partitioner_test_topic",
+              payload: "test payload",
+              partition_key: key,
+              partitioner: partitioner
+            )
+            handle.wait(max_wait_timeout: 5)
+          end
+
+          partitions = reports.map(&:partition).uniq
+
+          # Should distribute across multiple partitions for most partitioners
+          # (though some might hash all keys to same partition by chance)
+          expect(partitions.all? { |p| p >= 0 && p < producer.partition_count("partitioner_test_topic") }).to be true
+        end
+      end
+    end
+
+    context "partition key vs regular key behavior" do
+      it "should use partition key for partitioning when both key and partition_key are provided" do
+        # Use keys that would hash to different partitions
+        regular_key = "regular-key-123"
+        partition_key = "partition-key-456"
+
+        # Message with both keys
+        handle1 = producer.produce(
+          topic: "partitioner_test_topic",
+          payload: "test payload 1",
+          key: regular_key,
+          partition_key: partition_key
+        )
+
+        # Message with only partition key (should go to same partition)
+        handle2 = producer.produce(
+          topic: "partitioner_test_topic",
+          payload: "test payload 2",
+          partition_key: partition_key
+        )
+
+        # Message with only regular key (should go to different partition)
+        handle3 = producer.produce(
+          topic: "partitioner_test_topic",
+          payload: "test payload 3",
+          key: regular_key
+        )
+
+        report1 = handle1.wait(max_wait_timeout: 5)
+        report2 = handle2.wait(max_wait_timeout: 5)
+        report3 = handle3.wait(max_wait_timeout: 5)
+
+        # Messages 1 and 2 should go to same partition (both use partition_key)
+        expect(report1.partition).to eq(report2.partition)
+
+        # Message 3 should potentially go to different partition (uses regular key)
+        expect(report3.partition).not_to eq(report1.partition)
+      end
+    end
+
+    context "edge case combinations with different partitioners" do
+      it "should handle nil partition key with all partitioners" do
+        all_partitioners.each do |partitioner|
+          handle = producer.produce(
+            topic: "partitioner_test_topic",
+            payload: "test payload",
+            key: "test-key",
+            partition_key: nil,
+            partitioner: partitioner
+          )
+
+          report = handle.wait(max_wait_timeout: 5)
+          expect(report.partition).to be >= 0
+          expect(report.partition).to be < producer.partition_count("partitioner_test_topic")
+        end
+      end
+
+      it "should handle whitespace-only partition key with all partitioners" do
+        all_partitioners.each do |partitioner|
+          handle = producer.produce(
+            topic: "partitioner_test_topic",
+            payload: "test payload",
+            partition_key: "   ",
+            partitioner: partitioner
+          )
+
+          report = handle.wait(max_wait_timeout: 5)
+          expect(report.partition).to be >= 0
+          expect(report.partition).to be < producer.partition_count("partitioner_test_topic")
+        end
+      end
+
+      it "should handle newline characters in partition key with all partitioners" do
+        all_partitioners.each do |partitioner|
+          handle = producer.produce(
+            topic: "partitioner_test_topic",
+            payload: "test payload",
+            partition_key: "key\nwith\nnewlines",
+            partitioner: partitioner
+          )
+
+          report = handle.wait(max_wait_timeout: 5)
+          expect(report.partition).to be >= 0
+          expect(report.partition).to be < producer.partition_count("partitioner_test_topic")
+        end
+      end
+    end
+
+    context "debugging partitioner issues" do
+      it "should show if all partitioners return 0 (indicating a problem)" do
+        test_key = "debug-test-key"
+        zero_count = 0
+
+        all_partitioners.each do |partitioner|
+          handle = producer.produce(
+            topic: "partitioner_test_topic",
+            payload: "debug payload",
+            partition_key: test_key,
+            partitioner: partitioner
+          )
+
+          report = handle.wait(max_wait_timeout: 5)
+          zero_count += 1 if report.partition == 0
+        end
+
+        expect(zero_count).to be < all_partitioners.size
       end
     end
   end

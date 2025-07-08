@@ -5,6 +5,7 @@
 - **[Feature]** Add precompiled `x86_64-linux-musl` setup.
 - **[Feature]** Add precompiled `macos_arm64` setup.
 - [Fix] Fix a case where using empty key on the `musl` architecture would cause a segfault.
+- [Fix] Fix for null pointer reference bypass on empty string being too wide causing segfault.
 - [Enhancement] Allow for producing to non-existing topics with `key` and `partition_key` present.
 - [Enhancement] Replace TTL-based partition count cache with a global cache that reuses `librdkafka` statistics data when possible.
 - [Enhancement] Support producing and consuming of headers with mulitple values (KIP-82).

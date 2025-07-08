@@ -384,18 +384,16 @@ module Rdkafka
       hsh[name] = method_name
     end
 
-    def self.partitioner(str, partition_count, partitioner_name = "consistent_random")
+    def self.partitioner(topic_ptr, str, partition_count, partitioner = "consistent_random")
       # Return RD_KAFKA_PARTITION_UA(unassigned partition) when partition count is nil/zero.
       return -1 unless partition_count&.nonzero?
-      # musl architecture crashes with empty string
-      return 0 if str.empty?
 
-      str_ptr = FFI::MemoryPointer.from_string(str)
-      method_name = PARTITIONERS.fetch(partitioner_name) do
-        raise Rdkafka::Config::ConfigError.new("Unknown partitioner: #{partitioner_name}")
+      str_ptr = str.empty? ? FFI::MemoryPointer::NULL : FFI::MemoryPointer.from_string(str)
+      method_name = PARTITIONERS.fetch(partitioner) do
+        raise Rdkafka::Config::ConfigError.new("Unknown partitioner: #{partitioner}")
       end
 
-      public_send(method_name, nil, str_ptr, str.size, partition_count, nil, nil)
+      public_send(method_name, topic_ptr, str_ptr, str.size, partition_count, nil, nil)
     end
 
     # Create Topics

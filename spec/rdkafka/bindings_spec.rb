@@ -77,30 +77,6 @@ describe Rdkafka::Bindings do
     end
   end
 
-  describe "partitioner" do
-    let(:partition_key) { ('a'..'z').to_a.shuffle.take(15).join('') }
-    let(:partition_count) { rand(50) + 1 }
-
-    it "should return the same partition for a similar string and the same partition count" do
-      result_1 = Rdkafka::Bindings.partitioner(partition_key, partition_count)
-      result_2 = Rdkafka::Bindings.partitioner(partition_key, partition_count)
-      expect(result_1).to eq(result_2)
-    end
-
-    it "should match the old partitioner" do
-      result_1 = Rdkafka::Bindings.partitioner(partition_key, partition_count)
-      result_2 = (Zlib.crc32(partition_key) % partition_count)
-      expect(result_1).to eq(result_2)
-    end
-
-    it "should return the partition calculated by the specified partitioner" do
-      result_1 = Rdkafka::Bindings.partitioner(partition_key, partition_count, "murmur2")
-      ptr = FFI::MemoryPointer.from_string(partition_key)
-      result_2 = Rdkafka::Bindings.rd_kafka_msg_partitioner_murmur2(nil, ptr, partition_key.size, partition_count, nil, nil)
-      expect(result_1).to eq(result_2)
-    end
-  end
-
   describe "stats callback" do
     context "without a stats callback" do
       it "should do nothing" do

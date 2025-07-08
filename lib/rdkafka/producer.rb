@@ -51,13 +51,13 @@ module Rdkafka
 
     # @private
     # @param native_kafka [NativeKafka]
-    # @param partitioner_name [String, nil] name of the partitioner we want to use or nil to use
+    # @param partitioner [String, nil] name of the partitioner we want to use or nil to use
     #   the "consistent_random" default
-    def initialize(native_kafka, partitioner_name)
+    def initialize(native_kafka, partitioner)
       @topics_refs_map = {}
       @topics_configs = {}
       @native_kafka = native_kafka
-      @partitioner_name = partitioner_name || "consistent_random"
+      @partitioner = partitioner || "consistent_random"
 
       # Makes sure, that native kafka gets closed before it gets GCed by Ruby
       ObjectSpace.define_finalizer(self, native_kafka.finalizer)
@@ -337,7 +337,8 @@ module Rdkafka
       timestamp: nil,
       headers: nil,
       label: nil,
-      topic_config: EMPTY_HASH
+      topic_config: EMPTY_HASH,
+      partitioner: @partitioner
     )
       closed_producer_check(__method__)
 
@@ -369,10 +370,14 @@ module Rdkafka
 
         # Check if there are no overrides for the partitioner and use the default one only when
         # no per-topic is present.
-        partitioner_name = @topics_configs.dig(topic, topic_config_hash, :partitioner) || @partitioner_name
+        selected_partitioner = @topics_configs.dig(topic, topic_config_hash, :partitioner) || partitioner
 
         # If the topic is not present, set to -1
-        partition = Rdkafka::Bindings.partitioner(partition_key, partition_count, partitioner_name) if partition_count.positive?
+        partition = Rdkafka::Bindings.partitioner(
+          topic_ref,
+          partition_key,
+          partition_count,
+          selected_partitioner) if partition_count.positive?
       end
 
       # If partition is nil, use -1 to let librdafka set the partition randomly or

@@ -9,7 +9,7 @@
 - [Fix] Fix a case where using empty key on the `musl` architecture would cause a segfault.
 - [Fix] Fix for null pointer reference bypass on empty string being too wide causing segfault.
 
-**Note**: Precompiled extensions are a new feature in this release. While they significantly improve installation speed and reduce build dependencies, they should be thoroughly tested in your staging environment before deploying to production. If you encounter any issues with precompiled extensions, you can fall back to building from sources.
+**Note**: Precompiled extensions are a new feature in this release. While they significantly improve installation speed and reduce build dependencies, they should be thoroughly tested in your staging environment before deploying to production. If you encounter any issues with precompiled extensions, you can fall back to building from sources. For more information, see the [Native Extensions documentation](https://karafka.io/docs/Development-Native-Extensions/).
 
 ## 0.19.5 (2025-05-30)
 - [Enhancement] Allow for producing to non-existing topics with `key` and `partition_key` present.

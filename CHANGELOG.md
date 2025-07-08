@@ -12,6 +12,7 @@
 - [Enhancement] Allow native Kafka customization poll time.
 - [Enhancement] Roll out experimental jruby support.
 - [Enhancement] Run all specs on each of the platforms with and without precompilation.
+- [Enhancement] Support transactional id in the ACL API.
 - [Fix] Fix issue where post-closed producer C topics refs would not be cleaned.
 - [Fix] Fiber causes Segmentation Fault.
 - [Change] Move to trusted-publishers and remove signing since no longer needed.

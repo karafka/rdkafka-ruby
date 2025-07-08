@@ -513,7 +513,7 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
     end
   end
 
-  describe "#ACL tests" do
+  describe "#ACL tests for topic resource" do
     let(:non_existing_resource_name) {"non-existing-topic"}
     before do
       #create topic for testing acl
@@ -611,6 +611,207 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
         expect(delete_acl_handle[:response]).to eq(0)
         expect(delete_acl_report.deleted_acls.length).to eq(2)
 
+      end
+    end
+  end
+
+  describe "#ACL tests for transactional_id" do
+    let(:transactional_id_resource_name) {"test-transactional-id"}
+    let(:non_existing_transactional_id) {"non-existing-transactional-id"}
+    let(:transactional_id_resource_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_TRANSACTIONAL_ID }
+    let(:transactional_id_resource_pattern_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL }
+    let(:transactional_id_principal) { "User:test-user" }
+    let(:transactional_id_host) { "*" }
+    let(:transactional_id_operation) { Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_WRITE }
+    let(:transactional_id_permission_type) { Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW }
+
+    after do
+      # Clean up any ACLs that might have been created during tests
+      begin
+        delete_acl_handle = admin.delete_acl(
+          resource_type: transactional_id_resource_type,
+          resource_name: nil,
+          resource_pattern_type: transactional_id_resource_pattern_type,
+          principal: transactional_id_principal,
+          host: transactional_id_host,
+          operation: transactional_id_operation,
+          permission_type: transactional_id_permission_type
+        )
+        delete_acl_handle.wait(max_wait_timeout: 15.0)
+      rescue
+        # Ignore cleanup errors
+      end
+    end
+
+    describe "#create_acl" do
+      it "creates acl for a transactional_id" do
+        create_acl_handle = admin.create_acl(
+          resource_type: transactional_id_resource_type,
+          resource_name: transactional_id_resource_name,
+          resource_pattern_type: transactional_id_resource_pattern_type,
+          principal: transactional_id_principal,
+          host: transactional_id_host,
+          operation: transactional_id_operation,
+          permission_type: transactional_id_permission_type
+        )
+        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        expect(create_acl_report.rdkafka_response).to eq(0)
+        expect(create_acl_report.rdkafka_response_string).to eq("")
+      end
+
+      it "creates acl for a non-existing transactional_id" do
+        # ACL creation for transactional_ids that don't exist will still get created successfully
+        create_acl_handle = admin.create_acl(
+          resource_type: transactional_id_resource_type,
+          resource_name: non_existing_transactional_id,
+          resource_pattern_type: transactional_id_resource_pattern_type,
+          principal: transactional_id_principal,
+          host: transactional_id_host,
+          operation: transactional_id_operation,
+          permission_type: transactional_id_permission_type
+        )
+        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        expect(create_acl_report.rdkafka_response).to eq(0)
+        expect(create_acl_report.rdkafka_response_string).to eq("")
+
+        # Clean up the ACL that was created for the non-existing transactional_id
+        delete_acl_handle = admin.delete_acl(
+          resource_type: transactional_id_resource_type,
+          resource_name: non_existing_transactional_id,
+          resource_pattern_type: transactional_id_resource_pattern_type,
+          principal: transactional_id_principal,
+          host: transactional_id_host,
+          operation: transactional_id_operation,
+          permission_type: transactional_id_permission_type
+        )
+        delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
+        expect(delete_acl_handle[:response]).to eq(0)
+        expect(delete_acl_report.deleted_acls.size).to eq(1)
+      end
+    end
+
+    describe "#describe_acl" do
+      it "describes acl of a transactional_id that does not exist" do
+        describe_acl_handle = admin.describe_acl(
+          resource_type: transactional_id_resource_type,
+          resource_name: non_existing_transactional_id,
+          resource_pattern_type: transactional_id_resource_pattern_type,
+          principal: transactional_id_principal,
+          host: transactional_id_host,
+          operation: transactional_id_operation,
+          permission_type: transactional_id_permission_type
+        )
+        describe_acl_report = describe_acl_handle.wait(max_wait_timeout: 15.0)
+        expect(describe_acl_handle[:response]).to eq(0)
+        expect(describe_acl_report.acls.size).to eq(0)
+      end
+
+      it "creates acls and describes the newly created transactional_id acls" do
+        # Create first ACL
+        create_acl_handle = admin.create_acl(
+          resource_type: transactional_id_resource_type,
+          resource_name: "test_transactional_id_1",
+          resource_pattern_type: transactional_id_resource_pattern_type,
+          principal: transactional_id_principal,
+          host: transactional_id_host,
+          operation: transactional_id_operation,
+          permission_type: transactional_id_permission_type
+        )
+        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        expect(create_acl_report.rdkafka_response).to eq(0)
+        expect(create_acl_report.rdkafka_response_string).to eq("")
+
+        # Create second ACL
+        create_acl_handle = admin.create_acl(
+          resource_type: transactional_id_resource_type,
+          resource_name: "test_transactional_id_2",
+          resource_pattern_type: transactional_id_resource_pattern_type,
+          principal: transactional_id_principal,
+          host: transactional_id_host,
+          operation: transactional_id_operation,
+          permission_type: transactional_id_permission_type
+        )
+        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        expect(create_acl_report.rdkafka_response).to eq(0)
+        expect(create_acl_report.rdkafka_response_string).to eq("")
+
+        # Since we create and immediately check, this is slow on loaded CIs, hence we wait
+        sleep(2)
+
+        # Describe ACLs - filter by transactional_id resource type
+        describe_acl_handle = admin.describe_acl(
+          resource_type: transactional_id_resource_type,
+          resource_name: nil,
+          resource_pattern_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_ANY,
+          principal: transactional_id_principal,
+          host: transactional_id_host,
+          operation: transactional_id_operation,
+          permission_type: transactional_id_permission_type
+        )
+        describe_acl_report = describe_acl_handle.wait(max_wait_timeout: 15.0)
+        expect(describe_acl_handle[:response]).to eq(0)
+        expect(describe_acl_report.acls.length).to eq(2)
+      end
+    end
+
+    describe "#delete_acl" do
+      it "deletes acl of a transactional_id that does not exist" do
+        delete_acl_handle = admin.delete_acl(
+          resource_type: transactional_id_resource_type,
+          resource_name: non_existing_transactional_id,
+          resource_pattern_type: transactional_id_resource_pattern_type,
+          principal: transactional_id_principal,
+          host: transactional_id_host,
+          operation: transactional_id_operation,
+          permission_type: transactional_id_permission_type
+        )
+        delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
+        expect(delete_acl_handle[:response]).to eq(0)
+        expect(delete_acl_report.deleted_acls.size).to eq(0)
+      end
+
+      it "creates transactional_id acls and deletes the newly created acls" do
+        # Create first ACL
+        create_acl_handle = admin.create_acl(
+          resource_type: transactional_id_resource_type,
+          resource_name: "test_transactional_id_1",
+          resource_pattern_type: transactional_id_resource_pattern_type,
+          principal: transactional_id_principal,
+          host: transactional_id_host,
+          operation: transactional_id_operation,
+          permission_type: transactional_id_permission_type
+        )
+        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        expect(create_acl_report.rdkafka_response).to eq(0)
+        expect(create_acl_report.rdkafka_response_string).to eq("")
+
+        # Create second ACL
+        create_acl_handle = admin.create_acl(
+          resource_type: transactional_id_resource_type,
+          resource_name: "test_transactional_id_2",
+          resource_pattern_type: transactional_id_resource_pattern_type,
+          principal: transactional_id_principal,
+          host: transactional_id_host,
+          operation: transactional_id_operation,
+          permission_type: transactional_id_permission_type
+        )
+        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        expect(create_acl_report.rdkafka_response).to eq(0)
+        expect(create_acl_report.rdkafka_response_string).to eq("")
+
+        # Delete ACLs - resource_name nil to delete all ACLs with any resource name and matching all other filters
+        delete_acl_handle = admin.delete_acl(
+          resource_type: transactional_id_resource_type,
+          resource_name: nil,
+          resource_pattern_type: transactional_id_resource_pattern_type,
+          principal: transactional_id_principal,
+          host: transactional_id_host,
+          operation: transactional_id_operation,
+          permission_type: transactional_id_permission_type
+        )
+        delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
+        expect(delete_acl_handle[:response]).to eq(0)
+        expect(delete_acl_report.deleted_acls.length).to eq(2)
       end
     end
   end

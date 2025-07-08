@@ -530,6 +530,7 @@ module Rdkafka
     RD_KAFKA_RESOURCE_TOPIC = 2
     RD_KAFKA_RESOURCE_GROUP = 3
     RD_KAFKA_RESOURCE_BROKER = 4
+    RD_KAFKA_RESOURCE_TRANSACTIONAL_ID = 5
 
     # rd_kafka_ResourcePatternType_t - https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L7320
 

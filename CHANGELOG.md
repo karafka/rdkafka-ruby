@@ -5,6 +5,7 @@
 - **[Feature]** Add precompiled `x86_64-linux-musl` setup.
 - **[Feature]** Add precompiled `macos_arm64` setup.
 - [Enhancement] Run all specs on each of the platforms with and without precompilation.
+- [Enhancement] Support transactional id in the ACL API.
 - [Fix] Fix a case where using empty key on the `musl` architecture would cause a segfault.
 - [Fix] Fix for null pointer reference bypass on empty string being too wide causing segfault.
 

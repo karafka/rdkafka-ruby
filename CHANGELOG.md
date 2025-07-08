@@ -17,7 +17,7 @@
 - [Fix] Fiber causes Segmentation Fault.
 - [Change] Move to trusted-publishers and remove signing since no longer needed.
 
-**Note**: Precompiled extensions are a new feature in this release. While they significantly improve installation speed and reduce build dependencies, they should be thoroughly tested in your staging environment before deploying to production. If you encounter any issues with precompiled extensions, you can fall back to building from sources.
+**Note**: Precompiled extensions are a new feature in this release. While they significantly improve installation speed and reduce build dependencies, they should be thoroughly tested in your staging environment before deploying to production. If you encounter any issues with precompiled extensions, you can fall back to building from sources. For more information, see the [Native Extensions documentation](https://karafka.io/docs/Development-Native-Extensions/).
 
 ## 0.21.0 (2025-02-13)
 - [Enhancement] Bump librdkafka to `2.8.0`

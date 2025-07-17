@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.22.1 (2025-07-17)
+- [Fix] Fix `Rakefile` being available in the precompiled versions causing build failures.
+
 ## 0.22.0 (2025-07-17)
 - **[Feature]** Add precompiled `x86_64-linux-gnu` setup.
 - **[Feature]** Add precompiled `x86_64-linux-musl` setup.

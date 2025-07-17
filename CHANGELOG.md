@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.22.0 (Unreleased)
+## 0.22.0 (2025-07-17)
 - **[Feature]** Add precompiled `x86_64-linux-gnu` setup.
 - **[Feature]** Add precompiled `x86_64-linux-musl` setup.
 - **[Feature]** Add precompiled `macos_arm64` setup.

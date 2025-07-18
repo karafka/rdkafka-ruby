@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.20.1 (2025-07-17)
+- [Fix] Support Ubuntu `22.04` and older Alpine precompiled versions
+
 ## 0.20.0 (2025-07-17)
 - **[Feature]** Add precompiled `x86_64-linux-gnu` setup.
 - **[Feature]** Add precompiled `x86_64-linux-musl` setup.

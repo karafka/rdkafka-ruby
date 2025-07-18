@@ -22,44 +22,8 @@ env:
   CONFLUENT_VERSION: "8.0.0"
 
 jobs:
-  build_install:
-    timeout-minutes: 30
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 0
-      - name: Install Bash 4+ and Kerberos
-        run: |
-          brew install bash
-          brew list krb5 &>/dev/null || brew install krb5
-          echo "/opt/homebrew/bin" >> $GITHUB_PATH
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@a4effe49ee8ee5b8b5091268c473a4628afb5651 # v1.245.0
-        with:
-          ruby-version: '3.4'  # Use one Ruby version for building
-          bundler-cache: false
-      - name: Build gem with mini_portile
-        run: |
-          set -e
-          bundle install
-          cd ext && bundle exec rake
-          cd ..
-      - name: Upload built gem and bundle
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: rdkafka-built-gem-macos
-          path: |
-            vendor/bundle/
-            .bundle/
-            ext/
-            lib/
-          retention-days: 1
-
   specs_install:
     timeout-minutes: 30
-    runs-on: macos-latest
-    needs: build_install
     strategy:
       fail-fast: false
       matrix:
@@ -69,18 +33,21 @@ jobs:
           - '3.3'
           - '3.2'
           - '3.1'
+        macos-version:
+          - 'macos-14' # macOS 14 Sonoma (ARM64)
+          - 'macos-15' # macOS 15 Sequoia (ARM64)
         include:
           - ruby: '3.4'
+            macos-version: 'macos-15'
             coverage: 'true'
+        exclude:
+          - ruby: '3.5.0-preview1'
+            macos-version: 'macos-14'
+    runs-on: ${{ matrix.macos-version }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-      - name: Download built gem
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: rdkafka-built-gem-macos
-          path: ./
       - name: Install Bash 4+ and Kerberos
         run: |
           brew install bash
@@ -153,12 +120,16 @@ jobs:
             [ $i -eq 30 ] && { echo "❌ Kafka failed to start"; exit 1; }
             sleep 2
           done
-      - name: Install remaining dependencies
+      - name: Install dependencies
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
         run: |
-          # Only install gems that aren't Ruby-version specific
           bundle install
+      - name: Build gem with mini_portile
+        run: |
+          set -e
+          cd ext && bundle exec rake
+          cd ..
       - name: Run all specs
         env:
           GITHUB_COVERAGE: ${{matrix.coverage}}
@@ -168,7 +139,7 @@ jobs:
 
   build_precompiled:
     timeout-minutes: 45
-    runs-on: macos-latest
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -196,7 +167,6 @@ jobs:
 
   specs_precompiled:
     timeout-minutes: 30
-    runs-on: macos-latest
     needs: build_precompiled
     strategy:
       fail-fast: false
@@ -207,9 +177,17 @@ jobs:
           - '3.3'
           - '3.2'
           - '3.1'
+        macos-version:
+          - 'macos-14'
+          - 'macos-15'
         include:
           - ruby: '3.4'
+            macos-version: 'macos-15'
             coverage: 'true'
+        exclude:
+          - ruby: '3.5.0-preview1'
+            macos-version: 'macos-14'
+    runs-on: ${{ matrix.macos-version }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:

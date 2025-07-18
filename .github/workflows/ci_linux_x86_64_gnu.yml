@@ -54,43 +54,8 @@ env:
   BUNDLE_JOBS: 4
 
 jobs:
-  build_install:
-    timeout-minutes: 30
-    strategy:
-      matrix:
-        ubuntu-version: ['22.04', '24.04']
-    runs-on: ubuntu-${{ matrix.ubuntu-version }}
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 0
-      - name: Install package dependencies
-        run: "[ -e $APT_DEPS ] || sudo apt-get install -y --no-install-recommends $APT_DEPS"
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@a4effe49ee8ee5b8b5091268c473a4628afb5651 # v1.245.0
-        with:
-          ruby-version: '3.4'  # Use one Ruby version for building
-          bundler-cache: false
-      - name: Build gem with mini_portile
-        run: |
-          set -e
-          bundle install
-          cd ext && bundle exec rake
-          cd ..
-      - name: Upload built gem and bundle
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: rdkafka-built-gem-${{ matrix.ubuntu-version }}
-          path: |
-            vendor/bundle/
-            .bundle/
-            ext/
-            lib/
-          retention-days: 1
-
   specs_install:
     timeout-minutes: 30
-    needs: build_install
     strategy:
       fail-fast: false
       matrix:
@@ -112,11 +77,6 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-      - name: Download built gem
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: rdkafka-built-gem-${{ matrix.ubuntu-version }}
-          path: ./
       - name: Set up Ruby
         uses: ruby/setup-ruby@a4effe49ee8ee5b8b5091268c473a4628afb5651 # v1.245.0
         with:
@@ -146,12 +106,17 @@ jobs:
             echo "Sleeping 2 seconds..."
             sleep 2
           done
-      - name: Install remaining dependencies
+      - name: Install dependencies
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
         run: |
           # Only install gems that aren't Ruby-version specific
           bundle install
+      - name: Build gem with mini_portile
+        run: |
+          set -e
+          cd ext && bundle exec rake
+          cd ..
       - name: Run all specs
         env:
           GITHUB_COVERAGE: ${{matrix.coverage}}

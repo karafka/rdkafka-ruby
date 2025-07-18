@@ -16,7 +16,8 @@ jobs:
   push:
     if: github.repository_owner == 'karafka'
     timeout-minutes: 30
-    runs-on: ubuntu-22.04
+    # Same as CI, we build on the oldest possible for ABI compatibility
+    runs-on: ubuntu-22.04 # renovate: ignore
     environment: deployment
     permissions:
       contents: write

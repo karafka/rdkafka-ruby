@@ -1,7 +1,9 @@
 # Rdkafka Changelog
 
 ## 0.20.1 (2025-07-17)
+- [Enhancement] Drastically increase number of platforms in the integration suite
 - [Fix] Support Ubuntu `22.04` and older Alpine precompiled versions
+- [Fix] FFI::DynamicLibrary.load_library': Could not open library
 
 ## 0.20.0 (2025-07-17)
 - **[Feature]** Add precompiled `x86_64-linux-gnu` setup.

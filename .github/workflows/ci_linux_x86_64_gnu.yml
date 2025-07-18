@@ -124,7 +124,7 @@ jobs:
 
   build_precompiled:
     timeout-minutes: 30
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -135,15 +135,29 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             build-essential \
             gcc \
+            g++ \
             make \
-            patch \
             tar \
+            gzip \
             wget \
+            curl \
+            file \
+            pkg-config \
+            autoconf \
+            automake \
+            libtool \
+            python3 \
+            git \
             ca-certificates \
+            patch \
             libsasl2-dev \
             libssl-dev \
             zlib1g-dev \
-            libzstd-dev
+            libzstd-dev \
+            bison \
+            flex \
+            perl \
+            binutils-dev
       - name: Cache build-tmp directory
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
@@ -162,7 +176,6 @@ jobs:
 
   specs_precompiled:
     timeout-minutes: 30
-    runs-on: ubuntu-latest
     needs: build_precompiled
     strategy:
       fail-fast: false
@@ -173,9 +186,13 @@ jobs:
           - '3.3'
           - '3.2'
           - '3.1'
+        ubuntu-version: ['22.04', '24.04']
         include:
           - ruby: '3.4'
+            ubuntu-version: '24.04'
             coverage: 'true'
+
+    runs-on: ubuntu-${{ matrix.ubuntu-version }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -199,7 +216,6 @@ jobs:
 
           echo "=== Container status ==="
           docker compose ps kafka
-
           for i in {1..30}; do
             echo "=== Attempt $i/30 ==="
 

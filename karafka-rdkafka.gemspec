@@ -40,31 +40,6 @@ Gem::Specification.new do |gem|
     gem.extensions = %w(ext/Rakefile)
   end
 
-  if ENV['RUBY_PLATFORM']
-    gem.platform = ENV['RUBY_PLATFORM']
-    gem.files = `git ls-files`.split($\)
-
-    # Do not include the source code for librdkafka as it should be precompiled already per
-    # platform. Same applies to any possible patches.
-    gem.files = gem.files.reject do |file|
-      file.match?(%r{^dist/librdkafka-.*\.tar\.gz$}) ||
-      file.match?(%r{^dist/patches/})
-    end
-
-    # Add the compiled extensions that exist (not in git)
-    if File.exist?('ext/librdkafka.so')
-      gem.files << 'ext/librdkafka.so'
-    end
-
-    if File.exist?('ext/librdkafka.dylib')
-      gem.files << 'ext/librdkafka.dylib'
-    end
-  else
-    gem.platform = Gem::Platform::RUBY
-    gem.files = `git ls-files`.split($\)
-    gem.extensions = %w(ext/Rakefile)
-  end
-
   gem.add_dependency 'ffi', '~> 1.15'
   gem.add_dependency 'logger'
   gem.add_dependency 'mini_portile2', '~> 2.6'

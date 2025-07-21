@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.21.0 (Unreleased)
+- [Enhancement] Bump librdkafka to 2.11.0
+
 ## 0.20.1 (2025-07-17)
 - [Enhancement] Drastically increase number of platforms in the integration suite
 - [Fix] Support Ubuntu `22.04` and older Alpine precompiled versions

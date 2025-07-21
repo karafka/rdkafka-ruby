@@ -15,9 +15,7 @@ require "securerandom"
 
 def rdkafka_base_config
   {
-    :"api.version.request" => false,
-    :"broker.version.fallback" => "1.0",
-    :"bootstrap.servers" => "127.0.0.1:9092",
+    :"bootstrap.servers" => "localhost:9092",
     # Display statistics and refresh often just to cover those in specs
     :'statistics.interval.ms' => 1_000,
     :'topic.metadata.refresh.interval.ms' => 1_000

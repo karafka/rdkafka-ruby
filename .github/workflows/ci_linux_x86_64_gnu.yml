@@ -130,7 +130,7 @@ jobs:
     # We precompile on older Ubuntu and check compatibility by running specs since we aim to
     # release only one precompiled version for all supported Ubuntu versions
     # This is why we do not want Renovate to update it automatically
-    runs-on: ubuntu-22.04 # renovate: ignore
+    runs-on: ubuntu-24.04 # renovate: ignore
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:

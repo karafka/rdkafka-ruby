@@ -1,5 +1,10 @@
 # Rdkafka Changelog
 
+## 0.22.2 (Unreleased)
+- [Enhancement] Drastically increase number of platforms in the integration suite
+- [Fix] Support Ubuntu `22.04` and older Alpine precompiled versions
+- [Fix] FFI::DynamicLibrary.load_library': Could not open library
+
 ## 0.22.1 (2025-07-17)
 - [Fix] Fix `Rakefile` being available in the precompiled versions causing build failures.
 

@@ -1,7 +1,7 @@
 # Rdkafka
 
-[![Build Status](https://github.com/karafka/rdkafka-ruby/actions/workflows/ci_linux_x86_64_gnu.yml/badge.svg)](https://github.com/karafka/rdkafka-ruby/actions/workflows/ci_linux_x86_64_gnu.yml)
-[![Gem Version](https://badge.fury.io/rb/rdkafka.svg)](https://badge.fury.io/rb/rdkafka)
+[![Build Status](https://github.com/karafka/karafka-rdkafka/actions/workflows/ci_linux_x86_64_gnu.yml/badge.svg)](https://github.com/karafka/karafka-rdkafka/actions/workflows/ci_linux_x86_64_gnu.yml)
+[![Gem Version](https://badge.fury.io/rb/karafka-rdkafka.svg)](https://badge.fury.io/rb/karafka-rdkafka)
 [![Join the chat at https://slack.karafka.io](https://raw.githubusercontent.com/karafka/misc/master/slack.svg)](https://slack.karafka.io)
 
 > [!NOTE]

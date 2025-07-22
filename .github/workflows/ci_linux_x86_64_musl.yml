@@ -112,7 +112,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       # Similar to GNU, we build on the oldest for ABI compatibility
-      image: alpine:3.18@sha256:de0eb0b3f2a47ba1eb89389859a9bd88b28e82f5826b6969ad604979713c2d4f # renovate: ignore
+      image: alpine:3.22@sha256:4bcff63911fcb4448bd4fdacec207030997caf25e9bea4045fa6c8c44de311d1 # renovate: ignore
     steps:
       - name: Install dependencies
         run: |

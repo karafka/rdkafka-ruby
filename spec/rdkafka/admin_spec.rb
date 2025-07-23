@@ -876,7 +876,17 @@ describe Rdkafka::Admin do
   end
 
   describe '#create_partitions' do
-    let(:metadata) { admin.metadata(topic_name).topics.first }
+    let(:metadata) do
+      begin
+        admin.metadata(topic_name).topics.first
+      rescue Rdkafka::RdkafkaError
+        # We have to wait because if we query too fast after topic creation request, it may not
+        # yet be available throwing an error.
+        # This occurs mostly on slow CIs
+        sleep(1)
+        admin.metadata(topic_name).topics.first
+      end
+    end
 
     context 'when topic does not exist' do
       it 'expect to fail due to unknown partition' do

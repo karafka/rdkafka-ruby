@@ -786,7 +786,8 @@ describe Rdkafka::Producer do
 
       after do
         # Allow rdkafka to evict message preventing memory-leak
-        sleep(2)
+        # We give it a bit more time as on slow CIs things take time
+        sleep(5)
       end
 
       it "should return false on flush when cannot deliver and beyond timeout" do

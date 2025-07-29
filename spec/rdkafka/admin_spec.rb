@@ -518,17 +518,17 @@ describe Rdkafka::Admin do
     before do
       #create topic for testing acl
       create_topic_handle = admin.create_topic(resource_name, topic_partition_count, topic_replication_factor)
-      create_topic_report = create_topic_handle.wait(max_wait_timeout: 15.0)
+      create_topic_handle.wait(max_wait_timeout: 15.0)
     end
 
     after do
       #delete acl
       delete_acl_handle = admin.delete_acl(resource_type: resource_type, resource_name: resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
-      delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
+      delete_acl_handle.wait(max_wait_timeout: 15.0)
 
       #delete topic that was created for testing acl
       delete_topic_handle = admin.delete_topic(resource_name)
-      delete_topic_report = delete_topic_handle.wait(max_wait_timeout: 15.0)
+      delete_topic_handle.wait(max_wait_timeout: 15.0)
     end
 
     describe "#create_acl" do

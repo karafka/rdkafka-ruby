@@ -20,6 +20,6 @@ describe Rdkafka::Producer::DeliveryReport do
   end
 
   it "should get the error" do
-    expect(subject.error).to eq -1
+    expect(subject.error).to eq(-1)
   end
 end

@@ -350,7 +350,7 @@ module Rdkafka
         topic_out = {}
         partitions.each do |p|
           next if p.offset.nil?
-          low, high = query_watermark_offsets(
+          _low, high = query_watermark_offsets(
             topic,
             p.partition,
             watermark_timeout_ms

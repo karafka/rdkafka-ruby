@@ -837,7 +837,7 @@ describe Rdkafka::Producer do
         before { producer.delivery_callback = delivery_callback }
 
         it "should run the callback" do
-          handle = producer.produce(
+          producer.produce(
             topic:     "produce_test_topic",
             payload:   "payload headers"
           )

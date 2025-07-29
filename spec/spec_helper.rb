@@ -8,6 +8,8 @@ require 'warning'
 
 Warning.process do |warning|
   next unless warning.include?(Dir.pwd)
+  # Allow OpenStruct usage only in specs
+  next if warning.include?('OpenStruct use') && warning.include?('_spec')
 
   raise "Warning in your code: #{warning}"
 end

@@ -73,7 +73,7 @@ jobs:
             coverage: 'true'
           - ruby: 'jruby-10.0'
             continue-on-error: true
-    runs-on: ubuntu-${{ matrix.ubuntu-version }}-arm64
+    runs-on: ubuntu-${{ matrix.ubuntu-version }}-arm
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -131,7 +131,7 @@ jobs:
     # We precompile on older Ubuntu and check compatibility by running specs since we aim to
     # release only one precompiled version for all supported Ubuntu versions
     # This is why we do not want Renovate to update it automatically
-    runs-on: ubuntu-22.04-arm64 # renovate: ignore
+    runs-on: ubuntu-22.04-arm # renovate: ignore
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -199,7 +199,7 @@ jobs:
             ubuntu-version: '24.04'
             coverage: 'true'
 
-    runs-on: ubuntu-${{ matrix.ubuntu-version }}-arm64
+    runs-on: ubuntu-${{ matrix.ubuntu-version }}-arm
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:

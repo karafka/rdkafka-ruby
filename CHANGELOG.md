@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.21.0 (Unreleased)
+- [Enhancement] Support ARM64 Gnu precompilation.
 - [Enhancement] Bump librdkafka to 2.11.0
 
 ## 0.20.1 (2025-07-17)

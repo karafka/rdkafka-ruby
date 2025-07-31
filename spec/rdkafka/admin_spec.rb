@@ -908,6 +908,8 @@ describe Rdkafka::Admin do
 
       it 'expect not to change number of partitions' do
         expect { admin.create_partitions(topic_name, 2).wait }.to raise_error(Rdkafka::RdkafkaError, /invalid_partitions/)
+        # On slow CI this may propagate, thus we wait a bit
+        sleep(1)
         expect(metadata[:partition_count]).to eq(5)
       end
     end

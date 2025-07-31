@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.22.3 (Unreleased)
+- [Enhancement] Support ARM64 Gnu precompilation.
+
 ## 0.22.2 (2025-07-21)
 - [Enhancement] Drastically increase number of platforms in the integration suite
 - [Fix] Support Ubuntu `22.04` and older Alpine precompiled versions

@@ -55,7 +55,6 @@ env:
 
 jobs:
   specs_install:
-    if: false
     timeout-minutes: 30
     strategy:
       fail-fast: false

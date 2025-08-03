@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.21.0 (Unreleased)
+- [Enhancement] Support explicit Debian testing due to lib issues.
 - [Enhancement] Support ARM64 Gnu precompilation.
 - [Enhancement] Bump librdkafka to 2.11.0
 

@@ -196,9 +196,9 @@ RSpec.configure do |config|
   end
 
   config.around(:each) do |example|
-    # Timeout specs after a minute. If they take longer
+    # Timeout specs after 1.5 minute. If they take longer
     # they are probably stuck
-    Timeout::timeout(60) do
+    Timeout::timeout(90) do
       example.run
     end
   end

@@ -1292,4 +1292,50 @@ describe Rdkafka::Consumer do
       expect(eof_error.code).to eq(:partition_eof)
     end
   end
+
+  describe "long running consumption" do
+    let(:consumer) { rdkafka_consumer_config.consumer }
+    let(:producer) { rdkafka_producer_config.producer }
+
+    after { consumer.close }
+    after { producer.close }
+
+    it "should consume messages continuously for 60 seconds" do
+      consumer.subscribe("consume_test_topic")
+      wait_for_assignment(consumer)
+
+      messages_consumed = 0
+      start_time = Time.now
+
+      # Producer thread - sends message every second
+      producer_thread = Thread.new do
+        counter = 0
+        while Time.now - start_time < 60
+          producer.produce(
+            topic: "consume_test_topic",
+            payload: "payload #{counter}",
+            key: "key #{counter}",
+            partition: 0
+          ).wait
+          counter += 1
+          sleep(1)
+        end
+      end
+
+      # Consumer loop
+      while Time.now - start_time < 60
+        message = consumer.poll(1000)
+        if message
+          expect(message).to be_a Rdkafka::Consumer::Message
+          expect(message.topic).to eq("consume_test_topic")
+          messages_consumed += 1
+          consumer.commit if messages_consumed % 10 == 0
+        end
+      end
+
+      producer_thread.join
+
+      expect(messages_consumed).to be > 50 # Should consume most messages
+    end
+  end
 end

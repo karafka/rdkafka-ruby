@@ -1,0 +1,299 @@
+# CI Strategy: Comprehensive Testing of Build and Precompiled Flows
+#
+# This workflow tests both compilation-from-source and precompiled binary distribution
+# strategies across multiple Debian and Ruby versions to ensure broad compatibility and
+# reliability.
+#
+# WHY WE TEST DEBIAN BOOKWORM:
+# - Different system library versions (OpenSSL, zlib, libsasl2, libzstd, etc.)
+# - Different GCC compiler versions that affect native extension compilation
+# - Different glibc versions that can impact binary compatibility
+# - Real-world deployment scenarios where users run on Debian stable
+# - Different Ruby versions
+#
+# COMPILATION FLOW (build_install + specs_install):
+# - Tests that librdkafka compiles correctly from source on Debian
+# - Validates that mini_portile2 can successfully build native dependencies
+# - Ensures Ruby native extensions link properly with system libraries
+# - Verifies that the same codebase works across different toolchain versions
+#
+# PRECOMPILED FLOW (build_precompiled + specs_precompiled):
+# - Tests our precompiled static libraries work on Debian
+# - Validates that statically-linked binaries are truly portable across environments
+# - Ensures precompiled libraries don't have unexpected system dependencies
+# - Verifies that removing build tools doesn't break precompiled binary usage
+#
+# ARTIFACT ISOLATION:
+# - Debian gets separate artifacts (rdkafka-built-gem-debian, etc.)
+# - Prevents cross-contamination of OS-specific compiled extensions
+# - Ensures test accuracy by matching build and test environments
+#
+# This comprehensive approach catches issues that single-platform testing would miss,
+# such as system library incompatibilities, compiler-specific bugs, or static linking
+# problems that only manifest on specific Debian versions.
+
+name: CI Linux Debian Bookworm x86_64 GNU
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    branches: [ main, master ]
+  push:
+    branches: [ main, master ]
+  schedule:
+    - cron: '0 1 * * *'
+
+permissions:
+  contents: read
+
+env:
+  BUNDLE_RETRY: 6
+  BUNDLE_JOBS: 4
+
+jobs:
+  specs_install:
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+          - '3.4'
+          - '3.3'
+          - '3.2'
+          - '3.1'
+        include:
+          - ruby: '3.4'
+            coverage: 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Start Kafka with Docker Compose
+        run: |
+          ./ext/generate-ssl-certs.sh
+          docker compose -f docker-compose-ssl.yml up -d
+          echo "Waiting for Kafka to be ready..."
+          sleep 10
+          for i in {1..30}; do
+            if docker compose exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1; then
+              echo "Kafka topics command succeeded!"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Install dependencies
+        env:
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+        run: |
+          docker run --rm \
+            --network host \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e "RDKAFKA_EXT_PATH=/workspace/ext" \
+            ruby:${{ matrix.ruby }}-bookworm \
+            sh -c 'apt-get update && \
+              apt-get upgrade -y openssl libssl3 libssl-dev && \
+              apt-get install -y git build-essential pkg-config \
+                libssl-dev libsasl2-dev zlib1g-dev libzstd-dev && \
+              git config --global --add safe.directory /workspace && \
+              bundle config set --local path vendor/bundle && \
+              bundle install'
+
+      - name: Build gem with mini_portile
+        run: |
+          docker run --rm \
+            --network host \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            ruby:${{ matrix.ruby }}-bookworm \
+            sh -c 'apt-get update && \
+              apt-get upgrade -y openssl libssl3 libssl-dev && \
+              apt-get install -y git build-essential pkg-config \
+                libssl-dev libsasl2-dev zlib1g-dev libzstd-dev && \
+              git config --global --add safe.directory /workspace && \
+              bundle config set --local path vendor/bundle && \
+              bundle install && \
+              cd ext && bundle exec rake'
+
+      - name: Run all specs in PLAINTEXT
+        env:
+          GITHUB_COVERAGE: ${{matrix.coverage}}
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+        run: |
+          docker run --rm \
+            --network host \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e "GITHUB_COVERAGE=${{ matrix.coverage }}" \
+            -e "RDKAFKA_EXT_PATH=/workspace/ext" \
+            ruby:${{ matrix.ruby }}-bookworm \
+            sh -c 'apt-get update && \
+              apt-get upgrade -y openssl libssl3 libssl-dev && \
+              apt-get install -y git build-essential pkg-config \
+                libssl-dev libsasl2-dev zlib1g-dev libzstd-dev && \
+              git config --global --add safe.directory /workspace && \
+              bundle config set --local path vendor/bundle && \
+              bundle install && \
+              bundle exec rspec'
+
+      - name: Run all specs in SSL
+        env:
+          GITHUB_COVERAGE: ${{matrix.coverage}}
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+          KAFKA_SSL_ENABLED: "true"
+        run: |
+          docker run --rm \
+            --network host \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e "GITHUB_COVERAGE=${{ matrix.coverage }}" \
+            -e "RDKAFKA_EXT_PATH=/workspace/ext" \
+            -e "KAFKA_SSL_ENABLED=true" \
+            ruby:${{ matrix.ruby }}-bookworm \
+            sh -c 'apt-get update && \
+              apt-get upgrade -y openssl libssl3 libssl-dev && \
+              apt-get install -y git build-essential pkg-config \
+                libssl-dev libsasl2-dev zlib1g-dev libzstd-dev default-jdk && \
+              git config --global --add safe.directory /workspace && \
+              bundle config set --local path vendor/bundle && \
+              bundle install && \
+              bundle exec rspec'
+
+  build_precompiled:
+    timeout-minutes: 30
+    # We precompile on older Ubuntu and check compatibility by running specs since we aim to
+    # release only one precompiled version for all supported Ubuntu versions
+    # This is why we do not want Renovate to update it automatically
+    runs-on: ubuntu-22.04 # renovate: ignore
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            gcc \
+            g++ \
+            make \
+            tar \
+            gzip \
+            wget \
+            curl \
+            file \
+            pkg-config \
+            autoconf \
+            automake \
+            libtool \
+            python3 \
+            git \
+            ca-certificates \
+            patch \
+            libsasl2-dev \
+            libssl-dev \
+            zlib1g-dev \
+            libzstd-dev \
+            bison \
+            flex \
+            perl \
+            binutils-dev
+      - name: Cache build-tmp directory
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ext/build-tmp
+          key: build-tmp-${{ runner.os }}-${{ hashFiles('ext/*.sh', 'ext/Rakefile') }}-v2
+      - name: Build precompiled librdkafka.so
+        run: |
+          cd ext
+          ./build_linux_x86_64_gnu.sh
+      - name: Upload precompiled library
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: librdkafka-precompiled-linux
+          path: ext/
+          retention-days: 1
+
+  specs_precompiled:
+    timeout-minutes: 30
+    needs: build_precompiled
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+          - '3.4'
+          - '3.3'
+          - '3.2'
+          - '3.1'
+        include:
+          - ruby: '3.4'
+            coverage: 'true'
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Download precompiled library
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: librdkafka-precompiled-linux
+          path: ext/
+      - name: Start Kafka with Docker Compose
+        run: |
+          ./ext/generate-ssl-certs.sh
+          docker compose -f docker-compose-ssl.yml up -d
+          echo "Waiting for Kafka to be ready..."
+          sleep 10
+          for i in {1..30}; do
+            if docker compose exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1; then
+              echo "Kafka topics command succeeded!"
+              break
+            fi
+            sleep 2
+          done
+      - name: Run specs with precompiled library and PLAINTEXT
+        env:
+          GITHUB_COVERAGE: ${{ matrix.coverage }}
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+        run: |
+          docker run --rm \
+            --network host \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e "GITHUB_COVERAGE=${{ matrix.coverage }}" \
+            -e "RDKAFKA_EXT_PATH=/workspace/ext" \
+            ruby:${{ matrix.ruby }}-bookworm \
+            sh -c 'apt-get update && \
+              apt-get install -y git && \
+              git config --global --add safe.directory /workspace && \
+              bundle config set --local path vendor/bundle && \
+              bundle install && bundle exec rspec'
+
+      - name: Run specs with precompiled library and SSL
+        env:
+          GITHUB_COVERAGE: ${{matrix.coverage}}
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+          KAFKA_SSL_ENABLED: "true"
+        run: |
+          docker run --rm \
+            --network host \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e "GITHUB_COVERAGE=${{ matrix.coverage }}" \
+            -e "RDKAFKA_EXT_PATH=/workspace/ext" \
+            -e "KAFKA_SSL_ENABLED=true" \
+            ruby:${{ matrix.ruby }}-bookworm \
+            sh -c 'apt-get update && \
+              apt-get install -y git default-jdk && \
+              git config --global --add safe.directory /workspace && \
+              bundle config set --local path vendor/bundle && \
+              bundle install && \
+              echo "Testing SSL connections with precompiled library..." && \
+              bundle exec rspec'

@@ -21,7 +21,7 @@
 # Trade-offs: Slightly longer CI times (~2-3 min per job) but much more reliable
 # than dealing with architecture mismatches and artifact corruption issues.
 
-name: CI Linux x86_64 musl
+name: CI Linux Alpine x86_64 musl
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -44,7 +44,7 @@ env:
 
 jobs:
   specs_install:
-    timeout-minutes: 30
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -218,7 +218,10 @@ jobs:
             -e "GITHUB_COVERAGE=${{ matrix.coverage }}" \
             -e "RDKAFKA_EXT_PATH=/workspace/ext" \
             ruby:${{ matrix.ruby }}-alpine \
-            sh -c 'apk add --no-cache git build-base linux-headers bash && git config --global --add safe.directory /workspace && bundle config set --local path vendor/bundle && bundle install && bundle exec ruby -S rspec'
+            sh -c 'apk add --no-cache git build-base linux-headers bash && \
+              git config --global --add safe.directory /workspace && \
+              bundle config set --local path vendor/bundle && \
+              bundle install && bundle exec ruby -S rspec'
 
       - name: Run specs with precompiled library and SSL
         env:
@@ -233,4 +236,7 @@ jobs:
             -e "RDKAFKA_EXT_PATH=/workspace/ext" \
             -e "KAFKA_SSL_ENABLED=true" \
             ruby:${{ matrix.ruby }}-alpine \
-            sh -c 'apk add --no-cache git build-base linux-headers bash openjdk17-jre-headless && git config --global --add safe.directory /workspace && bundle config set --local path vendor/bundle && bundle install && echo "Testing SSL connections with precompiled library..." && bundle exec ruby -S rspec'
+            sh -c 'apk add --no-cache git build-base linux-headers bash openjdk17-jre-headless && \
+              git config --global --add safe.directory /workspace && \
+              bundle config set --local path vendor/bundle && bundle install && \
+              echo "Testing SSL connections with precompiled library..." && bundle exec ruby -S rspec'

@@ -32,7 +32,7 @@
 # such as system library incompatibilities, compiler-specific bugs, or static linking
 # problems that only manifest on specific Ubuntu versions.
 
-name: CI Linux x86_64 GNU
+name: CI Linux Ubuntu x86_64 GNU
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -55,7 +55,7 @@ env:
 
 jobs:
   specs_install:
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:

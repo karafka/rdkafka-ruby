@@ -28,12 +28,25 @@ require "timeout"
 require "securerandom"
 
 def rdkafka_base_config
-  {
-    :"bootstrap.servers" => "localhost:9092",
-    # Display statistics and refresh often just to cover those in specs
-    :'statistics.interval.ms' => 1_000,
-    :'topic.metadata.refresh.interval.ms' => 1_000
-  }
+  if ENV['KAFKA_SSL_ENABLED'] == 'true'
+    {
+      :"bootstrap.servers" => "localhost:9093",
+      # Display statistics and refresh often just to cover those in specs
+      :'statistics.interval.ms' => 1_000,
+      :'topic.metadata.refresh.interval.ms' => 1_000,
+      # SSL Configuration
+      :'security.protocol' => 'SSL',
+      :'ssl.ca.location' => './ssl/ca-cert',
+      :'ssl.endpoint.identification.algorithm' => 'none'
+    }
+  else
+    {
+      :"bootstrap.servers" => "localhost:9092",
+      # Display statistics and refresh often just to cover those in specs
+      :'statistics.interval.ms' => 1_000,
+      :'topic.metadata.refresh.interval.ms' => 1_000
+    }
+  end
 end
 
 def rdkafka_config(config_overrides={})

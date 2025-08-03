@@ -13,3 +13,4 @@ coverage
 vendor
 .idea/
 out/
+ssl/

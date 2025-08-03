@@ -84,7 +84,8 @@ jobs:
           bundler-cache: false
       - name: Start Kafka with Docker Compose
         run: |
-          docker compose up -d
+          ./ext/generate-ssl-certs.sh
+          docker compose -f docker-compose-ssl.yml up -d
           echo "Waiting for Kafka to be ready..."
 
           sleep 10
@@ -117,10 +118,19 @@ jobs:
           set -e
           cd ext && bundle exec rake
           cd ..
-      - name: Run all specs
+      - name: Run all specs in PLAINTEXT
         env:
           GITHUB_COVERAGE: ${{matrix.coverage}}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+        continue-on-error: ${{ matrix.continue-on-error || false }}
+        run: |
+          bundle exec rspec
+
+      - name: Run all specs in SSL
+        env:
+          GITHUB_COVERAGE: ${{matrix.coverage}}
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+          KAFKA_SSL_ENABLED: "true"
         continue-on-error: ${{ matrix.continue-on-error || false }}
         run: |
           bundle exec rspec
@@ -215,7 +225,8 @@ jobs:
           bundler-cache: false
       - name: Start Kafka with Docker Compose
         run: |
-          docker compose up -d
+          ./ext/generate-ssl-certs.sh
+          docker compose -f docker-compose-ssl.yml up -d
           echo "Waiting for Kafka to be ready..."
 
           sleep 10
@@ -263,9 +274,17 @@ jobs:
           echo "Build dependencies removal completed"
           echo "Remaining build tools:"
           which gcc g++ make 2>/dev/null || echo "No build tools found in PATH (good!)"
-      - name: Run specs with precompiled library
+      - name: Run specs with precompiled library and PLAINTEXT
         env:
           GITHUB_COVERAGE: ${{ matrix.coverage }}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+        run: |
+          bundle exec rspec
+
+      - name: Run specs with precompiled library and SSL
+        env:
+          GITHUB_COVERAGE: ${{matrix.coverage}}
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+          KAFKA_SSL_ENABLED: "true"
         run: |
           bundle exec rspec

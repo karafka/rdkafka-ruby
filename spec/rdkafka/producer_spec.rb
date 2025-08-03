@@ -663,7 +663,7 @@ describe Rdkafka::Producer do
   context "when not being able to deliver the message" do
     let(:producer) do
       rdkafka_producer_config(
-        "bootstrap.servers": "127.0.0.1:9093",
+        "bootstrap.servers": "127.0.0.1:9095",
         "message.timeout.ms": 100
       ).producer
     end
@@ -779,7 +779,7 @@ describe Rdkafka::Producer do
     context 'when it cannot flush due to a timeout' do
       let(:producer) do
         rdkafka_producer_config(
-          "bootstrap.servers": "127.0.0.1:9093",
+          "bootstrap.servers": "127.0.0.1:9095",
           "message.timeout.ms": 2_000
         ).producer
       end
@@ -827,7 +827,7 @@ describe Rdkafka::Producer do
     context 'when there are outgoing things in the queue' do
       let(:producer) do
         rdkafka_producer_config(
-          "bootstrap.servers": "127.0.0.1:9093",
+          "bootstrap.servers": "127.0.0.1:9095",
           "message.timeout.ms": 2_000
         ).producer
       end

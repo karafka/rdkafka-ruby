@@ -265,7 +265,20 @@ log "librdkafka.a built successfully"
 # Create self-contained shared library
 log "Creating self-contained librdkafka.so for ARM64..."
 
-gcc -shared -fPIC -Wl,--whole-archive src/librdkafka.a -Wl,--no-whole-archive \
+# Write the export map
+cat > export.map <<'EOF'
+{
+  global:
+    rd_kafka_*;
+  local:
+    *;
+};
+EOF
+
+# Link everything statically, expose only rd_kafka_* symbols
+aarch64-linux-gnu-gcc -shared -fPIC \
+    -Wl,--version-script=export.map \
+    -Wl,--whole-archive src/librdkafka.a -Wl,--no-whole-archive \
     -o librdkafka.so \
     "$SASL_PREFIX/lib/libsasl2.a" \
     "$KRB5_PREFIX/lib/libgssapi_krb5.a" \

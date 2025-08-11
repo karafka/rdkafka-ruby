@@ -1,0 +1,294 @@
+# CI Strategy: Complementary Testing for Ubuntu Precompiled Binaries and Extended Compatibility
+#
+# This workflow runs complementary tests that don't need to block PRs but are essential
+# for catching regressions in precompiled binary distribution, edge case Ruby versions,
+# and system library compatibility. It complements the main CI by testing scenarios
+# that are stable-but-critical on a nightly schedule.
+#
+# WHY COMPLEMENTARY TESTING:
+# - Precompiled binary testing is stable (rarely breaks from code changes)
+# - Edge Ruby versions (3.1, 3.5-preview, JRuby) need testing but shouldn't block PRs
+# - Integration specs test OS library compatibility, which changes with system updates
+# - These tests catch regressions from external changes (system libs, Ruby updates)
+# - Running nightly prevents these slower tests from blocking PR velocity
+# - Manual triggering allows testing workflow changes before they go into schedule
+#
+# PRECOMPILED BINARY TESTING (build_precompiled + specs_precompiled):
+# - Tests static library distribution works across Ubuntu versions
+# - Validates precompiled libraries don't have unexpected system dependencies
+# - Ensures binary compatibility between different Ubuntu LTS versions
+# - Tests SSL/TLS connectivity with precompiled binaries
+# - Validates that removing build tools doesn't break precompiled usage
+#
+# EXTENDED COMPATIBILITY TESTING:
+# - Edge case Ruby versions: 3.1, 3.5.0-preview1, JRuby-10.0
+# - Integration specs testing system library compatibility
+# - Both compilation and precompiled flows for comprehensive coverage
+# - Cross-platform compatibility validation
+#
+# SCHEDULING STRATEGY:
+# - Runs nightly at 2 AM to catch system/library changes from base image updates
+# - Triggers on workflow file changes to validate CI modifications
+# - Manual dispatch available for ad-hoc regression testing
+# - Separate artifact naming prevents interference with main CI
+#
+# This approach ensures comprehensive coverage while keeping PR CI fast and focused
+# on code-related issues rather than infrastructure/system regressions.
+
+name: CI Linux Complementary Ubuntu x86_64 GNU
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/ci_linux_ubuntu_x86_64_gnu_complementary.yml'
+    branches: [ main, master ]
+  pull_request:
+    paths:
+      - '.github/workflows/ci_linux_ubuntu_x86_64_gnu_complementary.yml'
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+
+env:
+  BUNDLE_RETRY: 6
+  BUNDLE_JOBS: 4
+
+jobs:
+  build_precompiled:
+    timeout-minutes: 30
+    # We precompile on older Ubuntu and check compatibility by running specs since we aim to
+    # release only one precompiled version for all supported Ubuntu versions
+    # This is why we do not want Renovate to update it automatically
+    runs-on: ubuntu-22.04 # renovate: ignore
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            gcc \
+            g++ \
+            make \
+            tar \
+            gzip \
+            wget \
+            curl \
+            file \
+            pkg-config \
+            autoconf \
+            automake \
+            libtool \
+            python3 \
+            git \
+            ca-certificates \
+            patch \
+            libsasl2-dev \
+            libssl-dev \
+            zlib1g-dev \
+            libzstd-dev \
+            bison \
+            flex \
+            perl \
+            binutils-dev
+      - name: Cache build-tmp directory
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ext/build-tmp
+          key: build-tmp-${{ runner.os }}-${{ hashFiles('ext/*.sh', 'ext/Rakefile') }}-v2
+      - name: Build precompiled librdkafka.so
+        run: |
+          cd ext
+          ./build_linux_x86_64_gnu.sh
+      - name: Upload precompiled library
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: librdkafka-precompiled-ubuntu-complementary
+          path: ext/
+          retention-days: 1
+
+  specs_install:
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+          - '3.5.0-preview1'
+          - '3.4'
+          - '3.3'
+          - '3.2'
+          - '3.1'
+          - 'jruby-10.0'
+        ubuntu-version: ['22.04', '24.04']
+        include:
+          - ruby: '3.4'
+            coverage: 'true'
+          - ruby: 'jruby-10.0'
+            continue-on-error: true
+    runs-on: ubuntu-${{ matrix.ubuntu-version }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@2a7b30092b0caf9c046252510f9273b4875f3db9 # v1.254.0
+        with:
+          ruby-version: ${{matrix.ruby}}
+          bundler-cache: false
+      - name: Start Kafka with Docker Compose
+        run: |
+          ./ext/generate-ssl-certs.sh
+          docker compose -f docker-compose-ssl.yml up -d
+          echo "Waiting for Kafka to be ready..."
+
+          sleep 10
+
+          echo "=== Container status ==="
+          docker compose ps kafka
+
+          for i in {1..30}; do
+            echo "=== Attempt $i/30 ==="
+
+            echo "Testing kafka-topics command..."
+            if docker compose exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1; then
+              echo "Kafka topics command succeeded!"
+              break
+            else
+              echo "Kafka topics command failed (exit code: $?)"
+            fi
+
+            echo "Sleeping 2 seconds..."
+            sleep 2
+          done
+      - name: Install dependencies
+        env:
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+        continue-on-error: ${{ matrix.continue-on-error || false }}
+        run: |
+          bundle install
+      - name: Build gem with mini_portile
+        continue-on-error: ${{ matrix.continue-on-error || false }}
+        run: |
+          set -e
+          cd ext && bundle exec rake
+          cd ..
+      - name: Run all specs in SSL (compiled flow)
+        env:
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+          KAFKA_SSL_ENABLED: "true"
+        continue-on-error: ${{ matrix.continue-on-error || false }}
+        run: |
+          bundle exec rspec
+
+      - name: Run integration specs (compiled flow)
+        continue-on-error: ${{ matrix.continue-on-error || false }}
+        run: |
+          for file in $(ls spec/integrations/*_spec.rb); do
+            echo "Running $file with Ruby ${{ matrix.ruby }}";
+            bundle exec ruby "$file" || exit 1;
+          done
+
+  specs_precompiled:
+    timeout-minutes: 30
+    needs: build_precompiled
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+          - '3.5.0-preview1'
+          - '3.4'
+          - '3.3'
+          - '3.2'
+          - '3.1'
+        ubuntu-version: ['22.04', '24.04']
+
+    runs-on: ubuntu-${{ matrix.ubuntu-version }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Download precompiled library
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: librdkafka-precompiled-ubuntu-complementary
+          path: ext/
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@2a7b30092b0caf9c046252510f9273b4875f3db9 # v1.254.0
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: false
+      - name: Start Kafka with Docker Compose
+        run: |
+          ./ext/generate-ssl-certs.sh
+          docker compose -f docker-compose-ssl.yml up -d
+          echo "Waiting for Kafka to be ready..."
+
+          sleep 10
+
+          echo "=== Container status ==="
+          docker compose ps kafka
+          for i in {1..30}; do
+            echo "=== Attempt $i/30 ==="
+
+            echo "Testing kafka-topics command..."
+            if docker compose exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1; then
+              echo "Kafka topics command succeeded!"
+              break
+            else
+              echo "Kafka topics command failed (exit code: $?)"
+            fi
+
+            echo "Sleeping 2 seconds..."
+            sleep 2
+          done
+      - name: Install bundle with precompiled library
+        env:
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+        run: |
+          bundle install
+          echo "Bundle install completed with precompiled library"
+      - name: Remove build dependencies to test static linking
+        continue-on-error: true
+        run: |
+          echo "Removing build dependencies to verify precompiled library is truly self-contained..."
+
+          # Remove packages one by one to avoid dependency conflicts
+          packages_to_remove="build-essential gcc g++ make patch tar wget libsasl2-dev libssl-dev zlib1g-dev libzstd-dev"
+
+          for package in $packages_to_remove; do
+            if dpkg -l | grep -q "^ii.*$package "; then
+              echo "Removing $package..."
+              sudo dpkg --remove --force-depends $package 2>/dev/null || echo "Could not remove $package"
+            else
+              echo "$package is not installed"
+            fi
+          done
+
+          echo "Build dependencies removal completed"
+          echo "Remaining build tools:"
+          which gcc g++ make 2>/dev/null || echo "No build tools found in PATH (good!)"
+      - name: Run specs with precompiled library and SSL
+        env:
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+          KAFKA_SSL_ENABLED: "true"
+        run: |
+          bundle exec rspec
+
+      - name: Run integration specs (precompiled flow)
+        env:
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+        run: |
+          for file in $(ls spec/integrations/*_spec.rb); do
+            echo "Running $file with Ruby ${{ matrix.ruby }} (precompiled)";
+            bundle exec ruby "$file" || exit 1;
+          done

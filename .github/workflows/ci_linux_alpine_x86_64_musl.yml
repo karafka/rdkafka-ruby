@@ -73,8 +73,7 @@ jobs:
 
       - name: Start Kafka with Docker Compose
         run: |
-          ./ext/generate-ssl-certs.sh
-          docker compose -f docker-compose-ssl.yml up -d
+          docker compose -f docker-compose.yml up -d
           echo "Waiting for Kafka to be ready..."
           sleep 10
           for i in {1..30}; do
@@ -106,31 +105,6 @@ jobs:
               bundle install && \
               cd ext && bundle exec rake && \
               cd .. && \
-              bundle exec ruby -S rspec'
-
-      - name: Run all specs in SSL
-        env:
-          GITHUB_COVERAGE: ${{ matrix.coverage }}
-        run: |
-          docker run --rm \
-            --network host \
-            -v "${{ github.workspace }}:/workspace" \
-            -w /workspace \
-            -e "GITHUB_COVERAGE=${{ matrix.coverage }}" \
-            -e "KAFKA_SSL_ENABLED=true" \
-            ruby:${{ matrix.ruby }}-alpine${{ matrix.alpine_version }} \
-            sh -c 'apk add --no-cache git curl ca-certificates build-base linux-headers \
-              pkgconf perl autoconf automake libtool bison flex file \
-              ruby-dev ruby-bundler bash zstd-dev zlib zlib-dev openssl-dev \
-              cyrus-sasl-dev cyrus-sasl cyrus-sasl-login \
-              cyrus-sasl-crammd5 cyrus-sasl-digestmd5 cyrus-sasl-gssapiv2 cyrus-sasl-scram \
-              krb5-libs openssl zlib zstd-libs openjdk17-jre-headless && \
-              git config --global --add safe.directory /workspace && \
-              bundle config set --local path vendor/bundle && \
-              bundle install && \
-              cd ext && bundle exec rake && \
-              cd .. && \
-              echo "Testing SSL connections..." && \
               bundle exec ruby -S rspec'
 
   build_precompiled:
@@ -194,8 +168,7 @@ jobs:
           path: ext/
       - name: Start Kafka with Docker Compose
         run: |
-          ./ext/generate-ssl-certs.sh
-          docker compose -f docker-compose-ssl.yml up -d
+          docker compose -f docker-compose.yml up -d
           echo "Waiting for Kafka to be ready..."
           sleep 10
 
@@ -222,21 +195,3 @@ jobs:
               git config --global --add safe.directory /workspace && \
               bundle config set --local path vendor/bundle && \
               bundle install && bundle exec ruby -S rspec'
-
-      - name: Run specs with precompiled library and SSL
-        env:
-          GITHUB_COVERAGE: ${{ matrix.coverage }}
-          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
-        run: |
-          docker run --rm \
-            --network host \
-            -v "${{ github.workspace }}:/workspace" \
-            -w /workspace \
-            -e "GITHUB_COVERAGE=${{ matrix.coverage }}" \
-            -e "RDKAFKA_EXT_PATH=/workspace/ext" \
-            -e "KAFKA_SSL_ENABLED=true" \
-            ruby:${{ matrix.ruby }}-alpine \
-            sh -c 'apk add --no-cache git build-base linux-headers bash openjdk17-jre-headless && \
-              git config --global --add safe.directory /workspace && \
-              bundle config set --local path vendor/bundle && bundle install && \
-              echo "Testing SSL connections with precompiled library..." && bundle exec ruby -S rspec'

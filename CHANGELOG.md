@@ -3,8 +3,9 @@
 ## 0.21.0 (Unreleased)
 - [Enhancement] Support explicit Debian testing due to lib issues.
 - [Enhancement] Support ARM64 Gnu precompilation.
-- [Enhancement] Bump librdkafka to 2.11.0
-- [Enhancement] Improve what symbos are exposed outside of the precompiled extensions
+- [Enhancement] Bump librdkafka to 2.11.0.
+- [Enhancement] Improve what symbols are exposed outside of the precompiled extensions.
+- [Enhancement] Introduce an integration suite layer for non RSpec specs execution.
 
 ## 0.20.1 (2025-07-17)
 - [Enhancement] Drastically increase number of platforms in the integration suite

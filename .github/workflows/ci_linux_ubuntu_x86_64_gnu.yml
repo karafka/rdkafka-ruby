@@ -225,8 +225,7 @@ jobs:
           bundler-cache: false
       - name: Start Kafka with Docker Compose
         run: |
-          ./ext/generate-ssl-certs.sh
-          docker compose -f docker-compose-ssl.yml up -d
+          docker compose -f docker-compose.yml up -d
           echo "Waiting for Kafka to be ready..."
 
           sleep 10
@@ -278,13 +277,5 @@ jobs:
         env:
           GITHUB_COVERAGE: ${{ matrix.coverage }}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
-        run: |
-          bundle exec rspec
-
-      - name: Run specs with precompiled library and SSL
-        env:
-          GITHUB_COVERAGE: ${{matrix.coverage}}
-          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
-          KAFKA_SSL_ENABLED: "true"
         run: |
           bundle exec rspec

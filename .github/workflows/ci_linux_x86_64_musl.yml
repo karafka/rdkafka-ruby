@@ -127,7 +127,7 @@ jobs:
       - name: Configure git safe directory
         run: git config --global --add safe.directory /__w/karafka-rdkafka/karafka-rdkafka
       - name: Cache build-tmp directory
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: ext/build-tmp-musl
           key: build-tmp-musl-${{ runner.os }}-${{ hashFiles('ext/*.sh', 'ext/Rakefile') }}-v2

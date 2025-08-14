@@ -41,6 +41,7 @@ Gem::Specification.new do |gem|
   end
 
   gem.add_dependency 'ffi', '~> 1.15'
+  gem.add_dependency 'json', '> 2.0'
   gem.add_dependency 'logger'
   gem.add_dependency 'mini_portile2', '~> 2.6'
   gem.add_dependency 'rake', '> 12'

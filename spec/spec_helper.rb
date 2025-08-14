@@ -149,6 +149,16 @@ def wait_for_unassignment(consumer)
   end
 end
 
+def wait_for_topic(admin, topic)
+  admin.metadata(topic)
+rescue Rdkafka::RdkafkaError => e
+  raise unless e.code == :unknown_topic_or_part
+
+  sleep(0.5)
+
+  retry
+end
+
 def notify_listener(listener, &block)
   # 1. subscribe and poll
   consumer.subscribe("consume_test_topic")

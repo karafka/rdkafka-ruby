@@ -6,6 +6,7 @@
 - [Enhancement] Bump librdkafka to 2.11.0.
 - [Enhancement] Improve what symbols are exposed outside of the precompiled extensions.
 - [Enhancement] Introduce an integration suite layer for non RSpec specs execution.
+- [Fix] Add `json` gem as a dependency (was missing but used).
 
 ## 0.20.1 (2025-07-17)
 - [Enhancement] Drastically increase number of platforms in the integration suite

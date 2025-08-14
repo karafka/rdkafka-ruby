@@ -175,6 +175,7 @@ describe Rdkafka::Consumer do
     before do
       admin = rdkafka_producer_config.admin
       admin.create_topic(topic, 1, 1).wait
+      wait_for_topic(admin, topic)
       admin.close
     end
 
@@ -278,6 +279,7 @@ describe Rdkafka::Consumer do
     before do
       admin = rdkafka_producer_config.admin
       admin.create_topic(topic, 1, 1).wait
+      wait_for_topic(admin, topic)
       admin.close
     end
 

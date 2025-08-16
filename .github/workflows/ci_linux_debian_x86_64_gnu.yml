@@ -4,27 +4,28 @@
 # strategies across multiple Debian and Ruby versions to ensure broad compatibility and
 # reliability.
 #
-# WHY WE TEST DEBIAN BOOKWORM:
+# WHY WE TEST DEBIAN BOOKWORM AND TRIXIE:
 # - Different system library versions (OpenSSL, zlib, libsasl2, libzstd, etc.)
 # - Different GCC compiler versions that affect native extension compilation
 # - Different glibc versions that can impact binary compatibility
-# - Real-world deployment scenarios where users run on Debian stable
+# - Real-world deployment scenarios where users run on Debian stable and testing
 # - Different Ruby versions
+# - Forward compatibility testing with Trixie (Debian testing/future stable)
 #
 # COMPILATION FLOW (build_install + specs_install):
-# - Tests that librdkafka compiles correctly from source on Debian
+# - Tests that librdkafka compiles correctly from source on both Debian versions
 # - Validates that mini_portile2 can successfully build native dependencies
 # - Ensures Ruby native extensions link properly with system libraries
 # - Verifies that the same codebase works across different toolchain versions
 #
 # PRECOMPILED FLOW (build_precompiled + specs_precompiled):
-# - Tests our precompiled static libraries work on Debian
+# - Tests our precompiled static libraries work on both Debian versions
 # - Validates that statically-linked binaries are truly portable across environments
 # - Ensures precompiled libraries don't have unexpected system dependencies
 # - Verifies that removing build tools doesn't break precompiled binary usage
 #
 # ARTIFACT ISOLATION:
-# - Debian gets separate artifacts (rdkafka-built-gem-debian, etc.)
+# - Debian gets separate artifacts (rdkafka-built-gem-debian-bookworm, etc.)
 # - Prevents cross-contamination of OS-specific compiled extensions
 # - Ensures test accuracy by matching build and test environments
 #
@@ -32,7 +33,7 @@
 # such as system library incompatibilities, compiler-specific bugs, or static linking
 # problems that only manifest on specific Debian versions.
 
-name: CI Linux Debian Bookworm x86_64 GNU
+name: CI Linux Debian Multi-Version x86_64 GNU
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -64,6 +65,12 @@ jobs:
           - '3.3'
           - '3.2'
           - '3.1'
+        debian:
+          - 'bookworm'
+          - 'trixie'
+        exclude:
+          - ruby: '3.1'
+            debian: 'trixie'
         include:
           - ruby: '3.4'
             coverage: 'true'
@@ -95,7 +102,7 @@ jobs:
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
             -e "RDKAFKA_EXT_PATH=/workspace/ext" \
-            ruby:${{ matrix.ruby }}-bookworm \
+            ruby:${{ matrix.ruby }}-${{ matrix.debian }} \
             sh -c 'apt-get update && \
               apt-get upgrade -y openssl libssl3 libssl-dev && \
               apt-get install -y git build-essential pkg-config \
@@ -110,7 +117,7 @@ jobs:
             --network host \
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
-            ruby:${{ matrix.ruby }}-bookworm \
+            ruby:${{ matrix.ruby }}-${{ matrix.debian }} \
             sh -c 'apt-get update && \
               apt-get upgrade -y openssl libssl3 libssl-dev && \
               apt-get install -y git build-essential pkg-config \
@@ -131,7 +138,7 @@ jobs:
             -w /workspace \
             -e "GITHUB_COVERAGE=${{ matrix.coverage }}" \
             -e "RDKAFKA_EXT_PATH=/workspace/ext" \
-            ruby:${{ matrix.ruby }}-bookworm \
+            ruby:${{ matrix.ruby }}-${{ matrix.debian }} \
             sh -c 'apt-get update && \
               apt-get upgrade -y openssl libssl3 libssl-dev && \
               apt-get install -y git build-essential pkg-config \
@@ -143,6 +150,12 @@ jobs:
 
   build_precompiled:
     timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        debian:
+          - 'bookworm'
+          - 'trixie'
     # We precompile on older Ubuntu and check compatibility by running specs since we aim to
     # release only one precompiled version for all supported Ubuntu versions
     # This is why we do not want Renovate to update it automatically
@@ -184,7 +197,7 @@ jobs:
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: ext/build-tmp
-          key: build-tmp-${{ runner.os }}-${{ hashFiles('ext/*.sh', 'ext/Rakefile') }}-v2
+          key: build-tmp-${{ runner.os }}-${{ matrix.debian }}-${{ hashFiles('ext/*.sh', 'ext/Rakefile') }}-v2
       - name: Build precompiled librdkafka.so
         run: |
           cd ext
@@ -192,7 +205,7 @@ jobs:
       - name: Upload precompiled library
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: librdkafka-precompiled-linux
+          name: librdkafka-precompiled-linux-${{ matrix.debian }}
           path: ext/
           retention-days: 1
 
@@ -207,6 +220,12 @@ jobs:
           - '3.3'
           - '3.2'
           - '3.1'
+        debian:
+          - 'bookworm'
+          - 'trixie'
+        exclude:
+          - ruby: '3.1'
+            debian: 'trixie'
         include:
           - ruby: '3.4'
             coverage: 'true'
@@ -219,7 +238,7 @@ jobs:
       - name: Download precompiled library
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
-          name: librdkafka-precompiled-linux
+          name: librdkafka-precompiled-linux-${{ matrix.debian }}
           path: ext/
       - name: Start Kafka with Docker Compose
         run: |
@@ -244,7 +263,7 @@ jobs:
             -w /workspace \
             -e "GITHUB_COVERAGE=${{ matrix.coverage }}" \
             -e "RDKAFKA_EXT_PATH=/workspace/ext" \
-            ruby:${{ matrix.ruby }}-bookworm \
+            ruby:${{ matrix.ruby }}-${{ matrix.debian }} \
             sh -c 'apt-get update && \
               apt-get install -y git && \
               git config --global --add safe.directory /workspace && \

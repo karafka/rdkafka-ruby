@@ -10,7 +10,7 @@
 # - Edge Ruby versions (3.1, 3.5-preview, JRuby) need testing but shouldn't block PRs
 # - Integration specs test OS library compatibility, which changes with system updates
 # - These tests catch regressions from external changes (system libs, Ruby updates)
-# - Running nightly prevents these slower tests from blocking PR velocity
+# - Running every 3 days to prevent these slower tests from blocking PR velocity
 # - Manual triggering allows testing workflow changes before they go into schedule
 #
 # PRECOMPILED BINARY TESTING (build_precompiled + specs_precompiled):
@@ -27,7 +27,7 @@
 # - Cross-platform compatibility validation
 #
 # SCHEDULING STRATEGY:
-# - Runs nightly at 2 AM to catch system/library changes from base image updates
+# - Runs every 3 days at 2 AM to catch system/library changes from base image updates
 # - Triggers on workflow file changes to validate CI modifications
 # - Manual dispatch available for ad-hoc regression testing
 # - Separate artifact naming prevents interference with main CI
@@ -43,7 +43,7 @@ concurrency:
 
 on:
   schedule:
-    - cron: '0 2 * * *'
+    - cron: '0 2 */3 * *'
   workflow_dispatch:
   push:
     paths:

@@ -11,7 +11,7 @@
 # - Integration specs test OS library compatibility, which changes with system updates
 # - ARM64 architecture has specific compilation and linking considerations
 # - These tests catch regressions from external changes (system libs, Ruby updates)
-# - Running nightly prevents these slower tests from blocking PR velocity
+# - Running every 3 days to prevent these slower tests from blocking PR velocity
 # - Manual triggering allows testing workflow changes before they go into schedule
 #
 # PRECOMPILED BINARY TESTING (build_precompiled + specs_precompiled):
@@ -28,7 +28,7 @@
 # - Cross-platform compatibility validation for aarch64 architecture
 #
 # SCHEDULING STRATEGY:
-# - Runs nightly at 3 AM to catch system/library changes from base image updates
+# - Runs every 3 days at 4 AM to catch system/library changes from base image updates
 # - Triggers on workflow file changes to validate CI modifications
 # - Manual dispatch available for ad-hoc regression testing
 # - Separate artifact naming prevents interference with main CI
@@ -44,7 +44,7 @@ concurrency:
 
 on:
   schedule:
-    - cron: '0 4 * * *'
+    - cron: '0 4 */3 * *'
   workflow_dispatch:
   push:
     paths:

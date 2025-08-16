@@ -625,10 +625,20 @@ do
     fi
 done
 
+echo '
+{
+  global:
+    rd_kafka_*;
+  local:
+    *;
+};
+' > export.map
+
 gcc -shared -fPIC \
-    -Wl,--whole-archive src/librdkafka.a -Wl,--no-whole-archive \
-    -o librdkafka.so \
-    -Wl,-Bstatic \
+  -Wl,--version-script=export.map \
+  -Wl,--whole-archive src/librdkafka.a -Wl,--no-whole-archive \
+  -o librdkafka.so \
+  -Wl,-Bstatic \
     "$SASL_PREFIX/lib/libsasl2.a" \
     "$KRB5_PREFIX/lib/libgssapi_krb5.a" \
     "$KRB5_PREFIX/lib/libkrb5.a" \
@@ -639,11 +649,11 @@ gcc -shared -fPIC \
     "$OPENSSL_LIB_DIR/libcrypto.a" \
     "$ZLIB_PREFIX/lib/libz.a" \
     "$ZSTD_PREFIX/lib/libzstd.a" \
-    -Wl,-Bdynamic \
-    -lpthread -lm -ldl -lc \
-    -static-libgcc \
-    -Wl,--as-needed \
-    -Wl,--no-undefined
+  -Wl,-Bdynamic \
+  -lpthread -lm -ldl -lc \
+  -static-libgcc \
+  -Wl,--as-needed \
+  -Wl,--no-undefined
 
 if [ ! -f librdkafka.so ]; then
     error "Failed to create librdkafka.so"

@@ -94,8 +94,21 @@ secure_download() {
     local url="$1"
     local filename="$2"
 
+    # Check if file already exists in current directory (may have been already downloaded)
     if [ -f "$filename" ]; then
         log "File $filename already exists, verifying checksum..."
+        verify_checksum "$filename"
+        return 0
+    fi
+
+    # Check dist directory relative to script location
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local dist_file="$script_dir/../dist/$filename"
+
+    if [ -f "$dist_file" ]; then
+        log "Using distributed $filename from dist/"
+        cp "$dist_file" "$filename"
         verify_checksum "$filename"
         return 0
     fi
@@ -344,7 +357,9 @@ get_zstd_url() {
 }
 
 get_krb5_url() {
-    echo "https://kerberos.org/dist/krb5/${KRB5_VERSION%.*}/krb5-${KRB5_VERSION}.tar.gz"
+    # Using MIT mirror since kerberos.org is down
+    # echo "https://kerberos.org/dist/krb5/${KRB5_VERSION%.*}/krb5-${KRB5_VERSION}.tar.gz"
+    echo "https://web.mit.edu/kerberos/dist/krb5/${KRB5_VERSION%.*}/krb5-${KRB5_VERSION}.tar.gz"
 }
 
 # Export functions and variables that scripts will need

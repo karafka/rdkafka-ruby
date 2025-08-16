@@ -1,7 +1,10 @@
 # Rdkafka Changelog
 
 ## 0.22.3 (Unreleased)
+- [Enhancement] Support explicit Debian testing due to lib issues.
 - [Enhancement] Support ARM64 Gnu precompilation.
+- [Enhancement] Improve what symbols are exposed outside of the precompiled extensions.
+- [Enhancement] Introduce an integration suite layer for non RSpec specs execution.
 - [Fix] Add `json` gem as a dependency (was missing but used).
 
 ## 0.22.2 (2025-07-21)

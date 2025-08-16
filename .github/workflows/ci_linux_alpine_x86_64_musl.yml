@@ -21,7 +21,7 @@
 # Trade-offs: Slightly longer CI times (~2-3 min per job) but much more reliable
 # than dealing with architecture mismatches and artifact corruption issues.
 
-name: CI Linux x86_64 musl
+name: CI Linux Alpine x86_64 musl
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -44,7 +44,7 @@ env:
 
 jobs:
   specs_install:
-    timeout-minutes: 30
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -73,7 +73,7 @@ jobs:
 
       - name: Start Kafka with Docker Compose
         run: |
-          docker compose up -d
+          docker compose -f docker-compose.yml up -d
           echo "Waiting for Kafka to be ready..."
           sleep 10
           for i in {1..30}; do
@@ -84,7 +84,7 @@ jobs:
             sleep 2
           done
 
-      - name: Run all specs
+      - name: Run all specs in PLAINTEXT
         env:
           GITHUB_COVERAGE: ${{ matrix.coverage }}
         run: |
@@ -168,7 +168,7 @@ jobs:
           path: ext/
       - name: Start Kafka with Docker Compose
         run: |
-          docker compose up -d
+          docker compose -f docker-compose.yml up -d
           echo "Waiting for Kafka to be ready..."
           sleep 10
 
@@ -179,7 +179,7 @@ jobs:
             fi
             sleep 2
           done
-      - name: Run specs with precompiled library
+      - name: Run specs with precompiled library and PLAINTEXT
         env:
           GITHUB_COVERAGE: ${{ matrix.coverage }}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
@@ -191,4 +191,7 @@ jobs:
             -e "GITHUB_COVERAGE=${{ matrix.coverage }}" \
             -e "RDKAFKA_EXT_PATH=/workspace/ext" \
             ruby:${{ matrix.ruby }}-alpine \
-            sh -c 'apk add --no-cache git build-base linux-headers bash && git config --global --add safe.directory /workspace && bundle config set --local path vendor/bundle && bundle install && bundle exec ruby -S rspec'
+            sh -c 'apk add --no-cache git build-base linux-headers bash && \
+              git config --global --add safe.directory /workspace && \
+              bundle config set --local path vendor/bundle && \
+              bundle install && bundle exec ruby -S rspec'

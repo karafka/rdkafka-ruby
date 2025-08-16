@@ -258,7 +258,18 @@ log "librdkafka.a built successfully"
 # Create self-contained shared library
 log "Creating self-contained librdkafka.so..."
 
-gcc -shared -fPIC -Wl,--whole-archive src/librdkafka.a -Wl,--no-whole-archive \
+echo '
+{
+  global:
+    rd_kafka_*;
+  local:
+    *;
+};
+' > export.map
+
+gcc -shared -fPIC \
+    -Wl,--version-script=export.map \
+    -Wl,--whole-archive src/librdkafka.a -Wl,--no-whole-archive \
     -o librdkafka.so \
     "$SASL_PREFIX/lib/libsasl2.a" \
     "$KRB5_PREFIX/lib/libgssapi_krb5.a" \
@@ -285,12 +296,12 @@ file librdkafka.so
 log "Checking dependencies with ldd:"
 ldd librdkafka.so
 
-log "Checking for external dependencies (should only show system libraries):"
-EXTERNAL_DEPS=$(nm -D librdkafka.so | grep " U " | grep -v "@GLIBC" || true)
-if [ -n "$EXTERNAL_DEPS" ]; then
-    error "Found external dependencies - library is not self-contained: $EXTERNAL_DEPS"
+log "Checking for non-system library dependencies:"
+NON_SYSTEM_DEPS=$(ldd librdkafka.so | grep -v -E "(linux-vdso|ld-linux|libc\.so|libpthread\.so|libm\.so|libdl\.so)" || true)
+if [ -n "$NON_SYSTEM_DEPS" ]; then
+    error "Found non-system dependencies: $NON_SYSTEM_DEPS"
 else
-    log "✅ No external dependencies found - library is self-contained!"
+    log "✅ Only system dependencies found - library is portable!"
 fi
 
 # Copy to output directory

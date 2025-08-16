@@ -1,0 +1,264 @@
+# CI Strategy: Complementary Testing for SSL and System Library Regressions on Alpine/musl
+#
+# This workflow runs complementary tests that don't need to block PRs but are essential
+# for catching regressions in SSL functionality and musl libc/Alpine system library compatibility.
+# It complements the main CI by testing stable-but-critical functionality on a nightly
+# schedule and when workflow changes are made.
+#
+# WHY COMPLEMENTARY TESTING FOR ALPINE/MUSL:
+# - SSL specs have been stable for 3+ years and rarely break due to code changes
+# - Integration specs test musl libc and Alpine package compatibility
+# - These tests catch regressions from external changes (OpenSSL updates, Alpine package updates)
+# - Running every 3 days to prevent these slower tests from blocking PR velocity
+# - Manual triggering allows testing workflow changes before they go into schedule
+#
+# SSL TESTING (specs_install + specs_precompiled):
+# - Tests SSL/TLS connectivity with Kafka using docker-compose-ssl.yml on Alpine
+# - Validates certificate handling and SSL handshakes across Ruby versions on musl
+# - Ensures SSL works with both compiled-from-source and precompiled flows on Alpine
+# - Catches OpenSSL version compatibility issues and SSL library regressions on musl
+# - Tests real SSL scenarios that mirror Alpine-based production deployments
+#
+# INTEGRATION TESTING (integration specs in both jobs):
+# - Tests musl libc and Alpine system library compatibility without requiring Kafka infrastructure
+# - Validates libssl, libsasl2, libzstd, zlib integration across Alpine versions
+# - Ensures native extensions work with different Alpine package versions
+# - Catches regressions from Alpine package updates and musl libc changes
+# - Tests both compilation and precompiled library compatibility on Alpine
+#
+# SCHEDULING STRATEGY:
+# - Runs every 3 days at 5 AM to catch system/library changes from Alpine base image updates
+# - Triggers on workflow file changes to validate CI modifications
+# - Manual dispatch available for ad-hoc regression testing
+# - Separate artifact naming prevents interference with main CI
+#
+# This approach ensures comprehensive coverage while keeping PR CI fast and focused
+# on code-related issues rather than infrastructure/system regressions on Alpine.
+
+name: CI Linux Complementary Alpine x86_64 musl
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  schedule:
+    - cron: '0 5 */3 * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/ci_linux_alpine_x86_64_musl_complementary.yml'
+    branches: [ main, master ]
+  pull_request:
+    paths:
+      - '.github/workflows/ci_linux_alpine_x86_64_musl_complementary.yml'
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+
+env:
+  BUNDLE_RETRY: 6
+  BUNDLE_JOBS: 4
+
+jobs:
+  build_precompiled:
+    timeout-minutes: 45
+    runs-on: ubuntu-latest
+    container:
+      # Similar to GNU, we build on the oldest for ABI compatibility
+      image: alpine:3.18@sha256:de0eb0b3f2a47ba1eb89389859a9bd88b28e82f5826b6969ad604979713c2d4f # renovate: ignore
+    steps:
+      - name: Install dependencies
+        run: |
+          apk add --no-cache git curl ca-certificates build-base linux-headers \
+            pkgconf perl autoconf automake libtool bison flex file bash wget zstd-dev \
+            openssl-dev cyrus-sasl-dev cyrus-sasl cyrus-sasl-login \
+            cyrus-sasl-crammd5 cyrus-sasl-digestmd5 cyrus-sasl-gssapiv2 cyrus-sasl-scram \
+            krb5-libs openssl zlib zlib-dev zstd-libs
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Configure git safe directory
+        run: git config --global --add safe.directory /__w/karafka-rdkafka/karafka-rdkafka
+      - name: Cache build-tmp directory
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ext/build-tmp-musl
+          key: build-tmp-musl-${{ runner.os }}-${{ hashFiles('ext/*.sh', 'ext/Rakefile') }}-v2
+      - name: Build precompiled librdkafka.so
+        run: |
+          cd ext
+          bash ./build_linux_x86_64_musl.sh
+      - name: Upload precompiled library
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: librdkafka-precompiled-musl-complementary
+          path: ext/
+          retention-days: 1
+
+  specs_install:
+    timeout-minutes: 45
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ruby: '3.4'
+            alpine_version: '3.22'
+          - ruby: '3.3'
+            alpine_version: '3.21'
+          - ruby: '3.2'
+            alpine_version: '3.21'
+          - ruby: '3.1'
+            alpine_version: '3.21'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Start Kafka with Docker Compose
+        run: |
+          ./ext/generate-ssl-certs.sh
+          docker compose -f docker-compose-ssl.yml up -d
+          echo "Waiting for Kafka to be ready..."
+          sleep 10
+          for i in {1..30}; do
+            if docker compose exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1; then
+              echo "Kafka topics command succeeded!"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Run all specs in SSL (compiled flow)
+        env:
+          KAFKA_SSL_ENABLED: "true"
+        run: |
+          docker run --rm \
+            --network host \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e "KAFKA_SSL_ENABLED=true" \
+            ruby:${{ matrix.ruby }}-alpine${{ matrix.alpine_version }} \
+            sh -c 'apk add --no-cache git curl ca-certificates build-base linux-headers \
+              pkgconf perl autoconf automake libtool bison flex file \
+              ruby-dev ruby-bundler bash zstd-dev zlib zlib-dev openssl-dev \
+              cyrus-sasl-dev cyrus-sasl cyrus-sasl-login \
+              cyrus-sasl-crammd5 cyrus-sasl-digestmd5 cyrus-sasl-gssapiv2 cyrus-sasl-scram \
+              krb5-libs openssl zlib zstd-libs openjdk17-jre-headless && \
+              git config --global --add safe.directory /workspace && \
+              bundle config set --local path vendor/bundle && \
+              bundle install && \
+              cd ext && bundle exec rake && \
+              cd .. && \
+              echo "=== SSL Library Versions ===" && \
+              openssl version && \
+              apk list --installed | grep -E "(openssl|cyrus-sasl)" && \
+              echo "=== Running SSL Specs (Compiled) ===" && \
+              bundle exec ruby -S rspec'
+
+      - name: Run integration specs (compiled flow)
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            ruby:${{ matrix.ruby }}-alpine${{ matrix.alpine_version }} \
+            sh -c 'apk add --no-cache git curl ca-certificates build-base linux-headers \
+              pkgconf perl autoconf automake libtool bison flex file \
+              ruby-dev ruby-bundler bash zstd-dev zlib zlib-dev openssl-dev \
+              cyrus-sasl-dev cyrus-sasl cyrus-sasl-login \
+              cyrus-sasl-crammd5 cyrus-sasl-digestmd5 cyrus-sasl-gssapiv2 cyrus-sasl-scram \
+              krb5-libs openssl zlib zstd-libs libcurl curl-dev && \
+              git config --global --add safe.directory /workspace && \
+              bundle config set --local path vendor/bundle && \
+              bundle install && \
+              cd ext && bundle exec rake && \
+              cd .. && \
+              echo "=== Alpine/musl Library Versions ===" && \
+              openssl version && \
+              apk list --installed | grep -E "(openssl|cyrus-sasl|zstd|zlib)" && \
+              echo "=== Running Integration Specs (Compiled) ===" && \
+              for file in $(ls spec/integrations/*_spec.rb); do \
+                echo "Running $file with Ruby ${{ matrix.ruby }} on Alpine ${{ matrix.alpine_version }}"; \
+                bundle exec ruby "$file" || exit 1; \
+              done'
+
+  specs_precompiled:
+    timeout-minutes: 30
+    needs: build_precompiled
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+          - '3.4'
+          - '3.3'
+          - '3.2'
+          - '3.1'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Download precompiled library
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: librdkafka-precompiled-musl-complementary
+          path: ext/
+      - name: Start Kafka with Docker Compose
+        run: |
+          ./ext/generate-ssl-certs.sh
+          docker compose -f docker-compose-ssl.yml up -d
+          echo "Waiting for Kafka to be ready..."
+          sleep 10
+
+          for i in {1..30}; do
+            if docker compose exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1; then
+              echo "Kafka topics command succeeded!"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Run specs with precompiled library and SSL
+        env:
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+          KAFKA_SSL_ENABLED: "true"
+        run: |
+          docker run --rm \
+            --network host \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e "RDKAFKA_EXT_PATH=/workspace/ext" \
+            -e "KAFKA_SSL_ENABLED=true" \
+            ruby:${{ matrix.ruby }}-alpine \
+            sh -c 'apk add --no-cache git build-base linux-headers bash openjdk17-jre-headless && \
+              git config --global --add safe.directory /workspace && \
+              bundle config set --local path vendor/bundle && bundle install && \
+              apk list --installed | grep -E "(openssl|cyrus-sasl)" && \
+              bundle exec ruby -S rspec'
+
+      - name: Run integration specs (precompiled flow)
+        env:
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e "RDKAFKA_EXT_PATH=/workspace/ext" \
+            ruby:${{ matrix.ruby }}-alpine \
+            sh -c 'apk add --no-cache git curl ca-certificates build-base linux-headers \
+              pkgconf perl autoconf automake libtool bison flex file \
+              ruby-dev ruby-bundler bash zstd-dev zlib zlib-dev openssl-dev \
+              cyrus-sasl-dev cyrus-sasl cyrus-sasl-login \
+              cyrus-sasl-crammd5 cyrus-sasl-digestmd5 cyrus-sasl-gssapiv2 cyrus-sasl-scram \
+              krb5-libs openssl zlib zstd-libs libcurl curl-dev && \
+              git config --global --add safe.directory /workspace && \
+              bundle config set --local path vendor/bundle && \
+              bundle install && \
+              apk list --installed | grep -E "(openssl|cyrus-sasl|zstd|zlib)" && \
+              echo "=== Running Integration Specs (Precompiled) ===" && \
+              for file in $(ls spec/integrations/*_spec.rb); do \
+                echo "Running $file with Ruby ${{ matrix.ruby }} (precompiled)"; \
+                bundle exec ruby "$file" || exit 1; \
+              done'

@@ -69,7 +69,7 @@ jobs:
     # This is why we do not want Renovate to update it automatically
     runs-on: ubuntu-22.04 # renovate: ignore
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
       - name: Install build dependencies
@@ -137,7 +137,7 @@ jobs:
             continue-on-error: true
     runs-on: ubuntu-${{ matrix.ubuntu-version }}
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
       - name: Set up Ruby
@@ -214,7 +214,7 @@ jobs:
 
     runs-on: ubuntu-${{ matrix.ubuntu-version }}
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
       - name: Download precompiled library

@@ -29,9 +29,7 @@ concurrency:
 
 on:
   pull_request:
-    branches: [ main, master ]
-  push:
-    branches: [ main, master ]
+    branches: [ main ]
   schedule:
     - cron: '0 1 * * *'
 
@@ -195,3 +193,20 @@ jobs:
               git config --global --add safe.directory /workspace && \
               bundle config set --local path vendor/bundle && \
               bundle install && bundle exec ruby -S rspec'
+
+  ci-success:
+    name: CI Linux Alpine x86_64 musl Success
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - specs_install
+      - build_precompiled
+      - specs_precompiled
+    steps:
+      - name: Check all jobs passed
+        if: |
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled') ||
+          contains(needs.*.result, 'skipped')
+        run: exit 1
+      - run: echo "All CI checks passed!"

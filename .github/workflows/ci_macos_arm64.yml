@@ -6,9 +6,7 @@ concurrency:
 
 on:
   pull_request:
-    branches: [ main, master ]
-  push:
-    branches: [ main, master ]
+    branches: [ main ]
   schedule:
     - cron: '0 1 * * *'
 
@@ -45,7 +43,7 @@ jobs:
             macos-version: 'macos-14'
     runs-on: ${{ matrix.macos-version }}
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
       - name: Install Bash 4+ and Kerberos
@@ -54,7 +52,7 @@ jobs:
           brew list krb5 &>/dev/null || brew install krb5
           echo "/opt/homebrew/bin" >> $GITHUB_PATH
       - name: Set up Ruby
-        uses: ruby/setup-ruby@2a7b30092b0caf9c046252510f9273b4875f3db9 # v1.254.0
+        uses: ruby/setup-ruby@efbf473cab83af4468e8606cc33eca9281bb213f # v1.256.0
         with:
           ruby-version: ${{matrix.ruby}}
           bundler-cache: false
@@ -141,7 +139,7 @@ jobs:
     timeout-minutes: 45
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
       - name: Install Bash 4+ and Kerberos
@@ -189,7 +187,7 @@ jobs:
             macos-version: 'macos-14'
     runs-on: ${{ matrix.macos-version }}
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
       - name: Download precompiled library
@@ -198,7 +196,7 @@ jobs:
           name: librdkafka-precompiled-macos
           path: ext/
       - name: Set up Ruby
-        uses: ruby/setup-ruby@2a7b30092b0caf9c046252510f9273b4875f3db9 # v1.254.0
+        uses: ruby/setup-ruby@efbf473cab83af4468e8606cc33eca9281bb213f # v1.256.0
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: false
@@ -282,3 +280,20 @@ jobs:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
         run: |
           bundle exec rspec
+
+  ci-success:
+    name: CI macOS ARM64 Success
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - specs_install
+      - build_precompiled
+      - specs_precompiled
+    steps:
+      - name: Check all jobs passed
+        if: |
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled') ||
+          contains(needs.*.result, 'skipped')
+        run: exit 1
+      - run: echo "All CI checks passed!"

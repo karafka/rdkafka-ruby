@@ -51,14 +51,10 @@ on:
   schedule:
     - cron: '0 3 */3 * *'
   workflow_dispatch:
-  push:
-    paths:
-      - '.github/workflows/ci_linux_debian_x86_64_gnu_complementary.yml'
-    branches: [ main, master ]
   pull_request:
     paths:
       - '.github/workflows/ci_linux_debian_x86_64_gnu_complementary.yml'
-    branches: [ main, master ]
+    branches: [ main ]
 
 permissions:
   contents: read
@@ -78,7 +74,7 @@ jobs:
           - 'trixie'
     runs-on: ubuntu-22.04 # renovate: ignore
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
       - name: Install build dependencies
@@ -144,7 +140,7 @@ jobs:
             debian: 'trixie'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
 
@@ -262,7 +258,7 @@ jobs:
             debian: 'trixie'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
       - name: Download precompiled library
@@ -332,3 +328,20 @@ jobs:
                 echo "Running $file with Ruby ${{ matrix.ruby }} on ${{ matrix.debian }} (precompiled)"; \
                 bundle exec ruby "$file" || exit 1; \
               done'
+
+  ci-success:
+    name: CI Linux Complementary Debian Multi-Version x86_64 GNU Success
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - specs_install
+      - build_precompiled
+      - specs_precompiled
+    steps:
+      - name: Check all jobs passed
+        if: |
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled') ||
+          contains(needs.*.result, 'skipped')
+        run: exit 1
+      - run: echo "All CI checks passed!"

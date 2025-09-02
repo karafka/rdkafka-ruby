@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
-## 0.22.3 (Unreleased)
+## 0.23.0 (Unreleased)
+- **[Breaking]** Drop support for Ruby 3.1 to move forward with the fiber scheduler work.
 - [Enhancement] Support explicit Debian testing due to lib issues.
 - [Enhancement] Support ARM64 Gnu precompilation.
 - [Enhancement] Improve what symbols are exposed outside of the precompiled extensions.

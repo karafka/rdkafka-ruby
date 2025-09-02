@@ -7,7 +7,7 @@
 #
 # WHY COMPLEMENTARY TESTING FOR AARCH64:
 # - ARM64 precompiled binary testing is stable (rarely breaks from code changes)
-# - Edge Ruby versions (3.1, 3.5-preview, JRuby) need testing but shouldn't block PRs
+# - Edge Ruby versions (3.5-preview, JRuby) need testing but shouldn't block PRs
 # - Integration specs test OS library compatibility, which changes with system updates
 # - ARM64 architecture has specific compilation and linking considerations
 # - These tests catch regressions from external changes (system libs, Ruby updates)
@@ -22,7 +22,7 @@
 # - Validates that removing build tools doesn't break precompiled usage
 #
 # EXTENDED COMPATIBILITY TESTING:
-# - Edge case Ruby versions: 3.1, 3.5.0-preview1, JRuby-10.0 on ARM64
+# - Edge case Ruby versions: 3.5.0-preview1, JRuby-10.0 on ARM64
 # - Integration specs testing system library compatibility
 # - Both compilation and precompiled flows for comprehensive coverage
 # - Cross-platform compatibility validation for aarch64 architecture
@@ -46,14 +46,10 @@ on:
   schedule:
     - cron: '0 4 */3 * *'
   workflow_dispatch:
-  push:
-    paths:
-      - '.github/workflows/ci_linux_ubuntu_aarch64_gnu_complementary.yml'
-    branches: [ main, master ]
   pull_request:
     paths:
       - '.github/workflows/ci_linux_ubuntu_aarch64_gnu_complementary.yml'
-    branches: [ main, master ]
+    branches: [ main ]
 
 permissions:
   contents: read
@@ -128,7 +124,6 @@ jobs:
           - '3.4'
           - '3.3'
           - '3.2'
-          - '3.1'
           - 'jruby-10.0'
         ubuntu-version: ['22.04', '24.04']
         include:
@@ -210,7 +205,6 @@ jobs:
           - '3.4'
           - '3.3'
           - '3.2'
-          - '3.1'
         ubuntu-version: ['22.04', '24.04']
 
     runs-on: ubuntu-${{ matrix.ubuntu-version }}-arm
@@ -293,3 +287,20 @@ jobs:
             echo "Running $file with Ruby ${{ matrix.ruby }} (precompiled)";
             bundle exec ruby "$file" || exit 1;
           done
+
+  ci-success:
+    name: CI Linux Complementary Ubuntu aarch64 GNU Success
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - specs_install
+      - build_precompiled
+      - specs_precompiled
+    steps:
+      - name: Check all jobs passed
+        if: |
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled') ||
+          contains(needs.*.result, 'skipped')
+        run: exit 1
+      - run: echo "All CI checks passed!"

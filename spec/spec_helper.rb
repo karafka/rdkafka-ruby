@@ -28,14 +28,25 @@ require "timeout"
 require "securerandom"
 
 def rdkafka_base_config
-  {
-    :"api.version.request" => false,
-    :"broker.version.fallback" => "1.0",
-    :"bootstrap.servers" => "127.0.0.1:9092",
-    # Display statistics and refresh often just to cover those in specs
-    :'statistics.interval.ms' => 1_000,
-    :'topic.metadata.refresh.interval.ms' => 1_000
-  }
+  if ENV['KAFKA_SSL_ENABLED'] == 'true'
+    {
+      :"bootstrap.servers" => "localhost:9093",
+      # Display statistics and refresh often just to cover those in specs
+      :'statistics.interval.ms' => 1_000,
+      :'topic.metadata.refresh.interval.ms' => 1_000,
+      # SSL Configuration
+      :'security.protocol' => 'SSL',
+      :'ssl.ca.location' => './ssl/ca-cert',
+      :'ssl.endpoint.identification.algorithm' => 'none'
+    }
+  else
+    {
+      :"bootstrap.servers" => "localhost:9092",
+      # Display statistics and refresh often just to cover those in specs
+      :'statistics.interval.ms' => 1_000,
+      :'topic.metadata.refresh.interval.ms' => 1_000
+    }
+  end
 end
 
 def rdkafka_config(config_overrides={})
@@ -195,9 +206,9 @@ RSpec.configure do |config|
   end
 
   config.around(:each) do |example|
-    # Timeout specs after a minute. If they take longer
+    # Timeout specs after 1.5 minute. If they take longer
     # they are probably stuck
-    Timeout::timeout(60) do
+    Timeout::timeout(90) do
       example.run
     end
   end

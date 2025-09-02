@@ -40,9 +40,7 @@ concurrency:
 
 on:
   pull_request:
-    branches: [ main, master ]
-  push:
-    branches: [ main, master ]
+    branches: [ main ]
   schedule:
     - cron: '0 1 * * *'
 
@@ -64,7 +62,6 @@ jobs:
           - '3.4'
           - '3.3'
           - '3.2'
-          - '3.1'
           - 'jruby-10.0'
         ubuntu-version: ['22.04', '24.04']
         include:
@@ -201,7 +198,6 @@ jobs:
           - '3.4'
           - '3.3'
           - '3.2'
-          - '3.1'
         ubuntu-version: ['22.04', '24.04']
         include:
           - ruby: '3.4'
@@ -279,3 +275,20 @@ jobs:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
         run: |
           bundle exec rspec
+
+  ci-success:
+    name: CI Linux Ubuntu x86_64 GNU Success
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - specs_install
+      - build_precompiled
+      - specs_precompiled
+    steps:
+      - name: Check all jobs passed
+        if: |
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled') ||
+          contains(needs.*.result, 'skipped')
+        run: exit 1
+      - run: echo "All CI checks passed!"

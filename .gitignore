@@ -5,6 +5,7 @@ Gemfile.lock
 ext/ports
 ext/tmp
 ext/librdkafka.*
+ext/build-tmp
 *.gem
 .yardoc
 doc
@@ -12,3 +13,4 @@ coverage
 vendor
 .idea/
 out/
+ssl/

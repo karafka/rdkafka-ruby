@@ -6,9 +6,7 @@ concurrency:
 
 on:
   pull_request:
-    branches: [ main, master ]
-  push:
-    branches: [ main, master ]
+    branches: [ main ]
   schedule:
     - cron: '0 1 * * *'
 
@@ -32,7 +30,6 @@ jobs:
           - '3.4'
           - '3.3'
           - '3.2'
-          - '3.1'
         macos-version:
           - 'macos-14' # macOS 14 Sonoma (ARM64)
           - 'macos-15' # macOS 15 Sequoia (ARM64)
@@ -176,7 +173,6 @@ jobs:
           - '3.4'
           - '3.3'
           - '3.2'
-          - '3.1'
         macos-version:
           - 'macos-14'
           - 'macos-15'
@@ -282,3 +278,20 @@ jobs:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
         run: |
           bundle exec rspec
+
+  ci-success:
+    name: CI macOS ARM64 Success
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - specs_install
+      - build_precompiled
+      - specs_precompiled
+    steps:
+      - name: Check all jobs passed
+        if: |
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled') ||
+          contains(needs.*.result, 'skipped')
+        run: exit 1
+      - run: echo "All CI checks passed!"

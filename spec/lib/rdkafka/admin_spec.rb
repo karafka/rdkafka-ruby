@@ -877,7 +877,6 @@ describe Rdkafka::Admin do
   end
 
   describe '#create_partitions' do
-    let(:metadata) { admin.metadata(topic_name).topics.first }
     let(:metadata) do
       begin
         admin.metadata(topic_name).topics.first

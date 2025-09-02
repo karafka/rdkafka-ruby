@@ -62,13 +62,9 @@ jobs:
           - '3.4'
           - '3.3'
           - '3.2'
-          - '3.1'
         debian:
           - 'bookworm'
           - 'trixie'
-        exclude:
-          - ruby: '3.1'
-            debian: 'trixie'
         include:
           - ruby: '3.4'
             coverage: 'true'
@@ -217,13 +213,9 @@ jobs:
           - '3.4'
           - '3.3'
           - '3.2'
-          - '3.1'
         debian:
           - 'bookworm'
           - 'trixie'
-        exclude:
-          - ruby: '3.1'
-            debian: 'trixie'
         include:
           - ruby: '3.4'
             coverage: 'true'

@@ -30,7 +30,6 @@ jobs:
           - '3.4'
           - '3.3'
           - '3.2'
-          - '3.1'
         macos-version:
           - 'macos-14' # macOS 14 Sonoma (ARM64)
           - 'macos-15' # macOS 15 Sequoia (ARM64)
@@ -174,7 +173,6 @@ jobs:
           - '3.4'
           - '3.3'
           - '3.2'
-          - '3.1'
         macos-version:
           - 'macos-14'
           - 'macos-15'

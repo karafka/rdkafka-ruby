@@ -7,7 +7,7 @@
 #
 # WHY COMPLEMENTARY TESTING FOR AARCH64:
 # - ARM64 precompiled binary testing is stable (rarely breaks from code changes)
-# - Edge Ruby versions (3.1, 3.5-preview, JRuby) need testing but shouldn't block PRs
+# - Edge Ruby versions (3.5-preview, JRuby) need testing but shouldn't block PRs
 # - Integration specs test OS library compatibility, which changes with system updates
 # - ARM64 architecture has specific compilation and linking considerations
 # - These tests catch regressions from external changes (system libs, Ruby updates)
@@ -22,7 +22,7 @@
 # - Validates that removing build tools doesn't break precompiled usage
 #
 # EXTENDED COMPATIBILITY TESTING:
-# - Edge case Ruby versions: 3.1, 3.5.0-preview1, JRuby-10.0 on ARM64
+# - Edge case Ruby versions: 3.5.0-preview1, JRuby-10.0 on ARM64
 # - Integration specs testing system library compatibility
 # - Both compilation and precompiled flows for comprehensive coverage
 # - Cross-platform compatibility validation for aarch64 architecture
@@ -124,7 +124,6 @@ jobs:
           - '3.4'
           - '3.3'
           - '3.2'
-          - '3.1'
           - 'jruby-10.0'
         ubuntu-version: ['22.04', '24.04']
         include:
@@ -206,7 +205,6 @@ jobs:
           - '3.4'
           - '3.3'
           - '3.2'
-          - '3.1'
         ubuntu-version: ['22.04', '24.04']
 
     runs-on: ubuntu-${{ matrix.ubuntu-version }}-arm

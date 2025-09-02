@@ -664,7 +664,6 @@ module Rdkafka
       describe_acl_handle
     end
 
-
     # Describe configs
     #
     # @param resources [Array<Hash>]  Array where elements are hashes with two keys:

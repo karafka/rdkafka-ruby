@@ -19,7 +19,7 @@ readonly CYRUS_SASL_VERSION="2.1.28"
 readonly ZLIB_VERSION="1.3.1"
 readonly ZSTD_VERSION="1.5.7"
 readonly KRB5_VERSION="1.21.3"
-readonly LIBRDKAFKA_VERSION="2.11.0"
+readonly LIBRDKAFKA_VERSION="2.11.1"
 
 # SHA256 checksums for supply chain security
 # Update these when upgrading versions
@@ -29,7 +29,7 @@ declare -A CHECKSUMS=(
     ["zlib-1.3.1.tar.gz"]="9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23"
     ["zstd-${ZSTD_VERSION}.tar.gz"]="eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3"
     ["krb5-${KRB5_VERSION}.tar.gz"]="b7a4cd5ead67fb08b980b21abd150ff7217e85ea320c9ed0c6dadd304840ad35"
-    ["librdkafka-${LIBRDKAFKA_VERSION}.tar.gz"]="592a823dc7c09ad4ded1bc8f700da6d4e0c88ffaf267815c6f25e7450b9395ca"
+    ["librdkafka-${LIBRDKAFKA_VERSION}.tar.gz"]="a2c87186b081e2705bb7d5338d5a01bc88d43273619b372ccb7bb0d264d0ca9f"
 )
 
 # Colors for output

@@ -166,7 +166,9 @@ build_openssl_musl() {
             no-dso \
             no-engine \
             --prefix="$openssl_prefix" \
-            --openssldir="$openssl_prefix/ssl"
+            --openssldir="/etc/ssl" \
+            --with-rand-seed=os \
+            -DOPENSSL_NO_HEARTBEATS
 
         make -j$(get_cpu_count)
 

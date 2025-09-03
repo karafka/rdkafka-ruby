@@ -79,7 +79,10 @@ if [ ! -f "$OPENSSL_PREFIX/lib/libssl.a" ] && [ ! -f "$OPENSSL_PREFIX/lib64/libs
     ./Configure linux-aarch64 \
         no-shared \
         no-dso \
-        --prefix="$OPENSSL_PREFIX"
+        --prefix="$OPENSSL_PREFIX" \
+        --openssldir="/etc/ssl" \
+        --with-rand-seed=os \
+        -DOPENSSL_NO_HEARTBEATS
     make clean || true
     make -j$(get_cpu_count)
     make install

@@ -34,7 +34,7 @@ describe Rdkafka::Admin do
   describe '#describe_errors' do
     let(:errors) { admin.class.describe_errors }
 
-    it { expect(errors.size).to eq(170) }
+    it { expect(errors.size).to eq(172) }
     it { expect(errors[-184]).to eq(code: -184, description: 'Local: Queue full', name: '_QUEUE_FULL') }
     it { expect(errors[21]).to eq(code: 21, description: 'Broker: Invalid required acks value', name: 'INVALID_REQUIRED_ACKS') }
   end
@@ -66,7 +66,7 @@ describe Rdkafka::Admin do
           }.to raise_exception { |ex|
             expect(ex).to be_a(Rdkafka::RdkafkaError)
             expect(ex.message).to match(/Broker: Invalid topic \(topic_exception\)/)
-expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or more characters other than ASCII alphanumerics, '.', '_' and '-'/)
+            expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or more characters other than ASCII alphanumerics, '.', '_' and '-'/)
           }
         end
       end
@@ -877,7 +877,17 @@ expect(ex.broker_message).to match(/Topic name.*is invalid: .* contains one or m
   end
 
   describe '#create_partitions' do
-    let(:metadata) { admin.metadata(topic_name).topics.first }
+    let(:metadata) do
+      begin
+        admin.metadata(topic_name).topics.first
+      rescue Rdkafka::RdkafkaError
+        # We have to wait because if we query too fast after topic creation request, it may not
+        # yet be available throwing an error.
+        # This occurs mostly on slow CIs
+        sleep(1)
+        admin.metadata(topic_name).topics.first
+      end
+    end
 
     context 'when topic does not exist' do
       it 'expect to fail due to unknown partition' do

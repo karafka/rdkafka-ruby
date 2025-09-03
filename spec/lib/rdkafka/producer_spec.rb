@@ -263,8 +263,6 @@ describe Rdkafka::Producer do
     expect(message.partition).to eq 1
     expect(message.payload).to eq "payload"
     expect(message.key).to eq "key"
-    # Since api.version.request is on by default we will get
-    # the message creation timestamp if it's not set.
     expect(message.timestamp).to be_within(10).of(Time.now)
   end
 
@@ -401,8 +399,6 @@ describe Rdkafka::Producer do
     expect(message.partition).to eq 0
     expect(message.payload).to eq "payload"
     expect(message.key).to eq "key"
-    # Since api.version.request is on by default we will get
-    # the message creation timestamp if it's not set.
     expect(message.timestamp).to be_within(10).of(Time.now)
   end
 
@@ -699,16 +695,16 @@ describe Rdkafka::Producer do
   end
 
   describe '#partition_count' do
-    it { expect(producer.partition_count('consume_test_topic')).to eq(3) }
+    it { expect(producer.partition_count('example_topic')).to eq(1) }
 
     context 'when the partition count value is already cached' do
       before do
-        producer.partition_count('consume_test_topic')
+        producer.partition_count('example_topic')
         allow(::Rdkafka::Metadata).to receive(:new).and_call_original
       end
 
       it 'expect not to query it again' do
-        producer.partition_count('consume_test_topic')
+        producer.partition_count('example_topic')
         expect(::Rdkafka::Metadata).not_to have_received(:new)
       end
     end
@@ -720,7 +716,7 @@ describe Rdkafka::Producer do
       end
 
       it 'expect to query it again' do
-        producer.partition_count('consume_test_topic')
+        producer.partition_count('example_topic')
         expect(::Rdkafka::Metadata).to have_received(:new)
       end
     end
@@ -728,13 +724,40 @@ describe Rdkafka::Producer do
     context 'when the partition count value was cached and time did not expire' do
       before do
         allow(::Process).to receive(:clock_gettime).and_return(0, 29.001)
-        producer.partition_count('consume_test_topic')
+        producer.partition_count('example_topic')
         allow(::Rdkafka::Metadata).to receive(:new).and_call_original
       end
 
       it 'expect not to query it again' do
-        producer.partition_count('consume_test_topic')
+        producer.partition_count('example_topic')
         expect(::Rdkafka::Metadata).not_to have_received(:new)
+      end
+    end
+  end
+
+  describe 'metadata fetch request recovery' do
+    subject(:partition_count) { producer.partition_count('example_topic') }
+
+    describe 'metadata initialization recovery' do
+      context 'when all good' do
+        it { expect(partition_count).to eq(1) }
+      end
+
+      context 'when we fail for the first time with handled error' do
+        before do
+          raised = false
+
+          allow(Rdkafka::Bindings).to receive(:rd_kafka_metadata).and_wrap_original do |m, *args|
+            if raised
+              m.call(*args)
+            else
+              raised = true
+              -185
+            end
+          end
+        end
+
+        it { expect(partition_count).to eq(1) }
       end
     end
   end
@@ -761,7 +784,7 @@ describe Rdkafka::Producer do
 
       after do
         # Allow rdkafka to evict message preventing memory-leak
-        # Set to 5s because slow CIs need time
+        # We give it a bit more time as on slow CIs things take time
         sleep(5)
       end
 
@@ -802,7 +825,7 @@ describe Rdkafka::Producer do
     context 'when there are outgoing things in the queue' do
       let(:producer) do
         rdkafka_producer_config(
-          "bootstrap.servers": "127.0.0.1:9093",
+          "bootstrap.servers": "127.0.0.1:9095",
           "message.timeout.ms": 2_000
         ).producer
       end

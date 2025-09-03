@@ -170,7 +170,6 @@ describe Rdkafka::Bindings do
   end
 
   describe "oauthbearer callback" do
-
     context "without an oauthbearer callback" do
       it "should do nothing" do
         expect {

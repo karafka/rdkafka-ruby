@@ -6,9 +6,6 @@ module Rdkafka
     include Helpers::Time
     include Helpers::OAuth
 
-    # Empty hash used as a default
-    EMPTY_HASH = {}.freeze
-
     # @private
     @@partitions_count_cache = PartitionsCountCache.new
 
@@ -29,6 +26,9 @@ module Rdkafka
     def self.partitions_count_cache=(partitions_count_cache)
       @@partitions_count_cache = partitions_count_cache
     end
+
+    # Empty hash used as a default
+    EMPTY_HASH = {}.freeze
 
     private_constant :EMPTY_HASH
 

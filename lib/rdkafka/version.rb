@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Rdkafka
-  VERSION = "0.22.3"
-  LIBRDKAFKA_VERSION = "2.8.0"
-  LIBRDKAFKA_SOURCE_SHA256 = "5bd1c46f63265f31c6bfcedcde78703f77d28238eadf23821c2b43fc30be3e25"
+  VERSION = "0.23.0"
+  LIBRDKAFKA_VERSION = "2.11.0"
+  LIBRDKAFKA_SOURCE_SHA256 = "592a823dc7c09ad4ded1bc8f700da6d4e0c88ffaf267815c6f25e7450b9395ca"
 end

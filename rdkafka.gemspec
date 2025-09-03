@@ -13,17 +13,31 @@ Gem::Specification.new do |gem|
   gem.name = 'rdkafka'
   gem.require_paths = ['lib']
   gem.version = Rdkafka::VERSION
-  gem.required_ruby_version = '>= 3.1'
+  gem.required_ruby_version = '>= 3.2'
+
+  files = `git ls-files`.split($\)
+  files = files.reject do |file|
+    next true if file.start_with?('.')
+    next true if file.start_with?('spec/')
+    next true if file.start_with?('ext/README.md')
+
+    false
+  end
 
   if ENV['RUBY_PLATFORM']
     gem.platform = ENV['RUBY_PLATFORM']
-    gem.files = `git ls-files`.split($\)
 
     # Do not include the source code for librdkafka as it should be precompiled already per
     # platform. Same applies to any possible patches.
-    gem.files = gem.files.reject do |file|
-      file.match?(%r{^dist/librdkafka-.*\.tar\.gz$}) ||
-      file.match?(%r{^dist/patches/})
+    # Do not include github actions details in RubyGems releases
+    gem.files = files.reject do |file|
+      next true if file.start_with?('dist/')
+      next true if file.start_with?('ext/build_')
+      next true if file.start_with?('ext/ci_')
+      next true if file.start_with?('ext/Rakefile')
+      next true if file.start_with?('ext/generate-')
+
+      false
     end
 
     # Add the compiled extensions that exist (not in git)
@@ -36,7 +50,20 @@ Gem::Specification.new do |gem|
     end
   else
     gem.platform = Gem::Platform::RUBY
-    gem.files = `git ls-files`.split($\)
+
+    # Do not include code used for building native extensions
+    # Do not include github actions details in RubyGems releases
+    gem.files = files.reject do |file|
+      next true if file.start_with?('ext/build_')
+      next true if file.start_with?('ext/ci_')
+      next true if file.start_with?('ext/generate-')
+      next false unless file.start_with?('dist/')
+      next false if file.start_with?('dist/patches')
+      next false if file.start_with?('dist/librdkafka-')
+
+      true
+    end
+
     gem.extensions = %w(ext/Rakefile)
   end
 

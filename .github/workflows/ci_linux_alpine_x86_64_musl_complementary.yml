@@ -45,14 +45,10 @@ on:
   schedule:
     - cron: '0 5 */3 * *'
   workflow_dispatch:
-  push:
-    paths:
-      - '.github/workflows/ci_linux_alpine_x86_64_musl_complementary.yml'
-    branches: [ main, master ]
   pull_request:
     paths:
       - '.github/workflows/ci_linux_alpine_x86_64_musl_complementary.yml'
-    branches: [ main, master ]
+    branches: [ main ]
 
 permissions:
   contents: read
@@ -76,7 +72,7 @@ jobs:
             openssl-dev cyrus-sasl-dev cyrus-sasl cyrus-sasl-login \
             cyrus-sasl-crammd5 cyrus-sasl-digestmd5 cyrus-sasl-gssapiv2 cyrus-sasl-scram \
             krb5-libs openssl zlib zlib-dev zstd-libs
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
       - name: Configure git safe directory
@@ -110,10 +106,8 @@ jobs:
             alpine_version: '3.21'
           - ruby: '3.2'
             alpine_version: '3.21'
-          - ruby: '3.1'
-            alpine_version: '3.21'
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
 
@@ -194,10 +188,9 @@ jobs:
           - '3.4'
           - '3.3'
           - '3.2'
-          - '3.1'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
       - name: Download precompiled library
@@ -262,3 +255,20 @@ jobs:
                 echo "Running $file with Ruby ${{ matrix.ruby }} (precompiled)"; \
                 bundle exec ruby "$file" || exit 1; \
               done'
+
+  ci-success:
+    name: CI Linux Complementary Alpine x86_64 musl Success
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - specs_install
+      - build_precompiled
+      - specs_precompiled
+    steps:
+      - name: Check all jobs passed
+        if: |
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled') ||
+          contains(needs.*.result, 'skipped')
+        run: exit 1
+      - run: echo "All CI checks passed!"

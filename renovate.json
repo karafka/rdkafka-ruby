@@ -75,18 +75,6 @@
       "depNameTemplate": "krb5/krb5",
       "datasourceTemplate": "github-releases",
       "extractVersionTemplate": "^krb5-(?<version>.*)$"
-    },
-    {
-      "customType": "regex",
-      "fileMatch": [
-        "ext/build_common.sh"
-      ],
-      "matchStrings": [
-        "readonly LIBRDKAFKA_VERSION=\"(?<currentValue>.*)\""
-      ],
-      "depNameTemplate": "confluentinc/librdkafka",
-      "datasourceTemplate": "github-releases",
-      "extractVersionTemplate": "^v(?<version>.*)$"
     }
   ]
 }

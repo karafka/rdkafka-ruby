@@ -86,17 +86,21 @@ build_openssl_macos() {
                 no-shared \
                 no-dso \
                 --prefix="$openssl_prefix" \
-                --openssldir="$openssl_prefix/ssl"
+                --openssldir="/etc/ssl" \
+                --with-rand-seed=os \
+                -DOPENSSL_NO_HEARTBEATS
         else
             ./Configure darwin64-x86_64-cc \
                 no-shared \
                 no-dso \
                 --prefix="$openssl_prefix" \
-                --openssldir="$openssl_prefix/ssl"
+                --openssldir="/etc/ssl" \
+                --with-rand-seed=os \
+                -DOPENSSL_NO_HEARTBEATS
         fi
 
         make -j$(get_cpu_count)
-        make install
+        make install_sw
 
         # Verify the build
         if [ ! -f "$openssl_prefix/lib/libssl.a" ] || [ ! -f "$openssl_prefix/lib/libcrypto.a" ]; then

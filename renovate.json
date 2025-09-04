@@ -18,8 +18,8 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": [
-        "ext/build_common.sh"
+      "managerFilePatterns": [
+        "/ext/build_common.sh/"
       ],
       "matchStrings": [
         "readonly OPENSSL_VERSION=\"(?<currentValue>.*)\""
@@ -30,8 +30,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "ext/build_common.sh"
+      "managerFilePatterns": [
+        "/ext/build_common.sh/"
       ],
       "matchStrings": [
         "readonly CYRUS_SASL_VERSION=\"(?<currentValue>.*)\""
@@ -42,8 +42,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "ext/build_common.sh"
+      "managerFilePatterns": [
+        "/ext/build_common.sh/"
       ],
       "matchStrings": [
         "readonly ZLIB_VERSION=\"(?<currentValue>.*)\""
@@ -54,8 +54,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "ext/build_common.sh"
+      "managerFilePatterns": [
+        "/ext/build_common.sh/"
       ],
       "matchStrings": [
         "readonly ZSTD_VERSION=\"(?<currentValue>.*)\""
@@ -66,8 +66,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "ext/build_common.sh"
+      "managerFilePatterns": [
+        "/ext/build_common.sh/"
       ],
       "matchStrings": [
         "readonly KRB5_VERSION=\"(?<currentValue>.*)\""

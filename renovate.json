@@ -19,7 +19,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^ext/build_common\\.sh$/"
+        "/ext/build_common.sh/"
       ],
       "matchStrings": [
         "readonly OPENSSL_VERSION=\"(?<currentValue>.*)\""
@@ -31,7 +31,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^ext/build_common\\.sh$/"
+        "/ext/build_common.sh/"
       ],
       "matchStrings": [
         "readonly CYRUS_SASL_VERSION=\"(?<currentValue>.*)\""
@@ -43,7 +43,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^ext/build_common\\.sh$/"
+        "/ext/build_common.sh/"
       ],
       "matchStrings": [
         "readonly ZLIB_VERSION=\"(?<currentValue>.*)\""
@@ -55,7 +55,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^ext/build_common\\.sh$/"
+        "/ext/build_common.sh/"
       ],
       "matchStrings": [
         "readonly ZSTD_VERSION=\"(?<currentValue>.*)\""
@@ -67,7 +67,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^ext/build_common\\.sh$/"
+        "/ext/build_common.sh/"
       ],
       "matchStrings": [
         "readonly KRB5_VERSION=\"(?<currentValue>.*)\""
@@ -75,18 +75,6 @@
       "depNameTemplate": "krb5/krb5",
       "datasourceTemplate": "github-releases",
       "extractVersionTemplate": "^krb5-(?<version>.*)$"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^ext/build_common\\.sh$/"
-      ],
-      "matchStrings": [
-        "readonly LIBRDKAFKA_VERSION=\"(?<currentValue>.*)\""
-      ],
-      "depNameTemplate": "confluentinc/librdkafka",
-      "datasourceTemplate": "github-releases",
-      "extractVersionTemplate": "^v(?<version>.*)$"
     }
   ]
 }

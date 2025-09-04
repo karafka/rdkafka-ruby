@@ -3,6 +3,8 @@
 ## 0.22.0 (Unreleased)
 - **[Breaking]** Drop support for Ruby 3.1 to move forward with the fiber scheduler work.
 - [Enhancement] Bump librdkafka to 2.11.1.
+- [Fix] Fix incorrectly set default SSL certs dir.
+- [Fix] Disable OpenSSL Heartbeats during compilation.
 
 ## 0.21.0 (2025-08-18)
 - [Enhancement] Support explicit Debian testing due to lib issues.

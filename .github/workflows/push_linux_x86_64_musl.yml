@@ -59,21 +59,34 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
+
+      # Vendor the attestation patch from rubygems/release-gem (no action execution)
+      - name: Vendor release-gem patch
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          repository: rubygems/release-gem
+          ref: a25424ba2ba8b387abc8ef40807c2c85b96cbe32 # v1.1.1
+          path: .github/_release-gem
       - name: Download precompiled library
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           name: librdkafka-precompiled-musl
           path: ext/
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@3fee6763234110473bd57dd4595c5199fce2c510 # v1.258.0
         with:
           ruby-version: '3.4'
           bundler-cache: false
+
       - name: Configure trusted publishing credentials
         uses: rubygems/configure-rubygems-credentials@bc6dd217f8a4f919d6835fcfefd470ef821f5c44 # v1.0.0
-      - name: Build and push platform-specific gem
+
+      - name: Build and push platform-specific gem (with Sigstore attestation)
+        env:
+          RUBY_PLATFORM: 'x86_64-linux-musl'
+          # Preload the attestation patch so `gem push` generates & attaches the bundle
+          RUBYOPT: "-r${{ github.workspace }}/.github/_release-gem/rubygems-attestation-patch.rb"
         run: |
           gem build *.gemspec
           gem push *.gem
-        env:
-          RUBY_PLATFORM: 'x86_64-linux-musl'

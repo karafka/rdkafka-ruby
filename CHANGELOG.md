@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.23.1 (Unreleased)
+- [Enhancement] Improve sigstore attestation for precompiled releases.
 - [Fix] Fix incorrectly set default SSL certs dir.
 - [Fix] Disable OpenSSL Heartbeats during compilation.
 

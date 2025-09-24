@@ -49,6 +49,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/ci_linux_ubuntu_aarch64_gnu_complementary.yml'
+      - 'spec/integrations/**'
     branches: [ main ]
   push:
     branches:

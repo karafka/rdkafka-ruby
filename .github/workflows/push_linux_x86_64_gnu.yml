@@ -74,7 +74,7 @@ jobs:
         env:
           RUBY_PLATFORM: 'x86_64-linux-gnu'
           # Preload the attestation patch so `gem push` generates & attaches the bundle
-          RUBYOPT: "-r${{ github.workspace }}/.github/_release-gem/rubygems-attestation-patch.rb $RUBYOPT"
+          RUBYOPT: "-r${{ github.workspace }}/.github/_release-gem/rubygems-attestation-patch.rb"
         run: |
           gem build *.gemspec
           gem push *.gem

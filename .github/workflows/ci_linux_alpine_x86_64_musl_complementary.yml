@@ -48,6 +48,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/ci_linux_alpine_x86_64_musl_complementary.yml'
+      - 'spec/integrations/**'
     branches: [ main ]
   push:
     branches:

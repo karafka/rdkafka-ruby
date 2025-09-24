@@ -54,6 +54,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/ci_linux_debian_x86_64_gnu_complementary.yml'
+      - 'spec/integrations/**'
     branches: [ main ]
   push:
     branches:

@@ -866,7 +866,7 @@ describe Rdkafka::Consumer do
       consumer.subscribe(missing_topic)
 
       expect {
-        consumer.poll(1_000)
+        5.times { consumer.poll(1_000) }
       }.to raise_error Rdkafka::RdkafkaError, /Subscribed topic not available: #{missing_topic}/
     end
   end

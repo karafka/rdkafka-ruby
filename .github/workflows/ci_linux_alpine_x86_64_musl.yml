@@ -29,7 +29,7 @@ concurrency:
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
   schedule:
     - cron: '0 1 * * *'
 

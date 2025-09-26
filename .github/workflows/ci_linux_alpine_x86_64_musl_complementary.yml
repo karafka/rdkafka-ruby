@@ -49,7 +49,7 @@ on:
     paths:
       - '.github/workflows/ci_linux_alpine_x86_64_musl_complementary.yml'
       - 'spec/integrations/**'
-    branches: [ main ]
+    branches: [ master ]
   push:
     branches:
       - 'v[0-9]+.[0-9]+.*'

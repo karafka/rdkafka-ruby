@@ -832,7 +832,6 @@ describe Rdkafka::Admin do
 
           consumer.subscribe(topic_name)
           wait_for_assignment(consumer)
-
           message = nil
 
           10.times do

@@ -488,7 +488,6 @@ describe Rdkafka::Consumer do
     end
   end
 
-
   describe "#position, #commit, #committed and #store_offset" do
     # Make sure there are messages to work with
     let!(:report) do

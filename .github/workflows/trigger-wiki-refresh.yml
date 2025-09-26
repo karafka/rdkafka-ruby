@@ -4,7 +4,7 @@ on:
   release:
     types: [published]
   push:
-    branches: [main]
+    branches: [master]
 
 jobs:
   trigger-wiki-refresh:

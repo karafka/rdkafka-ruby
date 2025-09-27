@@ -50,7 +50,7 @@ module Rdkafka
           end
 
           name_ptr = name_ptrptr.read_pointer
-          name = name_ptr.respond_to?(:read_string_to_null) ? name_ptr.read_string_to_null : name_ptr.read_string
+          name = name_ptr.read_string_to_null
 
           size = size_ptr[:value]
 
@@ -59,10 +59,12 @@ module Rdkafka
 
           if headers.key?(name)
             # If we've seen this header before, convert to array if needed and append
-            if headers[name].is_a?(Array)
-              headers[name] << value
+            existing = headers[name]
+
+            if existing.is_a?(Array)
+              existing << value
             else
-              headers[name] = [headers[name], value]
+              headers[name] = [existing, value]
             end
           else
             # First occurrence - store as single value

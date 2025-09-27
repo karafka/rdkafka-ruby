@@ -415,30 +415,35 @@ module Rdkafka
         :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_OPAQUE, :pointer, delivery_handle,
       ]
 
-      if headers
+      if headers && !headers.empty?
         headers.each do |key0, value0|
           key = key0.to_s
-          if value0.is_a?(Array)
+          case value0
+          when Array
             # Handle array of values per KIP-82
-            value0.each do |value|
-              value = value.to_s
-              args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
-              args << :string << key
-              args << :pointer << value
-              args << :size_t << value.bytesize
+            value0.each do |v|
+              value = v.to_s
+              args.push(
+                :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER,
+                :string, key,
+                :pointer, value,
+                :size_t, value.bytesize
+              )
             end
           else
             # Handle single value
             value = value0.to_s
-            args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
-            args << :string << key
-            args << :pointer << value
-            args << :size_t << value.bytesize
+            args.push(
+              :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER,
+              :string, key,
+              :pointer, value,
+              :size_t, value.bytesize
+            )
           end
         end
       end
 
-      args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_END
+      args.push(:int, Rdkafka::Bindings::RD_KAFKA_VTYPE_END)
 
       # Produce the message
       response = @native_kafka.with_inner do |inner|

@@ -283,6 +283,7 @@ jobs:
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           KAFKA_SSL_ENABLED: "true"
+          RDKAFKA_PRECOMPILED: "true"
         run: |
           docker run --rm \
             --network host \
@@ -290,6 +291,7 @@ jobs:
             -w /workspace \
             -e "RDKAFKA_EXT_PATH=/workspace/ext" \
             -e "KAFKA_SSL_ENABLED=true" \
+            -e "RDKAFKA_PRECOMPILED=true" \
             ruby:${{ matrix.ruby }}-${{ matrix.debian }} \
             sh -c 'apt-get update && \
               apt-get install -y git default-jdk && \
@@ -305,11 +307,13 @@ jobs:
       - name: Run integration specs (precompiled flow)
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+          RDKAFKA_PRECOMPILED: "true"
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
             -e "RDKAFKA_EXT_PATH=/workspace/ext" \
+            -e "RDKAFKA_PRECOMPILED=true" \
             ruby:${{ matrix.ruby }}-${{ matrix.debian }} \
             sh -c 'apt-get update && \
               apt-get upgrade -y openssl libssl3 libssl-dev && \

@@ -263,6 +263,7 @@ jobs:
         env:
           GITHUB_COVERAGE: ${{ matrix.coverage }}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+          RDKAFKA_PRECOMPILED: "true"
         run: |
           bundle exec rspec
 

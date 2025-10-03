@@ -282,12 +282,14 @@ jobs:
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           KAFKA_SSL_ENABLED: "true"
+          RDKAFKA_PRECOMPILED: "true"
         run: |
           bundle exec rspec
 
       - name: Run integration specs (precompiled flow)
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+          RDKAFKA_PRECOMPILED: "true"
         run: |
           for file in $(ls spec/integrations/*_spec.rb); do
             echo "Running $file with Ruby ${{ matrix.ruby }} (precompiled)";

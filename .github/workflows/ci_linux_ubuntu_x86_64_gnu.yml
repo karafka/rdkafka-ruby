@@ -132,6 +132,9 @@ jobs:
         run: |
           bundle exec rspec
 
+      - name: Verify Kafka warnings
+        run: bin/verify_kafka_warnings
+
   build_precompiled:
     timeout-minutes: 30
     # We precompile on older Ubuntu and check compatibility by running specs since we aim to
@@ -276,6 +279,9 @@ jobs:
           RDKAFKA_PRECOMPILED: "true"
         run: |
           bundle exec rspec
+
+      - name: Verify Kafka warnings
+        run: bin/verify_kafka_warnings
 
   ci-success:
     name: CI Linux Ubuntu x86_64 GNU Success

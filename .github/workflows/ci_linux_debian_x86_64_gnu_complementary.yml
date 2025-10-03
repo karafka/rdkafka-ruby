@@ -219,6 +219,9 @@ jobs:
               echo "=== Running SSL Specs (Compiled) ===" && \
               bundle exec rspec'
 
+      - name: Verify Kafka warnings
+        run: bin/verify_kafka_warnings
+
       - name: Run integration specs (compiled flow)
         run: |
           docker run --rm \
@@ -303,6 +306,9 @@ jobs:
               dpkg -l | grep -E "(libssl|openssl)" && \
               echo "=== Running SSL Specs (Precompiled) ===" && \
               bundle exec rspec'
+
+      - name: Verify Kafka warnings
+        run: bin/verify_kafka_warnings
 
       - name: Run integration specs (precompiled flow)
         env:

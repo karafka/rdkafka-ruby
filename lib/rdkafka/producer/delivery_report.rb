@@ -14,6 +14,7 @@ module Rdkafka
 
       # The name of the topic this message was produced to or nil in case delivery failed and we
       #   we not able to get the topic reference
+      #
       # @return [String, nil]
       attr_reader :topic_name
 

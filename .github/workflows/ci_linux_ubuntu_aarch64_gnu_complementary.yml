@@ -192,6 +192,9 @@ jobs:
         run: |
           bundle exec rspec
 
+      - name: Verify Kafka warnings
+        run: bin/verify_kafka_warnings
+
       - name: Run integration specs (compiled flow)
         continue-on-error: ${{ matrix.continue-on-error || false }}
         run: |
@@ -282,12 +285,17 @@ jobs:
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           KAFKA_SSL_ENABLED: "true"
+          RDKAFKA_PRECOMPILED: "true"
         run: |
           bundle exec rspec
+
+      - name: Verify Kafka warnings
+        run: bin/verify_kafka_warnings
 
       - name: Run integration specs (precompiled flow)
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+          RDKAFKA_PRECOMPILED: "true"
         run: |
           for file in $(ls spec/integrations/*_spec.rb); do
             echo "Running $file with Ruby ${{ matrix.ruby }} (precompiled)";

@@ -142,6 +142,9 @@ jobs:
               bundle install && \
               bundle exec rspec'
 
+      - name: Verify Kafka warnings
+        run: bin/verify_kafka_warnings
+
   build_precompiled:
     timeout-minutes: 50
     strategy:
@@ -246,6 +249,7 @@ jobs:
         env:
           GITHUB_COVERAGE: ${{ matrix.coverage }}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+          RDKAFKA_PRECOMPILED: "true"
         run: |
           docker run --rm \
             --network host \
@@ -253,12 +257,16 @@ jobs:
             -w /workspace \
             -e "GITHUB_COVERAGE=${{ matrix.coverage }}" \
             -e "RDKAFKA_EXT_PATH=/workspace/ext" \
+            -e "RDKAFKA_PRECOMPILED=true" \
             ruby:${{ matrix.ruby }}-${{ matrix.debian }} \
             sh -c 'apt-get update && \
               apt-get install -y git && \
               git config --global --add safe.directory /workspace && \
               bundle config set --local path vendor/bundle && \
               bundle install && bundle exec rspec'
+
+      - name: Verify Kafka warnings
+        run: bin/verify_kafka_warnings
 
   ci-success:
     name: CI Linux Debian Multi-Version x86_64 GNU Success

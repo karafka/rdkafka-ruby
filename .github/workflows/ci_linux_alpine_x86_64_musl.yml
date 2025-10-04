@@ -103,6 +103,9 @@ jobs:
               cd .. && \
               bundle exec ruby -S rspec'
 
+      - name: Verify Kafka warnings
+        run: bin/verify_kafka_warnings
+
   build_precompiled:
     timeout-minutes: 45
     runs-on: ubuntu-latest
@@ -178,6 +181,7 @@ jobs:
         env:
           GITHUB_COVERAGE: ${{ matrix.coverage }}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+          RDKAFKA_PRECOMPILED: "true"
         run: |
           docker run --rm \
             --network host \
@@ -185,11 +189,15 @@ jobs:
             -w /workspace \
             -e "GITHUB_COVERAGE=${{ matrix.coverage }}" \
             -e "RDKAFKA_EXT_PATH=/workspace/ext" \
+            -e "RDKAFKA_PRECOMPILED=true" \
             ruby:${{ matrix.ruby }}-alpine \
             sh -c 'apk add --no-cache git build-base linux-headers bash && \
               git config --global --add safe.directory /workspace && \
               bundle config set --local path vendor/bundle && \
               bundle install && bundle exec ruby -S rspec'
+
+      - name: Verify Kafka warnings
+        run: bin/verify_kafka_warnings
 
   ci-success:
     name: CI Linux Alpine x86_64 musl Success

@@ -158,6 +158,9 @@ jobs:
               echo "=== Running SSL Specs (Compiled) ===" && \
               bundle exec ruby -S rspec'
 
+      - name: Verify Kafka warnings
+        run: bin/verify_kafka_warnings
+
       - name: Run integration specs (compiled flow)
         run: |
           docker run --rm \
@@ -223,6 +226,7 @@ jobs:
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           KAFKA_SSL_ENABLED: "true"
+          RDKAFKA_PRECOMPILED: "true"
         run: |
           docker run --rm \
             --network host \
@@ -230,6 +234,7 @@ jobs:
             -w /workspace \
             -e "RDKAFKA_EXT_PATH=/workspace/ext" \
             -e "KAFKA_SSL_ENABLED=true" \
+            -e "RDKAFKA_PRECOMPILED=true" \
             ruby:${{ matrix.ruby }}-alpine \
             sh -c 'apk add --no-cache git build-base linux-headers bash openjdk17-jre-headless && \
               git config --global --add safe.directory /workspace && \
@@ -237,14 +242,19 @@ jobs:
               apk list --installed | grep -E "(openssl|cyrus-sasl)" && \
               bundle exec ruby -S rspec'
 
+      - name: Verify Kafka warnings
+        run: bin/verify_kafka_warnings
+
       - name: Run integration specs (precompiled flow)
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+          RDKAFKA_PRECOMPILED: "true"
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
             -e "RDKAFKA_EXT_PATH=/workspace/ext" \
+            -e "RDKAFKA_PRECOMPILED=true" \
             ruby:${{ matrix.ruby }}-alpine \
             sh -c 'apk add --no-cache git curl ca-certificates build-base linux-headers \
               pkgconf perl autoconf automake libtool bison flex file \

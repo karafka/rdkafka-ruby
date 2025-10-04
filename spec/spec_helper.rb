@@ -27,6 +27,42 @@ require "rdkafka"
 require "timeout"
 require "securerandom"
 
+# Module to hold dynamically generated test topics with UUIDs
+# Topics are generated once when first accessed and then cached
+module TestTopics
+  class << self
+    # Generate a unique topic name with it- prefix and UUID
+    def unique
+      "it-#{SecureRandom.uuid}"
+    end
+
+    # Shared topics initialized once on first access
+    def consume_test_topic
+      @consume_test_topic ||= unique
+    end
+
+    def empty_test_topic
+      @empty_test_topic ||= unique
+    end
+
+    def produce_test_topic
+      @produce_test_topic ||= unique
+    end
+
+    def watermarks_test_topic
+      @watermarks_test_topic ||= unique
+    end
+
+    def partitioner_test_topic
+      @partitioner_test_topic ||= unique
+    end
+
+    def example_topic
+      @example_topic ||= unique
+    end
+  end
+end
+
 def rdkafka_base_config
   if ENV['KAFKA_SSL_ENABLED'] == 'true'
     {
@@ -161,7 +197,7 @@ end
 
 def notify_listener(listener, &block)
   # 1. subscribe and poll
-  consumer.subscribe("consume_test_topic")
+  consumer.subscribe(TestTopics.consume_test_topic)
   wait_for_assignment(consumer)
   consumer.poll(100)
 
@@ -184,16 +220,16 @@ RSpec.configure do |config|
   end
 
   config.before(:suite) do
+    # Create the shared topics in Kafka (topic names already initialized in TestTopics module)
     admin = rdkafka_config.admin
     {
-        consume_test_topic:      3,
-        empty_test_topic:        3,
-        load_test_topic:         3,
-        produce_test_topic:      3,
-        rake_test_topic:         3,
-        watermarks_test_topic:   3,
-        partitioner_test_topic: 25,
-        example_topic:           1
+        # Shared topics for tests that need specific partition counts
+        TestTopics.consume_test_topic      => 3,  # Consumer tests that need 3 partitions
+        TestTopics.empty_test_topic        => 3,  # Tests that need an empty pre-existing topic
+        TestTopics.produce_test_topic      => 3,  # Producer tests that need 3 partitions
+        TestTopics.watermarks_test_topic   => 3,  # Watermarks offset tests
+        TestTopics.partitioner_test_topic  => 25, # Partitioner tests that need 25 partitions
+        TestTopics.example_topic           => 1   # Simple single-partition topic for basic tests
     }.each do |topic, partitions|
       create_topic_handle = admin.create_topic(topic.to_s, partitions, 1)
       begin

@@ -19,6 +19,7 @@ require 'socket'
 require 'openssl'
 require 'stringio'
 require 'logger'
+require 'securerandom'
 
 $stdout.sync = true
 
@@ -89,7 +90,7 @@ config = Rdkafka::Config.new(
 begin
   consumer = config.consumer
   puts 'Consumer created, attempting to consume...'
-  consumer.subscribe('test-topic')
+  consumer.subscribe("it-#{SecureRandom.uuid}")
 
   # Try to poll for messages - this triggers SSL errors
   start_time = Time.now

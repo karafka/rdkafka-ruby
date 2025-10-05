@@ -1,10 +1,7 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Rdkafka::Admin::DeleteAclReport do
-
-  let(:resource_name)         {"acl-test-topic"}
+  let(:resource_name)         { TestTopics.unique }
   let(:resource_type)         {Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC}
   let(:resource_pattern_type) {Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL}
   let(:principal)             {"User:anonymous"}
@@ -45,7 +42,7 @@ describe Rdkafka::Admin::DeleteAclReport do
     expect(subject.deleted_acls[0].matching_acl_resource_type).to eq(Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC)
   end
 
-  it "should get deleted acl resource name as acl-test-topic" do
+  it "should get deleted acl resource name" do
     expect(subject.deleted_acls[0].matching_acl_resource_name).to eq(resource_name)
   end
 

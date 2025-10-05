@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Rdkafka::Admin::DescribeAclHandle do
   let(:response) { Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR }
-  let(:resource_name)         {"acl-test-topic"}
+  let(:resource_name)         { TestTopics.unique }
   let(:resource_type)         {Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC}
   let(:resource_pattern_type) {Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL}
   let(:principal)             {"User:anonymous"}
@@ -68,7 +66,7 @@ describe Rdkafka::Admin::DescribeAclHandle do
       it "should wait without a timeout" do
         report = subject.wait(max_wait_timeout: nil)
 
-        expect(report.acls[0].matching_acl_resource_name).to eq("acl-test-topic")
+        expect(report.acls[0].matching_acl_resource_name).to eq(resource_name)
       end
     end
   end

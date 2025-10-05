@@ -27,6 +27,50 @@ require "rdkafka"
 require "timeout"
 require "securerandom"
 
+# Module to hold dynamically generated test topics with UUIDs
+# Topics are generated once when first accessed and then cached
+module TestTopics
+  class << self
+    # Generate a unique topic name with it- prefix and UUID
+    def unique
+      "it-#{SecureRandom.uuid}"
+    end
+
+    # Shared topics initialized once on first access
+    def consume_test_topic
+      @consume_test_topic ||= unique
+    end
+
+    def empty_test_topic
+      @empty_test_topic ||= unique
+    end
+
+    def load_test_topic
+      @load_test_topic ||= unique
+    end
+
+    def produce_test_topic
+      @produce_test_topic ||= unique
+    end
+
+    def rake_test_topic
+      @rake_test_topic ||= unique
+    end
+
+    def watermarks_test_topic
+      @watermarks_test_topic ||= unique
+    end
+
+    def partitioner_test_topic
+      @partitioner_test_topic ||= unique
+    end
+
+    def example_topic
+      @example_topic ||= unique
+    end
+  end
+end
+
 def rdkafka_base_config
   if ENV['KAFKA_SSL_ENABLED'] == 'true'
     {
@@ -161,7 +205,7 @@ end
 
 def notify_listener(listener, &block)
   # 1. subscribe and poll
-  consumer.subscribe("consume_test_topic")
+  consumer.subscribe(TestTopics.consume_test_topic)
   wait_for_assignment(consumer)
   consumer.poll(100)
 
@@ -186,16 +230,16 @@ RSpec.configure do |config|
   config.before(:suite) do
     admin = rdkafka_config.admin
     {
-        consume_test_topic:      3,
-        empty_test_topic:        3,
-        load_test_topic:         3,
-        produce_test_topic:      3,
-        rake_test_topic:         3,
-        watermarks_test_topic:   3,
-        partitioner_test_topic: 25,
-        example_topic:           1
+        TestTopics.consume_test_topic      => 3,
+        TestTopics.empty_test_topic        => 3,
+        TestTopics.load_test_topic         => 3,
+        TestTopics.produce_test_topic      => 3,
+        TestTopics.rake_test_topic         => 3,
+        TestTopics.watermarks_test_topic   => 3,
+        TestTopics.partitioner_test_topic  => 25,
+        TestTopics.example_topic           => 1
     }.each do |topic, partitions|
-      create_topic_handle = admin.create_topic(topic.to_s, partitions, 1)
+      create_topic_handle = admin.create_topic(topic, partitions, 1)
       begin
         create_topic_handle.wait(max_wait_timeout: 1.0)
       rescue Rdkafka::RdkafkaError => ex

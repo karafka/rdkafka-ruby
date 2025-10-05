@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Rdkafka::Admin::DeleteAclHandle do
   let(:response) { Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR }
   let(:resource_name)         { TestTopics.unique }

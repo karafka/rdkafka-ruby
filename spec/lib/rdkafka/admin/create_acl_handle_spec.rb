@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Rdkafka::Admin::CreateAclHandle do
   # If create acl was successful there is no error object
   # the error code is set to RD_KAFKA_RESP_ERR_NO_ERRORa

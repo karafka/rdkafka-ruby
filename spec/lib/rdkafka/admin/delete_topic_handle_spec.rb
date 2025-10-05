@@ -1,14 +1,17 @@
 # frozen_string_literal: true
 
+require "spec_helper"
+
 describe Rdkafka::Admin::DeleteTopicHandle do
   let(:response) { 0 }
+  let(:topic_name) { TestTopics.unique }
 
   subject do
     Rdkafka::Admin::DeleteTopicHandle.new.tap do |handle|
       handle[:pending] = pending_handle
       handle[:response] = response
       handle[:error_string] = FFI::Pointer::NULL
-      handle[:result_name] = FFI::MemoryPointer.from_string("my-test-topic")
+      handle[:result_name] = FFI::MemoryPointer.from_string(topic_name)
     end
   end
 
@@ -28,14 +31,14 @@ describe Rdkafka::Admin::DeleteTopicHandle do
         report = subject.wait
 
         expect(report.error_string).to eq(nil)
-        expect(report.result_name).to eq("my-test-topic")
+        expect(report.result_name).to eq(topic_name)
       end
 
       it "should wait without a timeout" do
         report = subject.wait(max_wait_timeout: nil)
 
         expect(report.error_string).to eq(nil)
-        expect(report.result_name).to eq("my-test-topic")
+        expect(report.result_name).to eq(topic_name)
       end
     end
   end

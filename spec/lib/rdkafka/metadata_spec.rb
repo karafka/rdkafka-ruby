@@ -25,7 +25,7 @@ describe Rdkafka::Metadata do
 
     context "that is one of our test topics" do
       subject { described_class.new(native_kafka, topic_name) }
-      let(:topic_name) { "partitioner_test_topic" }
+      let(:topic_name) { TestTopics.partitioner_test_topic }
 
       it "#brokers returns our single broker" do
         expect(subject.brokers.length).to eq(1)
@@ -47,7 +47,7 @@ describe Rdkafka::Metadata do
     subject { described_class.new(native_kafka, topic_name) }
     let(:topic_name) { nil }
     let(:test_topics) {
-      %w(consume_test_topic empty_test_topic load_test_topic produce_test_topic rake_test_topic watermarks_test_topic partitioner_test_topic)
+      [TestTopics.consume_test_topic, TestTopics.empty_test_topic, TestTopics.load_test_topic, TestTopics.produce_test_topic, TestTopics.rake_test_topic, TestTopics.watermarks_test_topic, TestTopics.partitioner_test_topic]
     } # Test topics crated in spec_helper.rb
 
     it "#brokers returns our single broker" do

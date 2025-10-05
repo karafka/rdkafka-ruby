@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 describe Rdkafka::Producer::DeliveryReport do
-  subject { Rdkafka::Producer::DeliveryReport.new(2, 100, "topic", -1) }
+  let(:topic_name) { TestTopics.unique }
+  subject { Rdkafka::Producer::DeliveryReport.new(2, 100, topic_name, -1) }
 
   it "should get the partition" do
     expect(subject.partition).to eq 2
@@ -12,11 +13,11 @@ describe Rdkafka::Producer::DeliveryReport do
   end
 
   it "should get the topic_name" do
-    expect(subject.topic_name).to eq "topic"
+    expect(subject.topic_name).to eq topic_name
   end
 
   it "should get the same topic name under topic alias" do
-    expect(subject.topic).to eq "topic"
+    expect(subject.topic).to eq topic_name
   end
 
   it "should get the error" do

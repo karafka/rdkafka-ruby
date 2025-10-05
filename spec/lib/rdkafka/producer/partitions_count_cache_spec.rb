@@ -7,8 +7,8 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
   let(:custom_ttl) { 0.5 } # Half the default TTL
   let(:cache) { described_class.new(default_ttl) }
   let(:custom_ttl_cache) { described_class.new(custom_ttl) }
-  let(:topic) { "test_topic" }
-  let(:topic2) { "test_topic2" }
+  let(:topic) { TestTopics.unique }
+  let(:topic2) { TestTopics.unique }
   let(:partition_count) { 5 }
   let(:higher_partition_count) { 10 }
   let(:lower_partition_count) { 3 }

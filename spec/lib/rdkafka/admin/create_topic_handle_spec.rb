@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Rdkafka::Admin::CreateTopicHandle do
   let(:response) { 0 }
   let(:topic_name) { TestTopics.unique }

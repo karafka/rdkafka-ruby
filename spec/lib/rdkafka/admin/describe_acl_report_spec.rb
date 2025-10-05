@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-
 describe Rdkafka::Admin::DescribeAclReport do
 
   let(:resource_name)         { TestTopics.unique }

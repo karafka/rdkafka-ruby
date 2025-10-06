@@ -934,6 +934,7 @@ describe Rdkafka::Admin do
 
       it 'expect to change number of partitions' do
         admin.create_partitions(topic_name, 10).wait
+        sleep(1)
         expect(metadata[:partition_count]).to eq(10)
       end
     end

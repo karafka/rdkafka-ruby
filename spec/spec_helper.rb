@@ -231,7 +231,7 @@ RSpec.configure do |config|
         TestTopics.partitioner_test_topic  => 25, # Partitioner tests that need 25 partitions
         TestTopics.example_topic           => 1   # Simple single-partition topic for basic tests
     }.each do |topic, partitions|
-      create_topic_handle = admin.create_topic(topic.to_s, partitions, 1)
+      create_topic_handle = admin.create_topic(topic, partitions, 1)
       begin
         create_topic_handle.wait(max_wait_timeout: 1.0)
       rescue Rdkafka::RdkafkaError => ex

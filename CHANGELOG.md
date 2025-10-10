@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.24.0 (Unreleased)
+- [Enhancement] Bump librdkafka to `2.11.1`
+
 ## 0.23.1 (2025-09-25)
 - [Enhancement] Improve sigstore attestation for precompiled releases.
 - [Fix] Fix incorrectly set default SSL certs dir.

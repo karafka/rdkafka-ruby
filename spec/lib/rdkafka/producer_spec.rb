@@ -880,26 +880,45 @@ describe Rdkafka::Producer do
         response = producer.oauthbearer_set_token(
               token: "foo",
               lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
-              principal_name: "kafka-cluster"
+              principal_name: "kafka-cluster",
             )
         expect(response).to eq(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__STATE)
       end
     end
 
     context 'when sasl configured' do
-      it 'should succeed' do
-        producer_sasl = rdkafka_producer_config(
-          {
-            "security.protocol": "sasl_ssl",
-            "sasl.mechanisms": 'OAUTHBEARER'
-          }
-        ).producer
-        response = producer_sasl.oauthbearer_set_token(
-          token: "foo",
-          lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
-          principal_name: "kafka-cluster"
-        )
-        expect(response).to eq(0)
+      let(:producer_sasl) do
+        rdkafka_producer_config(
+            {
+              "security.protocol": "sasl_ssl",
+              "sasl.mechanisms": 'OAUTHBEARER'
+            }
+          ).producer
+      end
+
+      context 'without extensions' do
+        it 'should succeed' do
+          response = producer_sasl.oauthbearer_set_token(
+            token: "foo",
+            lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
+            principal_name: "kafka-cluster"
+          )
+          expect(response).to eq(0)
+        end
+      end
+
+      context 'with extensions' do
+        it 'should succeed' do
+          response = producer_sasl.oauthbearer_set_token(
+            token: "foo",
+            lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
+            principal_name: "kafka-cluster",
+            extensions: {
+              "foo" => "bar"
+            }
+          )
+          expect(response).to eq(0)
+        end
       end
     end
   end

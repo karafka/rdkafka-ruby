@@ -953,14 +953,29 @@ describe Rdkafka::Admin do
         $admin_sasl.close
       end
 
-      it 'should succeed' do
+      context 'without extensions' do
+        it 'should succeed' do
+          response = $admin_sasl.oauthbearer_set_token(
+            token: "foo",
+            lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
+            principal_name: "kafka-cluster"
+          )
+          expect(response).to eq(0)
+        end
+      end
 
-        response = $admin_sasl.oauthbearer_set_token(
-          token: "foo",
-          lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
-          principal_name: "kafka-cluster"
-        )
-        expect(response).to eq(0)
+      context 'with extensions' do
+        it 'should succeed' do
+          response = $admin_sasl.oauthbearer_set_token(
+            token: "foo",
+            lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
+            principal_name: "kafka-cluster",
+            extensions: {
+              "foo" => "bar"
+            }
+          )
+          expect(response).to eq(0)
+        end
       end
     end
   end

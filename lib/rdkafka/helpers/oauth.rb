@@ -16,7 +16,7 @@ module Rdkafka
         response = @native_kafka.with_inner do |inner|
           Rdkafka::Bindings.rd_kafka_oauthbearer_set_token(
             inner, token, lifetime_ms, principal_name,
-            flatten_extensions(extensions), extension_size(extensions), error_buffer, 256
+            map_extensions(extensions), extension_size(extensions), error_buffer, 256
           )
         end
 
@@ -42,9 +42,20 @@ module Rdkafka
       private
 
       # Flatten the extensions hash into a string according to the spec, https://datatracker.ietf.org/doc/html/rfc7628#section-3.1
-      def flatten_extensions(extensions)
+      def map_extensions(extensions)
         return nil unless extensions
-        "\x01#{extensions.map { |e| e.join("=") }.join("\x01")}"
+
+        # https://github.com/confluentinc/librdkafka/blob/master/src/rdkafka_sasl_oauthbearer.c#L327-L347
+
+        # Element i is the key, i + 1 is the value.
+        ext_array = extensions.flat_map { |k, v| [k.to_s, v.to_s] }
+        string_ptrs = ext_array.map { |s| FFI::MemoryPointer.from_string(s) }
+
+        # create a pointer array (const char **)
+        array_ptr = FFI::MemoryPointer.new(:pointer, string_ptrs.length)
+        array_ptr.write_array_of_pointer(string_ptrs)
+
+        array_ptr
       end
 
       # extension_size is the number of keys + values which should be a non-negative even number

@@ -47,13 +47,14 @@ module Rdkafka
 
         # https://github.com/confluentinc/librdkafka/blob/master/src/rdkafka_sasl_oauthbearer.c#L327-L347
 
-        # Element i is the key, i + 1 is the value.
-        ext_array = extensions.flat_map { |k, v| [k.to_s, v.to_s] }
-        string_ptrs = ext_array.map { |s| FFI::MemoryPointer.from_string(s) }
+        # The argument is const char **
+        array_ptr = FFI::MemoryPointer.new(:pointer, extension_size(extensions))
 
-        # create a pointer array (const char **)
-        array_ptr = FFI::MemoryPointer.new(:pointer, string_ptrs.length)
-        array_ptr.write_array_of_pointer(string_ptrs)
+        # Element i is the key, i + 1 is the value.
+        extensions.each_with_index do |(k, v), i|
+          array_ptr[i * 2].put_pointer(0, FFI::MemoryPointer.from_string(k.to_s))
+          array_ptr[i * 2 + 1].put_pointer(0, FFI::MemoryPointer.from_string(v.to_s))
+        end
 
         array_ptr
       end

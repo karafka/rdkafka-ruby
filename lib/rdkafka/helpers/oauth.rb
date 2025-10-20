@@ -41,13 +41,13 @@ module Rdkafka
 
       private
 
-      # Flatten the extensions hash into a string according to the spec, https://datatracker.ietf.org/doc/html/rfc7628#section-3.1
+      # Convert extensions hash to FFI::MemoryPointer (const char **)
       def map_extensions(extensions)
         return nil unless extensions
 
         # https://github.com/confluentinc/librdkafka/blob/master/src/rdkafka_sasl_oauthbearer.c#L327-L347
 
-        # The argument is const char **
+        # The method argument is const char **
         array_ptr = FFI::MemoryPointer.new(:pointer, extension_size(extensions))
 
         # Element i is the key, i + 1 is the value.

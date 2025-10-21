@@ -887,18 +887,20 @@ describe Rdkafka::Producer do
     end
 
     context 'when sasl configured' do
-      let(:producer_sasl) do
-        rdkafka_producer_config(
-            {
-              "security.protocol": "sasl_ssl",
-              "sasl.mechanisms": 'OAUTHBEARER'
-            }
-          ).producer
+      before do
+        $producer_sasl = rdkafka_producer_config(
+          "security.protocol": "sasl_ssl",
+          "sasl.mechanisms": 'OAUTHBEARER'
+        ).producer
+      end
+
+      after do
+        $producer_sasl.close
       end
 
       context 'without extensions' do
         it 'should succeed' do
-          response = producer_sasl.oauthbearer_set_token(
+          response = $producer_sasl.oauthbearer_set_token(
             token: "foo",
             lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
             principal_name: "kafka-cluster"
@@ -909,7 +911,7 @@ describe Rdkafka::Producer do
 
       context 'with extensions' do
         it 'should succeed' do
-          response = producer_sasl.oauthbearer_set_token(
+          response = $producer_sasl.oauthbearer_set_token(
             token: "foo",
             lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
             principal_name: "kafka-cluster",

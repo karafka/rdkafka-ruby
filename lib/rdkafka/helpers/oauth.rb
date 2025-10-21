@@ -12,12 +12,18 @@ module Rdkafka
       # @return [Integer] 0 on success
       def oauthbearer_set_token(token:, lifetime_ms:, principal_name:, extensions: nil)
         error_buffer = FFI::MemoryPointer.from_string(" " * 256)
+        extensions_ptr, extensions_str_ptrs = map_extensions(extensions)
 
-        response = @native_kafka.with_inner do |inner|
-          Rdkafka::Bindings.rd_kafka_oauthbearer_set_token(
-            inner, token, lifetime_ms, principal_name,
-            flatten_extensions(extensions), extension_size(extensions), error_buffer, 256
-          )
+        begin
+          response = @native_kafka.with_inner do |inner|
+            Rdkafka::Bindings.rd_kafka_oauthbearer_set_token(
+              inner, token, lifetime_ms, principal_name,
+              extensions_ptr, extension_size(extensions), error_buffer, 256
+            )
+          end
+        ensure
+          extensions_str_ptrs&.each { |ptr| ptr.free }
+          extensions_ptr&.free
         end
 
         return response if response.zero?
@@ -41,10 +47,31 @@ module Rdkafka
 
       private
 
-      # Flatten the extensions hash into a string according to the spec, https://datatracker.ietf.org/doc/html/rfc7628#section-3.1
-      def flatten_extensions(extensions)
-        return nil unless extensions
-        "\x01#{extensions.map { |e| e.join("=") }.join("\x01")}"
+      # Convert extensions hash to FFI::MemoryPointer (const char **).
+      # Note: the returned pointers must be freed manually (autorelease = false).
+      def map_extensions(extensions)
+        return [nil, nil] if extensions.nil? || extensions.empty?
+
+        # https://github.com/confluentinc/librdkafka/blob/master/src/rdkafka_sasl_oauthbearer.c#L327-L347
+
+        # The method argument is const char **
+        array_ptr = FFI::MemoryPointer.new(:pointer, extension_size(extensions))
+        array_ptr.autorelease = false
+        str_ptrs = []
+
+        # Element i is the key, i + 1 is the value.
+        extensions.each_with_index do |(k, v), i|
+          k_ptr = FFI::MemoryPointer.from_string(k.to_s)
+          k_ptr.autorelease = false
+          str_ptrs << k_ptr
+          v_ptr = FFI::MemoryPointer.from_string(v.to_s)
+          v_ptr.autorelease = false
+          str_ptrs << v_ptr
+          array_ptr[i * 2].put_pointer(0, k_ptr)
+          array_ptr[i * 2 + 1].put_pointer(0, v_ptr)
+        end
+
+        [array_ptr, str_ptrs]
       end
 
       # extension_size is the number of keys + values which should be a non-negative even number

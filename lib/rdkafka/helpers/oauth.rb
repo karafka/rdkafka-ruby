@@ -43,7 +43,7 @@ module Rdkafka
 
       # Convert extensions hash to FFI::MemoryPointer (const char **)
       def map_extensions(extensions)
-        return nil unless extensions
+        return nil if extensions.nil? || extensions.empty?
 
         # https://github.com/confluentinc/librdkafka/blob/master/src/rdkafka_sasl_oauthbearer.c#L327-L347
 

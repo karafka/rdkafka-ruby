@@ -12,7 +12,7 @@
 - [Fix] Disable OpenSSL Heartbeats during compilation.
 
 ## 0.23.0 (2025-09-04)
-- **[Breaking]** Drop support for Ruby 3.1 to move forward with the fiber scheduler work.
+- **[EOL]** Drop support for Ruby 3.1 to move forward with the fiber scheduler work.
 - [Enhancement] Bump librdkafka to `2.11.0`
 - [Enhancement] Support explicit Debian testing due to lib issues.
 - [Enhancement] Support ARM64 Gnu precompilation.
@@ -59,7 +59,7 @@
 - [Patch] Retire no longer needed cooperative-sticky patch.
 
 ## 0.19.0 (2024-10-01)
-- **[Breaking]** Drop Ruby 3.0 support
+- **[EOL]** Drop Ruby 3.0 support
 - [Enhancement] Update `librdkafka` to `2.5.3`
 - [Enhancement] Use default oauth callback if none is passed (bachmanity1)
 - [Fix] Fix incorrectly behaving CI on failures. 
@@ -83,7 +83,7 @@
 - [Fix] Switch to local release of librdkafka to mitigate its unavailability.
 
 ## 0.16.0 (2024-06-13)
-- **[Breaking]** Retire support for Ruby 2.7.
+- **[EOL]** Retire support for Ruby 2.7.
 - **[Breaking]** Messages without headers returned by `#poll` contain frozen empty hash.
 - **[Breaking]** `HashWithSymbolKeysTreatedLikeStrings` has been removed so headers are regular hashes with string keys.
 - **[Feature]** Support incremental config describe + alter API.
@@ -144,7 +144,7 @@
 - [Fix] Reference to Opaque is not released when Admin, Consumer or Producer is closed (mensfeld)
 - [Fix] Trigger `#poll` on native kafka creation to handle oauthbearer cb (mensfeld)
 - [Fix] `#flush` does not handle the timeouts errors by making it return `true` if all flushed or `false` if failed. We do **not** raise an exception here to keep it backwards compatible (mensfeld)
-- [Change] Remove support for Ruby 2.6 due to it being EOL and WeakMap incompatibilities (mensfeld)
+- **[EOL]** Remove support for Ruby 2.6 due to it being EOL and WeakMap incompatibilities (mensfeld)
 - [Change] Update Kafka Docker with Confluent KRaft (mensfeld)
 - [Change] Update librdkafka repo reference from edenhill to confluentinc (mensfeld)
 

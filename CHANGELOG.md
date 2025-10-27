@@ -1,7 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.23.0 (Unreleased)
-- [Enhancement] Bump librdkafka to 2.12.0.
+- [Enhancement] Bump librdkafka to 2.12.1.
 
 ## 0.22.2 (2025-10-09)
 - [Fix] Fix Github Action Ruby reference preventing non-compiled releases.

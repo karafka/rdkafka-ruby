@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.24.2 (2025-10-21)
+- [Fix] Fix for Core dump when providing extensions to oauthbearer_set_token (dssjoblom)
+
 ## 0.24.1 (2025-10-10)
 - [Fix] Fix Github Action Ruby reference preventing non-compiled releases.
 

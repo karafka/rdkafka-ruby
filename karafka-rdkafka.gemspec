@@ -67,7 +67,7 @@ Gem::Specification.new do |gem|
     gem.extensions = %w(ext/Rakefile)
   end
 
-  gem.add_dependency 'ffi', '~> 1.15'
+  gem.add_dependency 'ffi', '~> 1.17.1'
   gem.add_dependency 'json', '> 2.0'
   gem.add_dependency 'logger'
   gem.add_dependency 'mini_portile2', '~> 2.6'

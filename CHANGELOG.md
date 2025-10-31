@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.24.2 (2025-10-29)
+## 0.24.2 (2025-10-31)
 - [Enhancement] Force lock FFI to 1.17.1 or higher to include critical bug fixes around GCC, write barriers, and thread restarts for forks.
 - [Fix] Fix for Core dump when providing extensions to oauthbearer_set_token (dssjoblom)
 

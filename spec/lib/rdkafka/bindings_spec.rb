@@ -18,7 +18,7 @@ describe Rdkafka::Bindings do
 
       # Extract what the error handler would do
       error_message = glibc_error.message
-      expect(error_message).to match(/GLIBC_[\d.]+['"]?\s+not found/i)
+      expect(error_message).to match(/GLIBC_[\d.]+['"` ]?\s*not found/i)
 
       glibc_version = error_message[/GLIBC_([\d.]+)/, 1]
       expect(glibc_version).to eq("2.38")

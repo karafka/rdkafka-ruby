@@ -22,7 +22,39 @@ module Rdkafka
       end
     end
 
-    ffi_lib File.join(__dir__, "../../ext/librdkafka.#{lib_extension}")
+    # Wrap ffi_lib to provide better error messages for glibc compatibility issues
+    begin
+      ffi_lib File.join(__dir__, "../../ext/librdkafka.#{lib_extension}")
+    rescue LoadError => e
+      error_message = e.message
+
+      # Check if this is a glibc version mismatch error
+      if error_message =~ /GLIBC_[\d.]+['"` ]?\s*not found/i
+        glibc_version = error_message[/GLIBC_([\d.]+)/, 1]
+
+        raise Rdkafka::LibraryLoadError, <<~ERROR_MSG.strip
+          Failed to load librdkafka due to glibc compatibility issue.
+
+          The precompiled librdkafka binary requires glibc version #{glibc_version} or higher,
+          but your system has an older version installed.
+
+          To resolve this issue, you have two options:
+
+          1. Upgrade your system to a supported platform (recommended)
+
+          2. Force compilation from source by reinstalling without the precompiled binary:
+             gem install rdkafka --platform=ruby
+
+             Or if using Bundler, add to your Gemfile:
+             gem 'rdkafka', force_ruby_platform: true
+
+          Original error: #{error_message}
+        ERROR_MSG
+      else
+        # Re-raise the original error if it's not a glibc issue
+        raise
+      end
+    end
 
     RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS = -175
     RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS = -174

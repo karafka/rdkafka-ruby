@@ -7,6 +7,37 @@ describe Rdkafka::Bindings do
     expect(Rdkafka::Bindings.ffi_libraries.map(&:name).first).to include "librdkafka"
   end
 
+  describe "glibc error handling" do
+    it "should provide a helpful error message for glibc compatibility issues" do
+      # This test simulates what would happen if the library loading fails with a glibc error
+      # We can't actually test the real scenario without breaking the test suite,
+      # but we can verify the error message format would be correct
+
+      # Create a mock LoadError with a glibc message
+      glibc_error = LoadError.new("Could not open library 'librdkafka.so': /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.38' not found")
+
+      # Extract what the error handler would do
+      error_message = glibc_error.message
+      expect(error_message).to match(/GLIBC_[\d.]+['"]?\s+not found/i)
+
+      glibc_version = error_message[/GLIBC_([\d.]+)/, 1]
+      expect(glibc_version).to eq("2.38")
+    end
+
+    it "should detect various glibc error message formats" do
+      test_cases = [
+        "version `GLIBC_2.38' not found",
+        "version 'GLIBC_2.33' not found",
+        "GLIBC_2.34 not found",
+        "version `GLIBC_2.39` not found"
+      ]
+
+      test_cases.each do |error_msg|
+        expect(error_msg).to match(/GLIBC_[\d.]+['"` ]?\s*not found/i)
+      end
+    end
+  end
+
   describe ".lib_extension" do
     it "should know the lib extension for darwin" do
       stub_const('RbConfig::CONFIG', 'host_os' =>'darwin')

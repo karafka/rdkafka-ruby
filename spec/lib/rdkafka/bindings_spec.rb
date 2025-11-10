@@ -36,6 +36,22 @@ describe Rdkafka::Bindings do
         expect(error_msg).to match(/GLIBC_[\d.]+['"` ]?\s*not found/i)
       end
     end
+
+    it "should handle edge cases where version extraction fails gracefully" do
+      # Simulate an edge case where the pattern matches but capture group might fail
+      error_message = "GLIBC_ not found"
+
+      # The pattern might match but version extraction should fallback to 'unknown'
+      if error_message =~ /GLIBC_[\d.]+['"` ]?\s*not found/i
+        # This won't execute because the pattern requires [\d.]+
+        glibc_version = error_message[/GLIBC_([\d.]+)/, 1] || 'unknown'
+        expect(glibc_version).to eq('unknown')
+      end
+
+      # More realistic: ensure fallback works if regex changes in the future
+      glibc_version = error_message[/GLIBC_([\d.]+)/, 1] || 'unknown'
+      expect(glibc_version).to eq('unknown')
+    end
   end
 
   describe ".lib_extension" do

@@ -30,7 +30,7 @@ module Rdkafka
 
       # Check if this is a glibc version mismatch error
       if error_message =~ /GLIBC_[\d.]+['"` ]?\s*not found/i
-        glibc_version = error_message[/GLIBC_([\d.]+)/, 1]
+        glibc_version = error_message[/GLIBC_([\d.]+)/, 1] || 'unknown'
 
         raise Rdkafka::LibraryLoadError, <<~ERROR_MSG.strip
           Failed to load librdkafka due to glibc compatibility issue.

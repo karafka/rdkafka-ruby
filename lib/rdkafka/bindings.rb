@@ -67,6 +67,9 @@ module Rdkafka
     RD_KAFKA_OFFSET_STORED    = -1000
     RD_KAFKA_OFFSET_INVALID   = -1001
 
+    RD_KAFKA_PARTITION_UA     = -1
+    RD_KAFKA_PARTITION_UA_STR = RD_KAFKA_PARTITION_UA.to_s.freeze
+
     EMPTY_HASH = {}.freeze
 
     class SizePtr < FFI::Struct
@@ -266,7 +269,7 @@ module Rdkafka
         # Since this cache is shared, having few consumers and/or producers in one process will
         # automatically improve the querying times even with low refresh times.
         (stats['topics'] || EMPTY_HASH).each do |topic_name, details|
-          partitions_count = details['partitions'].keys.reject { |k| k == '-1' }.size
+          partitions_count = details['partitions'].keys.reject { |k| k == RD_KAFKA_PARTITION_UA_STR }.size
 
           next unless partitions_count.positive?
 
@@ -277,7 +280,7 @@ module Rdkafka
       end
 
       # Return 0 so librdkafka frees the json string
-      0
+      RD_KAFKA_RESP_ERR_NO_ERROR
     end
 
     ErrorCallback = FFI::Function.new(
@@ -431,7 +434,7 @@ module Rdkafka
 
     def self.partitioner(topic_ptr, str, partition_count, partitioner = "consistent_random")
       # Return RD_KAFKA_PARTITION_UA(unassigned partition) when partition count is nil/zero.
-      return -1 unless partition_count&.nonzero?
+      return RD_KAFKA_PARTITION_UA unless partition_count&.nonzero?
 
       str_ptr = str.empty? ? FFI::MemoryPointer::NULL : FFI::MemoryPointer.from_string(str)
       method_name = PARTITIONERS.fetch(partitioner) do

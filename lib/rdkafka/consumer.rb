@@ -451,7 +451,7 @@ module Rdkafka
         native_topic,
         partition,
         offset,
-        Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR # timeout
+        0 # timeout
       )
       if response != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
         raise Rdkafka::RdkafkaError.new(response)

@@ -325,7 +325,7 @@ module Rdkafka
       # If timestamp is nil use 0 and let Kafka set one. If an integer or time
       # use it.
       raw_timestamp = if timestamp.nil?
-                        Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+                        0
                       elsif timestamp.is_a?(Integer)
                         timestamp
                       elsif timestamp.is_a?(Time)

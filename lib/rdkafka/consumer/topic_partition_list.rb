@@ -57,7 +57,7 @@ module Rdkafka
           if partitions.is_a? Integer
             partitions = (0..partitions - 1)
           end
-          @data[topic.to_s] = partitions.map { |p| Partition.new(p, nil, 0) }
+          @data[topic.to_s] = partitions.map { |p| Partition.new(p, nil, Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR) }
         end
       end
 
@@ -109,7 +109,7 @@ module Rdkafka
         native_tpl[:cnt].times do |i|
           ptr = native_tpl[:elems] + (i * Rdkafka::Bindings::TopicPartition.size)
           elem = Rdkafka::Bindings::TopicPartition.new(ptr)
-          if elem[:partition] == -1
+          if elem[:partition] == Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
             data[elem[:topic]] = nil
           else
             partitions = data[elem[:topic]] || []
@@ -161,7 +161,7 @@ module Rdkafka
             Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
               tpl,
               topic,
-              -1
+              Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
             )
           end
         end

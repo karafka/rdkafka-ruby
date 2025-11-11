@@ -3,6 +3,7 @@
 ## 0.25.0 (Unreleased)
 - [Enhancement] Bump librdkafka to `2.12.1`
 - [Enhancement] Add descriptive error messages for glibc compatibility issues with instructions for resolution (#654)
+- [Enhancement] Replace magic numbers with named constants throughout codebase for improved readability and maintainability
 
 ## 0.24.2 (2025-10-31)
 - [Enhancement] Force lock FFI to 1.17.1 or higher to include critical bug fixes around GCC, write barriers, and thread restarts for forks.

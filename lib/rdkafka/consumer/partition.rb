@@ -17,7 +17,7 @@ module Rdkafka
       attr_reader :err
 
       # @private
-      def initialize(partition, offset, err = 0)
+      def initialize(partition, offset, err = Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR)
         @partition = partition
         @offset = offset
         @err = err
@@ -28,7 +28,7 @@ module Rdkafka
       def to_s
         message = "<Partition #{partition}"
         message += " offset=#{offset}" if offset
-        message += " err=#{err}" if err != 0
+        message += " err=#{err}" if err != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
         message += ">"
         message
       end

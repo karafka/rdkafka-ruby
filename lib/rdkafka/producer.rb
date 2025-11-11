@@ -237,13 +237,13 @@ module Rdkafka
           topic_metadata = ::Rdkafka::Metadata.new(inner, topic).topics&.first
         end
 
-        topic_metadata ? topic_metadata[:partition_count] : -1
+        topic_metadata ? topic_metadata[:partition_count] : Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
       end
     rescue Rdkafka::RdkafkaError => e
       # If the topic does not exist, it will be created or if not allowed another error will be
-      # raised. We here return -1 so this can happen without early error happening on metadata
-      # discovery.
-      return -1 if e.code == :unknown_topic_or_part
+      # raised. We here return RD_KAFKA_PARTITION_UA so this can happen without early error
+      # happening on metadata discovery.
+      return Rdkafka::Bindings::RD_KAFKA_PARTITION_UA if e.code == :unknown_topic_or_part
 
       raise(e)
     end
@@ -318,14 +318,14 @@ module Rdkafka
           selected_partitioner) if partition_count.positive?
       end
 
-      # If partition is nil, use -1 to let librdafka set the partition randomly or
+      # If partition is nil, use RD_KAFKA_PARTITION_UA to let librdafka set the partition randomly or
       # based on the key when present.
-      partition ||= -1
+      partition ||= Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
 
       # If timestamp is nil use 0 and let Kafka set one. If an integer or time
       # use it.
       raw_timestamp = if timestamp.nil?
-                        0
+                        Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
                       elsif timestamp.is_a?(Integer)
                         timestamp
                       elsif timestamp.is_a?(Time)
@@ -338,9 +338,9 @@ module Rdkafka
       delivery_handle.label = label
       delivery_handle.topic = topic
       delivery_handle[:pending] = true
-      delivery_handle[:response] = -1
-      delivery_handle[:partition] = -1
-      delivery_handle[:offset] = -1
+      delivery_handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
+      delivery_handle[:partition] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
+      delivery_handle[:offset] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
       DeliveryHandle.register(delivery_handle)
 
       args = [
@@ -387,7 +387,7 @@ module Rdkafka
       end
 
       # Raise error if the produce call was not successful
-      if response != 0
+      if response != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
         DeliveryHandle.remove(delivery_handle.to_ptr.address)
         raise RdkafkaError.new(response)
       end

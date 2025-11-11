@@ -68,6 +68,7 @@ module Rdkafka
     RD_KAFKA_OFFSET_INVALID   = -1001
 
     RD_KAFKA_PARTITION_UA     = -1
+    RD_KAFKA_PARTITION_UA_STR = RD_KAFKA_PARTITION_UA.to_s.freeze
 
     EMPTY_HASH = {}.freeze
 
@@ -268,7 +269,7 @@ module Rdkafka
         # Since this cache is shared, having few consumers and/or producers in one process will
         # automatically improve the querying times even with low refresh times.
         (stats['topics'] || EMPTY_HASH).each do |topic_name, details|
-          partitions_count = details['partitions'].keys.reject { |k| k == RD_KAFKA_PARTITION_UA.to_s }.size
+          partitions_count = details['partitions'].keys.reject { |k| k == RD_KAFKA_PARTITION_UA_STR }.size
 
           next unless partitions_count.positive?
 

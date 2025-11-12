@@ -29,7 +29,7 @@ module Rdkafka
       def build_from_c(response_ptr, message_prefix = nil, broker_message: nil)
         code = Rdkafka::Bindings.rd_kafka_error_code(response_ptr)
 
-        return false if code.zero?
+        return false if code == Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
 
         message = broker_message || Rdkafka::Bindings.rd_kafka_err2str(code)
         fatal = !Rdkafka::Bindings.rd_kafka_error_is_fatal(response_ptr).zero?
@@ -51,11 +51,11 @@ module Rdkafka
       def build(response_ptr_or_code, message_prefix = nil, broker_message: nil)
         case response_ptr_or_code
         when Integer
-          return false if response_ptr_or_code.zero?
+          return false if response_ptr_or_code == Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
 
           new(response_ptr_or_code, message_prefix, broker_message: broker_message)
         when Bindings::Message
-          return false if response_ptr_or_code[:err].zero?
+          return false if response_ptr_or_code[:err] == Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
 
           unless response_ptr_or_code[:payload].null?
             message_prefix ||= response_ptr_or_code[:payload].read_string(response_ptr_or_code[:len])
@@ -81,9 +81,49 @@ module Rdkafka
         end
       end
 
-      def validate!(response_ptr_or_code, message_prefix = nil, broker_message: nil)
+      def validate!(response_ptr_or_code, message_prefix = nil, broker_message: nil, client_ptr: nil)
         error = build(response_ptr_or_code, message_prefix, broker_message: broker_message)
-        error ? raise(error) : false
+
+        return false unless error
+
+        # Auto-detect and handle fatal errors (-150)
+        if error.rdkafka_response == Bindings::RD_KAFKA_RESP_ERR__FATAL && client_ptr
+          # Discover the underlying fatal error from librdkafka
+          error = build_fatal(
+            client_ptr,
+            fallback_error_code: error.rdkafka_response,
+            fallback_message: broker_message
+          )
+        end
+
+        raise error
+      end
+
+      # Build a fatal error from librdkafka's fatal error state.
+      # Calls rd_kafka_fatal_error() to get the actual underlying error code and description.
+      #
+      # @param client_ptr [FFI::Pointer] Pointer to rd_kafka_t client
+      # @param fallback_error_code [Integer] Error code to use if no fatal error found (default: -150)
+      # @param fallback_message [String, nil] Message to use if no fatal error found
+      # @return [RdkafkaError] Error object with fatal flag set to true
+      def build_fatal(client_ptr, fallback_error_code: -150, fallback_message: nil)
+        fatal_error_details = Rdkafka::Bindings.extract_fatal_error(client_ptr)
+
+        if fatal_error_details
+          new(
+            fatal_error_details[:error_code],
+            broker_message: fatal_error_details[:error_string],
+            fatal: true
+          )
+        else
+          # Fallback: if extract_fatal_error returns nil (shouldn't happen in practice),
+          # the error code itself still indicates a fatal condition
+          new(
+            fallback_error_code,
+            broker_message: fallback_message,
+            fatal: true
+          )
+        end
       end
     end
 

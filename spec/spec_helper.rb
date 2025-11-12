@@ -24,8 +24,12 @@ end
 require "pry"
 require "rspec"
 require "rdkafka"
+require "rdkafka/producer/testing"
 require "timeout"
 require "securerandom"
+
+# Include testing utilities for Producer in test environment
+Rdkafka::Producer.include(Rdkafka::Testing)
 
 # Module to hold dynamically generated test topics with UUIDs
 # Topics are generated once when first accessed and then cached

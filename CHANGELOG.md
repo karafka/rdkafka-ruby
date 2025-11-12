@@ -1,5 +1,18 @@
 # Rdkafka Changelog
 
+## 0.23.1 (Unreleased)
+- **[Feature]** Add integrated fatal error handling in `RdkafkaError.validate!` - automatically detects and handles fatal errors (-150) with single entrypoint API.
+- [Enhancement] Add optional `client_ptr` parameter to `validate!` for automatic fatal error remapping to actual underlying error codes.
+- [Enhancement] Update all Producer and Consumer `validate!` calls to provide `client_ptr` for comprehensive fatal error handling.
+- [Enhancement] Add `rd_kafka_fatal_error()` FFI binding to retrieve actual fatal error details.
+- [Enhancement] Add `rd_kafka_test_fatal_error()` FFI binding for testing fatal error scenarios.
+- [Enhancement] Add `RdkafkaError.build_fatal` class method for centralized fatal error construction.
+- [Enhancement] Add comprehensive tests for fatal error handling including unit tests and integration tests.
+- [Enhancement] Add `RD_KAFKA_PARTITION_UA` constant for unassigned partition (-1).
+- [Enhancement] Replace magic numbers with named constants: use `RD_KAFKA_RESP_ERR_NO_ERROR` instead of `0` for error code checks (18 instances) and `RD_KAFKA_PARTITION_UA` instead of `-1` for partition values (9 instances) across the codebase for better code clarity and maintainability.
+- [Enhancement] Add `Rdkafka::Testing` module for testing fatal error scenarios on both producers and consumers.
+- [Deprecated] `RdkafkaError.validate_fatal!` - use `validate!` with `client_ptr` parameter instead.
+
 ## 0.23.0 (2025-11-01)
 - [Enhancement] Bump librdkafka to 2.12.1.
 - [Enhancement] Force lock FFI to 1.17.1 or higher to include critical bug fixes around GCC, write barriers, and thread restarts for forks.

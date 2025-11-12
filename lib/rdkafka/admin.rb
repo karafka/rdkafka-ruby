@@ -327,7 +327,7 @@ module Rdkafka
         # Create and register the handle we will return to the caller
         create_partitions_handle = CreatePartitionsHandle.new
         create_partitions_handle[:pending] = true
-        create_partitions_handle[:response] = -1
+        create_partitions_handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
         CreatePartitionsHandle.register(create_partitions_handle)
         admin_options_ptr = Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATEPARTITIONS)
         Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, create_partitions_handle.to_ptr)

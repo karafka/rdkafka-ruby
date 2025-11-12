@@ -142,7 +142,7 @@ module Rdkafka
       @native_kafka.with_inner do |inner|
         response_ptr = Rdkafka::Bindings.rd_kafka_init_transactions(inner, -1)
 
-        Rdkafka::RdkafkaError.validate!(response_ptr) || true
+        Rdkafka::RdkafkaError.validate!(response_ptr, client_ptr: inner) || true
       end
     end
 
@@ -152,7 +152,7 @@ module Rdkafka
       @native_kafka.with_inner do |inner|
         response_ptr = Rdkafka::Bindings.rd_kafka_begin_transaction(inner)
 
-        Rdkafka::RdkafkaError.validate!(response_ptr) || true
+        Rdkafka::RdkafkaError.validate!(response_ptr, client_ptr: inner) || true
       end
     end
 
@@ -162,7 +162,7 @@ module Rdkafka
       @native_kafka.with_inner do |inner|
         response_ptr = Rdkafka::Bindings.rd_kafka_commit_transaction(inner, timeout_ms)
 
-        Rdkafka::RdkafkaError.validate!(response_ptr) || true
+        Rdkafka::RdkafkaError.validate!(response_ptr, client_ptr: inner) || true
       end
     end
 
@@ -171,7 +171,7 @@ module Rdkafka
 
       @native_kafka.with_inner do |inner|
         response_ptr = Rdkafka::Bindings.rd_kafka_abort_transaction(inner, timeout_ms)
-        Rdkafka::RdkafkaError.validate!(response_ptr) || true
+        Rdkafka::RdkafkaError.validate!(response_ptr, client_ptr: inner) || true
       end
     end
 
@@ -192,7 +192,7 @@ module Rdkafka
       @native_kafka.with_inner do |inner|
         response_ptr = Bindings.rd_kafka_send_offsets_to_transaction(inner, native_tpl, cgmetadata, timeout_ms)
 
-        Rdkafka::RdkafkaError.validate!(response_ptr)
+        Rdkafka::RdkafkaError.validate!(response_ptr, client_ptr: inner)
       end
     ensure
       if cgmetadata && !cgmetadata.null?
@@ -266,7 +266,7 @@ module Rdkafka
           Bindings::RD_KAFKA_PURGE_F_QUEUE | Bindings::RD_KAFKA_PURGE_F_INFLIGHT
         )
 
-        Rdkafka::RdkafkaError.validate!(response)
+        Rdkafka::RdkafkaError.validate!(response, client_ptr: inner)
       end
 
       # Wait for the purge to affect everything
@@ -278,7 +278,7 @@ module Rdkafka
     # Partition count for a given topic.
     #
     # @param topic [String] The topic name.
-    # @return [Integer] partition count for a given topic or `-1` if it could not be obtained.
+    # @return [Integer] partition count for a given topic or `RD_KAFKA_PARTITION_UA (-1)` if it could not be obtained.
     #
     # @note If 'allow.auto.create.topics' is set to true in the broker, the topic will be
     #   auto-created after returning nil.
@@ -299,7 +299,7 @@ module Rdkafka
           topic_metadata = ::Rdkafka::Metadata.new(inner, topic).topics&.first
         end
 
-        topic_metadata ? topic_metadata[:partition_count] : -1
+        topic_metadata ? topic_metadata[:partition_count] : Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
       end
     rescue Rdkafka::RdkafkaError => e
       # If the topic does not exist, it will be created or if not allowed another error will be
@@ -380,9 +380,9 @@ module Rdkafka
           selected_partitioner) if partition_count.positive?
       end
 
-      # If partition is nil, use -1 to let librdafka set the partition randomly or
+      # If partition is nil, use RD_KAFKA_PARTITION_UA to let librdafka set the partition randomly or
       # based on the key when present.
-      partition ||= -1
+      partition ||= Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
 
       # If timestamp is nil use 0 and let Kafka set one. If an integer or time
       # use it.
@@ -400,9 +400,9 @@ module Rdkafka
       delivery_handle.label = label
       delivery_handle.topic = topic
       delivery_handle[:pending] = true
-      delivery_handle[:response] = -1
-      delivery_handle[:partition] = -1
-      delivery_handle[:offset] = -1
+      delivery_handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
+      delivery_handle[:partition] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
+      delivery_handle[:offset] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
       DeliveryHandle.register(delivery_handle)
 
       args = [
@@ -454,9 +454,12 @@ module Rdkafka
       end
 
       # Raise error if the produce call was not successful
-      if response != 0
+      if response != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
         DeliveryHandle.remove(delivery_handle.to_ptr.address)
-        Rdkafka::RdkafkaError.validate!(response)
+
+        @native_kafka.with_inner do |inner|
+          Rdkafka::RdkafkaError.validate!(response, client_ptr: inner)
+        end
       end
 
       delivery_handle

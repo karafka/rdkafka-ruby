@@ -109,7 +109,7 @@ module Rdkafka
         native_tpl[:cnt].times do |i|
           ptr = native_tpl[:elems] + (i * Rdkafka::Bindings::TopicPartition.size)
           elem = Rdkafka::Bindings::TopicPartition.new(ptr)
-          if elem[:partition] == -1
+          if elem[:partition] == Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
             data[elem[:topic]] = nil
           else
             partitions = data[elem[:topic]] || []

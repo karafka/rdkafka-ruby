@@ -33,7 +33,7 @@ module Rdkafka
       def to_s
         message = "<Partition #{partition}"
         message += " offset=#{offset}" if offset
-        message += " err=#{err}" if err != 0
+        message += " err=#{err}" if err != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
         message += " metadata=#{metadata}" if metadata != nil
         message += ">"
         message

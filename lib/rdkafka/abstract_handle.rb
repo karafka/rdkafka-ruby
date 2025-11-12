@@ -77,7 +77,7 @@ module Rdkafka
                 "Waiting for #{operation_name} timed out after #{max_wait_timeout} seconds"
               )
             end
-          elsif self[:response] != 0 && raise_response_error
+          elsif self[:response] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR && raise_response_error
             raise_error
           else
             return create_result

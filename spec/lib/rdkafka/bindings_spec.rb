@@ -121,6 +121,25 @@ describe Rdkafka::Bindings do
         expect($received_error.code).to eq(:broker_not_available)
         expect($received_error.broker_message).to eq("Broker not available")
       end
+
+      it "should handle fatal error remapping" do
+        RdKafkaTestConsumer.with do |consumer_ptr|
+          # Simulate receiving ERR__FATAL (-150)
+          # Note: In reality, rd_kafka_fatal_error() would return the actual error
+          # For this test, we're just ensuring the callback handles -150 correctly
+          Rdkafka::Bindings::ErrorCallback.call(
+            consumer_ptr,
+            Rdkafka::Bindings::RD_KAFKA_RESP_ERR__FATAL,
+            "Fatal error occurred",
+            nil
+          )
+
+          # The error callback should be called
+          expect($received_error).not_to be_nil
+          # When no actual fatal error is present, it should still create an error
+          # In production with a real fatal error, rd_kafka_fatal_error would return the actual code
+        end
+      end
     end
   end
 

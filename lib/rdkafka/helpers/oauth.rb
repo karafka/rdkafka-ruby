@@ -26,7 +26,7 @@ module Rdkafka
           extensions_ptr&.free
         end
 
-        return response if response.zero?
+        return response if response == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
 
         oauthbearer_set_token_failure("Failed to set token: #{error_buffer.read_string}")
 

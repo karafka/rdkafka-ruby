@@ -25,7 +25,7 @@ module Rdkafka
 
       # @return [DeliveryReport] a report on the delivery of the message
       def create_result
-        if self[:response] == 0
+        if self[:response] == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
           DeliveryReport.new(
             self[:partition],
             self[:offset],

@@ -76,7 +76,7 @@ module Rdkafka
         rd_kafka_error_pointer = Rdkafka::Bindings.rd_kafka_DeleteAcls_result_response_error(acl_result_pointer)
         @result_error = Rdkafka::Bindings.rd_kafka_error_code(rd_kafka_error_pointer)
         @error_string = Rdkafka::Bindings.rd_kafka_error_string(rd_kafka_error_pointer)
-        if @result_error == 0
+        if @result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
            # Get the number of matching acls
            pointer_to_size_t = FFI::MemoryPointer.new(:int32)
            @matching_acls = Rdkafka::Bindings.rd_kafka_DeleteAcls_result_response_matching_acls(acl_result_pointer, pointer_to_size_t)
@@ -102,7 +102,7 @@ module Rdkafka
         @matching_acls=[]
         @result_error = Rdkafka::Bindings.rd_kafka_event_error(event_ptr)
         @error_string = Rdkafka::Bindings.rd_kafka_event_error_string(event_ptr)
-        if @result_error == 0
+        if @result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
           acl_describe_result = Rdkafka::Bindings.rd_kafka_event_DescribeAcls_result(event_ptr)
           # Get the number of matching acls
           pointer_to_size_t = FFI::MemoryPointer.new(:int32)
@@ -120,7 +120,7 @@ module Rdkafka
         @result_error = Rdkafka::Bindings.rd_kafka_event_error(event_ptr)
         @error_string = Rdkafka::Bindings.rd_kafka_event_error_string(event_ptr)
 
-        if @result_error == 0
+        if @result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
           configs_describe_result = Rdkafka::Bindings.rd_kafka_event_DescribeConfigs_result(event_ptr)
           # Get the number of matching acls
           pointer_to_size_t = FFI::MemoryPointer.new(:int32)
@@ -138,7 +138,7 @@ module Rdkafka
         @result_error = Rdkafka::Bindings.rd_kafka_event_error(event_ptr)
         @error_string = Rdkafka::Bindings.rd_kafka_event_error_string(event_ptr)
 
-        if @result_error == 0
+        if @result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
           incremental_alter_result = Rdkafka::Bindings.rd_kafka_event_IncrementalAlterConfigs_result(event_ptr)
           # Get the number of matching acls
           pointer_to_size_t = FFI::MemoryPointer.new(:int32)
@@ -202,7 +202,7 @@ module Rdkafka
           describe_configs_handle[:response_string] = describe_configs.error_string
           describe_configs_handle[:pending] = false
 
-          if describe_configs.result_error == 0
+          if describe_configs.result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
             describe_configs_handle[:config_entries] = describe_configs.results
             describe_configs_handle[:entry_count] = describe_configs.results_count
           end
@@ -220,7 +220,7 @@ module Rdkafka
           incremental_alter_handle[:response_string] = incremental_alter.error_string
           incremental_alter_handle[:pending] = false
 
-          if incremental_alter.result_error == 0
+          if incremental_alter.result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
             incremental_alter_handle[:config_entries] = incremental_alter.results
             incremental_alter_handle[:entry_count] = incremental_alter.results_count
           end
@@ -313,7 +313,7 @@ module Rdkafka
           delete_acl_handle[:response] = delete_acl_results[0].result_error
           delete_acl_handle[:response_string] = delete_acl_results[0].error_string
 
-          if delete_acl_results[0].result_error == 0
+          if delete_acl_results[0].result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
             delete_acl_handle[:matching_acls] = delete_acl_results[0].matching_acls
             delete_acl_handle[:matching_acls_count] = delete_acl_results[0].matching_acls_count
           end
@@ -330,7 +330,7 @@ module Rdkafka
           describe_acl_handle[:response] = describe_acl.result_error
           describe_acl_handle[:response_string] = describe_acl.error_string
 
-          if describe_acl.result_error == 0
+          if describe_acl.result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
             describe_acl_handle[:acls] = describe_acl.matching_acls
             describe_acl_handle[:acls_count] = describe_acl.matching_acls_count
           end

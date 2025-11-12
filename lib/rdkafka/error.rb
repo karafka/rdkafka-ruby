@@ -238,4 +238,7 @@ module Rdkafka
       super("Illegal call to a closed inner librdkafka instance")
     end
   end
+
+  # Error class for librdkafka library loading failures (e.g., glibc compatibility issues).
+  class LibraryLoadError < BaseError; end
 end

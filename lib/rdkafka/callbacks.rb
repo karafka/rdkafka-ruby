@@ -28,7 +28,7 @@ module Rdkafka
         native_error = Rdkafka::Bindings.rd_kafka_group_result_error(group_result_pointer)
 
         if native_error.null?
-          @result_error = 0
+          @result_error = Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
           @error_string = FFI::Pointer::NULL
         else
           @result_error = native_error[:code]

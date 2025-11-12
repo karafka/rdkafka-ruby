@@ -303,9 +303,9 @@ module Rdkafka
       end
     rescue Rdkafka::RdkafkaError => e
       # If the topic does not exist, it will be created or if not allowed another error will be
-      # raised. We here return -1 so this can happen without early error happening on metadata
-      # discovery.
-      return -1 if e.code == :unknown_topic_or_part
+      # raised. We here return RD_KAFKA_PARTITION_UA so this can happen without early error
+      # happening on metadata discovery.
+      return Rdkafka::Bindings::RD_KAFKA_PARTITION_UA if e.code == :unknown_topic_or_part
 
       raise(e)
     end

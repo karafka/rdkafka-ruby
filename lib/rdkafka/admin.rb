@@ -149,7 +149,7 @@ module Rdkafka
       # Create and register the handle we will return to the caller
       create_topic_handle = CreateTopicHandle.new
       create_topic_handle[:pending] = true
-      create_topic_handle[:response] = -1
+      create_topic_handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
       CreateTopicHandle.register(create_topic_handle)
       admin_options_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATETOPICS)
@@ -202,7 +202,7 @@ module Rdkafka
       # Create and register the handle we will return to the caller
       delete_groups_handle = DeleteGroupsHandle.new
       delete_groups_handle[:pending] = true
-      delete_groups_handle[:response] = -1
+      delete_groups_handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
       DeleteGroupsHandle.register(delete_groups_handle)
       admin_options_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DELETETOPICS)
@@ -259,7 +259,7 @@ module Rdkafka
       # Create and register the handle we will return to the caller
       delete_topic_handle = DeleteTopicHandle.new
       delete_topic_handle[:pending] = true
-      delete_topic_handle[:response] = -1
+      delete_topic_handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
       DeleteTopicHandle.register(delete_topic_handle)
       admin_options_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DELETETOPICS)
@@ -427,7 +427,7 @@ module Rdkafka
       # Create and register the handle that we will return to the caller
       create_acl_handle = CreateAclHandle.new
       create_acl_handle[:pending] = true
-      create_acl_handle[:response] = -1
+      create_acl_handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
       CreateAclHandle.register(create_acl_handle)
 
       admin_options_ptr = @native_kafka.with_inner do |inner|
@@ -534,7 +534,7 @@ module Rdkafka
       # Create and register the handle that we will return to the caller
       delete_acl_handle = DeleteAclHandle.new
       delete_acl_handle[:pending] = true
-      delete_acl_handle[:response] = -1
+      delete_acl_handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
       DeleteAclHandle.register(delete_acl_handle)
 
       admin_options_ptr = @native_kafka.with_inner do |inner|
@@ -634,7 +634,7 @@ module Rdkafka
       # Create and register the handle that we will return to the caller
       describe_acl_handle = DescribeAclHandle.new
       describe_acl_handle[:pending] = true
-      describe_acl_handle[:response] = -1
+      describe_acl_handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
       DescribeAclHandle.register(describe_acl_handle)
 
       admin_options_ptr = @native_kafka.with_inner do |inner|
@@ -680,7 +680,7 @@ module Rdkafka
 
       handle = DescribeConfigsHandle.new
       handle[:pending] = true
-      handle[:response] = -1
+      handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
 
       queue_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
@@ -753,7 +753,7 @@ module Rdkafka
 
       handle = IncrementalAlterConfigsHandle.new
       handle[:pending] = true
-      handle[:response] = -1
+      handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
 
       queue_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_queue_get_background(inner)

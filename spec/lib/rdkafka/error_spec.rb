@@ -258,3 +258,14 @@ describe Rdkafka::RdkafkaError do
     end
   end
 end
+
+describe Rdkafka::LibraryLoadError do
+  it "should be a subclass of BaseError" do
+    expect(Rdkafka::LibraryLoadError.new).to be_a(Rdkafka::BaseError)
+  end
+
+  it "should accept a message" do
+    error = Rdkafka::LibraryLoadError.new("test message")
+    expect(error.message).to eq("test message")
+  end
+end

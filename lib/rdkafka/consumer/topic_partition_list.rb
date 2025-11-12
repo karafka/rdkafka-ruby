@@ -57,7 +57,7 @@ module Rdkafka
           if partitions.is_a? Integer
             partitions = (0..partitions - 1)
           end
-          @data[topic.to_s] = partitions.map { |p| Partition.new(p, nil, 0) }
+          @data[topic.to_s] = partitions.map { |p| Partition.new(p, nil, Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR) }
         end
       end
 
@@ -178,7 +178,7 @@ module Rdkafka
             Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
               tpl,
               topic,
-              -1
+              Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
             )
           end
         end

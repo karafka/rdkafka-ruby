@@ -69,15 +69,12 @@ module Rdkafka
     # Unassigned partition
     RD_KAFKA_PARTITION_UA = -1
     # String representation of unassigned partition (used in stats hash keys)
-    RD_KAFKA_PARTITION_UA_STR = '-1'.freeze
+    RD_KAFKA_PARTITION_UA_STR = RD_KAFKA_PARTITION_UA.to_s.freeze
 
     RD_KAFKA_OFFSET_END       = -1
     RD_KAFKA_OFFSET_BEGINNING = -2
     RD_KAFKA_OFFSET_STORED    = -1000
     RD_KAFKA_OFFSET_INVALID   = -1001
-
-    RD_KAFKA_PARTITION_UA     = -1
-    RD_KAFKA_PARTITION_UA_STR = RD_KAFKA_PARTITION_UA.to_s.freeze
 
     EMPTY_HASH = {}.freeze
 

@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.23.1 (Unreleased)
+## 0.23.1 (2025-11-14)
 - **[Feature]** Add integrated fatal error handling in `RdkafkaError.validate!` - automatically detects and handles fatal errors (-150) with single entrypoint API.
 - [Enhancement] Add optional `client_ptr` parameter to `validate!` for automatic fatal error remapping to actual underlying error codes.
 - [Enhancement] Update all Producer and Consumer `validate!` calls to provide `client_ptr` for comprehensive fatal error handling.

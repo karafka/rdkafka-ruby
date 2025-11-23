@@ -7,7 +7,7 @@
 #
 # WHY COMPLEMENTARY TESTING:
 # - Precompiled binary testing is stable (rarely breaks from code changes)
-# - Edge Ruby versions (3.5-preview, JRuby) need testing but shouldn't block PRs
+# - Edge Ruby versions (4.0-preview, JRuby) need testing but shouldn't block PRs
 # - Integration specs test OS library compatibility, which changes with system updates
 # - These tests catch regressions from external changes (system libs, Ruby updates)
 # - Running every 3 days to prevent these slower tests from blocking PR velocity
@@ -21,7 +21,7 @@
 # - Validates that removing build tools doesn't break precompiled usage
 #
 # EXTENDED COMPATIBILITY TESTING:
-# - Edge case Ruby versions: 3.5.0-preview1, JRuby-10.0
+# - Edge case Ruby versions: 4.0.0-preview2, JRuby-10.0
 # - Integration specs testing system library compatibility
 # - Both compilation and precompiled flows for comprehensive coverage
 # - Cross-platform compatibility validation
@@ -125,7 +125,7 @@ jobs:
       fail-fast: false
       matrix:
         ruby:
-          - '3.5.0-preview1'
+          - '4.0.0-preview2'
           - '3.4'
           - '3.3'
           - '3.2'
@@ -209,7 +209,7 @@ jobs:
       fail-fast: false
       matrix:
         ruby:
-          - '3.5.0-preview1'
+          - '4.0.0-preview2'
           - '3.4'
           - '3.3'
           - '3.2'

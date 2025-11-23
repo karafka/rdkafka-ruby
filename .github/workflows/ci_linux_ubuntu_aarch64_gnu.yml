@@ -58,7 +58,7 @@ jobs:
       fail-fast: false
       matrix:
         ruby:
-          - '4.0.0-preview2'
+          - '3.5.0-preview1'
           - '3.4'
           - '3.3'
           - '3.2'
@@ -187,7 +187,7 @@ jobs:
       fail-fast: false
       matrix:
         ruby:
-          - '4.0.0-preview2'
+          - '3.5.0-preview1'
           - '3.4'
           - '3.3'
           - '3.2'

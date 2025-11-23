@@ -26,7 +26,7 @@ jobs:
       fail-fast: false
       matrix:
         ruby:
-          - '3.5.0-preview1'
+          - '4.0.0-preview2'
           - '3.4'
           - '3.3'
           - '3.2'
@@ -38,7 +38,7 @@ jobs:
             macos-version: 'macos-15'
             coverage: 'true'
         exclude:
-          - ruby: '3.5.0-preview1'
+          - ruby: '4.0.0-preview2'
             macos-version: 'macos-14'
     runs-on: ${{ matrix.macos-version }}
     steps:
@@ -169,7 +169,7 @@ jobs:
       fail-fast: false
       matrix:
         ruby:
-          - '3.5.0-preview1'
+          - '4.0.0-preview2'
           - '3.4'
           - '3.3'
           - '3.2'
@@ -181,7 +181,7 @@ jobs:
             macos-version: 'macos-15'
             coverage: 'true'
         exclude:
-          - ruby: '3.5.0-preview1'
+          - ruby: '4.0.0-preview2'
             macos-version: 'macos-14'
     runs-on: ${{ matrix.macos-version }}
     steps:

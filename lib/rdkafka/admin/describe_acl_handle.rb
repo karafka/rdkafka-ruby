@@ -2,6 +2,7 @@
 
 module Rdkafka
   class Admin
+    # Handle for describe ACL operation
     class DescribeAclHandle < AbstractHandle
       layout :pending, :bool,
              :response, :int,
@@ -19,6 +20,8 @@ module Rdkafka
         DescribeAclReport.new(acls: self[:acls], acls_count: self[:acls_count])
       end
 
+      # Raises an error if the operation failed
+      # @raise [RdkafkaError]
       def raise_error
         raise RdkafkaError.new(
             self[:response],

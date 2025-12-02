@@ -14,6 +14,7 @@ module Rdkafka
       # We keep it for backwards compatibility but it was changed for the consistency
       alias matching_acl_pattern_type matching_acl_resource_pattern_type
 
+      # @param matching_acl [FFI::Pointer] pointer to the ACL binding struct
       def initialize(matching_acl)
         rd_kafka_error_pointer = Rdkafka::Bindings.rd_kafka_AclBinding_error(matching_acl)
         @result_error = Rdkafka::Bindings.rd_kafka_error_code(rd_kafka_error_pointer)

@@ -71,8 +71,7 @@ module Rdkafka
     # You can configure if and how often this happens using `statistics.interval.ms`.
     # The callback is called with a hash that's documented here: https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
     #
-    # @param callback [Proc, #call] The callback
-    #
+    # @param callback [Proc, #call, nil] callable object or nil to clear
     # @return [nil]
     def self.statistics_callback=(callback)
       raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call) || callback == nil
@@ -90,8 +89,7 @@ module Rdkafka
     # If this callback is not set, global errors such as brokers becoming unavailable will only be sent to the logger, as defined by librdkafka.
     # The callback is called with an instance of RdKafka::Error.
     #
-    # @param callback [Proc, #call] The callback
-    #
+    # @param callback [Proc, #call] callable object to handle errors
     # @return [nil]
     def self.error_callback=(callback)
       raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call)
@@ -108,8 +106,7 @@ module Rdkafka
     # Sets the SASL/OAUTHBEARER token refresh callback.
     # This callback will be triggered when it is time to refresh the client's OAUTHBEARER token
     #
-    # @param callback [Proc, #call] The callback
-    #
+    # @param callback [Proc, #call, nil] callable object to handle token refresh or nil to clear
     # @return [nil]
     def self.oauthbearer_token_refresh_callback=(callback)
       raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call) || callback == nil
@@ -345,6 +342,11 @@ module Rdkafka
       end
     end
 
+    # Creates a native Kafka handle
+    # @param config [FFI::Pointer] pointer to the native config
+    # @param type [Symbol] type of client (:rd_kafka_producer or :rd_kafka_consumer)
+    # @return [FFI::Pointer] pointer to the native Kafka handle
+    # @private
     def native_kafka(config, type)
       error_buffer = FFI::MemoryPointer.from_string(" " * 256)
       handle = Rdkafka::Bindings.rd_kafka_new(

@@ -298,6 +298,9 @@ module Rdkafka
 
     # This method is only intended to be used to create a client,
     # using it in another way will leak memory.
+    #
+    # @param opaque [Object, nil] optional opaque pointer for callbacks
+    # @return [FFI::Pointer] native rdkafka configuration pointer
     def native_config(opaque = nil)
       Rdkafka::Bindings.rd_kafka_conf_new.tap do |config|
         # Create config

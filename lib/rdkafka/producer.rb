@@ -14,10 +14,9 @@ module Rdkafka
     # then. Since the partitions count can only grow and should be same for all consumers and
     # producers, we can use a global cache as long as we ensure that updates only move up.
     #
+    # @return [Rdkafka::Producer::PartitionsCountCache]
     # @note It is critical to remember, that not all users may have statistics callbacks enabled,
     #   hence we should not make assumption that this cache is always updated from the stats.
-    #
-    # @return [Rdkafka::Producer::PartitionsCountCache]
     def self.partitions_count_cache
       @@partitions_count_cache
     end
@@ -64,12 +63,13 @@ module Rdkafka
     end
 
     # Sets alternative set of configuration details that can be set per topic
-    # @note It is not allowed to re-set the same topic config twice because of the underlying
-    #   librdkafka caching
+    #
     # @param topic [String] The topic name
     # @param config [Hash] config we want to use per topic basis
     # @param config_hash [Integer] hash of the config. We expect it here instead of computing it,
     #   because it is already computed during the retrieval attempt in the `#produce` flow.
+    # @note It is not allowed to re-set the same topic config twice because of the underlying
+    #   librdkafka caching
     def set_topic_config(topic, config, config_hash)
       # Ensure lock on topic reference just in case
       @native_kafka.with_inner do |inner|
@@ -125,8 +125,7 @@ module Rdkafka
     # Set a callback that will be called every time a message is successfully produced.
     # The callback is called with a {DeliveryReport} and {DeliveryHandle}
     #
-    # @param callback [Proc, #call] The callback
-    #
+    # @param callback [Proc, #call] callable object to handle delivery reports
     # @return [nil]
     def delivery_callback=(callback)
       raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call)
@@ -254,14 +253,15 @@ module Rdkafka
     # When a timestamp is provided this is used instead of the auto-generated timestamp.
     #
     # @param topic [String] The topic to produce to
-    # @param payload [String,nil] The message's payload
-    # @param key [String, nil] The message's key
-    # @param partition [Integer,nil] Optional partition to produce to
+    # @param payload [String, nil]
+    # @param key [String, nil]
+    # @param partition [Integer, nil] Optional partition to produce to
     # @param partition_key [String, nil] Optional partition key based on which partition assignment can happen
-    # @param timestamp [Time,Integer,nil] Optional timestamp of this message. Integer timestamp is in milliseconds since Jan 1 1970.
-    # @param headers [Hash<String,String|Array<String>>] Optional message headers. Values can be either a single string or an array of strings to support duplicate headers per KIP-82
+    # @param timestamp [Time, Integer, nil] Optional timestamp of this message. Integer timestamp is in milliseconds since Jan 1 1970.
+    # @param headers [Hash{String => String, Array<String>}] Optional message headers. Values can be either a single string or an array of strings to support duplicate headers per KIP-82
     # @param label [Object, nil] a label that can be assigned when producing a message that will be part of the delivery handle and the delivery report
     # @param topic_config [Hash] topic config for given message dispatch. Allows to send messages to topics with different configuration
+    # @param partitioner [String] name of the partitioner to use
     #
     # @return [DeliveryHandle] Delivery handle that can be used to wait for the result of producing this message
     #

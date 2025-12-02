@@ -40,6 +40,7 @@ module Rdkafka
       end
 
       # Whether another partition is equal to this
+      # @param other [Object] object to compare with
       # @return [Boolean]
       def ==(other)
         self.class == other.class &&

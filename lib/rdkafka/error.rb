@@ -55,6 +55,8 @@ module Rdkafka
     end
 
     # Error comparison
+    # @param another_error [Object] object to compare with
+    # @return [Boolean]
     def ==(another_error)
        another_error.is_a?(self.class) && (self.to_s == another_error.to_s)
     end
@@ -74,6 +76,7 @@ module Rdkafka
 
   # Error class for public consumer method calls on a closed consumer.
   class ClosedConsumerError < BaseError
+    # @param method [Symbol] the method that was called
     def initialize(method)
       super("Illegal call to #{method.to_s} on a closed consumer")
     end
@@ -81,18 +84,21 @@ module Rdkafka
 
   # Error class for public producer method calls on a closed producer.
   class ClosedProducerError < BaseError
+    # @param method [Symbol] the method that was called
     def initialize(method)
       super("Illegal call to #{method.to_s} on a closed producer")
     end
   end
 
-  # Error class for public consumer method calls on a closed admin.
+  # Error class for public admin method calls on a closed admin.
   class ClosedAdminError < BaseError
+    # @param method [Symbol] the method that was called
     def initialize(method)
       super("Illegal call to #{method.to_s} on a closed admin")
     end
   end
 
+  # Error class for calls on a closed inner librdkafka instance.
   class ClosedInnerError < BaseError
     def initialize
       super("Illegal call to a closed inner librdkafka instance")

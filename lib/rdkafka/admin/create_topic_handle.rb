@@ -2,6 +2,7 @@
 
 module Rdkafka
   class Admin
+    # Handle for create topic operation
     class CreateTopicHandle < AbstractHandle
       layout :pending, :bool,
              :response, :int,
@@ -18,6 +19,8 @@ module Rdkafka
         CreateTopicReport.new(self[:error_string], self[:result_name])
       end
 
+      # Raises an error if the operation failed
+      # @raise [RdkafkaError]
       def raise_error
         raise RdkafkaError.new(
             self[:response],

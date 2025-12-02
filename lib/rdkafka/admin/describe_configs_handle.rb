@@ -2,6 +2,7 @@
 
 module Rdkafka
   class Admin
+    # Handle for describe configs operation
     class DescribeConfigsHandle < AbstractHandle
       layout :pending, :bool,
              :response, :int,
@@ -22,6 +23,8 @@ module Rdkafka
         )
       end
 
+      # Raises an error if the operation failed
+      # @raise [RdkafkaError]
       def raise_error
         raise RdkafkaError.new(
           self[:response],

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module Rdkafka
+  # Callback handlers for librdkafka events
+  # @private
   module Callbacks
     # Extracts attributes of a rd_kafka_topic_result_t
     #
@@ -22,8 +24,13 @@ module Rdkafka
       end
     end
 
+    # Extracts attributes of rd_kafka_group_result_t
+    #
+    # @private
     class GroupResult
       attr_reader :result_error, :error_string, :result_name
+
+      # @param group_result_pointer [FFI::Pointer] pointer to the group result struct
       def initialize(group_result_pointer)
         native_error = Rdkafka::Bindings.rd_kafka_group_result_error(group_result_pointer)
 
@@ -37,6 +44,10 @@ module Rdkafka
 
         @result_name = Rdkafka::Bindings.rd_kafka_group_result_name(group_result_pointer)
       end
+
+      # @param count [Integer] number of results
+      # @param array_pointer [FFI::Pointer] pointer to the results array
+      # @return [Array<GroupResult>] array of group results
       def self.create_group_results_from_array(count, array_pointer)
         (1..count).map do |index|
           result_pointer = (array_pointer + (index - 1)).read_pointer
@@ -112,9 +123,13 @@ module Rdkafka
       end
     end
 
+    # Extracts attributes of rd_kafka_DescribeConfigs_result_t
+    #
+    # @private
     class DescribeConfigsResult
       attr_reader :result_error, :error_string, :results, :results_count
 
+      # @param event_ptr [FFI::Pointer] pointer to the event
       def initialize(event_ptr)
         @results=[]
         @result_error = Rdkafka::Bindings.rd_kafka_event_error(event_ptr)
@@ -130,9 +145,13 @@ module Rdkafka
       end
     end
 
+    # Extracts attributes of rd_kafka_IncrementalAlterConfigs_result_t
+    #
+    # @private
     class IncrementalAlterConfigsResult
       attr_reader :result_error, :error_string, :results, :results_count
 
+      # @param event_ptr [FFI::Pointer] pointer to the event
       def initialize(event_ptr)
         @results=[]
         @result_error = Rdkafka::Bindings.rd_kafka_event_error(event_ptr)
@@ -373,7 +392,9 @@ module Rdkafka
       end
     end
 
+    # @private
     @@mutex = Mutex.new
+    # @private
     @@current_pid = nil
 
     class << self

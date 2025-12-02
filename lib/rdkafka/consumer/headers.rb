@@ -4,6 +4,7 @@ module Rdkafka
   class Consumer
     # Interface to return headers for a consumer message
     module Headers
+      # Empty frozen hash used when there are no headers
       EMPTY_HEADERS = {}.freeze
 
       # Reads a librdkafka native message's headers and returns them as a Ruby Hash

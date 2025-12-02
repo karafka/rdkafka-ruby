@@ -2,6 +2,7 @@
 
 module Rdkafka
   class Admin
+    # Handle for incremental alter configs operation
     class IncrementalAlterConfigsHandle < AbstractHandle
       layout :pending, :bool,
              :response, :int,
@@ -22,6 +23,8 @@ module Rdkafka
         )
       end
 
+      # Raises an error if the operation failed
+      # @raise [RdkafkaError]
       def raise_error
         raise RdkafkaError.new(
           self[:response],

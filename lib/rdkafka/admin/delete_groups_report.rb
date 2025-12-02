@@ -2,6 +2,7 @@
 
 module Rdkafka
   class Admin
+    # Report for delete groups operation result
     class DeleteGroupsReport
       # Any error message generated from the DeleteTopic
       # @return [String]
@@ -11,6 +12,8 @@ module Rdkafka
       # @return [String]
       attr_reader :result_name
 
+      # @param error_string [FFI::Pointer] pointer to error string
+      # @param result_name [FFI::Pointer] pointer to group name
       def initialize(error_string, result_name)
         if error_string != FFI::Pointer::NULL
           @error_string = error_string.read_string

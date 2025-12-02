@@ -2,6 +2,7 @@
 
 module Rdkafka
   class Admin
+    # Handle for create ACL operation
     class CreateAclHandle < AbstractHandle
       layout :pending, :bool,
              :response, :int,
@@ -17,6 +18,8 @@ module Rdkafka
         CreateAclReport.new(rdkafka_response: self[:response], rdkafka_response_string: self[:response_string])
       end
 
+      # Raises an error if the operation failed
+      # @raise [RdkafkaError]
       def raise_error
         raise RdkafkaError.new(
             self[:response],

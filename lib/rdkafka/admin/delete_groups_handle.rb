@@ -2,6 +2,7 @@
 
 module Rdkafka
   class Admin
+    # Handle for delete groups operation
     class DeleteGroupsHandle < AbstractHandle
       layout :pending, :bool, # TODO: ???
              :response, :int,
@@ -13,10 +14,14 @@ module Rdkafka
         "delete groups"
       end
 
+      # Creates the result report
+      # @return [DeleteGroupsReport]
       def create_result
         DeleteGroupsReport.new(self[:error_string], self[:result_name])
       end
 
+      # Raises an error if the operation failed
+      # @raise [RdkafkaError]
       def raise_error
         raise RdkafkaError.new(
             self[:response],

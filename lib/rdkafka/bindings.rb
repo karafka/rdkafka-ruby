@@ -14,6 +14,8 @@ module Rdkafka
   module Bindings
     extend FFI::Library
 
+    # Returns the library extension based on the host OS
+    # @return [String] 'dylib' on macOS, 'so' on other systems
     def self.lib_extension
       if RbConfig::CONFIG['host_os'] =~ /darwin/
         'dylib'
@@ -72,6 +74,7 @@ module Rdkafka
 
     EMPTY_HASH = {}.freeze
 
+    # FFI struct for size_t pointer wrapper
     class SizePtr < FFI::Struct
       layout :value, :size_t
     end
@@ -95,8 +98,7 @@ module Rdkafka
     attach_function :rd_kafka_metadata, [:pointer, :int, :pointer, :pointer, :int], :int, blocking: true
     attach_function :rd_kafka_metadata_destroy, [:pointer], :void, blocking: true
 
-    # Message struct
-
+    # FFI struct representing a Kafka message (rd_kafka_message_t)
     class Message < FFI::Struct
       layout :err, :int,
              :rkt, :pointer,
@@ -115,8 +117,7 @@ module Rdkafka
     attach_function :rd_kafka_topic_destroy, [:pointer], :pointer
     attach_function :rd_kafka_topic_name, [:pointer], :string
 
-    # TopicPartition ad TopicPartitionList structs
-
+    # FFI struct representing a topic partition (rd_kafka_topic_partition_t)
     class TopicPartition < FFI::Struct
       layout :topic, :string,
              :partition, :int32,
@@ -128,6 +129,7 @@ module Rdkafka
              :_private, :pointer
     end
 
+    # FFI struct representing a topic partition list (rd_kafka_topic_partition_list_t)
     class TopicPartitionList < FFI::Struct
       layout :cnt, :int,
              :size, :int,
@@ -140,12 +142,10 @@ module Rdkafka
     attach_function :rd_kafka_topic_partition_list_destroy, [:pointer], :void
     attach_function :rd_kafka_topic_partition_list_copy, [:pointer], :pointer
 
-    # Configs management
-    #
-    # Structs for management of configurations
-    # Each configuration is attached to a resource and one resource can have many configuration
-    # details. Each resource will also have separate errors results if obtaining configuration
-    # was not possible for any reason
+    # FFI struct representing a config resource (rd_kafka_ConfigResource_t)
+    # Structs for management of configurations. Each configuration is attached to a resource
+    # and one resource can have many configuration details. Each resource will also have
+    # separate errors results if obtaining configuration was not possible for any reason
     class ConfigResource < FFI::Struct
       layout :type, :int,
              :name, :string
@@ -182,7 +182,7 @@ module Rdkafka
     RD_KAFKA_ALTER_CONFIG_OP_TYPE_APPEND   = 2
     RD_KAFKA_ALTER_CONFIG_OP_TYPE_SUBTRACT = 3
 
-    # Errors
+    # FFI struct for error description (rd_kafka_err_desc)
     class NativeErrorDesc < FFI::Struct
       layout :code, :int,
              :name, :pointer,
@@ -425,13 +425,22 @@ module Rdkafka
     callback :delivery_cb, [:pointer, :pointer, :pointer], :void
     attach_function :rd_kafka_conf_set_dr_msg_cb, [:pointer, :delivery_cb], :void
 
-    # Partitioner
+    # Hash mapping partitioner names to their FFI function symbols
+    # @return [Hash{String => Symbol}]
     PARTITIONERS = %w(random consistent consistent_random murmur2 murmur2_random fnv1a fnv1a_random).each_with_object({}) do |name, hsh|
       method_name = "rd_kafka_msg_partitioner_#{name}".to_sym
       attach_function method_name, [:pointer, :pointer, :size_t, :int32, :pointer, :pointer], :int32
       hsh[name] = method_name
     end
 
+    # Calculates the partition for a message based on the partitioner
+    #
+    # @param topic_ptr [FFI::Pointer] pointer to the topic handle
+    # @param str [String] the partition key string
+    # @param partition_count [Integer, nil] number of partitions
+    # @param partitioner [String] name of the partitioner to use
+    # @return [Integer] partition number or RD_KAFKA_PARTITION_UA if unassigned
+    # @raise [Rdkafka::Config::ConfigError] when an unknown partitioner is specified
     def self.partitioner(topic_ptr, str, partition_count, partitioner = "consistent_random")
       # Return RD_KAFKA_PARTITION_UA(unassigned partition) when partition count is nil/zero.
       return RD_KAFKA_PARTITION_UA unless partition_count&.nonzero?
@@ -598,8 +607,8 @@ module Rdkafka
     attach_function :rd_kafka_AclBinding_error, [:pointer], :pointer
 
 
-    # Extracting data from group results
-    class NativeError < FFI::Struct # rd_kafka_error_t
+    # FFI struct for native error (rd_kafka_error_t)
+    class NativeError < FFI::Struct
       layout :code, :int32,
              :errstr, :pointer,
              :fatal, :u_int8_t,

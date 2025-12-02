@@ -1,6 +1,6 @@
 module Rdkafka
   module Helpers
-
+    # OAuth helper methods for setting and refreshing SASL/OAUTHBEARER tokens
     module OAuth
 
       # Set the OAuthBearer token
@@ -47,8 +47,11 @@ module Rdkafka
 
       private
 
-      # Convert extensions hash to FFI::MemoryPointer (const char **).
-      # Note: the returned pointers must be freed manually (autorelease = false).
+      # Convert extensions hash to FFI::MemoryPointer (`const char **`).
+      #
+      # @param extensions [Hash, nil] extension key-value pairs
+      # @return [Array(FFI::MemoryPointer, Array<FFI::MemoryPointer>)] array pointer and string pointers
+      # @note The returned pointers must be freed manually (autorelease = false).
       def map_extensions(extensions)
         return [nil, nil] if extensions.nil? || extensions.empty?
 
@@ -74,8 +77,11 @@ module Rdkafka
         [array_ptr, str_ptrs]
       end
 
-      # extension_size is the number of keys + values which should be a non-negative even number
-      # https://github.com/confluentinc/librdkafka/blob/master/src/rdkafka_sasl_oauthbearer.c#L327-L347
+      # Returns the extension size (number of keys + values).
+      #
+      # @param extensions [Hash, nil] extension key-value pairs
+      # @return [Integer] non-negative even number representing keys + values count
+      # @see https://github.com/confluentinc/librdkafka/blob/master/src/rdkafka_sasl_oauthbearer.c#L327-L347
       def extension_size(extensions)
         return 0 unless extensions
         extensions.size * 2

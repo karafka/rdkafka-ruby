@@ -33,6 +33,8 @@ module Rdkafka
       end
     end
 
+    # @return [Proc] finalizer proc for closing the consumer
+    # @private
     def finalizer
       ->(_) { close }
     end
@@ -338,7 +340,7 @@ module Rdkafka
     #
     # @param topic_partition_list [TopicPartitionList] The list to calculate lag for.
     # @param watermark_timeout_ms [Integer] The timeout for each query watermark call.
-    # @return [Hash<String, Hash<Integer, Integer>>] A hash containing all topics with the lag
+    # @return [Hash{String => Hash{Integer => Integer}}] A hash containing all topics with the lag
     #   per partition
     # @raise [RdkafkaError] When querying the broker fails.
     def lag(topic_partition_list, watermark_timeout_ms=1000)
@@ -465,9 +467,8 @@ module Rdkafka
     # Lookup offset for the given partitions by timestamp.
     #
     # @param list [TopicPartitionList] The TopicPartitionList with timestamps instead of offsets
-    #
+    # @param timeout_ms [Integer] timeout in milliseconds for the operation
     # @return [TopicPartitionList]
-    #
     # @raise [RdKafkaError] When the OffsetForTimes lookup fails
     def offsets_for_times(list, timeout_ms = 1000)
       closed_consumer_check(__method__)
@@ -609,7 +610,13 @@ module Rdkafka
       end
     end
 
-    # Deprecated. Please read the error message for more details.
+    # @deprecated This method has been removed due to data consistency concerns
+    # @param max_items [Integer] unused
+    # @param bytes_threshold [Numeric] unused
+    # @param timeout_ms [Integer] unused
+    # @param yield_on_error [Boolean] unused
+    # @param block [Proc] unused block
+    # @raise [NotImplementedError] Always raises as this method is no longer supported
     def each_batch(max_items: 100, bytes_threshold: Float::INFINITY, timeout_ms: 250, yield_on_error: false, &block)
       raise NotImplementedError, <<~ERROR
         `each_batch` has been removed due to data consistency concerns.
@@ -646,6 +653,9 @@ module Rdkafka
 
     private
 
+    # Checks if the consumer is closed and raises an error if so
+    # @param method [Symbol] the method being called
+    # @raise [ClosedConsumerError] when the consumer is closed
     def closed_consumer_check(method)
       raise Rdkafka::ClosedConsumerError.new(method) if closed?
     end

@@ -6,6 +6,7 @@ module Rdkafka
     class ConfigResourceBindingResult
       attr_reader :name, :type, :configs, :configs_count
 
+      # @param config_resource_ptr [FFI::Pointer] pointer to the config resource struct
       def initialize(config_resource_ptr)
         ffi_binding = Bindings::ConfigResource.new(config_resource_ptr)
 

@@ -2,12 +2,15 @@
 
 module Rdkafka
   class Admin
+    # Report for describe ACL operation result
     class DescribeAclReport
 
       # acls that exists in the cluster for the resource_type, resource_name and pattern_type filters provided in the request.
       # @return [Rdkafka::Bindings::AclBindingResult] array of matching acls.
       attr_reader :acls
 
+      # @param acls [FFI::Pointer] pointer to ACLs array
+      # @param acls_count [Integer] number of ACLs
       def initialize(acls:, acls_count:)
         @acls=[]
 

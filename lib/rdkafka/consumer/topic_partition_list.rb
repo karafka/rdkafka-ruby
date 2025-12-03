@@ -65,10 +65,8 @@ module Rdkafka
       # Calling this method multiple times for the same topic will overwrite the previous configuraton.
       #
       # @param topic [String] The topic's name
-      # @param partitions_with_offsets [Hash<Integer, Integer>] The topic's partitions and offsets
-      # @param partitions_with_offsets [Array<Consumer::Partition>] The topic's partitions with offsets
-      #   and metadata (if any)
-      #
+      # @param partitions_with_offsets [Hash{Integer => Integer}, Array<Consumer::Partition>] The topic's
+      #   partitions and offsets (Hash) or partitions with offsets and metadata (Array)
       # @return [nil]
       def add_topic_and_partitions_with_offsets(topic, partitions_with_offsets)
         @data[topic.to_s] = partitions_with_offsets.map do |p, o|
@@ -89,6 +87,9 @@ module Rdkafka
         "<TopicPartitionList: #{to_h}>"
       end
 
+      # Check equality with another TopicPartitionList
+      # @param other [TopicPartitionList] object to compare with
+      # @return [Boolean]
       def ==(other)
         self.to_h == other.to_h
       end

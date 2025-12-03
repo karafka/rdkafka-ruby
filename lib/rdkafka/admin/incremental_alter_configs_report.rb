@@ -2,9 +2,12 @@
 
 module Rdkafka
   class Admin
+    # Report for incremental alter configs operation result
     class IncrementalAlterConfigsReport
       attr_reader :resources
 
+      # @param config_entries [FFI::Pointer] pointer to config entries array
+      # @param entry_count [Integer] number of config entries
       def initialize(config_entries:, entry_count:)
         @resources=[]
 
@@ -37,6 +40,9 @@ module Rdkafka
 
       private
 
+      # Validates the config resource result and raises an error if invalid
+      # @param config_resource_result_ptr [FFI::Pointer] pointer to the config resource result
+      # @raise [RdkafkaError] when the config resource has an error
       def validate!(config_resource_result_ptr)
         RdkafkaError.validate!(
           Bindings.rd_kafka_ConfigResource_error(config_resource_result_ptr),

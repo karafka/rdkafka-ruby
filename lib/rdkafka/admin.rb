@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Rdkafka
+  # Admin client for Kafka administrative operations
   class Admin
     include Helpers::OAuth
 
@@ -8,7 +9,7 @@ module Rdkafka
       # Allows us to retrieve librdkafka errors with descriptions
       # Useful for debugging and building UIs, etc.
       #
-      # @return [Hash<Integer, Hash>] hash with errors mapped by code
+      # @return [Hash{Integer => Hash}] hash with errors mapped by code
       def describe_errors
         # Memory pointers for the array of structures and count
         p_error_descs = FFI::MemoryPointer.new(:pointer)
@@ -69,6 +70,8 @@ module Rdkafka
       end
     end
 
+    # @return [Proc] finalizer proc for closing the admin
+    # @private
     def finalizer
       ->(_) { close }
     end
@@ -100,9 +103,12 @@ module Rdkafka
 
     # Create a topic with the given partition count and replication factor
     #
+    # @param topic_name [String] name of the topic to create
+    # @param partition_count [Integer] number of partitions for the topic
+    # @param replication_factor [Integer] replication factor for the topic
+    # @param topic_config [Hash] optional topic configuration settings
     # @return [CreateTopicHandle] Create topic handle that can be used to wait for the result of
     #   creating the topic
-    #
     # @raise [ConfigError] When the partition count or replication factor are out of valid range
     # @raise [RdkafkaError] When the topic name is invalid or the topic already exists
     # @raise [RdkafkaError] When the topic configuration is invalid
@@ -178,6 +184,11 @@ module Rdkafka
       create_topic_handle
     end
 
+    # Deletes a consumer group
+    #
+    # @param group_id [String] the group id to delete
+    # @return [DeleteGroupsHandle] delete groups handle that can be used to wait for the result
+    # @raise [RdkafkaError] When deleting the group fails
     def delete_group(group_id)
       closed_admin_check(__method__)
 
@@ -233,6 +244,7 @@ module Rdkafka
 
     # Deletes the named topic
     #
+    # @param topic_name [String] name of the topic to delete
     # @return [DeleteTopicHandle] Delete topic handle that can be used to wait for the result of
     #   deleting the topic
     # @raise [RdkafkaError] When the topic name is invalid or the topic does not exist
@@ -290,14 +302,12 @@ module Rdkafka
 
     # Creates extra partitions for a given topic
     #
-    # @param topic_name [String]
+    # @param topic_name [String] name of the topic
     # @param partition_count [Integer] how many partitions we want to end up with for given topic
-    #
+    # @return [CreatePartitionsHandle] Create partitions handle that can be used to wait for the result
     # @raise [ConfigError] When the partition count or replication factor are out of valid range
     # @raise [RdkafkaError] When the topic name is invalid or the topic already exists
     # @raise [RdkafkaError] When the topic configuration is invalid
-    #
-    # @return [CreateTopicHandle] Create topic handle that can be used to wait for the result of creating the topic
     def create_partitions(topic_name, partition_count)
       closed_admin_check(__method__)
 
@@ -354,40 +364,34 @@ module Rdkafka
     end
 
     # Create acl
-    # @param resource_type - values of type rd_kafka_ResourceType_t
-    #        https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L7307
-    #        valid values are:
-    #           RD_KAFKA_RESOURCE_TOPIC   = 2
-    #           RD_KAFKA_RESOURCE_GROUP   = 3
-    #           RD_KAFKA_RESOURCE_BROKER  = 4
-    # @param resource_pattern_type - values of type rd_kafka_ResourcePatternType_t
-    #        https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L7320
-    #        valid values are:
-    #           RD_KAFKA_RESOURCE_PATTERN_MATCH    = 2
-    #           RD_KAFKA_RESOURCE_PATTERN_LITERAL  = 3
-    #           RD_KAFKA_RESOURCE_PATTERN_PREFIXED = 4
-    # @param operation - values of type rd_kafka_AclOperation_t
-    #        https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L8403
-    #        valid values are:
-    #           RD_KAFKA_ACL_OPERATION_ALL              = 2
-    #           RD_KAFKA_ACL_OPERATION_READ             = 3
-    #           RD_KAFKA_ACL_OPERATION_WRITE            = 4
-    #           RD_KAFKA_ACL_OPERATION_CREATE           = 5
-    #           RD_KAFKA_ACL_OPERATION_DELETE           = 6
-    #           RD_KAFKA_ACL_OPERATION_ALTER            = 7
-    #           RD_KAFKA_ACL_OPERATION_DESCRIBE         = 8
-    #           RD_KAFKA_ACL_OPERATION_CLUSTER_ACTION   = 9
-    #           RD_KAFKA_ACL_OPERATION_DESCRIBE_CONFIGS = 10
-    #           RD_KAFKA_ACL_OPERATION_ALTER_CONFIGS    = 11
-    #           RD_KAFKA_ACL_OPERATION_IDEMPOTENT_WRITE = 12
-    # @param permission_type - values of type rd_kafka_AclPermissionType_t
-    #        https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L8435
-    #        valid values are:
-    #           RD_KAFKA_ACL_PERMISSION_TYPE_DENY  = 2
-    #           RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW = 3
     #
+    # @param resource_type [Integer] rd_kafka_ResourceType_t value:
+    #   - RD_KAFKA_RESOURCE_TOPIC   = 2
+    #   - RD_KAFKA_RESOURCE_GROUP   = 3
+    #   - RD_KAFKA_RESOURCE_BROKER  = 4
+    # @param resource_name [String] name of the resource
+    # @param resource_pattern_type [Integer] rd_kafka_ResourcePatternType_t value:
+    #   - RD_KAFKA_RESOURCE_PATTERN_MATCH    = 2
+    #   - RD_KAFKA_RESOURCE_PATTERN_LITERAL  = 3
+    #   - RD_KAFKA_RESOURCE_PATTERN_PREFIXED = 4
+    # @param principal [String] principal (e.g., "User:alice")
+    # @param host [String] host address
+    # @param operation [Integer] rd_kafka_AclOperation_t value:
+    #   - RD_KAFKA_ACL_OPERATION_ALL              = 2
+    #   - RD_KAFKA_ACL_OPERATION_READ             = 3
+    #   - RD_KAFKA_ACL_OPERATION_WRITE            = 4
+    #   - RD_KAFKA_ACL_OPERATION_CREATE           = 5
+    #   - RD_KAFKA_ACL_OPERATION_DELETE           = 6
+    #   - RD_KAFKA_ACL_OPERATION_ALTER            = 7
+    #   - RD_KAFKA_ACL_OPERATION_DESCRIBE         = 8
+    #   - RD_KAFKA_ACL_OPERATION_CLUSTER_ACTION   = 9
+    #   - RD_KAFKA_ACL_OPERATION_DESCRIBE_CONFIGS = 10
+    #   - RD_KAFKA_ACL_OPERATION_ALTER_CONFIGS    = 11
+    #   - RD_KAFKA_ACL_OPERATION_IDEMPOTENT_WRITE = 12
+    # @param permission_type [Integer] rd_kafka_AclPermissionType_t value:
+    #   - RD_KAFKA_ACL_PERMISSION_TYPE_DENY  = 2
+    #   - RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW = 3
     # @return [CreateAclHandle] Create acl handle that can be used to wait for the result of creating the acl
-    #
     # @raise [RdkafkaError]
     def create_acl(resource_type:, resource_name:, resource_pattern_type:, principal:, host:, operation:, permission_type:)
       closed_admin_check(__method__)
@@ -460,39 +464,33 @@ module Rdkafka
 
     # Delete acl
     #
-    # @param resource_type - values of type rd_kafka_ResourceType_t
-    #        https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L7307
-    #        valid values are:
-    #           RD_KAFKA_RESOURCE_TOPIC   = 2
-    #           RD_KAFKA_RESOURCE_GROUP   = 3
-    #           RD_KAFKA_RESOURCE_BROKER  = 4
-    # @param resource_pattern_type - values of type rd_kafka_ResourcePatternType_t
-    #        https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L7320
-    #        valid values are:
-    #           RD_KAFKA_RESOURCE_PATTERN_MATCH    = 2
-    #           RD_KAFKA_RESOURCE_PATTERN_LITERAL  = 3
-    #           RD_KAFKA_RESOURCE_PATTERN_PREFIXED = 4
-    # @param operation - values of type rd_kafka_AclOperation_t
-    #        https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L8403
-    #        valid values are:
-    #           RD_KAFKA_ACL_OPERATION_ALL              = 2
-    #           RD_KAFKA_ACL_OPERATION_READ             = 3
-    #           RD_KAFKA_ACL_OPERATION_WRITE            = 4
-    #           RD_KAFKA_ACL_OPERATION_CREATE           = 5
-    #           RD_KAFKA_ACL_OPERATION_DELETE           = 6
-    #           RD_KAFKA_ACL_OPERATION_ALTER            = 7
-    #           RD_KAFKA_ACL_OPERATION_DESCRIBE         = 8
-    #           RD_KAFKA_ACL_OPERATION_CLUSTER_ACTION   = 9
-    #           RD_KAFKA_ACL_OPERATION_DESCRIBE_CONFIGS = 10
-    #           RD_KAFKA_ACL_OPERATION_ALTER_CONFIGS    = 11
-    #           RD_KAFKA_ACL_OPERATION_IDEMPOTENT_WRITE = 12
-    # @param permission_type - values of type rd_kafka_AclPermissionType_t
-    #        https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L8435
-    #        valid values are:
-    #           RD_KAFKA_ACL_PERMISSION_TYPE_DENY  = 2
-    #           RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW = 3
+    # @param resource_type [Integer] rd_kafka_ResourceType_t value:
+    #   - RD_KAFKA_RESOURCE_TOPIC   = 2
+    #   - RD_KAFKA_RESOURCE_GROUP   = 3
+    #   - RD_KAFKA_RESOURCE_BROKER  = 4
+    # @param resource_name [String, nil] name of the resource or nil for any
+    # @param resource_pattern_type [Integer] rd_kafka_ResourcePatternType_t value:
+    #   - RD_KAFKA_RESOURCE_PATTERN_MATCH    = 2
+    #   - RD_KAFKA_RESOURCE_PATTERN_LITERAL  = 3
+    #   - RD_KAFKA_RESOURCE_PATTERN_PREFIXED = 4
+    # @param principal [String, nil] principal (e.g., "User:alice") or nil for any
+    # @param host [String, nil] host address or nil for any
+    # @param operation [Integer] rd_kafka_AclOperation_t value:
+    #   - RD_KAFKA_ACL_OPERATION_ALL              = 2
+    #   - RD_KAFKA_ACL_OPERATION_READ             = 3
+    #   - RD_KAFKA_ACL_OPERATION_WRITE            = 4
+    #   - RD_KAFKA_ACL_OPERATION_CREATE           = 5
+    #   - RD_KAFKA_ACL_OPERATION_DELETE           = 6
+    #   - RD_KAFKA_ACL_OPERATION_ALTER            = 7
+    #   - RD_KAFKA_ACL_OPERATION_DESCRIBE         = 8
+    #   - RD_KAFKA_ACL_OPERATION_CLUSTER_ACTION   = 9
+    #   - RD_KAFKA_ACL_OPERATION_DESCRIBE_CONFIGS = 10
+    #   - RD_KAFKA_ACL_OPERATION_ALTER_CONFIGS    = 11
+    #   - RD_KAFKA_ACL_OPERATION_IDEMPOTENT_WRITE = 12
+    # @param permission_type [Integer] rd_kafka_AclPermissionType_t value:
+    #   - RD_KAFKA_ACL_PERMISSION_TYPE_DENY  = 2
+    #   - RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW = 3
     # @return [DeleteAclHandle] Delete acl handle that can be used to wait for the result of deleting the acl
-    #
     # @raise [RdkafkaError]
     def delete_acl(resource_type:, resource_name:, resource_pattern_type:, principal:, host:, operation:, permission_type:)
       closed_admin_check(__method__)
@@ -567,39 +565,33 @@ module Rdkafka
 
     # Describe acls
     #
-    # @param resource_type - values of type rd_kafka_ResourceType_t
-    #        https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L7307
-    #        valid values are:
-    #           RD_KAFKA_RESOURCE_TOPIC   = 2
-    #           RD_KAFKA_RESOURCE_GROUP   = 3
-    #           RD_KAFKA_RESOURCE_BROKER  = 4
-    # @param resource_pattern_type - values of type rd_kafka_ResourcePatternType_t
-    #        https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L7320
-    #        valid values are:
-    #           RD_KAFKA_RESOURCE_PATTERN_MATCH    = 2
-    #           RD_KAFKA_RESOURCE_PATTERN_LITERAL  = 3
-    #           RD_KAFKA_RESOURCE_PATTERN_PREFIXED = 4
-    # @param operation - values of type rd_kafka_AclOperation_t
-    #        https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L8403
-    #        valid values are:
-    #           RD_KAFKA_ACL_OPERATION_ALL              = 2
-    #           RD_KAFKA_ACL_OPERATION_READ             = 3
-    #           RD_KAFKA_ACL_OPERATION_WRITE            = 4
-    #           RD_KAFKA_ACL_OPERATION_CREATE           = 5
-    #           RD_KAFKA_ACL_OPERATION_DELETE           = 6
-    #           RD_KAFKA_ACL_OPERATION_ALTER            = 7
-    #           RD_KAFKA_ACL_OPERATION_DESCRIBE         = 8
-    #           RD_KAFKA_ACL_OPERATION_CLUSTER_ACTION   = 9
-    #           RD_KAFKA_ACL_OPERATION_DESCRIBE_CONFIGS = 10
-    #           RD_KAFKA_ACL_OPERATION_ALTER_CONFIGS    = 11
-    #           RD_KAFKA_ACL_OPERATION_IDEMPOTENT_WRITE = 12
-    # @param permission_type - values of type rd_kafka_AclPermissionType_t
-    #        https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L8435
-    #        valid values are:
-    #           RD_KAFKA_ACL_PERMISSION_TYPE_DENY  = 2
-    #           RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW = 3
+    # @param resource_type [Integer] rd_kafka_ResourceType_t value:
+    #   - RD_KAFKA_RESOURCE_TOPIC   = 2
+    #   - RD_KAFKA_RESOURCE_GROUP   = 3
+    #   - RD_KAFKA_RESOURCE_BROKER  = 4
+    # @param resource_name [String, nil] name of the resource or nil for any
+    # @param resource_pattern_type [Integer] rd_kafka_ResourcePatternType_t value:
+    #   - RD_KAFKA_RESOURCE_PATTERN_MATCH    = 2
+    #   - RD_KAFKA_RESOURCE_PATTERN_LITERAL  = 3
+    #   - RD_KAFKA_RESOURCE_PATTERN_PREFIXED = 4
+    # @param principal [String, nil] principal (e.g., "User:alice") or nil for any
+    # @param host [String, nil] host address or nil for any
+    # @param operation [Integer] rd_kafka_AclOperation_t value:
+    #   - RD_KAFKA_ACL_OPERATION_ALL              = 2
+    #   - RD_KAFKA_ACL_OPERATION_READ             = 3
+    #   - RD_KAFKA_ACL_OPERATION_WRITE            = 4
+    #   - RD_KAFKA_ACL_OPERATION_CREATE           = 5
+    #   - RD_KAFKA_ACL_OPERATION_DELETE           = 6
+    #   - RD_KAFKA_ACL_OPERATION_ALTER            = 7
+    #   - RD_KAFKA_ACL_OPERATION_DESCRIBE         = 8
+    #   - RD_KAFKA_ACL_OPERATION_CLUSTER_ACTION   = 9
+    #   - RD_KAFKA_ACL_OPERATION_DESCRIBE_CONFIGS = 10
+    #   - RD_KAFKA_ACL_OPERATION_ALTER_CONFIGS    = 11
+    #   - RD_KAFKA_ACL_OPERATION_IDEMPOTENT_WRITE = 12
+    # @param permission_type [Integer] rd_kafka_AclPermissionType_t value:
+    #   - RD_KAFKA_ACL_PERMISSION_TYPE_DENY  = 2
+    #   - RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW = 3
     # @return [DescribeAclHandle] Describe acl handle that can be used to wait for the result of fetching acls
-    #
     # @raise [RdkafkaError]
     def describe_acl(resource_type:, resource_name:, resource_pattern_type:, principal:, host:, operation:, permission_type:)
       closed_admin_check(__method__)
@@ -825,6 +817,9 @@ module Rdkafka
 
     private
 
+    # Checks if the admin is closed and raises an error if so
+    # @param method [Symbol] the method being called
+    # @raise [ClosedAdminError] when the admin is closed
     def closed_admin_check(method)
       raise Rdkafka::ClosedAdminError.new(method) if closed?
     end

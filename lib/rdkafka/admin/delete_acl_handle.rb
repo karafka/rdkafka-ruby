@@ -2,6 +2,7 @@
 
 module Rdkafka
   class Admin
+    # Handle for delete ACL operation
     class DeleteAclHandle < AbstractHandle
       layout :pending, :bool,
              :response, :int,
@@ -19,6 +20,8 @@ module Rdkafka
         DeleteAclReport.new(matching_acls: self[:matching_acls], matching_acls_count: self[:matching_acls_count])
       end
 
+      # Raises an error if the operation failed
+      # @raise [RdkafkaError]
       def raise_error
         raise RdkafkaError.new(
             self[:response],

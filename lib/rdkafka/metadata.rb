@@ -1,8 +1,12 @@
 # frozen_string_literal: true
 
 module Rdkafka
+  # Provides cluster metadata information
   class Metadata
-    attr_reader :brokers, :topics
+    # @return [Array<Hash>] list of broker metadata
+    attr_reader :brokers
+    # @return [Array<Hash>] list of topic metadata
+    attr_reader :topics
 
     # Errors upon which we retry the metadata fetch
     RETRIED_ERRORS = %i[
@@ -12,6 +16,12 @@ module Rdkafka
 
     private_constant :RETRIED_ERRORS
 
+    # Fetches metadata from the Kafka cluster
+    #
+    # @param native_client [FFI::Pointer] pointer to the native Kafka client
+    # @param topic_name [String, nil] specific topic to fetch metadata for, or nil for all topics
+    # @param timeout_ms [Integer] timeout in milliseconds
+    # @raise [RdkafkaError] when metadata fetch fails
     def initialize(native_client, topic_name = nil, timeout_ms = 2_000)
       attempt ||= 0
       attempt += 1
@@ -49,6 +59,8 @@ module Rdkafka
 
     private
 
+    # Extracts metadata from native pointer
+    # @param ptr [FFI::Pointer] pointer to native metadata
     def metadata_from_native(ptr)
       metadata = Metadata.new(ptr)
       @brokers = Array.new(metadata[:brokers_count]) do |i|
@@ -69,7 +81,11 @@ module Rdkafka
       end
     end
 
+    # Base class for metadata FFI structs with hash conversion
+    # @private
     class CustomFFIStruct < FFI::Struct
+      # Converts struct to a hash
+      # @return [Hash]
       def to_h
         members.each_with_object({}) do |mem, hsh|
           val = self.[](mem)
@@ -80,6 +96,8 @@ module Rdkafka
       end
     end
 
+    # @private
+    # FFI struct for rd_kafka_metadata_t
     class Metadata < CustomFFIStruct
       layout :brokers_count, :int,
              :brokers_metadata, :pointer,
@@ -89,12 +107,16 @@ module Rdkafka
              :broker_name, :string
     end
 
+    # @private
+    # FFI struct for rd_kafka_metadata_broker_t
     class BrokerMetadata < CustomFFIStruct
       layout :broker_id, :int32,
              :broker_name, :string,
              :broker_port, :int
     end
 
+    # @private
+    # FFI struct for rd_kafka_metadata_topic_t
     class TopicMetadata < CustomFFIStruct
       layout :topic_name, :string,
              :partition_count, :int,
@@ -102,6 +124,8 @@ module Rdkafka
              :rd_kafka_resp_err, :int
     end
 
+    # @private
+    # FFI struct for rd_kafka_metadata_partition_t
     class PartitionMetadata < CustomFFIStruct
       layout :partition_id, :int32,
              :rd_kafka_resp_err, :int,

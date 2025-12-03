@@ -2,12 +2,15 @@
 
 module Rdkafka
   class Admin
+    # Report for delete ACL operation result
     class DeleteAclReport
 
       # deleted acls
       # @return [Rdkafka::Bindings::AclBindingResult]
       attr_reader :deleted_acls
 
+      # @param matching_acls [FFI::Pointer] pointer to matching ACLs array
+      # @param matching_acls_count [Integer] number of matching ACLs
       def initialize(matching_acls:, matching_acls_count:)
         @deleted_acls=[]
         if matching_acls != FFI::Pointer::NULL

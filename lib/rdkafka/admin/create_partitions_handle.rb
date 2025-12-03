@@ -1,5 +1,6 @@
 module Rdkafka
   class Admin
+    # Handle for create partitions operation
     class CreatePartitionsHandle < AbstractHandle
       layout :pending, :bool,
              :response, :int,
@@ -16,6 +17,8 @@ module Rdkafka
         CreatePartitionsReport.new(self[:error_string], self[:result_name])
       end
 
+      # Raises an error if the operation failed
+      # @raise [RdkafkaError]
       def raise_error
         RdkafkaError.validate!(
           self[:response],

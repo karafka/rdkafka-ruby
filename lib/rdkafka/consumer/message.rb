@@ -28,7 +28,7 @@ module Rdkafka
       # @return [Time, nil]
       attr_reader :timestamp
 
-      # @return [Hash<String, String>] a message headers
+      # @return [Hash{String => String}] message headers
       attr_reader :headers
 
       # @private
@@ -71,6 +71,11 @@ module Rdkafka
         "<Message in '#{topic}' with key '#{truncate(key)}', payload '#{truncate(payload)}', partition #{partition}, offset #{offset}, timestamp #{timestamp}#{is_headers}>"
       end
 
+      private
+
+      # Truncates a string for display purposes
+      # @param string [String, nil] the string to truncate
+      # @return [String, nil] truncated string or nil
       def truncate(string)
         if string && string.length > 40
           "#{string[0..39]}..."
@@ -78,8 +83,6 @@ module Rdkafka
           string
         end
       end
-
-      private
 
     end
   end

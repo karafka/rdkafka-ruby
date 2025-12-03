@@ -32,8 +32,12 @@ module Rdkafka
       # We do not remove the original `#topic_name` because of backwards compatibility
       alias topic topic_name
 
-      private
-
+      # @private
+      # @param partition [Integer] partition number
+      # @param offset [Integer] message offset
+      # @param topic_name [String, nil] topic name
+      # @param error [Integer, nil] error code if any
+      # @param label [Object, nil] user-defined label
       def initialize(partition, offset, topic_name = nil, error = nil, label = nil)
         @partition = partition
         @offset = offset

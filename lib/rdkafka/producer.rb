@@ -133,8 +133,11 @@ module Rdkafka
       @delivery_callback_arity = arity(callback)
     end
 
-    # Init transactions
-    # Run once per producer
+    # Initialize transactions for the producer
+    # Must be called once before any transactional operations
+    #
+    # @return [true] Returns true on success
+    # @raise [RdkafkaError] if initialization fails
     def init_transactions
       closed_producer_check(__method__)
 
@@ -145,6 +148,11 @@ module Rdkafka
       end
     end
 
+    # Begin a new transaction
+    # Requires {#init_transactions} to have been called first
+    #
+    # @return [true] Returns true on success
+    # @raise [RdkafkaError] if beginning the transaction fails
     def begin_transaction
       closed_producer_check(__method__)
 
@@ -155,6 +163,11 @@ module Rdkafka
       end
     end
 
+    # Commit the current transaction
+    #
+    # @param timeout_ms [Integer] Timeout in milliseconds (-1 for infinite)
+    # @return [true] Returns true on success
+    # @raise [RdkafkaError] if committing the transaction fails
     def commit_transaction(timeout_ms = -1)
       closed_producer_check(__method__)
 
@@ -165,6 +178,11 @@ module Rdkafka
       end
     end
 
+    # Abort the current transaction
+    #
+    # @param timeout_ms [Integer] Timeout in milliseconds (-1 for infinite)
+    # @return [true] Returns true on success
+    # @raise [RdkafkaError] if aborting the transaction fails
     def abort_transaction(timeout_ms = -1)
       closed_producer_check(__method__)
 

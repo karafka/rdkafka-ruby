@@ -26,6 +26,12 @@ module Rdkafka
     attr_reader :details
 
     class << self
+      # Build an error instance from a rd_kafka_error_t pointer
+      #
+      # @param response_ptr [FFI::Pointer] Pointer to rd_kafka_error_t
+      # @param message_prefix [String, nil] Optional prefix for the error message
+      # @param broker_message [String, nil] Optional broker error message
+      # @return [RdkafkaError, false] Error instance or false if no error
       def build_from_c(response_ptr, message_prefix = nil, broker_message: nil)
         code = Rdkafka::Bindings.rd_kafka_error_code(response_ptr)
 
@@ -48,6 +54,13 @@ module Rdkafka
         )
       end
 
+      # Build an error instance from various input types
+      #
+      # @param response_ptr_or_code [Integer, FFI::Pointer, Bindings::Message] Error code, pointer,
+      #   or message struct
+      # @param message_prefix [String, nil] Optional prefix for the error message
+      # @param broker_message [String, nil] Optional broker error message
+      # @return [RdkafkaError, false] Error instance or false if no error
       def build(response_ptr_or_code, message_prefix = nil, broker_message: nil)
         case response_ptr_or_code
         when Integer
@@ -81,6 +94,16 @@ module Rdkafka
         end
       end
 
+      # Validate a response and raise an error if it indicates a failure
+      #
+      # @param response_ptr_or_code [Integer, FFI::Pointer, Bindings::Message] Error code, pointer,
+      #   or message struct
+      # @param message_prefix [String, nil] Optional prefix for the error message
+      # @param broker_message [String, nil] Optional broker error message
+      # @param client_ptr [FFI::Pointer, nil] Optional pointer to rd_kafka_t client for fatal error
+      #   detection
+      # @return [false] Returns false if no error
+      # @raise [RdkafkaError] if the response indicates an error
       def validate!(response_ptr_or_code, message_prefix = nil, broker_message: nil, client_ptr: nil)
         error = build(response_ptr_or_code, message_prefix, broker_message: broker_message)
 
@@ -189,14 +212,20 @@ module Rdkafka
        another_error.is_a?(self.class) && (self.to_s == another_error.to_s)
     end
 
+    # Whether this error is fatal and the client instance is no longer usable
+    # @return [Boolean]
     def fatal?
       @fatal
     end
 
+    # Whether this error is retryable and the operation may succeed if retried
+    # @return [Boolean]
     def retryable?
       @retryable
     end
 
+    # Whether this error requires the current transaction to be aborted
+    # @return [Boolean]
     def abortable?
       @abortable
     end

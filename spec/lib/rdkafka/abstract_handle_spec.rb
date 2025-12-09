@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-describe Rdkafka::AbstractHandle do
+RSpec.describe Rdkafka::AbstractHandle do
   let(:response) { 0 }
   let(:result) { -1 }
 

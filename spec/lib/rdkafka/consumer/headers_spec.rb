@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-describe Rdkafka::Consumer::Headers do
+RSpec.describe Rdkafka::Consumer::Headers do
   let(:headers) do
     { # Note String keys!
       "version" => ["2.1.3", "2.1.4"],

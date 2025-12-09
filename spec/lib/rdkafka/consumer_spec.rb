@@ -3,7 +3,7 @@
 require "ostruct"
 require 'securerandom'
 
-describe Rdkafka::Consumer do
+RSpec.describe Rdkafka::Consumer do
   let(:consumer) { rdkafka_consumer_config.consumer }
   let(:producer) { rdkafka_producer_config.producer }
 

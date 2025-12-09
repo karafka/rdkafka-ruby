@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-describe Rdkafka::Config do
+RSpec.describe Rdkafka::Config do
   context "logger" do
     it "should have a default logger" do
       expect(Rdkafka::Config.logger).to be_a Logger

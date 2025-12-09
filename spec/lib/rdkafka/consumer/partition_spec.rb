@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-describe Rdkafka::Consumer::Partition do
+RSpec.describe Rdkafka::Consumer::Partition do
   let(:offset) { 100 }
   let(:err) { 0 }
   subject { Rdkafka::Consumer::Partition.new(1, offset, err) }

@@ -2,7 +2,7 @@
 
 require "zlib"
 
-describe Rdkafka::Producer do
+RSpec.describe Rdkafka::Producer do
   let(:producer) { rdkafka_producer_config.producer }
   let(:consumer) { rdkafka_consumer_config.consumer }
 

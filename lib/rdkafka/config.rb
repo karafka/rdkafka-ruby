@@ -232,7 +232,7 @@ module Rdkafka
     #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    def producer(native_kafka_auto_start: true, native_kafka_poll_timeout_ms: 100)
+    def producer(native_kafka_auto_start: true, native_kafka_poll_timeout_ms: Defaults::NATIVE_KAFKA_POLL_TIMEOUT_MS)
       # Create opaque
       opaque = Opaque.new
       # Create Kafka config
@@ -267,7 +267,7 @@ module Rdkafka
     #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    def admin(native_kafka_auto_start: true, native_kafka_poll_timeout_ms: 100)
+    def admin(native_kafka_auto_start: true, native_kafka_poll_timeout_ms: Defaults::NATIVE_KAFKA_POLL_TIMEOUT_MS)
       opaque = Opaque.new
       config = native_config(opaque)
       Rdkafka::Bindings.rd_kafka_conf_set_background_event_cb(config, Rdkafka::Callbacks::BackgroundEventCallbackFunction)

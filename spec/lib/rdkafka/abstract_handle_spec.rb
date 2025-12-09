@@ -81,7 +81,7 @@ RSpec.describe Rdkafka::AbstractHandle do
 
       it "should wait until the timeout and then raise an error" do
         expect {
-          subject.wait(max_wait_timeout: 0.1)
+          subject.wait(max_wait_timeout_ms: 100)
         }.to raise_error Rdkafka::AbstractHandle::WaitTimeoutError, /test_operation/
       end
     end
@@ -98,7 +98,7 @@ RSpec.describe Rdkafka::AbstractHandle do
         end
 
         it "should wait without a timeout" do
-          wait_result = subject.wait(max_wait_timeout: nil)
+          wait_result = subject.wait(max_wait_timeout_ms: nil)
           expect(wait_result).to eq(result)
         end
       end

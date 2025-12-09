@@ -54,16 +54,17 @@ module Rdkafka
     # If there is a timeout this does not mean the operation failed, rdkafka might still be working
     # on the operation. In this case it is possible to call wait again.
     #
-    # @param max_wait_timeout [Numeric, nil] Amount of time to wait before timing out.
-    #   If this is nil we will wait forever
+    # @param max_wait_timeout_ms [Numeric, nil] Amount of time in milliseconds to wait before
+    #   timing out. If this is nil we will wait forever
     # @param raise_response_error [Boolean] should we raise error when waiting finishes
     #
     # @return [Object] Operation-specific result
     #
     # @raise [RdkafkaError] When the operation failed
     # @raise [WaitTimeoutError] When the timeout has been reached and the handle is still pending
-    def wait(max_wait_timeout: 60, raise_response_error: true)
-      timeout = max_wait_timeout ? monotonic_now + max_wait_timeout : MAX_WAIT_TIMEOUT_FOREVER
+    def wait(max_wait_timeout_ms: Defaults::HANDLE_WAIT_TIMEOUT_MS, raise_response_error: true)
+      timeout_s = max_wait_timeout_ms ? max_wait_timeout_ms / 1000.0 : nil
+      timeout = timeout_s ? monotonic_now + timeout_s : MAX_WAIT_TIMEOUT_FOREVER
 
       @mutex.synchronize do
         loop do
@@ -74,7 +75,7 @@ module Rdkafka
               @resource.wait(@mutex, to_wait)
             else
               raise WaitTimeoutError.new(
-                "Waiting for #{operation_name} timed out after #{max_wait_timeout} seconds"
+                "Waiting for #{operation_name} timed out after #{max_wait_timeout_ms} ms"
               )
             end
           elsif self[:response] != 0 && raise_response_error

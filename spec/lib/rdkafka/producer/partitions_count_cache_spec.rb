@@ -3,10 +3,10 @@
 require 'spec_helper'
 
 RSpec.describe Rdkafka::Producer::PartitionsCountCache do
-  let(:default_ttl) { 1 } # Reduced from 30 to speed up tests
-  let(:custom_ttl) { 0.5 } # Half the default TTL
-  let(:cache) { described_class.new(default_ttl) }
-  let(:custom_ttl_cache) { described_class.new(custom_ttl) }
+  let(:default_ttl_ms) { 1_000 } # Reduced from 30000 to speed up tests
+  let(:custom_ttl_ms) { 500 } # Half the default TTL
+  let(:cache) { described_class.new(default_ttl_ms) }
+  let(:custom_ttl_cache) { described_class.new(custom_ttl_ms) }
   let(:topic) { TestTopics.unique }
   let(:topic2) { TestTopics.unique }
   let(:partition_count) { 5 }
@@ -67,8 +67,8 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
       end
 
       it "yields to get new value when TTL has expired" do
-        # Wait for TTL to expire
-        sleep(default_ttl + 0.1)
+        # Wait for TTL to expire (convert ms to seconds)
+        sleep(default_ttl_ms / 1000.0 + 0.1)
 
         block_called = false
         new_count = partition_count + 1
@@ -95,8 +95,8 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
         # Seed the custom TTL cache with a value
         custom_ttl_cache.get(topic) { partition_count }
 
-        # Wait for custom TTL to expire but not default TTL
-        sleep(custom_ttl + 0.1)
+        # Wait for custom TTL to expire but not default TTL (convert ms to seconds)
+        sleep(custom_ttl_ms / 1000.0 + 0.1)
 
         # Custom TTL cache should refresh
         custom_block_called = false
@@ -127,8 +127,8 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
       end
 
       it "updates cache when new value is higher than cached value" do
-        # Wait for TTL to expire
-        sleep(default_ttl + 0.1)
+        # Wait for TTL to expire (convert ms to seconds)
+        sleep(default_ttl_ms / 1000.0 + 0.1)
 
         # Get higher value
         result = cache.get(topic) { higher_partition_count }
@@ -140,12 +140,12 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
       end
 
       it "preserves higher cached value when new value is lower" do
-        # First update to higher value
-        sleep(default_ttl + 0.1)
+        # First update to higher value (convert ms to seconds)
+        sleep(default_ttl_ms / 1000.0 + 0.1)
         cache.get(topic) { higher_partition_count }
 
-        # Then try to update to lower value
-        sleep(default_ttl + 0.1)
+        # Then try to update to lower value (convert ms to seconds)
+        sleep(default_ttl_ms / 1000.0 + 0.1)
         result = cache.get(topic) { lower_partition_count }
 
         expect(result).to eq(higher_partition_count)
@@ -160,8 +160,8 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
         cache.get(topic) { partition_count }
         cache.get(topic2) { higher_partition_count }
 
-        # Wait for TTL to expire
-        sleep(default_ttl + 0.1)
+        # Wait for TTL to expire (convert ms to seconds)
+        sleep(default_ttl_ms / 1000.0 + 0.1)
 
         # Update first topic
         first_result = cache.get(topic) { even_higher_partition_count }
@@ -213,8 +213,8 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
         # Set initial value
         cache.set(topic, partition_count)
 
-        # Wait until close to TTL expiring
-        sleep(default_ttl - 0.2)
+        # Wait until close to TTL expiring (convert ms to seconds)
+        sleep(default_ttl_ms / 1000.0 - 0.2)
 
         # Set lower value (should update timestamp but not value)
         cache.set(topic, lower_partition_count)
@@ -256,15 +256,15 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
       # Set initial value
       cache.get(topic) { partition_count }
 
-      # Wait just under TTL
-      sleep(default_ttl - 0.2)
+      # Wait just under TTL (convert ms to seconds)
+      sleep(default_ttl_ms / 1000.0 - 0.2)
 
       # Value should still be cached (block should not be called)
       result = cache.get(topic) { fail "Should not be called when cache is valid" }
       expect(result).to eq(partition_count)
 
       # Now wait to exceed TTL
-      sleep(0.2) # Total sleep is now default_ttl + 0.1
+      sleep(0.3) # Total sleep is now default_ttl_ms / 1000.0 + 0.1
 
       # Cache should be expired, block should be called
       block_called = false
@@ -300,8 +300,8 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
       result4 = cache.get(topic) { fail "Should not be called" }
       expect(result4).to eq(higher_partition_count)
 
-      # 5. TTL expires, new value provided is lower
-      sleep(default_ttl + 0.1)
+      # 5. TTL expires, new value provided is lower (convert ms to seconds)
+      sleep(default_ttl_ms / 1000.0 + 0.1)
       result5 = cache.get(topic) { lower_partition_count }
       # This returns the highest value
       expect(result5).to eq(higher_partition_count)
@@ -322,8 +322,8 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
       cache.get(topic) { partition_count }
       custom_ttl_cache.get(topic) { partition_count }
 
-      # Wait past custom TTL but not default TTL
-      sleep(custom_ttl + 0.1)
+      # Wait past custom TTL but not default TTL (convert ms to seconds)
+      sleep(custom_ttl_ms / 1000.0 + 0.1)
 
       # Default cache should NOT refresh (still within default TTL)
       default_result = cache.get(topic) { fail "Should not be called for default cache" }
@@ -341,8 +341,8 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
       expect(custom_block_called).to be true
       expect(custom_result).to eq(custom_cache_value)
 
-      # Now wait past default TTL
-      sleep(default_ttl - custom_ttl + 0.1)
+      # Now wait past default TTL (convert ms to seconds)
+      sleep((default_ttl_ms - custom_ttl_ms) / 1000.0 + 0.1)
 
       # Now default cache should also refresh
       default_block_called = false

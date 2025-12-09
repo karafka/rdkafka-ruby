@@ -50,7 +50,7 @@ RSpec.describe Rdkafka::Admin::DescribeAclHandle do
 
     it "should wait until the timeout and then raise an error" do
       expect {
-        subject.wait(max_wait_timeout: 0.1)
+        subject.wait(max_wait_timeout_ms: 100)
       }.to raise_error Rdkafka::Admin::DescribeAclHandle::WaitTimeoutError, /describe acl/
     end
 
@@ -64,7 +64,7 @@ RSpec.describe Rdkafka::Admin::DescribeAclHandle do
       end
 
       it "should wait without a timeout" do
-        report = subject.wait(max_wait_timeout: nil)
+        report = subject.wait(max_wait_timeout_ms: nil)
 
         expect(report.acls[0].matching_acl_resource_name).to eq(resource_name)
       end

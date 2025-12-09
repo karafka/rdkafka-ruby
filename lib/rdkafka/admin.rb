@@ -81,7 +81,7 @@ module Rdkafka
     # @param topic_name [String, nil] metadat about particular topic or all if nil
     # @param timeout_ms [Integer] metadata request timeout
     # @return [Metadata] requested metadata
-    def metadata(topic_name = nil, timeout_ms = 2_000)
+    def metadata(topic_name = nil, timeout_ms = Defaults::METADATA_TIMEOUT_MS)
       closed_admin_check(__method__)
 
       @native_kafka.with_inner do |inner|

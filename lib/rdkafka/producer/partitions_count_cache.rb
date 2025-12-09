@@ -17,9 +17,9 @@ module Rdkafka
     #
     # 2. Edge case handling
     #    If a user configures `statistics.interval.ms` much higher than the default cache TTL
-    #    (30 seconds), the cache will still function correctly. When statistics updates don't
-    #    occur frequently enough, the cache entries will expire naturally, triggering a
-    #    blocking refresh when needed.
+    #    ({Defaults::PARTITIONS_COUNT_CACHE_TTL_MS}ms), the cache will still function correctly.
+    #    When statistics updates don't occur frequently enough, the cache entries will expire
+    #    naturally, triggering a blocking refresh when needed.
     #
     # 3. User configuration awareness
     #    The cache respects user-defined settings. If `topic.metadata.refresh.interval.ms` is
@@ -46,22 +46,15 @@ module Rdkafka
     class PartitionsCountCache
       include Helpers::Time
 
-      # Default time-to-live for cached partition counts in seconds
-      #
-      # @note This default was chosen to balance freshness of metadata with performance
-      #   optimization. Most Kafka cluster topology changes are planned operations, making 30
-      #   seconds a reasonable compromise.
-      DEFAULT_TTL = 30
-
       # Creates a new partition count cache
       #
-      # @param ttl [Integer] Time-to-live in seconds for cached values
-      def initialize(ttl = DEFAULT_TTL)
+      # @param ttl_ms [Integer] Time-to-live in milliseconds for cached values
+      def initialize(ttl_ms = Defaults::PARTITIONS_COUNT_CACHE_TTL_MS)
         @counts = {}
         @mutex_hash = {}
         # Used only for @mutex_hash access to ensure thread-safety when creating new mutexes
         @mutex_for_hash = Mutex.new
-        @ttl = ttl
+        @ttl_ms = ttl_ms
       end
 
       # Reads partition count for a topic with automatic refresh when expired
@@ -209,7 +202,7 @@ module Rdkafka
       # @param timestamp [Float] Monotonic timestamp to check
       # @return [Boolean] true if expired, false otherwise
       def expired?(timestamp)
-        monotonic_now - timestamp > @ttl
+        (monotonic_now - timestamp) * 1_000 > @ttl_ms
       end
     end
   end

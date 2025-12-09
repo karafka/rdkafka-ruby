@@ -91,6 +91,12 @@ module Rdkafka
     # @see Metadata#initialize
     METADATA_RETRY_BACKOFF_BASE_MS = 100
 
+    # Cache settings (in milliseconds)
+
+    # Default time-to-live for cached partition counts
+    # @see Producer::PartitionsCountCache
+    PARTITIONS_COUNT_CACHE_TTL_MS = 30_000
+
     # Configuration values (not time-based)
 
     # Maximum number of metadata fetch retry attempts

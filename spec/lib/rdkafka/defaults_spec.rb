@@ -77,6 +77,12 @@ RSpec.describe Rdkafka::Defaults do
     end
   end
 
+  describe 'cache settings' do
+    it 'defines PARTITIONS_COUNT_CACHE_TTL_MS as 30000' do
+      expect(described_class::PARTITIONS_COUNT_CACHE_TTL_MS).to eq(30_000)
+    end
+  end
+
   describe 'immutability' do
     it 'all constants are frozen' do
       # Numeric constants are inherently immutable in Ruby, but let's verify
@@ -99,7 +105,8 @@ RSpec.describe Rdkafka::Defaults do
         :METADATA_RETRY_BACKOFF_BASE_MS,
         :METADATA_MAX_RETRIES,
         :CONSUMER_SEEK_TIMEOUT_MS,
-        :CONSUMER_EVENTS_POLL_TIMEOUT_MS
+        :CONSUMER_EVENTS_POLL_TIMEOUT_MS,
+        :PARTITIONS_COUNT_CACHE_TTL_MS
       )
     end
   end

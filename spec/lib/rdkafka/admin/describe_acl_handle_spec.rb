@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-describe Rdkafka::Admin::DescribeAclHandle do
+RSpec.describe Rdkafka::Admin::DescribeAclHandle do
   let(:response) { Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR }
   let(:resource_name)         { TestTopics.unique }
   let(:resource_type)         {Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC}

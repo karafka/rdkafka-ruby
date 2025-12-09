@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-describe Rdkafka::Producer::DeliveryHandle do
+RSpec.describe Rdkafka::Producer::DeliveryHandle do
   let(:response) { 0 }
 
   subject do

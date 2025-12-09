@@ -2,7 +2,7 @@
 
 require "ostruct"
 
-describe Rdkafka::Admin do
+RSpec.describe Rdkafka::Admin do
   let(:config) { rdkafka_config }
   let(:admin)  { config.admin }
 

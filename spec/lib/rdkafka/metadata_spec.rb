@@ -2,7 +2,7 @@
 
 require "securerandom"
 
-describe Rdkafka::Metadata do
+RSpec.describe Rdkafka::Metadata do
   let(:config)        { rdkafka_consumer_config }
   let(:native_config) { config.send(:native_config) }
   let(:native_kafka)  { config.send(:native_kafka, native_config, :rd_kafka_consumer) }

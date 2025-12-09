@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-describe Rdkafka::Callbacks do
+RSpec.describe Rdkafka::Callbacks do
 
   # The code in the call back functions is 100% covered by other specs.  Due to
   # the large number of collaborators, and the fact that FFI does not play

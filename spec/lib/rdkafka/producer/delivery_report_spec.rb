@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-describe Rdkafka::Producer::DeliveryReport do
+RSpec.describe Rdkafka::Producer::DeliveryReport do
   let(:topic_name) { TestTopics.unique }
   subject { Rdkafka::Producer::DeliveryReport.new(2, 100, topic_name, -1) }
 

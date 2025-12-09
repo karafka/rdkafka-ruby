@@ -239,7 +239,7 @@ module Rdkafka
     # @param timeout_ms [Integer] The timeout for fetching this information.
     # @return [TopicPartitionList]
     # @raise [RdkafkaError] When getting the committed positions fails.
-    def committed(list=nil, timeout_ms=2_000)
+    def committed(list=nil, timeout_ms=Defaults::CONSUMER_COMMITTED_TIMEOUT_MS)
       closed_consumer_check(__method__)
 
       if list.nil?
@@ -294,7 +294,7 @@ module Rdkafka
     # @param timeout_ms [Integer] The timeout for querying the broker
     # @return [Integer] The low and high watermark
     # @raise [RdkafkaError] When querying the broker fails.
-    def query_watermark_offsets(topic, partition, timeout_ms=1000)
+    def query_watermark_offsets(topic, partition, timeout_ms=Defaults::CONSUMER_QUERY_WATERMARK_TIMEOUT_MS)
       closed_consumer_check(__method__)
 
       low = FFI::MemoryPointer.new(:int64, 1)
@@ -328,7 +328,7 @@ module Rdkafka
     # @return [Hash{String => Hash{Integer => Integer}}] A hash containing all topics with the lag
     #   per partition
     # @raise [RdkafkaError] When querying the broker fails.
-    def lag(topic_partition_list, watermark_timeout_ms=1000)
+    def lag(topic_partition_list, watermark_timeout_ms=Defaults::CONSUMER_LAG_TIMEOUT_MS)
       out = {}
 
       topic_partition_list.to_h.each do |topic, partitions|
@@ -456,7 +456,7 @@ module Rdkafka
         native_topic,
         partition,
         offset,
-        0 # timeout
+        Defaults::CONSUMER_SEEK_TIMEOUT_MS
       )
 
       return nil if response == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
@@ -476,7 +476,7 @@ module Rdkafka
     # @param timeout_ms [Integer] timeout in milliseconds for the operation
     # @return [TopicPartitionList]
     # @raise [RdKafkaError] When the OffsetForTimes lookup fails
-    def offsets_for_times(list, timeout_ms = 1000)
+    def offsets_for_times(list, timeout_ms = Defaults::CONSUMER_OFFSETS_FOR_TIMES_TIMEOUT_MS)
       closed_consumer_check(__method__)
 
       if !list.is_a?(TopicPartitionList)
@@ -584,7 +584,7 @@ module Rdkafka
     # @note This method technically should be called `#poll` and the current `#poll` should be
     #   called `#consumer_poll` though we keep the current naming convention to make it backward
     #   compatible.
-    def events_poll(timeout_ms = 0)
+    def events_poll(timeout_ms = Defaults::CONSUMER_EVENTS_POLL_TIMEOUT_MS)
       @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_poll(inner, timeout_ms)
       end
@@ -601,7 +601,7 @@ module Rdkafka
     # @raise [RdkafkaError] When polling fails
     def each
       loop do
-        message = poll(250)
+        message = poll(Defaults::CONSUMER_POLL_TIMEOUT_MS)
         if message
           yield(message)
         else

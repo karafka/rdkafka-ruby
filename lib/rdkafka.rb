@@ -6,6 +6,7 @@ require "ffi"
 require "json"
 
 require "rdkafka/version"
+require "rdkafka/defaults"
 require "rdkafka/helpers/time"
 require "rdkafka/helpers/oauth"
 require "rdkafka/abstract_handle"

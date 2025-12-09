@@ -4,7 +4,7 @@ module Rdkafka
   # @private
   # A wrapper around a native kafka that polls and cleanly exits
   class NativeKafka
-    def initialize(inner, run_polling_thread:, opaque:, auto_start: true, timeout_ms: 100)
+    def initialize(inner, run_polling_thread:, opaque:, auto_start: true, timeout_ms: Defaults::NATIVE_KAFKA_POLL_TIMEOUT_MS)
       @inner = inner
       @opaque = opaque
       # Lock around external access
@@ -87,7 +87,7 @@ module Rdkafka
         # This can take a while on blocking operations like polling but is essential not to proceed
         # with certain types of operations like resources destruction as it can cause the process
         # to hang or crash
-        sleep(0.01) until @operations_in_progress.zero?
+        sleep(Defaults::NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS / 1_000.0) until @operations_in_progress.zero?
 
         with_inner(&block)
       end

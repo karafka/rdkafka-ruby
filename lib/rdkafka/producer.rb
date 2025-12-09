@@ -198,7 +198,7 @@ module Rdkafka
     # @param tpl [Consumer::TopicPartitionList]
     # @param timeout_ms [Integer] offsets send timeout
     # @note Use **only** in the context of an active transaction
-    def send_offsets_to_transaction(consumer, tpl, timeout_ms = 5_000)
+    def send_offsets_to_transaction(consumer, tpl, timeout_ms = Defaults::PRODUCER_SEND_OFFSETS_TIMEOUT_MS)
       closed_producer_check(__method__)
 
       return if tpl.empty?
@@ -253,7 +253,7 @@ module Rdkafka
     #   should be no other errors.
     #
     # @note For `timed_out` we do not raise an error to keep it backwards compatible
-    def flush(timeout_ms=5_000)
+    def flush(timeout_ms=Defaults::PRODUCER_FLUSH_TIMEOUT_MS)
       closed_producer_check(__method__)
 
       error = @native_kafka.with_inner do |inner|
@@ -287,7 +287,7 @@ module Rdkafka
       end
 
       # Wait for the purge to affect everything
-      sleep(0.001) until flush(100)
+      sleep(Defaults::PRODUCER_PURGE_SLEEP_INTERVAL_MS / 1_000.0) until flush(Defaults::PRODUCER_PURGE_FLUSH_TIMEOUT_MS)
 
       true
     end

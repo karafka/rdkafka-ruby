@@ -14,10 +14,13 @@ module Rdkafka
 
     # Registry for registering all the handles.
     REGISTRY = {}
-    # Default wait timeout is 31 years
+    # Default wait timeout is 31 years (kept for internal use when nil is passed)
     MAX_WAIT_TIMEOUT_FOREVER = 10_000_000_000
 
     private_constant :MAX_WAIT_TIMEOUT_FOREVER
+
+    # Default wait timeout in seconds (converted from ms)
+    DEFAULT_WAIT_TIMEOUT = Defaults::HANDLE_WAIT_TIMEOUT_MS / 1_000.0
 
     class << self
       # Adds handle to the register
@@ -62,7 +65,7 @@ module Rdkafka
     #
     # @raise [RdkafkaError] When the operation failed
     # @raise [WaitTimeoutError] When the timeout has been reached and the handle is still pending
-    def wait(max_wait_timeout: 60, raise_response_error: true)
+    def wait(max_wait_timeout: DEFAULT_WAIT_TIMEOUT, raise_response_error: true)
       timeout = max_wait_timeout ? monotonic_now + max_wait_timeout : MAX_WAIT_TIMEOUT_FOREVER
 
       @mutex.synchronize do

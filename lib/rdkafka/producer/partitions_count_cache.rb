@@ -51,7 +51,7 @@ module Rdkafka
       # @note This default was chosen to balance freshness of metadata with performance
       #   optimization. Most Kafka cluster topology changes are planned operations, making 30
       #   seconds a reasonable compromise.
-      DEFAULT_TTL = 30
+      DEFAULT_TTL = Defaults::PARTITIONS_COUNT_CACHE_TTL_MS / 1_000
 
       # Creates a new partition count cache
       #

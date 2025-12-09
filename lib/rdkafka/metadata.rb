@@ -22,7 +22,7 @@ module Rdkafka
     # @param topic_name [String, nil] specific topic to fetch metadata for, or nil for all topics
     # @param timeout_ms [Integer] timeout in milliseconds
     # @raise [RdkafkaError] when metadata fetch fails
-    def initialize(native_client, topic_name = nil, timeout_ms = 2_000)
+    def initialize(native_client, topic_name = nil, timeout_ms = Defaults::METADATA_TIMEOUT_MS)
       attempt ||= 0
       attempt += 1
 
@@ -44,10 +44,10 @@ module Rdkafka
       metadata_from_native(ptr.read_pointer)
     rescue ::Rdkafka::RdkafkaError => e
       raise unless RETRIED_ERRORS.include?(e.code)
-      raise if attempt > 10
+      raise if attempt > Defaults::METADATA_MAX_RETRIES
 
       backoff_factor = 2**attempt
-      timeout = backoff_factor * 0.1
+      timeout = backoff_factor * (Defaults::METADATA_RETRY_BACKOFF_BASE_MS / 1_000.0)
 
       sleep(timeout)
 

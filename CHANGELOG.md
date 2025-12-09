@@ -1,5 +1,10 @@
 # Rdkafka Changelog
 
+## 0.24.0 (2025-12-09)
+- **[Breaking]** Default `AbstractHandle#wait` timeout changed from `60` seconds to `Defaults::HANDLE_WAIT_TIMEOUT_MS / 1000.0` (60.0 seconds). While the value is the same, code relying on the exact integer type may need adjustment.
+- [Enhancement] Add `Rdkafka::Defaults` module with centralized timeout constants (aligning with upstream refactor).
+- [Enhancement] Extract all hardcoded timeout values to named constants for better maintainability and discoverability.
+
 ## 0.23.1 (2025-11-14)
 - **[Feature]** Add integrated fatal error handling in `RdkafkaError.validate!` - automatically detects and handles fatal errors (-150) with single entrypoint API.
 - [Enhancement] Add optional `client_ptr` parameter to `validate!` for automatic fatal error remapping to actual underlying error codes.

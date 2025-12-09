@@ -243,7 +243,7 @@ RSpec.configure do |config|
     }.each do |topic, partitions|
       create_topic_handle = admin.create_topic(topic, partitions, 1)
       begin
-        create_topic_handle.wait(max_wait_timeout: 1.0)
+        create_topic_handle.wait(max_wait_timeout_ms: 1_000)
       rescue Rdkafka::RdkafkaError => ex
         raise unless ex.message.match?(/topic_already_exists/)
       end

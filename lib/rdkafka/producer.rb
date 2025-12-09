@@ -167,7 +167,7 @@ module Rdkafka
     #   should be no other errors.
     #
     # @note For `timed_out` we do not raise an error to keep it backwards compatible
-    def flush(timeout_ms=5_000)
+    def flush(timeout_ms = Defaults::PRODUCER_FLUSH_TIMEOUT_MS)
       closed_producer_check(__method__)
 
       code = nil
@@ -207,7 +207,7 @@ module Rdkafka
       code.zero? || raise(Rdkafka::RdkafkaError.new(code))
 
       # Wait for the purge to affect everything
-      sleep(0.001) until flush(100)
+      sleep(Defaults::PRODUCER_PURGE_SLEEP_INTERVAL_MS / 1000.0) until flush(Defaults::PRODUCER_PURGE_FLUSH_TIMEOUT_MS)
 
       true
     end

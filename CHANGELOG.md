@@ -1,6 +1,9 @@
 # Rdkafka Changelog
 
 ## 0.25.0 (Unreleased)
+- **[Breaking]** Change `AbstractHandle#wait` parameter from `max_wait_timeout:` (seconds) to `max_wait_timeout_ms:` (milliseconds).
+- [Enhancement] Extract all timeout defaults to `Rdkafka::Defaults` module for discoverability and per-call overrides (#310). All time-related values are now in milliseconds for consistency.
+- [Enhancement] Add `timeout_ms` parameter to `Consumer#each` for configurable poll timeout.
 - [Enhancement] Bump librdkafka to `2.12.1`
 - [Enhancement] Add descriptive error messages for glibc compatibility issues with instructions for resolution (#654)
 - [Enhancement] Replace magic numbers with named constants throughout codebase for improved readability and maintainability

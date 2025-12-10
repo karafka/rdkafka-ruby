@@ -10,5 +10,5 @@ group :development do
   gem 'rspec'
   gem 'simplecov'
   gem 'warning'
-  gem 'yard-lint'
+  gem 'yard-lint', '~> 1.3.0'
 end

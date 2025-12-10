@@ -16,6 +16,7 @@ module Rdkafka
     include Helpers::OAuth
 
     # @private
+    # @param native_kafka [NativeKafka] wrapper around the native Kafka consumer handle
     def initialize(native_kafka)
       @native_kafka = native_kafka
     end
@@ -655,7 +656,7 @@ module Rdkafka
     private
 
     # Checks if the consumer is closed and raises an error if so
-    # @param method [Symbol] the method being called
+    # @param method [Symbol] name of the calling method for error context
     # @raise [ClosedConsumerError] when the consumer is closed
     def closed_consumer_check(method)
       raise Rdkafka::ClosedConsumerError.new(method) if closed?

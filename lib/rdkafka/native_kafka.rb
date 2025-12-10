@@ -4,6 +4,12 @@ module Rdkafka
   # @private
   # A wrapper around a native kafka that polls and cleanly exits
   class NativeKafka
+    # Creates a new NativeKafka wrapper
+    # @param inner [FFI::Pointer] pointer to the native Kafka handle
+    # @param run_polling_thread [Boolean] whether to run a background polling thread
+    # @param opaque [Rdkafka::Opaque] opaque object for callback context
+    # @param auto_start [Boolean] whether to start the polling thread automatically
+    # @param timeout_ms [Integer] poll timeout in milliseconds
     def initialize(inner, run_polling_thread:, opaque:, auto_start: true, timeout_ms: Defaults::NATIVE_KAFKA_POLL_TIMEOUT_MS)
       @inner = inner
       @opaque = opaque
@@ -37,6 +43,8 @@ module Rdkafka
       @closing = false
     end
 
+    # Starts the polling thread if configured
+    # @return [nil]
     def start
       synchronize do
         return if @started
@@ -69,6 +77,10 @@ module Rdkafka
       end
     end
 
+    # Executes a block with the inner native Kafka handle
+    # @yield [FFI::Pointer] the inner native Kafka handle
+    # @return [Object] the result of the block
+    # @raise [ClosedInnerError] when the inner handle is nil
     def with_inner
       if @access_mutex.owned?
         @operations_in_progress += 1
@@ -81,6 +93,10 @@ module Rdkafka
       @decrement_mutex.synchronize { @operations_in_progress -= 1 }
     end
 
+    # Executes a block while holding exclusive access to the native Kafka handle
+    # @param block [Proc] block to execute with the native handle
+    # @yield [FFI::Pointer] the inner native Kafka handle
+    # @return [Object] the result of the block
     def synchronize(&block)
       @access_mutex.synchronize do
         # Wait for any commands using the inner to finish
@@ -93,14 +109,22 @@ module Rdkafka
       end
     end
 
+    # Returns a finalizer proc for closing this native Kafka handle
+    # @return [Proc] finalizer proc
     def finalizer
       ->(_) { close }
     end
 
+    # Returns whether this native Kafka handle is closed or closing
+    # @return [Boolean] true if closed or closing
     def closed?
       @closing || @inner.nil?
     end
 
+    # Closes the native Kafka handle and cleans up resources
+    # @param object_id [Integer, nil] optional object ID (unused, for finalizer compatibility)
+    # @yield optional block to execute before destroying the handle
+    # @return [nil]
     def close(object_id=nil)
       return if closed?
 

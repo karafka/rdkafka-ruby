@@ -14,9 +14,9 @@ module Rdkafka
   # Or include it for all producers in your test suite:
   #   Rdkafka::Producer.include(Rdkafka::Testing)
   #
-  # IMPORTANT: Fatal errors leave the producer client in an unusable state. After triggering
-  # a fatal error, the producer should be closed and discarded. Do not attempt to reuse a
-  # producer that has experienced a fatal error.
+  # @note Fatal errors leave the producer client in an unusable state. After triggering
+  #   a fatal error, the producer should be closed and discarded. Do not attempt to reuse a
+  #   producer that has experienced a fatal error.
   module Testing
     # Triggers a test fatal error using rd_kafka_test_fatal_error.
     # This is useful for testing fatal error handling without needing actual broker issues.

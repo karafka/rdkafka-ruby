@@ -10,12 +10,16 @@ module Rdkafka
     class TopicResult
       attr_reader :result_error, :error_string, :result_name
 
+      # @param topic_result_pointer [FFI::Pointer] pointer to the topic result struct
       def initialize(topic_result_pointer)
         @result_error = Rdkafka::Bindings.rd_kafka_topic_result_error(topic_result_pointer)
         @error_string = Rdkafka::Bindings.rd_kafka_topic_result_error_string(topic_result_pointer)
         @result_name = Rdkafka::Bindings.rd_kafka_topic_result_name(topic_result_pointer)
       end
 
+      # @param count [Integer] number of results
+      # @param array_pointer [FFI::Pointer] pointer to the results array
+      # @return [Array<TopicResult>] array of topic results
       def self.create_topic_results_from_array(count, array_pointer)
         (1..count).map do |index|
           result_pointer = (array_pointer + (index - 1)).read_pointer
@@ -62,12 +66,16 @@ module Rdkafka
     class CreateAclResult
       attr_reader :result_error, :error_string
 
+      # @param acl_result_pointer [FFI::Pointer] pointer to the ACL result struct
       def initialize(acl_result_pointer)
         rd_kafka_error_pointer = Bindings.rd_kafka_acl_result_error(acl_result_pointer)
         @result_error = Rdkafka::Bindings.rd_kafka_error_code(rd_kafka_error_pointer)
         @error_string = Rdkafka::Bindings.rd_kafka_error_string(rd_kafka_error_pointer)
       end
 
+      # @param count [Integer] number of results
+      # @param array_pointer [FFI::Pointer] pointer to the results array
+      # @return [Array<CreateAclResult>] array of ACL results
       def self.create_acl_results_from_array(count, array_pointer)
         (1..count).map do |index|
           result_pointer = (array_pointer + (index - 1)).read_pointer
@@ -82,6 +90,7 @@ module Rdkafka
     class DeleteAclResult
       attr_reader :result_error, :error_string, :matching_acls, :matching_acls_count
 
+      # @param acl_result_pointer [FFI::Pointer] pointer to the delete ACL result response struct
       def initialize(acl_result_pointer)
         @matching_acls=[]
         rd_kafka_error_pointer = Rdkafka::Bindings.rd_kafka_DeleteAcls_result_response_error(acl_result_pointer)
@@ -95,6 +104,9 @@ module Rdkafka
         end
       end
 
+      # @param count [Integer] number of results
+      # @param array_pointer [FFI::Pointer] pointer to the results array
+      # @return [Array<DeleteAclResult>] array of delete ACL results
       def self.delete_acl_results_from_array(count, array_pointer)
         (1..count).map do |index|
           result_pointer = (array_pointer + (index - 1)).read_pointer
@@ -109,6 +121,7 @@ module Rdkafka
     class DescribeAclResult
       attr_reader :result_error, :error_string, :matching_acls, :matching_acls_count
 
+      # @param event_ptr [FFI::Pointer] pointer to the event
       def initialize(event_ptr)
         @matching_acls=[]
         @result_error = Rdkafka::Bindings.rd_kafka_event_error(event_ptr)
@@ -169,7 +182,11 @@ module Rdkafka
 
     # @private
     class BackgroundEventCallback
-      def self.call(_, event_ptr, _)
+      # Handles background events from librdkafka
+      # @param _client_ptr [FFI::Pointer] unused client pointer
+      # @param event_ptr [FFI::Pointer] pointer to the event
+      # @param _opaque_ptr [FFI::Pointer] unused opaque pointer
+      def self.call(_client_ptr, event_ptr, _opaque_ptr)
         case Rdkafka::Bindings.rd_kafka_event_type(event_ptr)
         when Rdkafka::Bindings::RD_KAFKA_EVENT_CREATETOPICS_RESULT
           process_create_topic(event_ptr)
@@ -194,6 +211,8 @@ module Rdkafka
 
       private
 
+      # Processes create topic result event
+      # @param event_ptr [FFI::Pointer] pointer to the event
       def self.process_create_topic(event_ptr)
         create_topics_result = Rdkafka::Bindings.rd_kafka_event_CreateTopics_result(event_ptr)
 
@@ -212,6 +231,8 @@ module Rdkafka
         end
       end
 
+      # Processes describe configs result event
+      # @param event_ptr [FFI::Pointer] pointer to the event
       def self.process_describe_configs(event_ptr)
         describe_configs = DescribeConfigsResult.new(event_ptr)
         describe_configs_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
@@ -230,6 +251,8 @@ module Rdkafka
         end
       end
 
+      # Processes incremental alter configs result event
+      # @param event_ptr [FFI::Pointer] pointer to the event
       def self.process_incremental_alter_configs(event_ptr)
         incremental_alter = IncrementalAlterConfigsResult.new(event_ptr)
         incremental_alter_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
@@ -248,6 +271,8 @@ module Rdkafka
         end
       end
 
+      # Processes delete groups result event
+      # @param event_ptr [FFI::Pointer] pointer to the event
       def self.process_delete_groups(event_ptr)
         delete_groups_result = Rdkafka::Bindings.rd_kafka_event_DeleteGroups_result(event_ptr)
 
@@ -266,6 +291,8 @@ module Rdkafka
         end
       end
 
+      # Processes delete topic result event
+      # @param event_ptr [FFI::Pointer] pointer to the event
       def self.process_delete_topic(event_ptr)
         delete_topics_result = Rdkafka::Bindings.rd_kafka_event_DeleteTopics_result(event_ptr)
 
@@ -284,6 +311,8 @@ module Rdkafka
         end
       end
 
+      # Processes create partitions result event
+      # @param event_ptr [FFI::Pointer] pointer to the event
       def self.process_create_partitions(event_ptr)
         create_partitionss_result = Rdkafka::Bindings.rd_kafka_event_CreatePartitions_result(event_ptr)
 
@@ -302,6 +331,8 @@ module Rdkafka
         end
       end
 
+      # Processes create ACL result event
+      # @param event_ptr [FFI::Pointer] pointer to the event
       def self.process_create_acl(event_ptr)
         create_acls_result = Rdkafka::Bindings.rd_kafka_event_CreateAcls_result(event_ptr)
 
@@ -319,6 +350,8 @@ module Rdkafka
         end
       end
 
+      # Processes delete ACL result event
+      # @param event_ptr [FFI::Pointer] pointer to the event
       def self.process_delete_acl(event_ptr)
         delete_acls_result = Rdkafka::Bindings.rd_kafka_event_DeleteAcls_result(event_ptr)
 
@@ -341,6 +374,8 @@ module Rdkafka
         end
       end
 
+      # Processes describe ACL result event
+      # @param event_ptr [FFI::Pointer] pointer to the event
       def self.process_describe_acl(event_ptr)
         describe_acl = DescribeAclResult.new(event_ptr)
         describe_acl_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
@@ -361,7 +396,11 @@ module Rdkafka
 
     # @private
     class DeliveryCallback
-      def self.call(_, message_ptr, opaque_ptr)
+      # Handles message delivery callbacks
+      # @param _client_ptr [FFI::Pointer] unused client pointer
+      # @param message_ptr [FFI::Pointer] pointer to the delivered message
+      # @param opaque_ptr [FFI::Pointer] pointer to the opaque object for callback context
+      def self.call(_client_ptr, message_ptr, opaque_ptr)
         message = Rdkafka::Bindings::Message.new(message_ptr)
         delivery_handle_ptr_address = message[:_private].address
         if delivery_handle = Rdkafka::Producer::DeliveryHandle.remove(delivery_handle_ptr_address)

@@ -49,7 +49,6 @@ module Rdkafka
       #
       # @example Add a topic with all topics up to a count
       #   tpl.add_topic("topic", 9)
-      #
       def add_topic(topic, partitions=nil)
         if partitions.nil?
           @data[topic.to_s] = nil

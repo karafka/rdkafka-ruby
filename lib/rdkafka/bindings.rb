@@ -448,7 +448,6 @@ module Rdkafka
     attach_function :rd_kafka_query_watermark_offsets, [:pointer, :string, :int, :pointer, :pointer, :int], :int
 
     # Producer
-
     RD_KAFKA_VTYPE_END = 0
     RD_KAFKA_VTYPE_TOPIC = 1
     RD_KAFKA_VTYPE_RKT = 2
@@ -504,7 +503,6 @@ module Rdkafka
     end
 
     # Create Topics
-
     RD_KAFKA_ADMIN_OP_CREATETOPICS     = 1   # rd_kafka_admin_op_t
     RD_KAFKA_EVENT_CREATETOPICS_RESULT = 100 # rd_kafka_event_type_t
 
@@ -516,7 +514,6 @@ module Rdkafka
     attach_function :rd_kafka_CreateTopics_result_topics, [:pointer, :pointer], :pointer, blocking: true
 
     # Delete Topics
-
     RD_KAFKA_ADMIN_OP_DELETETOPICS     = 2   # rd_kafka_admin_op_t
     RD_KAFKA_EVENT_DELETETOPICS_RESULT = 101 # rd_kafka_event_type_t
 
@@ -537,7 +534,6 @@ module Rdkafka
     attach_function :rd_kafka_CreatePartitions_result_topics, [:pointer, :pointer], :pointer
 
     # Delete Group
-
     RD_KAFKA_ADMIN_OP_DELETEGROUPS = 7   # rd_kafka_admin_op_t
     RD_KAFKA_EVENT_DELETEGROUPS_RESULT = 106 # rd_kafka_event_type_t
 
@@ -571,7 +567,6 @@ module Rdkafka
     attach_function :rd_kafka_topic_result_name, [:pointer], :pointer
 
     # Create Acls
-
     RD_KAFKA_ADMIN_OP_CREATEACLS     = 9
     RD_KAFKA_EVENT_CREATEACLS_RESULT = 1024
 
@@ -580,7 +575,6 @@ module Rdkafka
     attach_function :rd_kafka_CreateAcls_result_acls, [:pointer, :pointer], :pointer
 
     # Delete Acls
-
     RD_KAFKA_ADMIN_OP_DELETEACLS     = 11
     RD_KAFKA_EVENT_DELETEACLS_RESULT = 4096
 
@@ -591,7 +585,6 @@ module Rdkafka
     attach_function :rd_kafka_DeleteAcls_result_response_matching_acls, [:pointer, :pointer], :pointer
 
     # Describe Acls
-
     RD_KAFKA_ADMIN_OP_DESCRIBEACLS     = 10
     RD_KAFKA_EVENT_DESCRIBEACLS_RESULT = 2048
 
@@ -613,7 +606,6 @@ module Rdkafka
     attach_function :rd_kafka_AclBinding_destroy, [:pointer], :void
 
     # rd_kafka_ResourceType_t - https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L7307
-
     RD_KAFKA_RESOURCE_ANY   = 1
     RD_KAFKA_RESOURCE_TOPIC = 2
     RD_KAFKA_RESOURCE_GROUP = 3
@@ -621,14 +613,12 @@ module Rdkafka
     RD_KAFKA_RESOURCE_TRANSACTIONAL_ID = 5
 
     # rd_kafka_ResourcePatternType_t - https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L7320
-
     RD_KAFKA_RESOURCE_PATTERN_ANY      = 1
     RD_KAFKA_RESOURCE_PATTERN_MATCH    = 2
     RD_KAFKA_RESOURCE_PATTERN_LITERAL  = 3
     RD_KAFKA_RESOURCE_PATTERN_PREFIXED = 4
 
     # rd_kafka_AclOperation_t - https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L8403
-
     RD_KAFKA_ACL_OPERATION_ANY              = 1
     RD_KAFKA_ACL_OPERATION_ALL              = 2
     RD_KAFKA_ACL_OPERATION_READ             = 3
@@ -643,7 +633,6 @@ module Rdkafka
     RD_KAFKA_ACL_OPERATION_IDEMPOTENT_WRITE = 12
 
     # rd_kafka_AclPermissionType_t - https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L8435
-
     RD_KAFKA_ACL_PERMISSION_TYPE_ANY     = 1
     RD_KAFKA_ACL_PERMISSION_TYPE_DENY    = 2
     RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW   = 3

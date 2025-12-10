@@ -32,6 +32,7 @@ module Rdkafka
       attr_reader :headers
 
       # @private
+      # @param native_message [Rdkafka::Bindings::Message] native message struct from librdkafka
       def initialize(native_message)
         # Set topic
         unless native_message[:rkt].null?

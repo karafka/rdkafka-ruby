@@ -151,6 +151,13 @@ module Rdkafka
     end
 
     # @private
+    # @param response [Integer] the raw error response code from librdkafka
+    # @param message_prefix [String, nil] optional prefix for error messages
+    # @param broker_message [String, nil] optional error message from the broker
+    # @param fatal [Boolean] whether this is a fatal error
+    # @param retryable [Boolean] whether this error is retryable
+    # @param abortable [Boolean] whether this error requires transaction abort
+    # @param details [Hash] additional error details
     def initialize(
       response,
       message_prefix=nil,
@@ -237,6 +244,9 @@ module Rdkafka
     attr_reader :topic_partition_list
 
     # @private
+    # @param response [Integer] the raw error response code from librdkafka
+    # @param topic_partition_list [TopicPartitionList] the topic partition list with error info
+    # @param message_prefix [String, nil] optional prefix for error messages
     def initialize(response, topic_partition_list, message_prefix=nil)
       super(response, message_prefix)
       @topic_partition_list = topic_partition_list

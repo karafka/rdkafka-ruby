@@ -21,6 +21,10 @@ module Rdkafka
       attr_reader :metadata
 
       # @private
+      # @param partition [Integer] partition number
+      # @param offset [Integer, nil] partition offset
+      # @param err [Integer] error code from librdkafka
+      # @param metadata [String, nil] partition metadata
       def initialize(partition, offset, err = 0, metadata = nil)
         @partition = partition
         @offset = offset

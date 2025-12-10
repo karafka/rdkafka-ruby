@@ -50,7 +50,7 @@ module Rdkafka
       # Convert extensions hash to FFI::MemoryPointer (`const char **`).
       #
       # @param extensions [Hash, nil] extension key-value pairs
-      # @return [Array(FFI::MemoryPointer, Array<FFI::MemoryPointer>)] array pointer and string pointers
+      # @return [Array<FFI::MemoryPointer, Array<FFI::MemoryPointer>>] array pointer and string pointers
       # @note The returned pointers must be freed manually (autorelease = false).
       def map_extensions(extensions)
         return [nil, nil] if extensions.nil? || extensions.empty?

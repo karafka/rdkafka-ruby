@@ -50,6 +50,7 @@ module Rdkafka
     end
 
     # @private
+    # @param native_kafka [NativeKafka] wrapper around the native Kafka handle
     def initialize(native_kafka)
       @native_kafka = native_kafka
 
@@ -818,7 +819,7 @@ module Rdkafka
     private
 
     # Checks if the admin is closed and raises an error if so
-    # @param method [Symbol] the method being called
+    # @param method [Symbol] name of the calling method for error context
     # @raise [ClosedAdminError] when the admin is closed
     def closed_admin_check(method)
       raise Rdkafka::ClosedAdminError.new(method) if closed?

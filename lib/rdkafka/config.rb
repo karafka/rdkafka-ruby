@@ -379,10 +379,15 @@ module Rdkafka
     attr_accessor :producer
     attr_accessor :consumer_rebalance_listener
 
+    # Invokes the delivery callback on the producer if one is set
+    # @param delivery_report [Rdkafka::Producer::DeliveryReport] the delivery report
+    # @param delivery_handle [Rdkafka::Producer::DeliveryHandle] the delivery handle
     def call_delivery_callback(delivery_report, delivery_handle)
       producer.call_delivery_callback(delivery_report, delivery_handle) if producer
     end
 
+    # Invokes the on_partitions_assigned callback on the rebalance listener if set
+    # @param list [Rdkafka::Consumer::TopicPartitionList] the assigned partitions
     def call_on_partitions_assigned(list)
       return unless consumer_rebalance_listener
       return unless consumer_rebalance_listener.respond_to?(:on_partitions_assigned)
@@ -390,6 +395,8 @@ module Rdkafka
       consumer_rebalance_listener.on_partitions_assigned(list)
     end
 
+    # Invokes the on_partitions_revoked callback on the rebalance listener if set
+    # @param list [Rdkafka::Consumer::TopicPartitionList] the revoked partitions
     def call_on_partitions_revoked(list)
       return unless consumer_rebalance_listener
       return unless consumer_rebalance_listener.respond_to?(:on_partitions_revoked)

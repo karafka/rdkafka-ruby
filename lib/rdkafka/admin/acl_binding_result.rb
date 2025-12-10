@@ -3,7 +3,6 @@
 module Rdkafka
   class Admin
     # Extracts attributes of rd_kafka_AclBinding_t
-    #
     class AclBindingResult
       attr_reader :result_error, :error_string, :matching_acl_resource_type,
                   :matching_acl_resource_name, :matching_acl_resource_pattern_type,

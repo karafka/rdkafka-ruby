@@ -13,8 +13,8 @@ module Rdkafka
       #
       # @private
       #
-      # @param [Rdkafka::Bindings::Message] native_message
-      # @return [Hash<String, String|Array<String>>] headers Hash for the native_message
+      # @param native_message [Rdkafka::Bindings::Message] the native message to read headers from
+      # @return [Hash{String => String, Array<String>}] headers Hash for the native_message
       # @raise [Rdkafka::RdkafkaError] when fail to read headers
       def self.from_native(native_message)
         headers_ptrptr = FFI::MemoryPointer.new(:pointer)

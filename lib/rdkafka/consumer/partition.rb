@@ -17,6 +17,9 @@ module Rdkafka
       attr_reader :err
 
       # @private
+      # @param partition [Integer] partition number
+      # @param offset [Integer, nil] partition offset
+      # @param err [Integer] error code from librdkafka
       def initialize(partition, offset, err = Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR)
         @partition = partition
         @offset = offset

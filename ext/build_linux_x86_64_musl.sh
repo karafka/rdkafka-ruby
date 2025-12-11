@@ -135,12 +135,17 @@ Or install individually as needed."
 setup_musl_compiler() {
     # musl-specific compiler flags
     export CC="gcc"
-    export CFLAGS="-fPIC -O2 -static-libgcc"
-    export CXXFLAGS="-fPIC -O2 -static-libgcc" 
+    # GCC 15+ (Alpine 3.23+) uses C23 by default, where empty parentheses ()
+    # mean "no arguments" instead of "unspecified arguments". Several dependencies
+    # (MIT Kerberos, Cyrus SASL) use old-style K&R declarations incompatible with C23.
+    # Force C17 standard globally for all dependency builds.
+    # This is backwards compatible: GCC 8-14 used gnu17 as default anyway.
+    export CFLAGS="-fPIC -O2 -static-libgcc -std=gnu17"
+    export CXXFLAGS="-fPIC -O2 -static-libgcc"
     export CPPFLAGS=""
     export LDFLAGS="-static-libgcc"
 
-    log "Applied musl-specific compiler flags"
+    log "Applied musl-specific compiler flags (with C17 for GCC 15+ compatibility)"
 }
 
 # Build OpenSSL for musl

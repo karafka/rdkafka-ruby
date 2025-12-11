@@ -47,9 +47,9 @@ module Rdkafka
       raise if attempt > Defaults::METADATA_MAX_RETRIES
 
       backoff_factor = 2**attempt
-      timeout = backoff_factor * (Defaults::METADATA_RETRY_BACKOFF_BASE_MS / 1_000.0)
+      timeout_ms = backoff_factor * Defaults::METADATA_RETRY_BACKOFF_BASE_MS
 
-      sleep(timeout)
+      sleep(timeout_ms / 1_000.0)
 
       retry
     ensure

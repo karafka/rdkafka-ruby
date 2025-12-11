@@ -25,7 +25,7 @@ module Rdkafka
       # @param offset [Integer, nil] partition offset
       # @param err [Integer] error code from librdkafka
       # @param metadata [String, nil] partition metadata
-      def initialize(partition, offset, err = 0, metadata = nil)
+      def initialize(partition, offset, err = Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR, metadata = nil)
         @partition = partition
         @offset = offset
         @err = err

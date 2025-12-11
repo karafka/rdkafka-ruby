@@ -2,7 +2,7 @@
 
 require 'zlib'
 
-describe Rdkafka::Bindings do
+RSpec.describe Rdkafka::Bindings do
   it "should load librdkafka" do
     expect(Rdkafka::Bindings.ffi_libraries.map(&:name).first).to include "librdkafka"
   end

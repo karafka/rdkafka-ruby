@@ -2,7 +2,7 @@
 
 require "ostruct"
 
-describe Rdkafka::Admin do
+RSpec.describe Rdkafka::Admin do
   let(:config) { rdkafka_config }
   let(:admin)  { config.admin }
 
@@ -62,7 +62,7 @@ describe Rdkafka::Admin do
         it "raises an exception" do
           create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor)
           expect {
-            create_topic_handle.wait(max_wait_timeout: 15.0)
+            create_topic_handle.wait(max_wait_timeout_ms: 15_000)
           }.to raise_exception { |ex|
             expect(ex).to be_a(Rdkafka::RdkafkaError)
             expect(ex.message).to match(/Broker: Invalid topic \(topic_exception\)/)
@@ -77,7 +77,7 @@ describe Rdkafka::Admin do
         it "raises an exception" do
           create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor)
           expect {
-            create_topic_handle.wait(max_wait_timeout: 15.0)
+            create_topic_handle.wait(max_wait_timeout_ms: 15_000)
           }.to raise_exception { |ex|
             expect(ex).to be_a(Rdkafka::RdkafkaError)
             expect(ex.message).to match(/Broker: Topic already exists \(topic_already_exists\)/)
@@ -110,7 +110,7 @@ describe Rdkafka::Admin do
         it "doesn't create the topic" do
           create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor, invalid_topic_config)
           expect {
-            create_topic_handle.wait(max_wait_timeout: 15.0)
+            create_topic_handle.wait(max_wait_timeout_ms: 15_000)
           }.to raise_error Rdkafka::RdkafkaError, /Broker: Configuration is invalid \(invalid_config\)/
         end
       end
@@ -144,7 +144,7 @@ describe Rdkafka::Admin do
 
     it "creates a topic" do
       create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor, topic_config)
-      create_topic_report = create_topic_handle.wait(max_wait_timeout: 15.0)
+      create_topic_report = create_topic_handle.wait(max_wait_timeout_ms: 15_000)
       expect(create_topic_report.error_string).to be_nil
       expect(create_topic_report.result_name).to eq(topic_name)
     end
@@ -438,7 +438,7 @@ describe Rdkafka::Admin do
         it "raises an exception" do
           delete_topic_handle = admin.delete_topic(topic_name)
           expect {
-            delete_topic_handle.wait(max_wait_timeout: 15.0)
+            delete_topic_handle.wait(max_wait_timeout_ms: 15_000)
           }.to raise_exception { |ex|
             expect(ex).to be_a(Rdkafka::RdkafkaError)
             expect(ex.message).to match(/Broker: Unknown topic or partition \(unknown_topic_or_part\)/)
@@ -451,7 +451,7 @@ describe Rdkafka::Admin do
         it "raises an exception" do
           delete_topic_handle = admin.delete_topic(topic_name)
           expect {
-            delete_topic_handle.wait(max_wait_timeout: 15.0)
+            delete_topic_handle.wait(max_wait_timeout_ms: 15_000)
           }.to raise_exception { |ex|
             expect(ex).to be_a(Rdkafka::RdkafkaError)
             expect(ex.message).to match(/Broker: Unknown topic or partition \(unknown_topic_or_part\)/)
@@ -489,7 +489,7 @@ describe Rdkafka::Admin do
 
     it "deletes a topic that was newly created" do
       create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor)
-      create_topic_report = create_topic_handle.wait(max_wait_timeout: 15.0)
+      create_topic_report = create_topic_handle.wait(max_wait_timeout_ms: 15_000)
       expect(create_topic_report.error_string).to be_nil
       expect(create_topic_report.result_name).to eq(topic_name)
 
@@ -499,7 +499,7 @@ describe Rdkafka::Admin do
       10.times do |i|
         begin
           delete_topic_handle = admin.delete_topic(topic_name)
-          delete_topic_report = delete_topic_handle.wait(max_wait_timeout: 15.0)
+          delete_topic_report = delete_topic_handle.wait(max_wait_timeout_ms: 15_000)
           break
         rescue Rdkafka::RdkafkaError => ex
           if i > 3
@@ -518,37 +518,37 @@ describe Rdkafka::Admin do
     before do
       #create topic for testing acl
       create_topic_handle = admin.create_topic(resource_name, topic_partition_count, topic_replication_factor)
-      create_topic_handle.wait(max_wait_timeout: 15.0)
+      create_topic_handle.wait(max_wait_timeout_ms: 15_000)
     end
 
     after do
       #delete acl
       delete_acl_handle = admin.delete_acl(resource_type: resource_type, resource_name: resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
-      delete_acl_handle.wait(max_wait_timeout: 15.0)
+      delete_acl_handle.wait(max_wait_timeout_ms: 15_000)
 
       #delete topic that was created for testing acl
       delete_topic_handle = admin.delete_topic(resource_name)
-      delete_topic_handle.wait(max_wait_timeout: 15.0)
+      delete_topic_handle.wait(max_wait_timeout_ms: 15_000)
     end
 
     describe "#create_acl" do
       it "create acl for a topic that does not exist" do
         # acl creation for resources that does not exist will still get created successfully.
         create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: non_existing_resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
-        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
 
         # delete the acl that was created for a non existing topic"
         delete_acl_handle = admin.delete_acl(resource_type: resource_type, resource_name: non_existing_resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
-        delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
+        delete_acl_report = delete_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(delete_acl_handle[:response]).to eq(0)
         expect(delete_acl_report.deleted_acls.size).to eq(1)
       end
 
       it "creates a acl for topic that was newly created" do
         create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
-        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
       end
@@ -557,7 +557,7 @@ describe Rdkafka::Admin do
     describe "#describe_acl" do
       it "describe acl of a topic that does not exist" do
         describe_acl_handle = admin.describe_acl(resource_type: resource_type, resource_name: non_existing_resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
-        describe_acl_report = describe_acl_handle.wait(max_wait_timeout: 15.0)
+        describe_acl_report = describe_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(describe_acl_handle[:response]).to eq(0)
         expect(describe_acl_report.acls.size).to eq(0)
       end
@@ -565,12 +565,12 @@ describe Rdkafka::Admin do
       it "create acls and describe the newly created acls" do
         #create_acl
         create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: TestTopics.unique, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
-        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
 
         create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: TestTopics.unique, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
-        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
 
@@ -579,7 +579,7 @@ describe Rdkafka::Admin do
 
         #describe_acl
         describe_acl_handle = admin.describe_acl(resource_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_ANY, resource_name: nil, resource_pattern_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_ANY, principal: nil, host: nil, operation: Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_ANY, permission_type: Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ANY)
-        describe_acl_report = describe_acl_handle.wait(max_wait_timeout: 15.0)
+        describe_acl_report = describe_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(describe_acl_handle[:response]).to eq(0)
         expect(describe_acl_report.acls.length).to eq(2)
       end
@@ -588,7 +588,7 @@ describe Rdkafka::Admin do
     describe "#delete_acl" do
       it "delete acl of a topic that does not exist" do
         delete_acl_handle = admin.delete_acl(resource_type: resource_type, resource_name: non_existing_resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
-        delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
+        delete_acl_report = delete_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(delete_acl_handle[:response]).to eq(0)
         expect(delete_acl_report.deleted_acls.size).to eq(0)
       end
@@ -597,7 +597,7 @@ describe Rdkafka::Admin do
         # Clean up any leftover ACLs from previous runs with matching filters
         begin
           cleanup_handle = admin.delete_acl(resource_type: resource_type, resource_name: nil, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
-          cleanup_handle.wait(max_wait_timeout: 15.0)
+          cleanup_handle.wait(max_wait_timeout_ms: 15_000)
         rescue
           # Ignore errors if no ACLs to clean up
         end
@@ -608,18 +608,18 @@ describe Rdkafka::Admin do
 
         #create_acl
         create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: resource_name_1, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
-        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
 
         create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: resource_name_2, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
-        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
 
         #delete_acl - resource_name nil - to delete all acls with any resource name and matching all other filters.
         delete_acl_handle = admin.delete_acl(resource_type: resource_type, resource_name: nil, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
-        delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
+        delete_acl_report = delete_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(delete_acl_handle[:response]).to eq(0)
         expect(delete_acl_report.deleted_acls.length).to eq(2)
 
@@ -649,7 +649,7 @@ describe Rdkafka::Admin do
           operation: transactional_id_operation,
           permission_type: transactional_id_permission_type
         )
-        delete_acl_handle.wait(max_wait_timeout: 15.0)
+        delete_acl_handle.wait(max_wait_timeout_ms: 15_000)
       rescue
         # Ignore cleanup errors
       end
@@ -666,7 +666,7 @@ describe Rdkafka::Admin do
           operation: transactional_id_operation,
           permission_type: transactional_id_permission_type
         )
-        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
       end
@@ -682,7 +682,7 @@ describe Rdkafka::Admin do
           operation: transactional_id_operation,
           permission_type: transactional_id_permission_type
         )
-        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
 
@@ -696,7 +696,7 @@ describe Rdkafka::Admin do
           operation: transactional_id_operation,
           permission_type: transactional_id_permission_type
         )
-        delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
+        delete_acl_report = delete_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(delete_acl_handle[:response]).to eq(0)
         expect(delete_acl_report.deleted_acls.size).to eq(1)
       end
@@ -713,7 +713,7 @@ describe Rdkafka::Admin do
           operation: transactional_id_operation,
           permission_type: transactional_id_permission_type
         )
-        describe_acl_report = describe_acl_handle.wait(max_wait_timeout: 15.0)
+        describe_acl_report = describe_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(describe_acl_handle[:response]).to eq(0)
         expect(describe_acl_report.acls.size).to eq(0)
       end
@@ -729,7 +729,7 @@ describe Rdkafka::Admin do
           operation: transactional_id_operation,
           permission_type: transactional_id_permission_type
         )
-        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
 
@@ -743,7 +743,7 @@ describe Rdkafka::Admin do
           operation: transactional_id_operation,
           permission_type: transactional_id_permission_type
         )
-        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
 
@@ -760,7 +760,7 @@ describe Rdkafka::Admin do
           operation: transactional_id_operation,
           permission_type: transactional_id_permission_type
         )
-        describe_acl_report = describe_acl_handle.wait(max_wait_timeout: 15.0)
+        describe_acl_report = describe_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(describe_acl_handle[:response]).to eq(0)
         expect(describe_acl_report.acls.length).to eq(2)
       end
@@ -777,7 +777,7 @@ describe Rdkafka::Admin do
           operation: transactional_id_operation,
           permission_type: transactional_id_permission_type
         )
-        delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
+        delete_acl_report = delete_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(delete_acl_handle[:response]).to eq(0)
         expect(delete_acl_report.deleted_acls.size).to eq(0)
       end
@@ -793,7 +793,7 @@ describe Rdkafka::Admin do
           operation: transactional_id_operation,
           permission_type: transactional_id_permission_type
         )
-        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
 
@@ -807,7 +807,7 @@ describe Rdkafka::Admin do
           operation: transactional_id_operation,
           permission_type: transactional_id_permission_type
         )
-        create_acl_report = create_acl_handle.wait(max_wait_timeout: 15.0)
+        create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
 
@@ -821,7 +821,7 @@ describe Rdkafka::Admin do
           operation: transactional_id_operation,
           permission_type: transactional_id_permission_type
         )
-        delete_acl_report = delete_acl_handle.wait(max_wait_timeout: 15.0)
+        delete_acl_report = delete_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(delete_acl_handle[:response]).to eq(0)
         expect(delete_acl_report.deleted_acls.length).to eq(2)
       end
@@ -838,9 +838,9 @@ describe Rdkafka::Admin do
 
         before do
           # Create a topic, post a message to it, consume it and commit offsets, this will create a group that we can then delete.
-          admin.create_topic(topic_name, topic_partition_count, topic_replication_factor).wait(max_wait_timeout: 15.0)
+          admin.create_topic(topic_name, topic_partition_count, topic_replication_factor).wait(max_wait_timeout_ms: 15_000)
 
-          producer.produce(topic: topic_name, payload: "test", key: "test").wait(max_wait_timeout: 15.0)
+          producer.produce(topic: topic_name, payload: "test", key: "test").wait(max_wait_timeout_ms: 15_000)
 
           consumer.subscribe(topic_name)
           wait_for_assignment(consumer)
@@ -863,7 +863,7 @@ describe Rdkafka::Admin do
 
         it "deletes the group" do
           delete_group_handle = admin.delete_group(group_name)
-          report = delete_group_handle.wait(max_wait_timeout: 15.0)
+          report = delete_group_handle.wait(max_wait_timeout_ms: 15_000)
 
           expect(report.result_name).to eql(group_name)
         end
@@ -875,7 +875,7 @@ describe Rdkafka::Admin do
             delete_group_handle = admin.delete_group(group_name)
 
             expect {
-              delete_group_handle.wait(max_wait_timeout: 15.0)
+              delete_group_handle.wait(max_wait_timeout_ms: 15_000)
             }.to raise_exception { |ex|
               expect(ex).to be_a(Rdkafka::RdkafkaError)
               expect(ex.message).to match(/Broker: The group id does not exist \(group_id_not_found\)/)

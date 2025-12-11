@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-describe Rdkafka::Admin::CreateTopicReport do
+RSpec.describe Rdkafka::Admin::CreateTopicReport do
   subject { Rdkafka::Admin::CreateTopicReport.new(
       FFI::MemoryPointer.from_string("error string"),
       FFI::MemoryPointer.from_string("result name")

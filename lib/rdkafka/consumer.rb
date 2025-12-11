@@ -240,7 +240,7 @@ module Rdkafka
     # @param timeout_ms [Integer] The timeout for fetching this information.
     # @return [TopicPartitionList]
     # @raise [RdkafkaError] When getting the committed positions fails.
-    def committed(list=nil, timeout_ms=Defaults::CONSUMER_COMMITTED_TIMEOUT_MS)
+    def committed(list = nil, timeout_ms = Defaults::CONSUMER_COMMITTED_TIMEOUT_MS)
       closed_consumer_check(__method__)
 
       if list.nil?
@@ -295,7 +295,7 @@ module Rdkafka
     # @param timeout_ms [Integer] The timeout for querying the broker
     # @return [Integer] The low and high watermark
     # @raise [RdkafkaError] When querying the broker fails.
-    def query_watermark_offsets(topic, partition, timeout_ms=Defaults::CONSUMER_QUERY_WATERMARK_TIMEOUT_MS)
+    def query_watermark_offsets(topic, partition, timeout_ms = Defaults::CONSUMER_QUERY_WATERMARK_TIMEOUT_MS)
       closed_consumer_check(__method__)
 
       low = FFI::MemoryPointer.new(:int64, 1)
@@ -329,7 +329,7 @@ module Rdkafka
     # @return [Hash{String => Hash{Integer => Integer}}] A hash containing all topics with the lag
     #   per partition
     # @raise [RdkafkaError] When querying the broker fails.
-    def lag(topic_partition_list, watermark_timeout_ms=Defaults::CONSUMER_LAG_TIMEOUT_MS)
+    def lag(topic_partition_list, watermark_timeout_ms = Defaults::CONSUMER_LAG_TIMEOUT_MS)
       out = {}
 
       topic_partition_list.to_h.each do |topic, partitions|
@@ -597,12 +597,13 @@ module Rdkafka
     # If `enable.partition.eof` is turned on in the config this will raise an error when an eof is
     # reached, so you probably want to disable that when using this method of iteration.
     #
+    # @param timeout_ms [Integer] The timeout for each poll
     # @yieldparam message [Message] Received message
     # @return [nil]
     # @raise [RdkafkaError] When polling fails
-    def each
+    def each(timeout_ms: Defaults::CONSUMER_POLL_TIMEOUT_MS)
       loop do
-        message = poll(Defaults::CONSUMER_POLL_TIMEOUT_MS)
+        message = poll(timeout_ms)
         if message
           yield(message)
         else

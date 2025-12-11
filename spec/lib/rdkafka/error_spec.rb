@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-describe Rdkafka::RdkafkaError do
+RSpec.describe Rdkafka::RdkafkaError do
   it "should raise a type error for a nil response" do
     expect {
       Rdkafka::RdkafkaError.new(nil)
@@ -259,7 +259,7 @@ describe Rdkafka::RdkafkaError do
   end
 end
 
-describe Rdkafka::LibraryLoadError do
+RSpec.describe Rdkafka::LibraryLoadError do
   it "should be a subclass of BaseError" do
     expect(Rdkafka::LibraryLoadError.new).to be_a(Rdkafka::BaseError)
   end

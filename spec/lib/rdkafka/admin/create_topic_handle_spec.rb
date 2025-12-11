@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-describe Rdkafka::Admin::CreateTopicHandle do
+RSpec.describe Rdkafka::Admin::CreateTopicHandle do
   let(:response) { 0 }
   let(:topic_name) { TestTopics.unique }
 
@@ -18,7 +18,7 @@ describe Rdkafka::Admin::CreateTopicHandle do
 
     it "should wait until the timeout and then raise an error" do
       expect {
-        subject.wait(max_wait_timeout: 0.1)
+        subject.wait(max_wait_timeout_ms: 100)
       }.to raise_error Rdkafka::Admin::CreateTopicHandle::WaitTimeoutError, /create topic/
     end
 
@@ -33,7 +33,7 @@ describe Rdkafka::Admin::CreateTopicHandle do
       end
 
       it "should wait without a timeout" do
-        report = subject.wait(max_wait_timeout: nil)
+        report = subject.wait(max_wait_timeout_ms: nil)
 
         expect(report.error_string).to eq(nil)
         expect(report.result_name).to eq(topic_name)

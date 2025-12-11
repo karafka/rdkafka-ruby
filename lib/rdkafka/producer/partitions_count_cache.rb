@@ -17,9 +17,9 @@ module Rdkafka
     #
     # 2. Edge case handling
     #    If a user configures `statistics.interval.ms` much higher than the default cache TTL
-    #    (30 seconds), the cache will still function correctly. When statistics updates don't
-    #    occur frequently enough, the cache entries will expire naturally, triggering a
-    #    blocking refresh when needed.
+    #    ({Defaults::PARTITIONS_COUNT_CACHE_TTL_MS}ms), the cache will still function correctly.
+    #    When statistics updates don't occur frequently enough, the cache entries will expire
+    #    naturally, triggering a blocking refresh when needed.
     #
     # 3. User configuration awareness
     #    The cache respects user-defined settings. If `topic.metadata.refresh.interval.ms` is

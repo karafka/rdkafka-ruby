@@ -51,13 +51,13 @@ jobs:
             libzstd-dev
 
       - name: Cache build-tmp directory
-        uses: actions/cache@a7833574556fa59680c1b7cb190c1735db73ebf0 # v5.0.0
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: ext/build-tmp
           key: build-tmp-${{ runner.os }}-${{ hashFiles('ext/*.sh') }}
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@d697be2f83c6234b20877c3b5eac7a7f342f0d0c # v1.269.0
+        uses: ruby/setup-ruby@ed55d55e820a01da7d3e4863a8c51a61d73c3228 # v1.274.0
         with:
           ruby-version: '3.4.8'
           bundler-cache: false

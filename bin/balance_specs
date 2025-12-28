@@ -31,11 +31,11 @@ def load_timings
   end
 end
 
-# Returns a sorted list of all spec files
+# Returns a sorted list of lib spec files (integration specs are excluded)
 #
 # @return [Array<String>] sorted array of spec file paths
 def get_spec_files
-  Dir.glob('spec/**/*_spec.rb').sort
+  Dir.glob('spec/lib/**/*_spec.rb').sort
 end
 
 # Balances spec files across workers using greedy bin-packing algorithm

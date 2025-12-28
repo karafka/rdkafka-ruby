@@ -1,88 +1,39 @@
-#!/usr/bin/env ruby
-# frozen_string_literal: true
+#!/usr/bin/env bash
 
-# Collects timing data from RSpec runs for all specs.
+# Collects timing data from RSpec runs.
 # Results are stored in spec/timings/specs.json for use by bin/balance_specs.
 #
 # Usage: bin/collect_timings
-#
-# Requirements:
-#   - Kafka must be running (docker compose up)
-#   - librdkafka must be compiled (cd ext && bundle exec rake)
 
-require 'json'
-require 'open3'
-require 'fileutils'
+set -e
 
-TIMINGS_DIR = File.expand_path('../spec/timings', __dir__)
+TIMINGS_DIR="spec/timings"
+JSON_FILE="$TIMINGS_DIR/specs.json"
+TMP_FILE="/tmp/rspec_results_$$.json"
 
-# Returns all spec files
-#
-# @return [Array<String>] sorted array of spec file paths
-def spec_files
-  Dir.glob('spec/**/*_spec.rb').sort
-end
+mkdir -p "$TIMINGS_DIR"
 
-# Collects timing data by running specs with JSON output
-#
-# @return [Hash<String, Float>] file paths to execution times in seconds
-def collect_timings
-  puts 'Collecting spec timings...'
+echo "=== Collecting Spec Timings ==="
+echo ""
+echo "Running all specs with JSON output..."
 
-  files = spec_files
+# Run lib specs only (integration specs are excluded from parallel runs)
+RUBYOPT="-W0" CI=true bundle exec rspec --pattern 'spec/lib/**/*_spec.rb' --format progress --format json --out "$TMP_FILE"
 
-  puts "  Running #{files.size} spec files..."
+echo ""
+echo "Parsing timing data..."
 
-  # Run all specs at once with JSON output
-  cmd = ['bundle', 'exec', 'rspec', *files, '--format', 'json']
-  stdout, stderr, status = Open3.capture3(*cmd)
+# Extract timing per file using ruby one-liner
+ruby -rjson -e '
+  data = JSON.parse(File.read(ARGV[0]))
+  timings = Hash.new(0)
+  data["examples"].each { |ex| timings[ex["file_path"]] += ex["run_time"] || 0 }
+  sorted = timings.transform_values { |v| v.round(3) }.sort_by { |_, t| -t }.to_h
+  puts JSON.pretty_generate(sorted)
+' "$TMP_FILE" > "$JSON_FILE"
 
-  unless status.success?
-    warn "  Warning: RSpec exited with status #{status.exitstatus}"
-    warn "  stderr: #{stderr}" unless stderr.empty?
-  end
+rm -f "$TMP_FILE"
 
-  # Parse timing from JSON output
-  begin
-    data = JSON.parse(stdout)
-  rescue JSON::ParserError => e
-    warn "  Error parsing RSpec JSON output: #{e.message}"
-    warn "  stdout preview: #{stdout[0..500]}"
-    exit 1
-  end
-
-  timings = {}
-
-  data['examples'].each do |example|
-    file = example['file_path']
-    timings[file] ||= 0
-    timings[file] += example['run_time'] || 0
-  end
-
-  timings.transform_values! { |v| v.round(3) }
-  timings
-end
-
-# Saves timing data to JSON file
-#
-# @param timings [Hash<String, Float>] timing data
-def save_timings(timings)
-  FileUtils.mkdir_p(TIMINGS_DIR)
-  file_path = File.join(TIMINGS_DIR, 'specs.json')
-
-  sorted = timings.sort_by { |_, time| -time }.to_h
-  File.write(file_path, JSON.pretty_generate(sorted))
-
-  total = timings.values.sum
-  puts "  Saved #{file_path}: #{timings.size} files, #{total.round(1)}s total"
-end
-
-# Main
-puts '=== Collecting Spec Timings ==='
-puts
-
-timings = collect_timings
-save_timings(timings)
-
-puts
-puts 'Done!'
+echo "Saved $JSON_FILE"
+echo ""
+echo "Done!"

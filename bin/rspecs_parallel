@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+
+# Runs all specs in parallel using timing-based load balancing
+# Uses bin/balance_specs to distribute files across workers
+#
+# Environment variables:
+#   PARALLEL_WORKERS - number of parallel workers (default: 4)
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Number of workers
+PARALLEL_WORKERS="${PARALLEL_WORKERS:-4}"
+
+echo "Running specs in parallel mode..."
+echo "  Workers: $PARALLEL_WORKERS"
+
+# Create temp directory for logs
+TMPDIR=$(mktemp -d)
+trap "rm -rf $TMPDIR" EXIT
+
+# Get balanced file lists from the balancer (JSON output parsed with jq)
+echo ""
+echo "=== Balancing Specs ==="
+SPECS_JSON=$("$SCRIPT_DIR/balance_specs" "$PARALLEL_WORKERS")
+readarray -t SPEC_GROUPS < <(echo "$SPECS_JSON" | jq -r '.[] | join(" ")')
+
+echo ""
+echo "Starting parallel execution..."
+
+# Launch spec workers
+PIDS=()
+for i in $(seq 0 $((PARALLEL_WORKERS - 1))); do
+  if [ -n "${SPEC_GROUPS[$i]}" ]; then
+    PARALLEL=true PARALLEL_GROUP_ID="worker_$i" \
+      bundle exec rspec ${SPEC_GROUPS[$i]} --format progress \
+      > "$TMPDIR/worker_$i.log" 2>&1 &
+    PIDS+=($!)
+    echo "  Started worker $((i + 1)) (PID ${PIDS[-1]}): $(echo ${SPEC_GROUPS[$i]} | wc -w) files"
+  fi
+done
+
+echo ""
+echo "Waiting for ${#PIDS[@]} workers to complete..."
+
+# Wait for all processes and collect exit codes
+FAILED=0
+for idx in "${!PIDS[@]}"; do
+  PID="${PIDS[$idx]}"
+  if ! wait "$PID"; then
+    FAILED=1
+  fi
+done
+
+# Show all logs
+echo ""
+echo "=========================================="
+echo "                 RESULTS                  "
+echo "=========================================="
+
+for i in $(seq 0 $((PARALLEL_WORKERS - 1))); do
+  if [ -f "$TMPDIR/worker_$i.log" ]; then
+    echo ""
+    echo "=== Worker $((i + 1)) ==="
+    cat "$TMPDIR/worker_$i.log"
+  fi
+done
+
+if [ $FAILED -eq 1 ]; then
+  echo ""
+  echo "=========================================="
+  echo "         SOME SPECS FAILED!              "
+  echo "=========================================="
+  exit 1
+fi
+
+echo ""
+echo "=========================================="
+echo "          ALL SPECS PASSED!               "
+echo "=========================================="

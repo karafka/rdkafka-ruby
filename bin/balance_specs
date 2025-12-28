@@ -1,0 +1,107 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Balances spec files across N workers using timing data
+# Uses greedy bin-packing: assign each file to worker with lowest total time
+#
+# Usage: bin/balance_specs <num_workers>
+#
+# Output: JSON array of arrays where each inner array contains the spec files
+#         assigned to that worker
+#
+# Example:
+#   bin/balance_specs 4
+#   [["spec/a.rb","spec/d.rb"],["spec/b.rb"],["spec/c.rb"],["spec/e.rb"]]
+
+require 'json'
+
+TIMINGS_DIR = File.expand_path('../spec/timings', __dir__)
+DEFAULT_TIME = 1.0 # Default time for files not in timing data
+
+# Loads timing data from the JSON file
+#
+# @return [Hash<String, Float>] hash mapping file paths to execution times in seconds
+def load_timings
+  file_path = File.join(TIMINGS_DIR, 'specs.json')
+
+  if File.exist?(file_path)
+    JSON.parse(File.read(file_path))
+  else
+    {}
+  end
+end
+
+# Returns a sorted list of all spec files
+#
+# @return [Array<String>] sorted array of spec file paths
+def get_spec_files
+  Dir.glob('spec/**/*_spec.rb').sort
+end
+
+# Balances spec files across workers using greedy bin-packing algorithm
+#
+# Files are sorted by execution time (descending) and each file is assigned
+# to the worker with the lowest total time. This minimizes the imbalance
+# between the slowest and fastest workers.
+#
+# @param files [Array<String>] list of spec file paths to balance
+# @param timings [Hash<String, Float>] hash mapping file paths to execution times
+# @param num_workers [Integer] number of workers to distribute files across
+# @return [Array<Hash>] array of worker hashes, each with :files and :total_time keys
+def balance_files(files, timings, num_workers)
+  # Get timing for each file, using default if not found
+  # Handle both "./spec/..." and "spec/..." path formats
+  files_with_times = files.map do |file|
+    time = timings[file] || timings["./#{file}"] || DEFAULT_TIME
+    [file, time]
+  end
+
+  # Sort by time descending (largest first for better bin packing)
+  files_with_times.sort_by! { |_, time| -time }
+
+  # Initialize workers
+  workers = Array.new(num_workers) { { files: [], total_time: 0.0 } }
+
+  # Greedy assignment: assign each file to worker with lowest total time
+  files_with_times.each do |file, time|
+    # Find worker with minimum total time
+    min_worker = workers.min_by { |w| w[:total_time] }
+    min_worker[:files] << file
+    min_worker[:total_time] += time
+  end
+
+  workers
+end
+
+# Prints balance information to stderr for debugging/visibility
+#
+# @param workers [Array<Hash>] array of worker hashes with :files and :total_time keys
+def print_balance_info(workers)
+  total_time = workers.sum { |w| w[:total_time] }
+  max_time = workers.max_by { |w| w[:total_time] }[:total_time]
+  min_time = workers.min_by { |w| w[:total_time] }[:total_time]
+
+  warn 'Balance info:'
+  workers.each_with_index do |worker, i|
+    warn "  Worker #{i + 1}: #{worker[:files].size} files, #{worker[:total_time].round(1)}s"
+  end
+  warn "  Total: #{total_time.round(1)}s, Max: #{max_time.round(1)}s, Imbalance: #{(max_time - min_time).round(1)}s"
+end
+
+# Main
+num_workers = (ARGV[0] || '4').to_i
+
+if num_workers < 1
+  warn 'Usage: bin/balance_specs <num_workers>'
+  exit 1
+end
+
+timings = load_timings
+files = get_spec_files
+workers = balance_files(files, timings, num_workers)
+
+# Print balance info to stderr
+print_balance_info(workers)
+
+# Output file lists as JSON array of arrays
+puts JSON.generate(workers.map { |w| w[:files] })

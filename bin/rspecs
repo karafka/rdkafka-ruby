@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+# Runs all specs sequentially
+# For parallel execution, use bin/rspecs_parallel
+
+set -e
+
+echo "Running specs in sequential mode..."
+
+bundle exec rspec
+
+echo "All specs completed!"

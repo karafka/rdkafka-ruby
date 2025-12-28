@@ -119,18 +119,20 @@ jobs:
         env:
           GITHUB_COVERAGE: ${{matrix.coverage}}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+          PARALLEL_WORKERS: 4
         continue-on-error: ${{ matrix.continue-on-error || false }}
         run: |
-          bundle exec rspec
+          bin/rspecs_parallel
 
       - name: Run all specs in SSL
         env:
           GITHUB_COVERAGE: ${{matrix.coverage}}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           KAFKA_SSL_ENABLED: "true"
+          PARALLEL_WORKERS: 4
         continue-on-error: ${{ matrix.continue-on-error || false }}
         run: |
-          bundle exec rspec
+          bin/rspecs_parallel
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings
@@ -277,8 +279,9 @@ jobs:
           GITHUB_COVERAGE: ${{ matrix.coverage }}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           RDKAFKA_PRECOMPILED: "true"
+          PARALLEL_WORKERS: 4
         run: |
-          bundle exec rspec
+          bin/rspecs_parallel
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings

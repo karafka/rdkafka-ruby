@@ -14,10 +14,18 @@ Warning.process do |warning|
   raise "Warning in your code: #{warning}"
 end
 
+# Parallel group ID for unique SimpleCov command names
+PARALLEL_GROUP_ID = ENV.fetch('PARALLEL_GROUP_ID', '')
+
 unless ENV["CI"] == "true"
   require "simplecov"
   SimpleCov.start do
     add_filter "/spec/"
+
+    # Use unique command name per parallel group for proper merging
+    cmd_name = PARALLEL_GROUP_ID.empty? ? 'specs' : "specs-#{PARALLEL_GROUP_ID}"
+    command_name cmd_name
+    merge_timeout 3600
   end
 end
 

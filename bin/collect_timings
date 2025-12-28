@@ -1,0 +1,88 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Collects timing data from RSpec runs for all specs.
+# Results are stored in spec/timings/specs.json for use by bin/balance_specs.
+#
+# Usage: bin/collect_timings
+#
+# Requirements:
+#   - Kafka must be running (docker compose up)
+#   - librdkafka must be compiled (cd ext && bundle exec rake)
+
+require 'json'
+require 'open3'
+require 'fileutils'
+
+TIMINGS_DIR = File.expand_path('../spec/timings', __dir__)
+
+# Returns all spec files
+#
+# @return [Array<String>] sorted array of spec file paths
+def spec_files
+  Dir.glob('spec/**/*_spec.rb').sort
+end
+
+# Collects timing data by running specs with JSON output
+#
+# @return [Hash<String, Float>] file paths to execution times in seconds
+def collect_timings
+  puts 'Collecting spec timings...'
+
+  files = spec_files
+
+  puts "  Running #{files.size} spec files..."
+
+  # Run all specs at once with JSON output
+  cmd = ['bundle', 'exec', 'rspec', *files, '--format', 'json']
+  stdout, stderr, status = Open3.capture3(*cmd)
+
+  unless status.success?
+    warn "  Warning: RSpec exited with status #{status.exitstatus}"
+    warn "  stderr: #{stderr}" unless stderr.empty?
+  end
+
+  # Parse timing from JSON output
+  begin
+    data = JSON.parse(stdout)
+  rescue JSON::ParserError => e
+    warn "  Error parsing RSpec JSON output: #{e.message}"
+    warn "  stdout preview: #{stdout[0..500]}"
+    exit 1
+  end
+
+  timings = {}
+
+  data['examples'].each do |example|
+    file = example['file_path']
+    timings[file] ||= 0
+    timings[file] += example['run_time'] || 0
+  end
+
+  timings.transform_values! { |v| v.round(3) }
+  timings
+end
+
+# Saves timing data to JSON file
+#
+# @param timings [Hash<String, Float>] timing data
+def save_timings(timings)
+  FileUtils.mkdir_p(TIMINGS_DIR)
+  file_path = File.join(TIMINGS_DIR, 'specs.json')
+
+  sorted = timings.sort_by { |_, time| -time }.to_h
+  File.write(file_path, JSON.pretty_generate(sorted))
+
+  total = timings.values.sum
+  puts "  Saved #{file_path}: #{timings.size} files, #{total.round(1)}s total"
+end
+
+# Main
+puts '=== Collecting Spec Timings ==='
+puts
+
+timings = collect_timings
+save_timings(timings)
+
+puts
+puts 'Done!'

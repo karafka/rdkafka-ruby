@@ -131,8 +131,9 @@ jobs:
         env:
           GITHUB_COVERAGE: ${{matrix.coverage}}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+          PARALLEL_WORKERS: 4
         run: |
-          bundle exec rspec
+          bin/rspecs_parallel
 
   build_precompiled:
     timeout-minutes: 45
@@ -277,8 +278,9 @@ jobs:
           GITHUB_COVERAGE: ${{ matrix.coverage }}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           RDKAFKA_PRECOMPILED: "true"
+          PARALLEL_WORKERS: 4
         run: |
-          bundle exec rspec
+          bin/rspecs_parallel
 
   ci-success:
     name: CI macOS ARM64 Success

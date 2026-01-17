@@ -22,7 +22,7 @@
 # - Validates that removing build tools doesn't break precompiled usage
 #
 # EXTENDED COMPATIBILITY TESTING:
-# - Edge case Ruby versions: 4.0.0-preview2, JRuby-10.0 on ARM64
+# - Edge case Ruby versions: 4.0, JRuby-10.0 on ARM64
 # - Integration specs testing system library compatibility
 # - Both compilation and precompiled flows for comprehensive coverage
 # - Cross-platform compatibility validation for aarch64 architecture
@@ -126,7 +126,7 @@ jobs:
       fail-fast: false
       matrix:
         ruby:
-          - '4.0.0-preview2'
+          - '4.0'
           - '3.4'
           - '3.3'
           - '3.2'
@@ -210,7 +210,7 @@ jobs:
       fail-fast: false
       matrix:
         ruby:
-          - '4.0.0-preview2'
+          - '4.0'
           - '3.4'
           - '3.3'
           - '3.2'

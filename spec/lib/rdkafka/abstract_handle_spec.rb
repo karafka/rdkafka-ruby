@@ -112,6 +112,43 @@ RSpec.describe Rdkafka::AbstractHandle do
           }.to raise_error Rdkafka::RdkafkaError
         end
       end
+
+      context "backwards compatibility with max_wait_timeout (seconds)" do
+        let(:result) { 42 }
+
+        it "should work with max_wait_timeout (emits deprecation warning to stderr)" do
+          # Note: Deprecation warning is emitted but not tested here due to RSpec stderr capture complexity
+          wait_result = subject.wait(max_wait_timeout: 5)
+          expect(wait_result).to eq(result)
+        end
+
+        it "should work with max_wait_timeout set to nil (wait forever)" do
+          wait_result = subject.wait(max_wait_timeout: nil)
+          expect(wait_result).to eq(result)
+        end
+
+        it "should properly convert seconds to milliseconds" do
+          # Using a very short timeout to verify conversion
+          subject[:pending] = true
+          expect {
+            subject.wait(max_wait_timeout: 0.1)
+          }.to raise_error(Rdkafka::AbstractHandle::WaitTimeoutError, /100 ms/)
+        end
+
+        it "should use new parameter when both are provided" do
+          # When both parameters provided, max_wait_timeout_ms takes precedence
+          wait_result = subject.wait(max_wait_timeout: 1, max_wait_timeout_ms: 5000)
+          expect(wait_result).to eq(result)
+        end
+
+        it "should timeout based on max_wait_timeout_ms when both are provided" do
+          subject[:pending] = true
+          # max_wait_timeout: 10 would be 10000ms, but max_wait_timeout_ms: 100 should take precedence
+          expect {
+            subject.wait(max_wait_timeout: 10, max_wait_timeout_ms: 100)
+          }.to raise_error(Rdkafka::AbstractHandle::WaitTimeoutError, /100 ms/)
+        end
+      end
     end
   end
 end

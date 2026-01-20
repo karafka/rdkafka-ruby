@@ -5,8 +5,8 @@ require 'spec_helper'
 RSpec.describe Rdkafka::Producer::PartitionsCountCache do
   let(:default_ttl_ms) { 1_000 } # Reduced from 30000 to speed up tests
   let(:custom_ttl_ms) { 500 } # Half the default TTL
-  let(:cache) { described_class.new(default_ttl_ms) }
-  let(:custom_ttl_cache) { described_class.new(custom_ttl_ms) }
+  let(:cache) { described_class.new(ttl_ms: default_ttl_ms) }
+  let(:custom_ttl_cache) { described_class.new(ttl_ms: custom_ttl_ms) }
   let(:topic) { TestTopics.unique }
   let(:topic2) { TestTopics.unique }
   let(:partition_count) { 5 }
@@ -22,6 +22,67 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
 
     it "creates a cache with custom TTL when specified" do
       expect(custom_ttl_cache).to be_a(described_class)
+    end
+
+    context "backwards compatibility with ttl (seconds)" do
+      it "works with old ttl parameter and emits deprecation warning" do
+        expect {
+          old_style_cache = described_class.new(1) # 1 second
+          expect(old_style_cache).to be_a(described_class)
+        }.to output(/DEPRECATION WARNING.*ttl.*seconds.*deprecated/i).to_stderr
+      end
+
+      it "converts seconds to milliseconds correctly" do
+        expect {
+          old_style_cache = described_class.new(2) # 2 seconds = 2000ms
+
+          # Set a value and verify the TTL behavior
+          old_style_cache.set(topic, partition_count)
+
+          # Wait 1.5 seconds (should still be valid as TTL is 2 seconds)
+          sleep(1.5)
+          result = old_style_cache.get(topic) { fail "Should not be called - cache should still be valid" }
+          expect(result).to eq(partition_count)
+
+          # Wait another 0.7 seconds (total 2.2 seconds, should be expired)
+          sleep(0.7)
+          block_called = false
+          new_result = old_style_cache.get(topic) do
+            block_called = true
+            partition_count + 1
+          end
+          expect(block_called).to be true
+          expect(new_result).to eq(partition_count + 1)
+        }.to output(/DEPRECATION WARNING/i).to_stderr
+      end
+
+      it "emits warning when both ttl and ttl_ms are provided" do
+        expect {
+          cache = described_class.new(1, ttl_ms: 1000)
+          expect(cache).to be_a(described_class)
+        }.to output(/DEPRECATION WARNING.*both.*ttl/i).to_stderr
+      end
+
+      it "uses ttl_ms when both parameters are provided" do
+        expect {
+          # ttl: 10 would be 10000ms, but ttl_ms: 500 should take precedence
+          both_params_cache = described_class.new(10, ttl_ms: 500)
+
+          both_params_cache.set(topic, partition_count)
+
+          # Wait 0.6 seconds (past 500ms TTL but not past 10 seconds)
+          sleep(0.6)
+
+          # Should be expired because ttl_ms: 500 takes precedence
+          block_called = false
+          result = both_params_cache.get(topic) do
+            block_called = true
+            partition_count + 1
+          end
+
+          expect(block_called).to be true
+        }.to output(/DEPRECATION WARNING/i).to_stderr
+      end
     end
   end
 

@@ -48,13 +48,30 @@ module Rdkafka
 
       # Creates a new partition count cache
       #
-      # @param ttl_ms [Integer] Time-to-live in milliseconds for cached values
-      def initialize(ttl_ms = Defaults::PARTITIONS_COUNT_CACHE_TTL_MS)
+      # @param ttl [Integer, nil] DEPRECATED: Use ttl_ms instead.
+      #   Time-to-live in seconds for cached values. Will be removed in v1.0.0.
+      # @param ttl_ms [Integer, nil] Time-to-live in milliseconds for cached values.
+      #   Defaults to {Defaults::PARTITIONS_COUNT_CACHE_TTL_MS}.
+      def initialize(ttl = :not_provided, ttl_ms: :not_provided)
         @counts = {}
         @mutex_hash = {}
         # Used only for @mutex_hash access to ensure thread-safety when creating new mutexes
         @mutex_for_hash = Mutex.new
-        @ttl_ms = ttl_ms
+
+        # Determine which TTL value to use
+        if ttl != :not_provided && ttl_ms != :not_provided
+          warn "DEPRECATION WARNING: Both ttl and ttl_ms were provided to PartitionsCountCache. " \
+               "Using ttl_ms. The ttl parameter is deprecated and will be removed in v1.0.0."
+          @ttl_ms = ttl_ms
+        elsif ttl != :not_provided
+          warn "DEPRECATION WARNING: ttl (seconds) parameter for PartitionsCountCache is deprecated. " \
+               "Use ttl_ms (milliseconds) instead. This parameter will be removed in v1.0.0."
+          @ttl_ms = (ttl * 1000).to_i
+        elsif ttl_ms == :not_provided
+          @ttl_ms = Defaults::PARTITIONS_COUNT_CACHE_TTL_MS
+        else
+          @ttl_ms = ttl_ms
+        end
       end
 
       # Reads partition count for a topic with automatic refresh when expired

@@ -1,8 +1,8 @@
 # Rdkafka Changelog
 
 ## 0.25.0 (Unreleased)
-- **[Breaking]** Change `AbstractHandle#wait` parameter from `max_wait_timeout:` (seconds) to `max_wait_timeout_ms:` (milliseconds).
-- **[Breaking]** Change `PartitionsCountCache` constructor parameter from `ttl` (seconds) to `ttl_ms` (milliseconds).
+- **[Deprecation]** `AbstractHandle#wait` parameter `max_wait_timeout:` (seconds) is deprecated in favor of `max_wait_timeout_ms:` (milliseconds). The old parameter still works but will be removed in v1.0.0.
+- **[Deprecation]** `PartitionsCountCache` constructor parameter `ttl` (seconds) is deprecated in favor of `ttl_ms:` (milliseconds). The old parameter still works but will be removed in v1.0.0.
 - [Enhancement] Extract all timeout defaults to `Rdkafka::Defaults` module for discoverability and per-call overrides (#310). All time-related values are now in milliseconds for consistency.
 - [Enhancement] Add `timeout_ms` parameter to `Consumer#each` for configurable poll timeout.
 - [Enhancement] Extract non-time configuration values (`METADATA_MAX_RETRIES`, `PARTITIONS_COUNT_CACHE_TTL_MS`) to `Rdkafka::Defaults` module.

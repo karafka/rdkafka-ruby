@@ -54,16 +54,33 @@ module Rdkafka
     # If there is a timeout this does not mean the operation failed, rdkafka might still be working
     # on the operation. In this case it is possible to call wait again.
     #
+    # @param max_wait_timeout [Numeric, nil] DEPRECATED: Use max_wait_timeout_ms instead.
+    #   Amount of time in seconds to wait before timing out. Will be removed in v1.0.0.
     # @param max_wait_timeout_ms [Numeric, nil] Amount of time in milliseconds to wait before
-    #   timing out. If this is nil we will wait forever
+    #   timing out. If this is nil we will wait forever. Defaults to 60,000ms (60 seconds).
     # @param raise_response_error [Boolean] should we raise error when waiting finishes
     #
     # @return [Object] Operation-specific result
     #
     # @raise [RdkafkaError] When the operation failed
     # @raise [WaitTimeoutError] When the timeout has been reached and the handle is still pending
-    def wait(max_wait_timeout_ms: Defaults::HANDLE_WAIT_TIMEOUT_MS, raise_response_error: true)
-      timeout_s = max_wait_timeout_ms ? max_wait_timeout_ms / 1000.0 : nil
+    def wait(max_wait_timeout: :not_provided, max_wait_timeout_ms: :not_provided, raise_response_error: true)
+      # Determine which timeout value to use
+      if max_wait_timeout != :not_provided && max_wait_timeout_ms != :not_provided
+        warn "DEPRECATION WARNING: Both max_wait_timeout and max_wait_timeout_ms were provided. " \
+             "Using max_wait_timeout_ms. The max_wait_timeout parameter is deprecated and will be removed in v1.0.0."
+        timeout_ms = max_wait_timeout_ms
+      elsif max_wait_timeout != :not_provided
+        warn "DEPRECATION WARNING: max_wait_timeout (seconds) is deprecated. " \
+             "Use max_wait_timeout_ms (milliseconds) instead. This parameter will be removed in v1.0.0."
+        timeout_ms = max_wait_timeout ? (max_wait_timeout * 1000).to_i : nil
+      elsif max_wait_timeout_ms == :not_provided
+        timeout_ms = Defaults::HANDLE_WAIT_TIMEOUT_MS
+      else
+        timeout_ms = max_wait_timeout_ms
+      end
+
+      timeout_s = timeout_ms ? timeout_ms / 1000.0 : nil
       timeout = timeout_s ? monotonic_now + timeout_s : MAX_WAIT_TIMEOUT_FOREVER
 
       @mutex.synchronize do
@@ -75,7 +92,7 @@ module Rdkafka
               @resource.wait(@mutex, to_wait)
             else
               raise WaitTimeoutError.new(
-                "Waiting for #{operation_name} timed out after #{max_wait_timeout_ms} ms"
+                "Waiting for #{operation_name} timed out after #{timeout_ms} ms"
               )
             end
           elsif self[:response] != 0 && raise_response_error

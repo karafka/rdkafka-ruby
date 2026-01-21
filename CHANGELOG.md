@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.25.0 (Unreleased)
+## 0.25.0 (2026-01-20)
 - **[Deprecation]** `AbstractHandle#wait` parameter `max_wait_timeout:` (seconds) is deprecated in favor of `max_wait_timeout_ms:` (milliseconds). The old parameter still works but will be removed in v1.0.0.
 - **[Deprecation]** `PartitionsCountCache` constructor parameter `ttl` (seconds) is deprecated in favor of `ttl_ms:` (milliseconds). The old parameter still works but will be removed in v1.0.0.
 - [Enhancement] Extract all timeout defaults to `Rdkafka::Defaults` module for discoverability and per-call overrides (#310). All time-related values are now in milliseconds for consistency.

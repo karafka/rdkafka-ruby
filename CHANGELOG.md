@@ -1,10 +1,14 @@
 # Rdkafka Changelog
 
 ## 0.24.0 (Unreleased)
-- **[Breaking]** Default `AbstractHandle#wait` timeout changed from `60` seconds to `Defaults::HANDLE_WAIT_TIMEOUT_MS / 1000.0` (60.0 seconds). While the value is the same, code relying on the exact integer type may need adjustment.
+- **[Feature]** Add `Producer#queue_size` (and `#queue_length` alias) to report the number of messages waiting in the librdkafka output queue. Useful for monitoring producer backpressure, implementing custom flow control, debugging message delivery issues, and graceful shutdown logic.
+- **[Deprecation]** `AbstractHandle#wait` parameter `max_wait_timeout` (seconds) is deprecated in favor of `max_wait_timeout_ms` (milliseconds). The old parameter still works with backwards compatibility but will be removed in v1.0.0.
+- **[Deprecation]** `PartitionsCountCache` constructor parameter `ttl` (seconds) is deprecated in favor of `ttl_ms` (milliseconds). The old parameter still works with backwards compatibility but will be removed in v1.0.0.
+- [Enhancement] Add Ruby 4.0 support.
 - [Enhancement] Add `Rdkafka::Defaults` module with centralized timeout constants (aligning with upstream refactor).
 - [Enhancement] Extract all hardcoded timeout values to named constants for better maintainability and discoverability.
 - [Enhancement] Bump librdkafka to 2.13.0.
+- [Fix] Fix Kerberos build on Alpine 3.23+ (GCC 15/C23) by forcing C17 semantics to maintain compatibility with old-style K&R declarations in MIT Kerberos and Cyrus SASL dependencies.
 
 ## 0.23.1 (2025-11-14)
 - **[Feature]** Add integrated fatal error handling in `RdkafkaError.validate!` - automatically detects and handles fatal errors (-150) with single entrypoint API.

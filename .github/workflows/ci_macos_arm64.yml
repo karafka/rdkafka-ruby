@@ -42,7 +42,7 @@ jobs:
             macos-version: 'macos-14'
     runs-on: ${{ matrix.macos-version }}
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
       - name: Install Bash 4+ and Kerberos
@@ -138,7 +138,7 @@ jobs:
     timeout-minutes: 45
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
       - name: Install Bash 4+ and Kerberos
@@ -185,7 +185,7 @@ jobs:
             macos-version: 'macos-14'
     runs-on: ${{ matrix.macos-version }}
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
       - name: Download precompiled library

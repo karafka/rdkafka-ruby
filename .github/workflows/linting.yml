@@ -31,6 +31,8 @@ jobs:
   yard_lint:
     name: YARD Documentation Lint
     runs-on: ubuntu-latest
+    env:
+      BUNDLE_GEMFILE: Gemfile.lint
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 

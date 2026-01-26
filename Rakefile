@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require 'bundler/gem_tasks'
+require "bundler/gem_tasks"
 require "./lib/rdkafka"
 
-desc 'Generate some message traffic'
+desc "Generate some message traffic"
 task :produce_messages do
-  config = {:"bootstrap.servers" => "localhost:9092"}
+  config = { "bootstrap.servers": "localhost:9092" }
   if ENV["DEBUG"]
     config[:debug] = "broker,topic,msg"
   end
@@ -15,24 +15,24 @@ task :produce_messages do
   100.times do |i|
     puts "Producing message #{i}"
     delivery_handles << producer.produce(
-        topic:   "rake_test_topic",
-        payload: "Payload #{i} from Rake",
-        key:     "Key #{i} from Rake"
+      topic: "rake_test_topic",
+      payload: "Payload #{i} from Rake",
+      key: "Key #{i} from Rake"
     )
   end
-  puts 'Waiting for delivery'
+  puts "Waiting for delivery"
   delivery_handles.each(&:wait)
-  puts 'Done'
+  puts "Done"
 end
 
-desc 'Consume some messages'
+desc "Consume some messages"
 task :consume_messages do
   config = {
-    :"bootstrap.servers" => "localhost:9092",
-    :"group.id" => "rake_test",
-    :"enable.partition.eof" => false,
-    :"auto.offset.reset" => "earliest",
-    :"statistics.interval.ms" => 10_000
+    "bootstrap.servers": "localhost:9092",
+    "group.id": "rake_test",
+    "enable.partition.eof": false,
+    "auto.offset.reset": "earliest",
+    "statistics.interval.ms": 10_000
   }
   if ENV["DEBUG"]
     config[:debug] = "cgrp,topic,fetch"
@@ -40,7 +40,7 @@ task :consume_messages do
   Rdkafka::Config.statistics_callback = lambda do |stats|
     puts stats
   end
-  consumer = Rdkafka::Config.new(config).consumer
+  Rdkafka::Config.new(config).consumer
   consumer = Rdkafka::Config.new(config).consumer
   consumer.subscribe("rake_test_topic")
   consumer.each do |message|
@@ -48,14 +48,14 @@ task :consume_messages do
   end
 end
 
-desc 'Hammer down'
+desc "Hammer down"
 task :load_test do
   puts "Starting load test"
 
   config = Rdkafka::Config.new(
-    :"bootstrap.servers" => "localhost:9092",
-    :"group.id" => "load-test",
-    :"enable.partition.eof" => false
+    "bootstrap.servers": "localhost:9092",
+    "group.id": "load-test",
+    "enable.partition.eof": false
   )
 
   # Create a producer in a thread
@@ -65,9 +65,9 @@ task :load_test do
       handles = []
       1000.times do |i|
         handles.push(producer.produce(
-          topic:   "load_test_topic",
+          topic: "load_test_topic",
           payload: "Payload #{i}",
-          key:     "Key #{i}"
+          key: "Key #{i}"
         ))
       end
       handles.each(&:wait)

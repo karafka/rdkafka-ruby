@@ -6,7 +6,7 @@ module Rdkafka
   # configuration options is available on https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md.
   class Config
     # @private
-    @@logger = Logger.new(STDOUT)
+    @@logger = Logger.new($stdout)
     # @private
     @@statistics_callback = nil
     # @private
@@ -33,7 +33,7 @@ module Rdkafka
     # Makes sure that there is a thread for consuming logs
     # We do not spawn thread immediately and we need to check if it operates to support forking
     def self.ensure_log_thread
-      return if @@log_thread && @@log_thread.alive?
+      return if @@log_thread&.alive?
 
       @@log_mutex.synchronize do
         # Restart if dead (fork, crash)
@@ -74,7 +74,7 @@ module Rdkafka
     # @param callback [Proc, #call, nil] callable object or nil to clear
     # @return [nil]
     def self.statistics_callback=(callback)
-      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call) || callback == nil
+      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call) || callback.nil?
       @@statistics_callback = callback
     end
 
@@ -109,7 +109,7 @@ module Rdkafka
     # @param callback [Proc, #call, nil] callable object to handle token refresh or nil to clear
     # @return [nil]
     def self.oauthbearer_token_refresh_callback=(callback)
-      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call) || callback == nil
+      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call) || callback.nil?
       @@oauthbearer_token_refresh_callback = callback
     end
 
@@ -131,7 +131,7 @@ module Rdkafka
     # Required config that cannot be overwritten.
     REQUIRED_CONFIG = {
       # Enable log queues so we get callbacks in our own Ruby threads
-      :"log.queue" => true
+      "log.queue": true
     }.freeze
 
     # Returns a new config with the provided options which are merged with {DEFAULT_CONFIG}.
@@ -168,10 +168,8 @@ module Rdkafka
 
     # Get notifications on partition assignment/revocation for the subscribed topics
     #
-    # @param listener [Object, #on_partitions_assigned, #on_partitions_revoked] listener instance
-    def consumer_rebalance_listener=(listener)
-      @consumer_rebalance_listener = listener
-    end
+    # @return [Object, #on_partitions_assigned, #on_partitions_revoked] listener instance
+    attr_writer :consumer_rebalance_listener
 
     # Should we use a single queue for the underlying consumer and events.
     #
@@ -184,10 +182,8 @@ module Rdkafka
     # It is recommended to use the defaults and only set it to `false` in advance multi-threaded
     # and complex cases where granular events handling control is needed.
     #
-    # @param poll_set [Boolean]
-    def consumer_poll_set=(poll_set)
-      @consumer_poll_set = poll_set
-    end
+    # @return [Boolean]
+    attr_writer :consumer_poll_set
 
     # Creates a consumer with this configuration.
     #
@@ -383,7 +379,7 @@ module Rdkafka
     # @param delivery_report [Rdkafka::Producer::DeliveryReport] the delivery report
     # @param delivery_handle [Rdkafka::Producer::DeliveryHandle] the delivery handle
     def call_delivery_callback(delivery_report, delivery_handle)
-      producer.call_delivery_callback(delivery_report, delivery_handle) if producer
+      producer&.call_delivery_callback(delivery_report, delivery_handle)
     end
 
     # Invokes the on_partitions_assigned callback on the rebalance listener if set

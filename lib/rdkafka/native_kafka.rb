@@ -70,7 +70,7 @@ module Rdkafka
             end
           end
 
-          @polling_thread.name = "rdkafka.native_kafka##{Rdkafka::Bindings.rd_kafka_name(@inner).gsub('rdkafka', '')}"
+          @polling_thread.name = "rdkafka.native_kafka##{Rdkafka::Bindings.rd_kafka_name(@inner).gsub("rdkafka", "")}"
           @polling_thread.abort_on_exception = true
           @polling_thread[:closing] = false
         end
@@ -125,7 +125,7 @@ module Rdkafka
     # @param object_id [Integer, nil] optional object ID (unused, for finalizer compatibility)
     # @yield optional block to execute before destroying the handle
     # @return [nil]
-    def close(object_id=nil)
+    def close(object_id = nil)
       return if closed?
 
       synchronize do

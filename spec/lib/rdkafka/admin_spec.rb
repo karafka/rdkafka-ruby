@@ -4,7 +4,20 @@ require "ostruct"
 
 RSpec.describe Rdkafka::Admin do
   let(:config) { rdkafka_config }
-  let(:admin)  { config.admin }
+  let(:topic_name) { "test-topic-#{SecureRandom.uuid}" }
+  let(:topic_partition_count) { 3 }
+  let(:topic_replication_factor) { 1 }
+  let(:topic_config) { { "cleanup.policy" => "compact", "min.cleanable.dirty.ratio" => 0.8 } }
+  let(:invalid_topic_config) { { "cleeeeenup.policee" => "campact" } }
+  let(:group_name) { "test-group-#{SecureRandom.uuid}" }
+  let(:resource_name) { TestTopics.unique }
+  let(:resource_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC }
+  let(:resource_pattern_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL }
+  let(:principal) { "User:anonymous" }
+  let(:host) { "*" }
+  let(:operation) { Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ }
+  let(:permission_type) { Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW }
+  let(:admin) { config.admin }
 
   after do
     # Registry should always end up being empty
@@ -16,38 +29,23 @@ RSpec.describe Rdkafka::Admin do
     admin.close
   end
 
-  let(:topic_name)               { "test-topic-#{SecureRandom.uuid}" }
-  let(:topic_partition_count)    { 3 }
-  let(:topic_replication_factor) { 1 }
-  let(:topic_config)             { {"cleanup.policy" => "compact", "min.cleanable.dirty.ratio" => 0.8} }
-  let(:invalid_topic_config)     { {"cleeeeenup.policee" => "campact"} }
-  let(:group_name)               { "test-group-#{SecureRandom.uuid}" }
-
-  let(:resource_name)         { TestTopics.unique }
-  let(:resource_type)         {Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC}
-  let(:resource_pattern_type) {Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL}
-  let(:principal)             {"User:anonymous"}
-  let(:host)                  {"*"}
-  let(:operation)             {Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ}
-  let(:permission_type)       {Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW}
-
-  describe '#describe_errors' do
+  describe "#describe_errors" do
     let(:errors) { admin.class.describe_errors }
 
     it { expect(errors.size).to eq(172) }
-    it { expect(errors[-184]).to eq(code: -184, description: 'Local: Queue full', name: '_QUEUE_FULL') }
-    it { expect(errors[21]).to eq(code: 21, description: 'Broker: Invalid required acks value', name: 'INVALID_REQUIRED_ACKS') }
+    it { expect(errors[-184]).to eq(code: -184, description: "Local: Queue full", name: "_QUEUE_FULL") }
+    it { expect(errors[21]).to eq(code: 21, description: "Broker: Invalid required acks value", name: "INVALID_REQUIRED_ACKS") }
   end
 
-  describe 'admin without auto-start' do
+  describe "admin without auto-start" do
     let(:admin) { config.admin(native_kafka_auto_start: false) }
 
-    it 'expect to be able to start it later and close' do
+    it "expect to be able to start it later and close" do
       admin.start
       admin.close
     end
 
-    it 'expect to be able to close it without starting' do
+    it "expect to be able to close it without starting" do
       admin.close
     end
   end
@@ -97,7 +95,7 @@ RSpec.describe Rdkafka::Admin do
       end
 
       describe "with an invalid replication factor" do
-        let(:topic_replication_factor) { -2  }
+        let(:topic_replication_factor) { -2 }
 
         it "raises an exception" do
           expect {
@@ -158,7 +156,7 @@ RSpec.describe Rdkafka::Admin do
       sleep(1)
     end
 
-    context 'when describing config of an existing topic' do
+    context "when describing config of an existing topic" do
       let(:resources) { [{ resource_type: 2, resource_name: topic_name }] }
 
       it do
@@ -166,21 +164,21 @@ RSpec.describe Rdkafka::Admin do
         expect(resources_results.first.type).to eq(2)
         expect(resources_results.first.name).to eq(topic_name)
         expect(resources_results.first.configs.size).to be > 25
-        expect(resources_results.first.configs.first.name).to eq('compression.type')
-        expect(resources_results.first.configs.first.value).to eq('producer')
+        expect(resources_results.first.configs.first.name).to eq("compression.type")
+        expect(resources_results.first.configs.first.value).to eq("producer")
         expect(resources_results.first.configs.map(&:synonyms)).not_to be_empty
       end
     end
 
-    context 'when describing config of a non-existing topic' do
+    context "when describing config of a non-existing topic" do
       let(:resources) { [{ resource_type: 2, resource_name: SecureRandom.uuid }] }
 
-      it 'expect to raise error' do
+      it "expect to raise error" do
         expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /unknown_topic_or_part/)
       end
     end
 
-    context 'when describing both existing and non-existing topics' do
+    context "when describing both existing and non-existing topics" do
       let(:resources) do
         [
           { resource_type: 2, resource_name: topic_name },
@@ -188,12 +186,12 @@ RSpec.describe Rdkafka::Admin do
         ]
       end
 
-      it 'expect to raise error' do
+      it "expect to raise error" do
         expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /unknown_topic_or_part/)
       end
     end
 
-    context 'when describing multiple existing topics' do
+    context "when describing multiple existing topics" do
       let(:resources) do
         [
           { resource_type: 2, resource_name: TestTopics.example_topic },
@@ -210,40 +208,40 @@ RSpec.describe Rdkafka::Admin do
       end
     end
 
-    context 'when trying to describe invalid resource type' do
+    context "when trying to describe invalid resource type" do
       let(:resources) { [{ resource_type: 0, resource_name: SecureRandom.uuid }] }
 
-      it 'expect to raise error' do
+      it "expect to raise error" do
         expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /invalid_request/)
       end
     end
 
-    context 'when trying to describe invalid broker' do
-      let(:resources) { [{ resource_type: 4, resource_name: 'non-existing' }] }
+    context "when trying to describe invalid broker" do
+      let(:resources) { [{ resource_type: 4, resource_name: "non-existing" }] }
 
-      it 'expect to raise error' do
+      it "expect to raise error" do
         expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
       end
     end
 
-    context 'when trying to describe valid broker' do
-      let(:resources) { [{ resource_type: 4, resource_name: '1' }] }
+    context "when trying to describe valid broker" do
+      let(:resources) { [{ resource_type: 4, resource_name: "1" }] }
 
       it do
         expect(resources_results.size).to eq(1)
         expect(resources_results.first.type).to eq(4)
-        expect(resources_results.first.name).to eq('1')
+        expect(resources_results.first.name).to eq("1")
         expect(resources_results.first.configs.size).to be > 230
-        expect(resources_results.first.configs.first.name).to eq('log.cleaner.min.compaction.lag.ms')
-        expect(resources_results.first.configs.first.value).to eq('0')
+        expect(resources_results.first.configs.first.name).to eq("log.cleaner.min.compaction.lag.ms")
+        expect(resources_results.first.configs.first.value).to eq("0")
         expect(resources_results.first.configs.map(&:synonyms)).not_to be_empty
       end
     end
 
-    context 'when describing valid broker with topics in one request' do
+    context "when describing valid broker with topics in one request" do
       let(:resources) do
         [
-          { resource_type: 4, resource_name: '1' },
+          { resource_type: 4, resource_name: "1" },
           { resource_type: 2, resource_name: topic_name }
         ]
       end
@@ -251,15 +249,15 @@ RSpec.describe Rdkafka::Admin do
       it do
         expect(resources_results.size).to eq(2)
         expect(resources_results.first.type).to eq(4)
-        expect(resources_results.first.name).to eq('1')
+        expect(resources_results.first.name).to eq("1")
         expect(resources_results.first.configs.size).to be > 230
-        expect(resources_results.first.configs.first.name).to eq('log.cleaner.min.compaction.lag.ms')
-        expect(resources_results.first.configs.first.value).to eq('0')
+        expect(resources_results.first.configs.first.name).to eq("log.cleaner.min.compaction.lag.ms")
+        expect(resources_results.first.configs.first.value).to eq("0")
         expect(resources_results.last.type).to eq(2)
         expect(resources_results.last.name).to eq(topic_name)
         expect(resources_results.last.configs.size).to be > 25
-        expect(resources_results.last.configs.first.name).to eq('compression.type')
-        expect(resources_results.last.configs.first.value).to eq('producer')
+        expect(resources_results.last.configs.first.name).to eq("compression.type")
+        expect(resources_results.last.configs.first.value).to eq("producer")
       end
     end
   end
@@ -272,8 +270,8 @@ RSpec.describe Rdkafka::Admin do
       sleep(1)
     end
 
-    context 'when altering one topic with one valid config via set' do
-      let(:target_retention) { (86400002 + rand(10_000)).to_s }
+    context "when altering one topic with one valid config via set" do
+      let(:target_retention) { rand(86400002..86410001).to_s }
       let(:resources_with_configs) do
         [
           {
@@ -281,7 +279,7 @@ RSpec.describe Rdkafka::Admin do
             resource_name: topic_name,
             configs: [
               {
-                name: 'delete.retention.ms',
+                name: "delete.retention.ms",
                 value: target_retention,
                 op_type: 0
               }
@@ -298,15 +296,15 @@ RSpec.describe Rdkafka::Admin do
         sleep(1)
 
         ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
-          config.name == 'delete.retention.ms'
+          config.name == "delete.retention.ms"
         end
 
         expect(ret_config.value).to eq(target_retention)
       end
     end
 
-    context 'when altering one topic with one valid config via delete' do
-      let(:target_retention) { (8640002 + rand(10_000)).to_s }
+    context "when altering one topic with one valid config via delete" do
+      let(:target_retention) { rand(8640002..8650001).to_s }
       let(:resources_with_configs) do
         [
           {
@@ -314,7 +312,7 @@ RSpec.describe Rdkafka::Admin do
             resource_name: topic_name,
             configs: [
               {
-                name: 'delete.retention.ms',
+                name: "delete.retention.ms",
                 value: target_retention,
                 op_type: 1
               }
@@ -331,15 +329,15 @@ RSpec.describe Rdkafka::Admin do
         sleep(1)
 
         ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
-          config.name == 'delete.retention.ms'
+          config.name == "delete.retention.ms"
         end
 
-        expect(ret_config.value).to eq('86400000')
+        expect(ret_config.value).to eq("86400000")
       end
     end
 
-    context 'when altering one topic with one valid config via append' do
-      let(:target_policy) { 'compact' }
+    context "when altering one topic with one valid config via append" do
+      let(:target_policy) { "compact" }
       let(:resources_with_configs) do
         [
           {
@@ -347,7 +345,7 @@ RSpec.describe Rdkafka::Admin do
             resource_name: topic_name,
             configs: [
               {
-                name: 'cleanup.policy',
+                name: "cleanup.policy",
                 value: target_policy,
                 op_type: 2
               }
@@ -364,15 +362,15 @@ RSpec.describe Rdkafka::Admin do
         sleep(1)
 
         ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
-          config.name == 'cleanup.policy'
+          config.name == "cleanup.policy"
         end
 
         expect(ret_config.value).to eq("delete,#{target_policy}")
       end
     end
 
-    context 'when altering one topic with one valid config via subtrack' do
-      let(:target_policy) { 'delete' }
+    context "when altering one topic with one valid config via subtrack" do
+      let(:target_policy) { "delete" }
       let(:resources_with_configs) do
         [
           {
@@ -380,7 +378,7 @@ RSpec.describe Rdkafka::Admin do
             resource_name: topic_name,
             configs: [
               {
-                name: 'cleanup.policy',
+                name: "cleanup.policy",
                 value: target_policy,
                 op_type: 3
               }
@@ -397,15 +395,15 @@ RSpec.describe Rdkafka::Admin do
         sleep(1)
 
         ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
-          config.name == 'cleanup.policy'
+          config.name == "cleanup.policy"
         end
 
-        expect(ret_config.value).to eq('')
+        expect(ret_config.value).to eq("")
       end
     end
 
-    context 'when altering one topic with invalid config' do
-      let(:target_retention) { '-10' }
+    context "when altering one topic with invalid config" do
+      let(:target_retention) { "-10" }
       let(:resources_with_configs) do
         [
           {
@@ -413,7 +411,7 @@ RSpec.describe Rdkafka::Admin do
             resource_name: topic_name,
             configs: [
               {
-                name: 'delete.retention.ms',
+                name: "delete.retention.ms",
                 value: target_retention,
                 op_type: 0
               }
@@ -422,7 +420,7 @@ RSpec.describe Rdkafka::Admin do
         ]
       end
 
-      it 'expect to raise error' do
+      it "expect to raise error" do
         expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /invalid_config/)
       end
     end
@@ -497,14 +495,12 @@ RSpec.describe Rdkafka::Admin do
       # always be ready for it immediately
       delete_topic_report = nil
       10.times do |i|
-        begin
-          delete_topic_handle = admin.delete_topic(topic_name)
-          delete_topic_report = delete_topic_handle.wait(max_wait_timeout_ms: 15_000)
-          break
-        rescue Rdkafka::RdkafkaError => ex
-          if i > 3
-            raise ex
-          end
+        delete_topic_handle = admin.delete_topic(topic_name)
+        delete_topic_report = delete_topic_handle.wait(max_wait_timeout_ms: 15_000)
+        break
+      rescue Rdkafka::RdkafkaError => ex
+        if i > 3
+          raise ex
         end
       end
 
@@ -514,19 +510,20 @@ RSpec.describe Rdkafka::Admin do
   end
 
   describe "#ACL tests for topic resource" do
-    let(:non_existing_resource_name) {"non-existing-topic"}
+    let(:non_existing_resource_name) { "non-existing-topic" }
+
     before do
-      #create topic for testing acl
+      # create topic for testing acl
       create_topic_handle = admin.create_topic(resource_name, topic_partition_count, topic_replication_factor)
       create_topic_handle.wait(max_wait_timeout_ms: 15_000)
     end
 
     after do
-      #delete acl
+      # delete acl
       delete_acl_handle = admin.delete_acl(resource_type: resource_type, resource_name: resource_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
       delete_acl_handle.wait(max_wait_timeout_ms: 15_000)
 
-      #delete topic that was created for testing acl
+      # delete topic that was created for testing acl
       delete_topic_handle = admin.delete_topic(resource_name)
       delete_topic_handle.wait(max_wait_timeout_ms: 15_000)
     end
@@ -563,7 +560,7 @@ RSpec.describe Rdkafka::Admin do
       end
 
       it "create acls and describe the newly created acls" do
-        #create_acl
+        # create_acl
         create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: "test_acl_topic_1", resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
         create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(create_acl_report.rdkafka_response).to eq(0)
@@ -577,7 +574,7 @@ RSpec.describe Rdkafka::Admin do
         # Since we create and immediately check, this is slow on loaded CIs, hence we wait
         sleep(2)
 
-        #describe_acl
+        # describe_acl
         describe_acl_handle = admin.describe_acl(resource_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_ANY, resource_name: nil, resource_pattern_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_ANY, principal: nil, host: nil, operation: Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_ANY, permission_type: Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ANY)
         describe_acl_report = describe_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(describe_acl_handle[:response]).to eq(0)
@@ -594,7 +591,7 @@ RSpec.describe Rdkafka::Admin do
       end
 
       it "create an acl and delete the newly created acl" do
-        #create_acl
+        # create_acl
         create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: "test_acl_topic_1", resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
         create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(create_acl_report.rdkafka_response).to eq(0)
@@ -605,19 +602,18 @@ RSpec.describe Rdkafka::Admin do
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
 
-        #delete_acl - resource_name nil - to delete all acls with any resource name and matching all other filters.
+        # delete_acl - resource_name nil - to delete all acls with any resource name and matching all other filters.
         delete_acl_handle = admin.delete_acl(resource_type: resource_type, resource_name: nil, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
         delete_acl_report = delete_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(delete_acl_handle[:response]).to eq(0)
         expect(delete_acl_report.deleted_acls.length).to eq(2)
-
       end
     end
   end
 
   describe "#ACL tests for transactional_id" do
-    let(:transactional_id_resource_name) {"test-transactional-id"}
-    let(:non_existing_transactional_id) {"non-existing-transactional-id"}
+    let(:transactional_id_resource_name) { "test-transactional-id" }
+    let(:non_existing_transactional_id) { "non-existing-transactional-id" }
     let(:transactional_id_resource_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_TRANSACTIONAL_ID }
     let(:transactional_id_resource_pattern_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL }
     let(:transactional_id_principal) { "User:test-user" }
@@ -627,20 +623,19 @@ RSpec.describe Rdkafka::Admin do
 
     after do
       # Clean up any ACLs that might have been created during tests
-      begin
-        delete_acl_handle = admin.delete_acl(
-          resource_type: transactional_id_resource_type,
-          resource_name: nil,
-          resource_pattern_type: transactional_id_resource_pattern_type,
-          principal: transactional_id_principal,
-          host: transactional_id_host,
-          operation: transactional_id_operation,
-          permission_type: transactional_id_permission_type
-        )
-        delete_acl_handle.wait(max_wait_timeout_ms: 15_000)
-      rescue
-        # Ignore cleanup errors
-      end
+
+      delete_acl_handle = admin.delete_acl(
+        resource_type: transactional_id_resource_type,
+        resource_name: nil,
+        resource_pattern_type: transactional_id_resource_pattern_type,
+        principal: transactional_id_principal,
+        host: transactional_id_host,
+        operation: transactional_id_operation,
+        permission_type: transactional_id_permission_type
+      )
+      delete_acl_handle.wait(max_wait_timeout_ms: 15_000)
+    rescue
+      # Ignore cleanup errors
     end
 
     describe "#create_acl" do
@@ -816,10 +811,10 @@ RSpec.describe Rdkafka::Admin do
     end
   end
 
-  describe('Group tests') do
+  describe("Group tests") do
     describe "#delete_group" do
       describe("with an existing group") do
-        let(:consumer_config) { rdkafka_consumer_config('group.id': group_name) }
+        let(:consumer_config) { rdkafka_consumer_config("group.id": group_name) }
         let(:producer_config) { rdkafka_producer_config }
         let(:producer) { producer_config.producer }
         let(:consumer) { consumer_config.consumer }
@@ -838,7 +833,7 @@ RSpec.describe Rdkafka::Admin do
             message ||= consumer.poll(100)
           end
 
-          expect(message).to_not be_nil
+          expect(message).not_to be_nil
 
           consumer.commit
           consumer.close
@@ -871,42 +866,39 @@ RSpec.describe Rdkafka::Admin do
           end
         end
       end
-
     end
   end
 
-  describe '#create_partitions' do
+  describe "#create_partitions" do
     let(:metadata) do
-      begin
-        admin.metadata(topic_name).topics.first
-      rescue Rdkafka::RdkafkaError
-        # We have to wait because if we query too fast after topic creation request, it may not
-        # yet be available throwing an error.
-        # This occurs mostly on slow CIs
-        sleep(1)
-        admin.metadata(topic_name).topics.first
-      end
+      admin.metadata(topic_name).topics.first
+    rescue Rdkafka::RdkafkaError
+      # We have to wait because if we query too fast after topic creation request, it may not
+      # yet be available throwing an error.
+      # This occurs mostly on slow CIs
+      sleep(1)
+      admin.metadata(topic_name).topics.first
     end
 
-    context 'when topic does not exist' do
-      it 'expect to fail due to unknown partition' do
+    context "when topic does not exist" do
+      it "expect to fail due to unknown partition" do
         expect { admin.create_partitions(topic_name, 10).wait }.to raise_error(Rdkafka::RdkafkaError, /unknown_topic_or_part/)
       end
     end
 
-    context 'when topic already has the desired number of partitions' do
+    context "when topic already has the desired number of partitions" do
       before { admin.create_topic(topic_name, 2, 1).wait }
 
-      it 'expect not to change number of partitions' do
+      it "expect not to change number of partitions" do
         expect { admin.create_partitions(topic_name, 2).wait }.to raise_error(Rdkafka::RdkafkaError, /invalid_partitions/)
         expect(metadata[:partition_count]).to eq(2)
       end
     end
 
-    context 'when topic has more than the requested number of partitions' do
+    context "when topic has more than the requested number of partitions" do
       before { admin.create_topic(topic_name, 5, 1).wait }
 
-      it 'expect not to change number of partitions' do
+      it "expect not to change number of partitions" do
         expect { admin.create_partitions(topic_name, 2).wait }.to raise_error(Rdkafka::RdkafkaError, /invalid_partitions/)
         # On slow CI this may propagate, thus we wait a bit
         sleep(1)
@@ -914,13 +906,13 @@ RSpec.describe Rdkafka::Admin do
       end
     end
 
-    context 'when topic has less then desired number of partitions' do
+    context "when topic has less then desired number of partitions" do
       before do
         admin.create_topic(topic_name, 1, 1).wait
         sleep(1)
       end
 
-      it 'expect to change number of partitions' do
+      it "expect to change number of partitions" do
         admin.create_partitions(topic_name, 10).wait
         sleep(1)
         expect(metadata[:partition_count]).to eq(10)
@@ -928,23 +920,23 @@ RSpec.describe Rdkafka::Admin do
     end
   end
 
-  describe '#oauthbearer_set_token' do
-    context 'when sasl not configured' do
-      it 'should return RD_KAFKA_RESP_ERR__STATE' do
+  describe "#oauthbearer_set_token" do
+    context "when sasl not configured" do
+      it "returns RD_KAFKA_RESP_ERR__STATE" do
         response = admin.oauthbearer_set_token(
           token: "foo",
-          lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
+          lifetime_ms: Time.now.to_i * 1000 + 900 * 1000,
           principal_name: "kafka-cluster"
         )
         expect(response).to eq(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__STATE)
       end
     end
 
-    context 'when sasl configured' do
+    context "when sasl configured" do
       before do
         config_sasl = rdkafka_config(
           "security.protocol": "sasl_ssl",
-          "sasl.mechanisms": 'OAUTHBEARER'
+          "sasl.mechanisms": "OAUTHBEARER"
         )
         $admin_sasl = config_sasl.admin
       end
@@ -953,22 +945,22 @@ RSpec.describe Rdkafka::Admin do
         $admin_sasl.close
       end
 
-      context 'without extensions' do
-        it 'should succeed' do
+      context "without extensions" do
+        it "succeeds" do
           response = $admin_sasl.oauthbearer_set_token(
             token: "foo",
-            lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
+            lifetime_ms: Time.now.to_i * 1000 + 900 * 1000,
             principal_name: "kafka-cluster"
           )
           expect(response).to eq(0)
         end
       end
 
-      context 'with extensions' do
-        it 'should succeed' do
+      context "with extensions" do
+        it "succeeds" do
           response = $admin_sasl.oauthbearer_set_token(
             token: "foo",
-            lifetime_ms: Time.now.to_i*1000 + 900 * 1000,
+            lifetime_ms: Time.now.to_i * 1000 + 900 * 1000,
             principal_name: "kafka-cluster",
             extensions: {
               "foo" => "bar"
@@ -980,10 +972,10 @@ RSpec.describe Rdkafka::Admin do
     end
   end
 
-  unless RUBY_PLATFORM == 'java'
+  unless RUBY_PLATFORM == "java"
     context "when operating from a fork" do
       # @see https://github.com/ffi/ffi/issues/1114
-      it 'expect to be able to create topics and run other admin operations without hanging' do
+      it "expect to be able to create topics and run other admin operations without hanging" do
         # If the FFI issue is not mitigated, this will hang forever
         pid = fork do
           admin

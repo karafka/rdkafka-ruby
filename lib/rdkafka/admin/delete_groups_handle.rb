@@ -5,9 +5,9 @@ module Rdkafka
     # Handle for delete groups operation
     class DeleteGroupsHandle < AbstractHandle
       layout :pending, :bool, # TODO: ???
-             :response, :int,
-             :error_string, :pointer,
-             :result_name, :pointer
+        :response, :int,
+        :error_string, :pointer,
+        :result_name, :pointer
 
       # @return [String] the name of the operation
       def operation_name
@@ -24,8 +24,8 @@ module Rdkafka
       # @raise [RdkafkaError]
       def raise_error
         raise RdkafkaError.new(
-            self[:response],
-            broker_message: create_result.error_string
+          self[:response],
+          broker_message: create_result.error_string
         )
       end
     end

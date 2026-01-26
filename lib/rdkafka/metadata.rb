@@ -100,40 +100,40 @@ module Rdkafka
     # FFI struct for rd_kafka_metadata_t
     class Metadata < CustomFFIStruct
       layout :brokers_count, :int,
-             :brokers_metadata, :pointer,
-             :topics_count, :int,
-             :topics_metadata, :pointer,
-             :broker_id, :int32,
-             :broker_name, :string
+        :brokers_metadata, :pointer,
+        :topics_count, :int,
+        :topics_metadata, :pointer,
+        :broker_id, :int32,
+        :broker_name, :string
     end
 
     # @private
     # FFI struct for rd_kafka_metadata_broker_t
     class BrokerMetadata < CustomFFIStruct
       layout :broker_id, :int32,
-             :broker_name, :string,
-             :broker_port, :int
+        :broker_name, :string,
+        :broker_port, :int
     end
 
     # @private
     # FFI struct for rd_kafka_metadata_topic_t
     class TopicMetadata < CustomFFIStruct
       layout :topic_name, :string,
-             :partition_count, :int,
-             :partitions_metadata, :pointer,
-             :rd_kafka_resp_err, :int
+        :partition_count, :int,
+        :partitions_metadata, :pointer,
+        :rd_kafka_resp_err, :int
     end
 
     # @private
     # FFI struct for rd_kafka_metadata_partition_t
     class PartitionMetadata < CustomFFIStruct
       layout :partition_id, :int32,
-             :rd_kafka_resp_err, :int,
-             :leader, :int32,
-             :replica_count, :int,
-             :replicas, :pointer,
-             :in_sync_replica_brokers, :int,
-             :isrs, :pointer
+        :rd_kafka_resp_err, :int,
+        :leader, :int32,
+        :replica_count, :int,
+        :replicas, :pointer,
+        :in_sync_replica_brokers, :int,
+        :isrs, :pointer
     end
   end
 end

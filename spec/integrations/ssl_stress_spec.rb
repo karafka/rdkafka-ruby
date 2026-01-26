@@ -24,9 +24,9 @@
 #
 # In case of a failure, segfault will happen
 
-require 'rdkafka'
-require 'socket'
-require 'openssl'
+require "rdkafka"
+require "socket"
+require "openssl"
 
 $stdout.sync = true
 
@@ -36,9 +36,9 @@ BATCHES = 100
 PORTS = STARTING_PORT...(STARTING_PORT + NUM_PORTS)
 
 CONFIG = {
-  'bootstrap.servers': Array.new(NUM_PORTS) { |i| "127.0.0.1:#{19093+i}" }.join(','),
-  'security.protocol': 'SSL',
-  'enable.ssl.certificate.verification': false
+  "bootstrap.servers": Array.new(NUM_PORTS) { |i| "127.0.0.1:#{19093 + i}" }.join(","),
+  "security.protocol": "SSL",
+  "enable.ssl.certificate.verification": false
 }
 
 # Generate in-memory self-signed cert
@@ -53,7 +53,7 @@ cert.issuer = name
 cert.public_key = key.public_key
 cert.not_before = Time.now
 cert.not_after = Time.now + 3600
-cert.sign(key, OpenSSL::Digest::SHA256.new)
+cert.sign(key, OpenSSL::Digest.new("SHA256"))
 
 # Start servers on multiple ports
 PORTS.map do |port|
@@ -63,26 +63,20 @@ PORTS.map do |port|
     # and not the Ruby SSL layer
     ssl_context = OpenSSL::SSL::SSLContext.new
     ssl_context.cert = cert
-    ssl_context.key  = key
+    ssl_context.key = key
 
-    tcp_server = TCPServer.new('127.0.0.1', port)
+    tcp_server = TCPServer.new("127.0.0.1", port)
     ssl_server = OpenSSL::SSL::SSLServer.new(tcp_server, ssl_context)
 
     loop do
-      begin
-        ssl_socket = ssl_server.accept
-        ssl_socket.close
-      rescue => e
-        # Some errors are expected and irrelevant
-        next if e.message.include?('unexpected eof while reading')
-
-        puts "Port #{port} SSL error: #{e}"
-      end
+      ssl_socket = ssl_server.accept
+      ssl_socket.close
+    rescue => e
+      # Some errors are expected and irrelevant
+      next if e.message.include?("unexpected eof while reading")
     end
   end
 end
-
-puts "Starting #{NUM_PORTS} on ports from #{PORTS.first} to #{PORTS.last} SSL servers"
 
 timeout = 30
 start = Time.now
@@ -92,11 +86,11 @@ start = Time.now
 # them
 loop do
   all_up = PORTS.all? do |port|
-             TCPSocket.new('127.0.0.1', port).close
-             true
-           rescue
-             false
-           end
+    TCPSocket.new("127.0.0.1", port).close
+    true
+  rescue
+    false
+  end
 
   break if all_up
 
@@ -105,17 +99,14 @@ loop do
   sleep 0.1
 end
 
-puts "SSL servers ready"
-
 start_time = Time.now
 duration = 60 * 10 # 10 minutes - it should crash faster than that if SSL vulnerable
-attempts = 0
 
-while Time.now - start_time < duration do
+while Time.now - start_time < duration
   css = Array.new(BATCHES) { Rdkafka::Config.new(CONFIG) }
   csss = css.map(&:consumer)
   # This print is needed. No idea why but it increases the chances of segfault
-  p attempts += 1
+
   sleep(1)
   csss.each(&:close)
 end

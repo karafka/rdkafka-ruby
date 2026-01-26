@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
+require "spec_helper"
 
 RSpec.describe Rdkafka::Producer::PartitionsCountCache do
   let(:default_ttl_ms) { 1_000 } # Reduced from 30000 to speed up tests

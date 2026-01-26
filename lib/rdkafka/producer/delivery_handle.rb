@@ -6,10 +6,10 @@ module Rdkafka
     # producing a message.
     class DeliveryHandle < Rdkafka::AbstractHandle
       layout :pending, :bool,
-             :response, :int,
-             :partition, :int,
-             :offset, :int64,
-             :topic_name, :pointer
+        :response, :int,
+        :partition, :int,
+        :offset, :int64,
+        :topic_name, :pointer
 
       # @return [Object, nil] label set during message production or nil by default
       attr_accessor :label
@@ -31,7 +31,7 @@ module Rdkafka
           # For part of errors, we will not get a topic name reference and in cases like this
           # we should not return it
           topic,
-          self[:response] != 0 ? RdkafkaError.new(self[:response]) : nil,
+          (self[:response] != 0) ? RdkafkaError.new(self[:response]) : nil,
           label
         )
       end

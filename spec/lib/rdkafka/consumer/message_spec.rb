@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 RSpec.describe Rdkafka::Consumer::Message do
+  subject { described_class.new(native_message) }
+
   let(:native_client) { new_native_client }
   let(:native_topic) { new_native_topic(native_client: native_client) }
   let(:payload) { nil }
@@ -25,11 +27,9 @@ RSpec.describe Rdkafka::Consumer::Message do
     end
   end
 
-  after(:each) do
+  after do
     Rdkafka::Bindings.rd_kafka_destroy(native_client)
   end
-
-  subject { Rdkafka::Consumer::Message.new(native_message) }
 
   before do
     # mock headers, because it produces 'segmentation fault' while settings or reading headers for
@@ -42,48 +42,46 @@ RSpec.describe Rdkafka::Consumer::Message do
     # frame #8: 0x000000010dae5a7e librdkafka.dylib`rd_kafka_headers_destroy + 14
     # frame #9: 0x000000010da9ab40 librdkafka.dylib`rd_kafka_message_set_headers + 32
     # ```
-    expect( Rdkafka::Bindings).to receive(:rd_kafka_message_headers).with(any_args) do
-      Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT
-    end
+    expect(Rdkafka::Bindings).to receive(:rd_kafka_message_headers).with(any_args).and_return(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT)
   end
 
-  it "should have a topic" do
+  it "has a topic" do
     expect(subject.topic).to eq "topic_name"
   end
 
-  it "should have a partition" do
+  it "has a partition" do
     expect(subject.partition).to eq 3
   end
 
   context "payload" do
-    it "should have a nil payload when none is present" do
+    it "has a nil payload when none is present" do
       expect(subject.payload).to be_nil
     end
 
     context "present payload" do
       let(:payload) { "payload content" }
 
-      it "should have a payload" do
+      it "has a payload" do
         expect(subject.payload).to eq "payload content"
       end
     end
   end
 
   context "key" do
-    it "should have a nil key when none is present" do
+    it "has a nil key when none is present" do
       expect(subject.key).to be_nil
     end
 
     context "present key" do
       let(:key) { "key content" }
 
-      it "should have a key" do
+      it "has a key" do
         expect(subject.key).to eq "key content"
       end
     end
   end
 
-  it "should have an offset" do
+  it "has an offset" do
     expect(subject.offset).to eq 100
   end
 
@@ -93,7 +91,7 @@ RSpec.describe Rdkafka::Consumer::Message do
         allow(Rdkafka::Bindings).to receive(:rd_kafka_message_timestamp).and_return(-1)
       end
 
-      it "should have a nil timestamp if not present" do
+      it "has a nil timestamp if not present" do
         expect(subject.timestamp).to be_nil
       end
     end
@@ -103,7 +101,7 @@ RSpec.describe Rdkafka::Consumer::Message do
         allow(Rdkafka::Bindings).to receive(:rd_kafka_message_timestamp).and_return(1505069646250)
       end
 
-      it "should have timestamp if present" do
+      it "has timestamp if present" do
         expect(subject.timestamp).to eq Time.at(1505069646, 250_000)
       end
     end
@@ -114,7 +112,7 @@ RSpec.describe Rdkafka::Consumer::Message do
       allow(subject).to receive(:timestamp).and_return(1000)
     end
 
-    it "should have a human readable representation" do
+    it "has a human readable representation" do
       expect(subject.to_s).to eq "<Message in 'topic_name' with key '', payload '', partition 3, offset 100, timestamp 1000>"
     end
 
@@ -122,7 +120,7 @@ RSpec.describe Rdkafka::Consumer::Message do
       let(:key) { "key" }
       let(:payload) { "payload" }
 
-      it "should have a human readable representation" do
+      it "has a human readable representation" do
         expect(subject.to_s).to eq "<Message in 'topic_name' with key 'key', payload 'payload', partition 3, offset 100, timestamp 1000>"
       end
     end
@@ -131,7 +129,7 @@ RSpec.describe Rdkafka::Consumer::Message do
       let(:key) { "k" * 100_000 }
       let(:payload) { "p" * 100_000 }
 
-      it "should have a human readable representation" do
+      it "has a human readable representation" do
         expect(subject.to_s).to eq "<Message in 'topic_name' with key 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk...', payload 'pppppppppppppppppppppppppppppppppppppppp...', partition 3, offset 100, timestamp 1000>"
       end
     end

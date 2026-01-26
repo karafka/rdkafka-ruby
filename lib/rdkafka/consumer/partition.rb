@@ -47,8 +47,8 @@ module Rdkafka
       # @return [Boolean]
       def ==(other)
         self.class == other.class &&
-          self.partition == other.partition &&
-          self.offset == other.offset
+          partition == other.partition &&
+          offset == other.offset
       end
     end
   end

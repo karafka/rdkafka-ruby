@@ -9,7 +9,7 @@ module Rdkafka
       # @param config_entries [FFI::Pointer] pointer to config entries array
       # @param entry_count [Integer] number of config entries
       def initialize(config_entries:, entry_count:)
-        @resources=[]
+        @resources = []
 
         return if config_entries == FFI::Pointer::NULL
 

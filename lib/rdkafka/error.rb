@@ -22,7 +22,7 @@ module Rdkafka
     # @param response [Integer] the raw error response code from librdkafka
     # @param message_prefix [String, nil] optional prefix for error messages
     # @param broker_message [String, nil] optional error message from the broker
-    def initialize(response, message_prefix=nil, broker_message: nil)
+    def initialize(response, message_prefix = nil, broker_message: nil)
       raise TypeError.new("Response has to be an integer") unless response.is_a? Integer
       @rdkafka_response = response
       @message_prefix = message_prefix
@@ -34,7 +34,7 @@ module Rdkafka
     def code
       code = Rdkafka::Bindings.rd_kafka_err2name(@rdkafka_response).downcase
       if code[0] == "_"
-        code[1..-1].to_sym
+        code[1..].to_sym
       else
         code.to_sym
       end
@@ -44,10 +44,10 @@ module Rdkafka
     # @return [String]
     def to_s
       message_prefix_part = if message_prefix
-                       "#{message_prefix} - "
-                     else
-                       ''
-                     end
+        "#{message_prefix} - "
+      else
+        ""
+      end
       "#{message_prefix_part}#{Rdkafka::Bindings.rd_kafka_err2str(@rdkafka_response)} (#{code})"
     end
 
@@ -58,10 +58,10 @@ module Rdkafka
     end
 
     # Error comparison
-    # @param another_error [Object] object to compare with
+    # @param other [Object] object to compare with
     # @return [Boolean]
-    def ==(another_error)
-       another_error.is_a?(self.class) && (self.to_s == another_error.to_s)
+    def ==(other)
+      other.is_a?(self.class) && (to_s == other.to_s)
     end
   end
 
@@ -74,7 +74,7 @@ module Rdkafka
     # @param response [Integer] the raw error response code from librdkafka
     # @param topic_partition_list [TopicPartitionList] the topic partition list with error info
     # @param message_prefix [String, nil] optional prefix for error messages
-    def initialize(response, topic_partition_list, message_prefix=nil)
+    def initialize(response, topic_partition_list, message_prefix = nil)
       super(response, message_prefix)
       @topic_partition_list = topic_partition_list
     end
@@ -84,7 +84,7 @@ module Rdkafka
   class ClosedConsumerError < BaseError
     # @param method [Symbol] the method that was called
     def initialize(method)
-      super("Illegal call to #{method.to_s} on a closed consumer")
+      super("Illegal call to #{method} on a closed consumer")
     end
   end
 
@@ -92,7 +92,7 @@ module Rdkafka
   class ClosedProducerError < BaseError
     # @param method [Symbol] the method that was called
     def initialize(method)
-      super("Illegal call to #{method.to_s} on a closed producer")
+      super("Illegal call to #{method} on a closed producer")
     end
   end
 
@@ -100,7 +100,7 @@ module Rdkafka
   class ClosedAdminError < BaseError
     # @param method [Symbol] the method that was called
     def initialize(method)
-      super("Illegal call to #{method.to_s} on a closed admin")
+      super("Illegal call to #{method} on a closed admin")
     end
   end
 

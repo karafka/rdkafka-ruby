@@ -1,16 +1,18 @@
 # frozen_string_literal: true
 
 RSpec.describe Rdkafka::Admin::CreateAclReport do
-  subject { Rdkafka::Admin::CreateAclReport.new(
+  subject {
+    described_class.new(
       rdkafka_response: Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR,
       rdkafka_response_string: FFI::MemoryPointer.from_string("")
-  )}
+    )
+  }
 
-  it "should get RD_KAFKA_RESP_ERR_NO_ERROR " do
+  it "gets RD_KAFKA_RESP_ERR_NO_ERROR" do
     expect(subject.rdkafka_response).to eq(0)
   end
 
-  it "should get empty string" do
+  it "gets empty string" do
     expect(subject.rdkafka_response_string).to eq("")
   end
 end

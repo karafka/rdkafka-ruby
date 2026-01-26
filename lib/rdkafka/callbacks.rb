@@ -92,15 +92,15 @@ module Rdkafka
 
       # @param acl_result_pointer [FFI::Pointer] pointer to the delete ACL result response struct
       def initialize(acl_result_pointer)
-        @matching_acls=[]
+        @matching_acls = []
         rd_kafka_error_pointer = Rdkafka::Bindings.rd_kafka_DeleteAcls_result_response_error(acl_result_pointer)
         @result_error = Rdkafka::Bindings.rd_kafka_error_code(rd_kafka_error_pointer)
         @error_string = Rdkafka::Bindings.rd_kafka_error_string(rd_kafka_error_pointer)
         if @result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-           # Get the number of matching acls
-           pointer_to_size_t = FFI::MemoryPointer.new(:int32)
-           @matching_acls = Rdkafka::Bindings.rd_kafka_DeleteAcls_result_response_matching_acls(acl_result_pointer, pointer_to_size_t)
-           @matching_acls_count = pointer_to_size_t.read_int
+          # Get the number of matching acls
+          pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+          @matching_acls = Rdkafka::Bindings.rd_kafka_DeleteAcls_result_response_matching_acls(acl_result_pointer, pointer_to_size_t)
+          @matching_acls_count = pointer_to_size_t.read_int
         end
       end
 
@@ -123,7 +123,7 @@ module Rdkafka
 
       # @param event_ptr [FFI::Pointer] pointer to the event
       def initialize(event_ptr)
-        @matching_acls=[]
+        @matching_acls = []
         @result_error = Rdkafka::Bindings.rd_kafka_event_error(event_ptr)
         @error_string = Rdkafka::Bindings.rd_kafka_event_error_string(event_ptr)
         if @result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
@@ -144,7 +144,7 @@ module Rdkafka
 
       # @param event_ptr [FFI::Pointer] pointer to the event
       def initialize(event_ptr)
-        @results=[]
+        @results = []
         @result_error = Rdkafka::Bindings.rd_kafka_event_error(event_ptr)
         @error_string = Rdkafka::Bindings.rd_kafka_event_error_string(event_ptr)
 
@@ -166,7 +166,7 @@ module Rdkafka
 
       # @param event_ptr [FFI::Pointer] pointer to the event
       def initialize(event_ptr)
-        @results=[]
+        @results = []
         @result_error = Rdkafka::Bindings.rd_kafka_event_error(event_ptr)
         @error_string = Rdkafka::Bindings.rd_kafka_event_error_string(event_ptr)
 
@@ -452,14 +452,14 @@ module Rdkafka
 
           # FFI Function used for Create Topic and Delete Topic callbacks
           background_event_callback_function = FFI::Function.new(
-              :void, [:pointer, :pointer, :pointer]
+            :void, [:pointer, :pointer, :pointer]
           ) do |client_ptr, event_ptr, opaque_ptr|
             BackgroundEventCallback.call(client_ptr, event_ptr, opaque_ptr)
           end
 
           # FFI Function used for Message Delivery callbacks
           delivery_callback_function = FFI::Function.new(
-              :void, [:pointer, :pointer, :pointer]
+            :void, [:pointer, :pointer, :pointer]
           ) do |client_ptr, message_ptr, opaque_ptr|
             DeliveryCallback.call(client_ptr, message_ptr, opaque_ptr)
           end

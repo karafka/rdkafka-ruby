@@ -2,7 +2,6 @@ module Rdkafka
   module Helpers
     # OAuth helper methods for setting and refreshing SASL/OAUTHBEARER tokens
     module OAuth
-
       # Set the OAuthBearer token
       #
       # @param token [String] the mandatory token value to set, often (but not necessarily) a JWS compact serialization as per https://tools.ietf.org/html/rfc7515#section-3.1.

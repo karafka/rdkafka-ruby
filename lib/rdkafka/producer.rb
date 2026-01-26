@@ -80,25 +80,25 @@ module Rdkafka
 
         # If config is empty, we create an empty reference that will be used with defaults
         rd_topic_config = if config.empty?
-                            nil
-                          else
-                            Rdkafka::Bindings.rd_kafka_topic_conf_new.tap do |topic_config|
-                              config.each do |key, value|
-                                error_buffer = FFI::MemoryPointer.new(:char, 256)
-                                result = Rdkafka::Bindings.rd_kafka_topic_conf_set(
-                                  topic_config,
-                                  key.to_s,
-                                  value.to_s,
-                                  error_buffer,
-                                  256
-                                )
+          nil
+        else
+          Rdkafka::Bindings.rd_kafka_topic_conf_new.tap do |topic_config|
+            config.each do |key, value|
+              error_buffer = FFI::MemoryPointer.new(:char, 256)
+              result = Rdkafka::Bindings.rd_kafka_topic_conf_set(
+                topic_config,
+                key.to_s,
+                value.to_s,
+                error_buffer,
+                256
+              )
 
-                                unless result == :config_ok
-                                  raise Config::ConfigError.new(error_buffer.read_string)
-                                end
-                              end
-                            end
-                          end
+              unless result == :config_ok
+                raise Config::ConfigError.new(error_buffer.read_string)
+              end
+            end
+          end
+        end
 
         topic_handle = Bindings.rd_kafka_topic_new(inner, topic, rd_topic_config)
 
@@ -236,7 +236,7 @@ module Rdkafka
       end
     end
 
-    alias queue_length queue_size
+    alias_method :queue_length, :queue_size
 
     # Partition count for a given topic.
     #
@@ -310,17 +310,17 @@ module Rdkafka
 
       # Get payload length
       payload_size = if payload.nil?
-                       0
-                     else
-                       payload.bytesize
-                     end
+        0
+      else
+        payload.bytesize
+      end
 
       # Get key length
       key_size = if key.nil?
-                   0
-                 else
-                   key.bytesize
-                 end
+        0
+      else
+        key.bytesize
+      end
 
       topic_config_hash = topic_config.hash
 
@@ -337,11 +337,14 @@ module Rdkafka
         selected_partitioner = @topics_configs.dig(topic, topic_config_hash, :partitioner) || partitioner
 
         # If the topic is not present, set to -1
-        partition = Rdkafka::Bindings.partitioner(
-          topic_ref,
-          partition_key,
-          partition_count,
-          selected_partitioner) if partition_count.positive?
+        if partition_count.positive?
+          partition = Rdkafka::Bindings.partitioner(
+            topic_ref,
+            partition_key,
+            partition_count,
+            selected_partitioner
+          )
+        end
       end
 
       # If partition is nil, use RD_KAFKA_PARTITION_UA to let librdafka set the partition randomly or
@@ -351,14 +354,14 @@ module Rdkafka
       # If timestamp is nil use 0 and let Kafka set one. If an integer or time
       # use it.
       raw_timestamp = if timestamp.nil?
-                        0
-                      elsif timestamp.is_a?(Integer)
-                        timestamp
-                      elsif timestamp.is_a?(Time)
-                        (timestamp.to_i * 1000) + (timestamp.usec / 1000)
-                      else
-                        raise TypeError.new("Timestamp has to be nil, an Integer or a Time")
-                      end
+        0
+      elsif timestamp.is_a?(Integer)
+        timestamp
+      elsif timestamp.is_a?(Time)
+        (timestamp.to_i * 1000) + (timestamp.usec / 1000)
+      else
+        raise TypeError.new("Timestamp has to be nil, an Integer or a Time")
+      end
 
       delivery_handle = DeliveryHandle.new
       delivery_handle.label = label
@@ -376,29 +379,27 @@ module Rdkafka
         :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_KEY, :buffer_in, key, :size_t, key_size,
         :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_PARTITION, :int32, partition,
         :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_TIMESTAMP, :int64, raw_timestamp,
-        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_OPAQUE, :pointer, delivery_handle,
+        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_OPAQUE, :pointer, delivery_handle
       ]
 
-      if headers
-        headers.each do |key0, value0|
-          key = key0.to_s
-          if value0.is_a?(Array)
-            # Handle array of values per KIP-82
-            value0.each do |value|
-              value = value.to_s
-              args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
-              args << :string << key
-              args << :pointer << value
-              args << :size_t << value.bytesize
-            end
-          else
-            # Handle single value
-            value = value0.to_s
+      headers&.each do |key0, value0|
+        key = key0.to_s
+        if value0.is_a?(Array)
+          # Handle array of values per KIP-82
+          value0.each do |value|
+            value = value.to_s
             args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
             args << :string << key
             args << :pointer << value
             args << :size_t << value.bytesize
           end
+        else
+          # Handle single value
+          value = value0.to_s
+          args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
+          args << :string << key
+          args << :pointer << value
+          args << :size_t << value.bytesize
         end
       end
 

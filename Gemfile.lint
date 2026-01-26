@@ -1,6 +1,14 @@
 # frozen_string_literal: true
 
-source 'https://rubygems.org'
+source "https://rubygems.org"
 
 # Documentation linting
-gem 'yard-lint'
+gem "yard-lint"
+
+# Code style (StandardRB via RuboCop)
+gem "standard"
+gem "standard-performance"
+gem "rubocop-performance"
+gem "rubocop-rspec"
+gem "standard-rspec"
+gem "rubocop-thread_safety"

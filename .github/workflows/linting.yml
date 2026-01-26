@@ -28,6 +28,23 @@ env:
   BUNDLE_JOBS: 4
 
 jobs:
+  rubocop:
+    name: RuboCop (StandardRB)
+    runs-on: ubuntu-latest
+    env:
+      BUNDLE_GEMFILE: Gemfile.lint
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@80740b3b13bf9857e28854481ca95a84e78a2bdf # v1.284.0
+        with:
+          ruby-version: '4.0.1'
+          bundler-cache: true
+
+      - name: Run rubocop
+        run: bundle exec rubocop
+
   yard_lint:
     name: YARD Documentation Lint
     runs-on: ubuntu-latest
@@ -50,6 +67,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs:
+      - rubocop
       - yard_lint
     steps:
       - name: Check all jobs passed

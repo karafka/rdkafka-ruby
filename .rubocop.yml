@@ -1,0 +1,155 @@
+# frozen_string_literal: true
+
+plugins:
+  - rubocop-capybara
+  - rubocop-factory_bot
+  - rubocop-performance
+  - rubocop-rspec
+  - rubocop-rspec_rails
+  - rubocop-thread_safety
+
+inherit_gem:
+  standard: config/base.yml
+  standard-performance: config/base.yml
+  standard-rspec: config/base.yml
+
+AllCops:
+  NewCops: enable
+  TargetRubyVersion: 3.2
+  Include:
+    - "**/*.rb"
+    - "**/*.gemspec"
+    - "**/Gemfile"
+    - "**/Rakefile"
+    - Gemfile.lint
+
+# Disabled departments - not a Rails project, no Capybara/FactoryBot
+Capybara:
+  Enabled: false
+
+FactoryBot:
+  Enabled: false
+
+RSpecRails:
+  Enabled: false
+
+# Layout
+Layout/LineLength:
+  Max: 100
+
+Layout/SpaceInsideHashLiteralBraces:
+  EnforcedStyle: space
+
+# Gemspec
+Gemspec/DuplicatedAssignment:
+  Enabled: false
+
+# Lint
+Lint/AssignmentInCondition:
+  Enabled: false
+
+Lint/ConstantDefinitionInBlock:
+  Enabled: false
+
+Lint/EnsureReturn:
+  Enabled: false
+
+Lint/IneffectiveAccessModifier:
+  Enabled: false
+
+Lint/NonLocalExitFromIterator:
+  Enabled: false
+
+Lint/RescueException:
+  Exclude:
+    - lib/rdkafka/admin.rb
+    - lib/rdkafka/bindings.rb
+
+# Security
+Security/Open:
+  Exclude:
+    - ext/Rakefile
+
+# Style
+Style/GlobalVars:
+  Enabled: false
+
+# RSpec
+RSpec/BeforeAfterAll:
+  Enabled: false
+
+RSpec/Be:
+  Enabled: false
+
+RSpec/ContextWording:
+  Enabled: false
+
+RSpec/ExampleLength:
+  Enabled: false
+
+RSpec/ExpectActual:
+  Enabled: false
+
+RSpec/ExpectInHook:
+  Enabled: false
+
+RSpec/IndexedLet:
+  Enabled: false
+
+RSpec/InstanceVariable:
+  Enabled: false
+
+RSpec/IteratedExpectation:
+  Enabled: false
+
+RSpec/LeakyConstantDeclaration:
+  Enabled: false
+
+RSpec/MessageSpies:
+  Enabled: false
+
+RSpec/MultipleDescribes:
+  Enabled: false
+
+RSpec/MultipleExpectations:
+  Enabled: false
+
+RSpec/MultipleMemoizedHelpers:
+  Max: 25
+
+RSpec/NamedSubject:
+  Enabled: false
+
+RSpec/NestedGroups:
+  Max: 5
+
+RSpec/NoExpectationExample:
+  Enabled: false
+
+RSpec/OverwritingSetup:
+  Enabled: false
+
+RSpec/RepeatedDescription:
+  Enabled: false
+
+RSpec/SpecFilePathFormat:
+  Enabled: false
+
+RSpec/StubbedMock:
+  Enabled: false
+
+RSpec/SubjectStub:
+  Enabled: false
+
+RSpec/VerifiedDoubles:
+  Enabled: false
+
+# ThreadSafety
+ThreadSafety/ClassAndModuleAttributes:
+  Enabled: false
+
+ThreadSafety/ClassInstanceVariable:
+  Enabled: false
+
+ThreadSafety/NewThread:
+  Enabled: false

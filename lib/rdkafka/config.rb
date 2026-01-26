@@ -168,7 +168,7 @@ module Rdkafka
 
     # Get notifications on partition assignment/revocation for the subscribed topics
     #
-    # @param listener [Object, #on_partitions_assigned, #on_partitions_revoked] listener instance
+    # @return [Object, #on_partitions_assigned, #on_partitions_revoked] listener instance
     attr_writer :consumer_rebalance_listener
 
     # Should we use a single queue for the underlying consumer and events.
@@ -182,7 +182,7 @@ module Rdkafka
     # It is recommended to use the defaults and only set it to `false` in advance multi-threaded
     # and complex cases where granular events handling control is needed.
     #
-    # @param poll_set [Boolean]
+    # @return [Boolean]
     attr_writer :consumer_poll_set
 
     # Creates a consumer with this configuration.

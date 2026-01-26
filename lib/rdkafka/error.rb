@@ -58,7 +58,7 @@ module Rdkafka
     end
 
     # Error comparison
-    # @param another_error [Object] object to compare with
+    # @param other [Object] object to compare with
     # @return [Boolean]
     def ==(other)
       other.is_a?(self.class) && (to_s == other.to_s)

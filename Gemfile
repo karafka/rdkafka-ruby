@@ -5,9 +5,9 @@ source "https://rubygems.org"
 gemspec
 
 group :development do
-  gem 'ostruct'
-  gem 'pry'
-  gem 'rspec'
-  gem 'simplecov'
-  gem 'warning'
+  gem "ostruct"
+  gem "pry"
+  gem "rspec"
+  gem "simplecov"
+  gem "warning"
 end

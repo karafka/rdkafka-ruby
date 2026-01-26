@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 RSpec.describe Rdkafka::Consumer::TopicPartitionList do
-  it "should create a new list and add unassigned topics" do
-    list = Rdkafka::Consumer::TopicPartitionList.new
+  it "creates a new list and add unassigned topics" do
+    list = described_class.new
 
     expect(list.count).to eq 0
     expect(list.empty?).to be true
@@ -15,20 +15,20 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
 
     hash = list.to_h
     expect(hash.count).to eq 2
-    expect(hash).to eq ({
+    expect(hash).to eq({
       "topic1" => nil,
       "topic2" => nil
     })
   end
 
-  it "should create a new list and add assigned topics as a range" do
-    list = Rdkafka::Consumer::TopicPartitionList.new
+  it "creates a new list and add assigned topics as a range" do
+    list = described_class.new
 
     expect(list.count).to eq 0
     expect(list.empty?).to be true
 
-    list.add_topic("topic1", (0..2))
-    list.add_topic("topic2", (0..1))
+    list.add_topic("topic1", 0..2)
+    list.add_topic("topic2", 0..1)
 
     expect(list.count).to eq 5
     expect(list.empty?).to be false
@@ -46,8 +46,8 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
     ])
   end
 
-  it "should create a new list and add assigned topics as an array" do
-    list = Rdkafka::Consumer::TopicPartitionList.new
+  it "creates a new list and add assigned topics as an array" do
+    list = described_class.new
 
     expect(list.count).to eq 0
     expect(list.empty?).to be true
@@ -71,8 +71,8 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
     ])
   end
 
-  it "should create a new list and add assigned topics as a count" do
-    list = Rdkafka::Consumer::TopicPartitionList.new
+  it "creates a new list and add assigned topics as a count" do
+    list = described_class.new
 
     expect(list.count).to eq 0
     expect(list.empty?).to be true
@@ -96,8 +96,8 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
     ])
   end
 
-  it "should create a new list and add topics and partitions with an offset" do
-    list = Rdkafka::Consumer::TopicPartitionList.new
+  it "creates a new list and add topics and partitions with an offset" do
+    list = described_class.new
 
     expect(list.count).to eq 0
     expect(list.empty?).to be true
@@ -115,15 +115,15 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
 
   describe "#to_s" do
     let(:expected) do
-      if RUBY_VERSION >= '3.4.0'
+      if RUBY_VERSION >= "3.4.0"
         "<TopicPartitionList: {\"topic1\" => [<Partition 0>, <Partition 1>]}>"
       else
         "<TopicPartitionList: {\"topic1\"=>[<Partition 0>, <Partition 1>]}>"
       end
     end
 
-    it "should return a human readable representation" do
-      list = Rdkafka::Consumer::TopicPartitionList.new
+    it "returns a human readable representation" do
+      list = described_class.new
       list.add_topic("topic1", [0, 1])
 
       expect(list.to_s).to eq expected
@@ -132,41 +132,41 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
 
   describe "#==" do
     subject do
-      Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+      described_class.new.tap do |list|
         list.add_topic("topic1", [0])
       end
     end
 
-    it "should equal another partition with the same content" do
-      other = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+    it "equals another partition with the same content" do
+      other = described_class.new.tap do |list|
         list.add_topic("topic1", [0])
       end
       expect(subject).to eq other
     end
 
-    it "should not equal another partition with different content" do
-      expect(subject).not_to eq Rdkafka::Consumer::TopicPartitionList.new
+    it "does not equal another partition with different content" do
+      expect(subject).not_to eq described_class.new
     end
   end
 
   describe ".from_native_tpl" do
-    it "should create a list from an existing native list" do
+    it "creates a list from an existing native list" do
       pointer = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(5)
       Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
         pointer,
         "topic",
         -1
       )
-      list = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(pointer)
+      list = described_class.from_native_tpl(pointer)
 
-      other = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+      other = described_class.new.tap do |list|
         list.add_topic("topic")
       end
 
       expect(list).to eq other
     end
 
-    it "should create a list from an existing native list with offsets" do
+    it "creates a list from an existing native list with offsets" do
       pointer = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(5)
       Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
         pointer,
@@ -179,9 +179,9 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
         0,
         100
       )
-      list = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(pointer)
+      list = described_class.from_native_tpl(pointer)
 
-      other = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+      other = described_class.new.tap do |list|
         list.add_topic_and_partitions_with_offsets("topic", 0 => 100)
       end
 
@@ -190,57 +190,57 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
   end
 
   describe "#to_native_tpl" do
-    it "should create a native list" do
-      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+    it "creates a native list" do
+      list = described_class.new.tap do |list|
         list.add_topic("topic")
       end
 
       tpl = list.to_native_tpl
 
-      other = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+      other = described_class.from_native_tpl(tpl)
 
       expect(list).to eq other
     end
 
-    it "should create a native list with partitions" do
-      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+    it "creates a native list with partitions" do
+      list = described_class.new.tap do |list|
         list.add_topic("topic", 0..16)
       end
 
       tpl = list.to_native_tpl
 
-      other = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+      other = described_class.from_native_tpl(tpl)
 
       expect(list).to eq other
     end
 
-    it "should create a native list with offsets" do
-      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+    it "creates a native list with offsets" do
+      list = described_class.new.tap do |list|
         list.add_topic_and_partitions_with_offsets("topic", 0 => 100)
       end
 
       tpl = list.to_native_tpl
 
-      other = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+      other = described_class.from_native_tpl(tpl)
 
       expect(list).to eq other
     end
 
-    it "should create a native list with timetamp offsets if offsets are Time" do
-      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+    it "creates a native list with timetamp offsets if offsets are Time" do
+      list = described_class.new.tap do |list|
         list.add_topic_and_partitions_with_offsets("topic", 0 => Time.at(1505069646, 250_000))
       end
 
       tpl = list.to_native_tpl
 
-      compare_list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+      compare_list = described_class.new.tap do |list|
         list.add_topic_and_partitions_with_offsets(
           "topic",
           0 => (Time.at(1505069646, 250_000).to_f * 1000).floor
         )
       end
 
-      native_list = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+      native_list = described_class.from_native_tpl(tpl)
 
       expect(native_list).to eq compare_list
     end

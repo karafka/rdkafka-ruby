@@ -1,16 +1,16 @@
 # frozen_string_literal: true
 
 RSpec.describe Rdkafka::NativeKafka do
+  subject(:client) { described_class.new(native, run_polling_thread: true, opaque: opaque) }
+
   let(:config) { rdkafka_producer_config }
   let(:native) { config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer) }
   let(:closing) { false }
   let(:thread) { double(Thread) }
   let(:opaque) { Rdkafka::Opaque.new }
 
-  subject(:client) { described_class.new(native, run_polling_thread: true, opaque: opaque) }
-
   before do
-    allow(Rdkafka::Bindings).to receive(:rd_kafka_name).and_return('producer-1')
+    allow(Rdkafka::Bindings).to receive(:rd_kafka_name).and_return("producer-1")
     allow(Thread).to receive(:new).and_return(thread)
     allow(thread).to receive(:name=).with("rdkafka.native_kafka#producer-1")
     allow(thread).to receive(:[]=).with(:closing, anything)
@@ -56,7 +56,7 @@ RSpec.describe Rdkafka::NativeKafka do
 
   context "when client was not yet closed (`nil`)" do
     it "is not closed" do
-      expect(client.closed?).to eq(false)
+      expect(client.closed?).to be(false)
     end
 
     context "and attempt to close" do
@@ -81,7 +81,7 @@ RSpec.describe Rdkafka::NativeKafka do
       it "closes and unassign the native client" do
         client.close
 
-        expect(client.closed?).to eq(true)
+        expect(client.closed?).to be(true)
       end
     end
   end
@@ -90,7 +90,7 @@ RSpec.describe Rdkafka::NativeKafka do
     before { client.close }
 
     it "is closed" do
-      expect(client.closed?).to eq(true)
+      expect(client.closed?).to be(true)
     end
 
     context "and attempt to close again" do
@@ -115,16 +115,16 @@ RSpec.describe Rdkafka::NativeKafka do
       it "does not close and unassign the native client again" do
         client.close
 
-        expect(client.closed?).to eq(true)
+        expect(client.closed?).to be(true)
       end
     end
   end
 
   it "provides a finalizer that closes the native kafka client" do
-    expect(client.closed?).to eq(false)
+    expect(client.closed?).to be(false)
 
     client.finalizer.call("some-ignored-object-id")
 
-    expect(client.closed?).to eq(true)
+    expect(client.closed?).to be(true)
   end
 end

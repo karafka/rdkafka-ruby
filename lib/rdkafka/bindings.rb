@@ -17,10 +17,10 @@ module Rdkafka
     # Returns the library extension based on the host OS
     # @return [String] 'dylib' on macOS, 'so' on other systems
     def self.lib_extension
-      if RbConfig::CONFIG['host_os'] =~ /darwin/
-        'dylib'
+      if /darwin/.match?(RbConfig::CONFIG["host_os"])
+        "dylib"
       else
-        'so'
+        "so"
       end
     end
 
@@ -31,8 +31,8 @@ module Rdkafka
       error_message = e.message
 
       # Check if this is a glibc version mismatch error
-      if error_message =~ /GLIBC_[\d.]+['"` ]?\s*not found/i
-        glibc_version = error_message[/GLIBC_([\d.]+)/, 1] || 'unknown'
+      if /GLIBC_[\d.]+['"` ]?\s*not found/i.match?(error_message)
+        glibc_version = error_message[/GLIBC_([\d.]+)/, 1] || "unknown"
 
         raise Rdkafka::LibraryLoadError, <<~ERROR_MSG.strip
           Failed to load librdkafka due to glibc compatibility issue.
@@ -64,12 +64,12 @@ module Rdkafka
     RD_KAFKA_RESP_ERR__NOENT = -156
     RD_KAFKA_RESP_ERR_NO_ERROR = 0
 
-    RD_KAFKA_OFFSET_END       = -1
+    RD_KAFKA_OFFSET_END = -1
     RD_KAFKA_OFFSET_BEGINNING = -2
-    RD_KAFKA_OFFSET_STORED    = -1000
-    RD_KAFKA_OFFSET_INVALID   = -1001
+    RD_KAFKA_OFFSET_STORED = -1000
+    RD_KAFKA_OFFSET_INVALID = -1001
 
-    RD_KAFKA_PARTITION_UA     = -1
+    RD_KAFKA_PARTITION_UA = -1
     RD_KAFKA_PARTITION_UA_STR = RD_KAFKA_PARTITION_UA.to_s.freeze
 
     EMPTY_HASH = {}.freeze
@@ -101,14 +101,14 @@ module Rdkafka
     # FFI struct representing a Kafka message (rd_kafka_message_t)
     class Message < FFI::Struct
       layout :err, :int,
-             :rkt, :pointer,
-             :partition, :int32,
-             :payload, :pointer,
-             :len, :size_t,
-             :key, :pointer,
-             :key_len, :size_t,
-             :offset, :int64,
-             :_private, :pointer
+        :rkt, :pointer,
+        :partition, :int32,
+        :payload, :pointer,
+        :len, :size_t,
+        :key, :pointer,
+        :key_len, :size_t,
+        :offset, :int64,
+        :_private, :pointer
     end
 
     attach_function :rd_kafka_message_destroy, [:pointer], :void
@@ -120,20 +120,20 @@ module Rdkafka
     # FFI struct representing a topic partition (rd_kafka_topic_partition_t)
     class TopicPartition < FFI::Struct
       layout :topic, :string,
-             :partition, :int32,
-             :offset, :int64,
-             :metadata, :pointer,
-             :metadata_size, :size_t,
-             :opaque, :pointer,
-             :err, :int,
-             :_private, :pointer
+        :partition, :int32,
+        :offset, :int64,
+        :metadata, :pointer,
+        :metadata_size, :size_t,
+        :opaque, :pointer,
+        :err, :int,
+        :_private, :pointer
     end
 
     # FFI struct representing a topic partition list (rd_kafka_topic_partition_list_t)
     class TopicPartitionList < FFI::Struct
       layout :cnt, :int,
-             :size, :int,
-             :elems, :pointer
+        :size, :int,
+        :elems, :pointer
     end
 
     attach_function :rd_kafka_topic_partition_list_new, [:int32], :pointer
@@ -148,7 +148,7 @@ module Rdkafka
     # separate errors results if obtaining configuration was not possible for any reason
     class ConfigResource < FFI::Struct
       layout :type, :int,
-             :name, :string
+        :name, :string
     end
 
     attach_function :rd_kafka_DescribeConfigs, [:pointer, :pointer, :size_t, :pointer, :pointer], :void, blocking: true
@@ -177,16 +177,16 @@ module Rdkafka
     RD_KAFKA_ADMIN_OP_INCREMENTALALTERCONFIGS = 16
     RD_KAFKA_EVENT_INCREMENTALALTERCONFIGS_RESULT = 131072
 
-    RD_KAFKA_ALTER_CONFIG_OP_TYPE_SET      = 0
-    RD_KAFKA_ALTER_CONFIG_OP_TYPE_DELETE   = 1
-    RD_KAFKA_ALTER_CONFIG_OP_TYPE_APPEND   = 2
+    RD_KAFKA_ALTER_CONFIG_OP_TYPE_SET = 0
+    RD_KAFKA_ALTER_CONFIG_OP_TYPE_DELETE = 1
+    RD_KAFKA_ALTER_CONFIG_OP_TYPE_APPEND = 2
     RD_KAFKA_ALTER_CONFIG_OP_TYPE_SUBTRACT = 3
 
     # FFI struct for error description (rd_kafka_err_desc)
     class NativeErrorDesc < FFI::Struct
       layout :code, :int,
-             :name, :pointer,
-             :desc, :pointer
+        :name, :pointer,
+        :desc, :pointer
     end
 
     attach_function :rd_kafka_err2name, [:int], :string
@@ -230,19 +230,19 @@ module Rdkafka
       :void, [:pointer, :int, :string, :string]
     ) do |_client_ptr, level, _level_string, line|
       severity = case level
-                 when 0, 1, 2
-                   Logger::FATAL
-                 when 3
-                   Logger::ERROR
-                 when 4
-                   Logger::WARN
-                 when 5, 6
-                   Logger::INFO
-                 when 7
-                   Logger::DEBUG
-                 else
-                   Logger::UNKNOWN
-                 end
+      when 0, 1, 2
+        Logger::FATAL
+      when 3
+        Logger::ERROR
+      when 4
+        Logger::WARN
+      when 5, 6
+        Logger::INFO
+      when 7
+        Logger::DEBUG
+      else
+        Logger::UNKNOWN
+      end
 
       Rdkafka::Config.ensure_log_thread
       Rdkafka::Config.log_queue << [severity, "rdkafka: #{line}"]
@@ -268,8 +268,8 @@ module Rdkafka
         #
         # Since this cache is shared, having few consumers and/or producers in one process will
         # automatically improve the querying times even with low refresh times.
-        (stats['topics'] || EMPTY_HASH).each do |topic_name, details|
-          partitions_count = details['partitions'].keys.reject { |k| k == RD_KAFKA_PARTITION_UA_STR }.size
+        (stats["topics"] || EMPTY_HASH).each do |topic_name, details|
+          partitions_count = details["partitions"].keys.count { |k| !(k == RD_KAFKA_PARTITION_UA_STR) }
 
           next unless partitions_count.positive?
 
@@ -314,9 +314,7 @@ module Rdkafka
     OAuthbearerTokenRefreshCallback = FFI::Function.new(
       :void, [:pointer, :string, :pointer]
     ) do |client_ptr, config, _opaque|
-      if Rdkafka::Config.oauthbearer_token_refresh_callback
-        Rdkafka::Config.oauthbearer_token_refresh_callback.call(config, Rdkafka::Bindings.rd_kafka_name(client_ptr))
-      end
+      Rdkafka::Config.oauthbearer_token_refresh_callback&.call(config, Rdkafka::Bindings.rd_kafka_name(client_ptr))
     end
 
     # Handle
@@ -426,8 +424,8 @@ module Rdkafka
 
     # Hash mapping partitioner names to their FFI function symbols
     # @return [Hash{String => Symbol}]
-    PARTITIONERS = %w(random consistent consistent_random murmur2 murmur2_random fnv1a fnv1a_random).each_with_object({}) do |name, hsh|
-      method_name = "rd_kafka_msg_partitioner_#{name}".to_sym
+    PARTITIONERS = %w[random consistent consistent_random murmur2 murmur2_random fnv1a fnv1a_random].each_with_object({}) do |name, hsh|
+      method_name = :"rd_kafka_msg_partitioner_#{name}"
       attach_function method_name, [:pointer, :pointer, :size_t, :int32, :pointer, :pointer], :int32
       hsh[name] = method_name
     end
@@ -453,7 +451,7 @@ module Rdkafka
     end
 
     # Create Topics
-    RD_KAFKA_ADMIN_OP_CREATETOPICS     = 1   # rd_kafka_admin_op_t
+    RD_KAFKA_ADMIN_OP_CREATETOPICS = 1   # rd_kafka_admin_op_t
     RD_KAFKA_EVENT_CREATETOPICS_RESULT = 100 # rd_kafka_event_type_t
 
     attach_function :rd_kafka_CreateTopics, [:pointer, :pointer, :size_t, :pointer, :pointer], :void, blocking: true
@@ -464,7 +462,7 @@ module Rdkafka
     attach_function :rd_kafka_CreateTopics_result_topics, [:pointer, :pointer], :pointer, blocking: true
 
     # Delete Topics
-    RD_KAFKA_ADMIN_OP_DELETETOPICS     = 2   # rd_kafka_admin_op_t
+    RD_KAFKA_ADMIN_OP_DELETETOPICS = 2   # rd_kafka_admin_op_t
     RD_KAFKA_EVENT_DELETETOPICS_RESULT = 101 # rd_kafka_event_type_t
 
     attach_function :rd_kafka_DeleteTopics, [:pointer, :pointer, :size_t, :pointer, :pointer], :int32, blocking: true
@@ -517,7 +515,7 @@ module Rdkafka
     attach_function :rd_kafka_topic_result_name, [:pointer], :pointer
 
     # Create Acls
-    RD_KAFKA_ADMIN_OP_CREATEACLS     = 9
+    RD_KAFKA_ADMIN_OP_CREATEACLS = 9
     RD_KAFKA_EVENT_CREATEACLS_RESULT = 1024
 
     attach_function :rd_kafka_CreateAcls, [:pointer, :pointer, :size_t, :pointer, :pointer], :void
@@ -525,7 +523,7 @@ module Rdkafka
     attach_function :rd_kafka_CreateAcls_result_acls, [:pointer, :pointer], :pointer
 
     # Delete Acls
-    RD_KAFKA_ADMIN_OP_DELETEACLS     = 11
+    RD_KAFKA_ADMIN_OP_DELETEACLS = 11
     RD_KAFKA_EVENT_DELETEACLS_RESULT = 4096
 
     attach_function :rd_kafka_DeleteAcls, [:pointer, :pointer, :size_t, :pointer, :pointer], :void
@@ -535,7 +533,7 @@ module Rdkafka
     attach_function :rd_kafka_DeleteAcls_result_response_matching_acls, [:pointer, :pointer], :pointer
 
     # Describe Acls
-    RD_KAFKA_ADMIN_OP_DESCRIBEACLS     = 10
+    RD_KAFKA_ADMIN_OP_DESCRIBEACLS = 10
     RD_KAFKA_EVENT_DESCRIBEACLS_RESULT = 2048
 
     attach_function :rd_kafka_DescribeAcls, [:pointer, :pointer, :pointer, :pointer], :void
@@ -551,41 +549,41 @@ module Rdkafka
     attach_function :rd_kafka_AclBinding_host, [:pointer], :pointer
     attach_function :rd_kafka_AclBinding_operation, [:pointer], :int32
     attach_function :rd_kafka_AclBinding_permission_type, [:pointer], :int32
-    attach_function :rd_kafka_AclBinding_new, [:int32, :pointer, :int32, :pointer, :pointer, :int32, :int32, :pointer, :size_t ], :pointer
-    attach_function :rd_kafka_AclBindingFilter_new, [:int32, :pointer, :int32, :pointer, :pointer, :int32, :int32, :pointer, :size_t ], :pointer
+    attach_function :rd_kafka_AclBinding_new, [:int32, :pointer, :int32, :pointer, :pointer, :int32, :int32, :pointer, :size_t], :pointer
+    attach_function :rd_kafka_AclBindingFilter_new, [:int32, :pointer, :int32, :pointer, :pointer, :int32, :int32, :pointer, :size_t], :pointer
     attach_function :rd_kafka_AclBinding_destroy, [:pointer], :void
 
     # rd_kafka_ResourceType_t - https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L7307
-    RD_KAFKA_RESOURCE_ANY   = 1
+    RD_KAFKA_RESOURCE_ANY = 1
     RD_KAFKA_RESOURCE_TOPIC = 2
     RD_KAFKA_RESOURCE_GROUP = 3
     RD_KAFKA_RESOURCE_BROKER = 4
     RD_KAFKA_RESOURCE_TRANSACTIONAL_ID = 5
 
     # rd_kafka_ResourcePatternType_t - https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L7320
-    RD_KAFKA_RESOURCE_PATTERN_ANY      = 1
-    RD_KAFKA_RESOURCE_PATTERN_MATCH    = 2
-    RD_KAFKA_RESOURCE_PATTERN_LITERAL  = 3
+    RD_KAFKA_RESOURCE_PATTERN_ANY = 1
+    RD_KAFKA_RESOURCE_PATTERN_MATCH = 2
+    RD_KAFKA_RESOURCE_PATTERN_LITERAL = 3
     RD_KAFKA_RESOURCE_PATTERN_PREFIXED = 4
 
     # rd_kafka_AclOperation_t - https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L8403
-    RD_KAFKA_ACL_OPERATION_ANY              = 1
-    RD_KAFKA_ACL_OPERATION_ALL              = 2
-    RD_KAFKA_ACL_OPERATION_READ             = 3
-    RD_KAFKA_ACL_OPERATION_WRITE            = 4
-    RD_KAFKA_ACL_OPERATION_CREATE           = 5
-    RD_KAFKA_ACL_OPERATION_DELETE           = 6
-    RD_KAFKA_ACL_OPERATION_ALTER            = 7
-    RD_KAFKA_ACL_OPERATION_DESCRIBE         = 8
-    RD_KAFKA_ACL_OPERATION_CLUSTER_ACTION   = 9
+    RD_KAFKA_ACL_OPERATION_ANY = 1
+    RD_KAFKA_ACL_OPERATION_ALL = 2
+    RD_KAFKA_ACL_OPERATION_READ = 3
+    RD_KAFKA_ACL_OPERATION_WRITE = 4
+    RD_KAFKA_ACL_OPERATION_CREATE = 5
+    RD_KAFKA_ACL_OPERATION_DELETE = 6
+    RD_KAFKA_ACL_OPERATION_ALTER = 7
+    RD_KAFKA_ACL_OPERATION_DESCRIBE = 8
+    RD_KAFKA_ACL_OPERATION_CLUSTER_ACTION = 9
     RD_KAFKA_ACL_OPERATION_DESCRIBE_CONFIGS = 10
-    RD_KAFKA_ACL_OPERATION_ALTER_CONFIGS    = 11
+    RD_KAFKA_ACL_OPERATION_ALTER_CONFIGS = 11
     RD_KAFKA_ACL_OPERATION_IDEMPOTENT_WRITE = 12
 
     # rd_kafka_AclPermissionType_t - https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L8435
-    RD_KAFKA_ACL_PERMISSION_TYPE_ANY     = 1
-    RD_KAFKA_ACL_PERMISSION_TYPE_DENY    = 2
-    RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW   = 3
+    RD_KAFKA_ACL_PERMISSION_TYPE_ANY = 1
+    RD_KAFKA_ACL_PERMISSION_TYPE_DENY = 2
+    RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW = 3
 
     # Extracting error details from Acl results
     attach_function :rd_kafka_acl_result_error, [:pointer], :pointer
@@ -595,14 +593,13 @@ module Rdkafka
     attach_function :rd_kafka_event_error_string, [:pointer], :pointer
     attach_function :rd_kafka_AclBinding_error, [:pointer], :pointer
 
-
     # FFI struct for native error (rd_kafka_error_t)
     class NativeError < FFI::Struct
       layout :code, :int32,
-             :errstr, :pointer,
-             :fatal, :u_int8_t,
-             :retriable, :u_int8_t,
-             :txn_requires_abort, :u_int8_t
+        :errstr, :pointer,
+        :fatal, :u_int8_t,
+        :retriable, :u_int8_t,
+        :txn_requires_abort, :u_int8_t
     end
 
     attach_function :rd_kafka_group_result_error, [:pointer], NativeError.by_ref # rd_kafka_group_result_t* => rd_kafka_error_t*

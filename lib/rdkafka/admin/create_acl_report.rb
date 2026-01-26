@@ -4,11 +4,9 @@ module Rdkafka
   class Admin
     # Report for create ACL operation result
     class CreateAclReport
-
       # Upon successful creation of Acl RD_KAFKA_RESP_ERR_NO_ERROR - 0 is returned as rdkafka_response
       # @return [Integer]
       attr_reader :rdkafka_response
-
 
       # Upon successful creation of Acl empty string will be returned as rdkafka_response_string
       # @return [String]

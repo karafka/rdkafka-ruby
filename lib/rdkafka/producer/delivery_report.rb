@@ -30,7 +30,7 @@ module Rdkafka
       # is present in both places
       #
       # We do not remove the original `#topic_name` because of backwards compatibility
-      alias topic topic_name
+      alias_method :topic, :topic_name
 
       # @private
       # @param partition [Integer] partition number

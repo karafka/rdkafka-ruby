@@ -3,9 +3,9 @@
 require "securerandom"
 
 RSpec.describe Rdkafka::Metadata do
-  let(:config)        { rdkafka_consumer_config }
+  let(:config) { rdkafka_consumer_config }
   let(:native_config) { config.send(:native_config) }
-  let(:native_kafka)  { config.send(:native_kafka, native_config, :rd_kafka_consumer) }
+  let(:native_kafka) { config.send(:native_kafka, native_config, :rd_kafka_consumer) }
 
   after do
     Rdkafka::Bindings.rd_kafka_consumer_close(native_kafka)
@@ -25,13 +25,14 @@ RSpec.describe Rdkafka::Metadata do
 
     context "that is one of our test topics" do
       subject { described_class.new(native_kafka, topic_name) }
+
       let(:topic_name) { TestTopics.partitioner_test_topic }
 
       it "#brokers returns our single broker" do
         expect(subject.brokers.length).to eq(1)
         expect(subject.brokers[0][:broker_id]).to eq(1)
         expect(%w[127.0.0.1 localhost]).to include(subject.brokers[0][:broker_name])
-        expect(subject.brokers[0][:broker_port]).to eq(rdkafka_base_config[:'bootstrap.servers'].split(':').last.to_i)
+        expect(subject.brokers[0][:broker_port]).to eq(rdkafka_base_config[:"bootstrap.servers"].split(":").last.to_i)
       end
 
       it "#topics returns data on our test topic" do
@@ -45,6 +46,7 @@ RSpec.describe Rdkafka::Metadata do
 
   context "not passing in a topic name" do
     subject { described_class.new(native_kafka, topic_name) }
+
     let(:topic_name) { nil }
     let(:test_topics) {
       [TestTopics.consume_test_topic, TestTopics.empty_test_topic, TestTopics.load_test_topic, TestTopics.produce_test_topic, TestTopics.rake_test_topic, TestTopics.watermarks_test_topic, TestTopics.partitioner_test_topic]
@@ -54,7 +56,7 @@ RSpec.describe Rdkafka::Metadata do
       expect(subject.brokers.length).to eq(1)
       expect(subject.brokers[0][:broker_id]).to eq(1)
       expect(%w[127.0.0.1 localhost]).to include(subject.brokers[0][:broker_name])
-      expect(subject.brokers[0][:broker_port]).to eq(rdkafka_base_config[:'bootstrap.servers'].split(':').last.to_i)
+      expect(subject.brokers[0][:broker_port]).to eq(rdkafka_base_config[:"bootstrap.servers"].split(":").last.to_i)
     end
 
     it "#topics returns data about all of our test topics" do

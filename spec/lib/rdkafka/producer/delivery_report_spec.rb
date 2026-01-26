@@ -1,26 +1,27 @@
 # frozen_string_literal: true
 
 RSpec.describe Rdkafka::Producer::DeliveryReport do
-  let(:topic_name) { TestTopics.unique }
-  subject { Rdkafka::Producer::DeliveryReport.new(2, 100, topic_name, -1) }
+  subject { described_class.new(2, 100, topic_name, -1) }
 
-  it "should get the partition" do
+  let(:topic_name) { TestTopics.unique }
+
+  it "gets the partition" do
     expect(subject.partition).to eq 2
   end
 
-  it "should get the offset" do
+  it "gets the offset" do
     expect(subject.offset).to eq 100
   end
 
-  it "should get the topic_name" do
+  it "gets the topic_name" do
     expect(subject.topic_name).to eq topic_name
   end
 
-  it "should get the same topic name under topic alias" do
+  it "gets the same topic name under topic alias" do
     expect(subject.topic).to eq topic_name
   end
 
-  it "should get the error" do
+  it "gets the error" do
     expect(subject.error).to eq(-1)
   end
 end

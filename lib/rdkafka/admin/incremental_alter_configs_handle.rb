@@ -5,10 +5,10 @@ module Rdkafka
     # Handle for incremental alter configs operation
     class IncrementalAlterConfigsHandle < AbstractHandle
       layout :pending, :bool,
-             :response, :int,
-             :response_string, :pointer,
-             :config_entries, :pointer,
-             :entry_count, :int
+        :response, :int,
+        :response_string, :pointer,
+        :config_entries, :pointer,
+        :entry_count, :int
 
       # @return [String] the name of the operation.
       def operation_name

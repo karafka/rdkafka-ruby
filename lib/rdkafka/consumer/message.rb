@@ -53,13 +53,11 @@ module Rdkafka
         # Set timestamp
         raw_timestamp = Rdkafka::Bindings.rd_kafka_message_timestamp(native_message, nil)
         @timestamp = if raw_timestamp && raw_timestamp > -1
-                       # Calculate seconds and microseconds
-                       seconds = raw_timestamp / 1000
-                       milliseconds = (raw_timestamp - seconds * 1000) * 1000
-                       Time.at(seconds, milliseconds)
-                     else
-                       nil
-                     end
+          # Calculate seconds and microseconds
+          seconds = raw_timestamp / 1000
+          milliseconds = (raw_timestamp - seconds * 1000) * 1000
+          Time.at(seconds, milliseconds)
+        end
 
         @headers = Headers.from_native(native_message)
       end
@@ -84,7 +82,6 @@ module Rdkafka
           string
         end
       end
-
     end
   end
 end

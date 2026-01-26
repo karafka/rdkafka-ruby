@@ -36,8 +36,8 @@ module Rdkafka
           # Read values from the struct
           code = error_desc[:code]
 
-          name = ''
-          desc = ''
+          name = ""
+          desc = ""
 
           name = error_desc[:name].read_string unless error_desc[:name].null?
           desc = error_desc[:desc].read_string unless error_desc[:desc].null?
@@ -113,7 +113,7 @@ module Rdkafka
     # @raise [ConfigError] When the partition count or replication factor are out of valid range
     # @raise [RdkafkaError] When the topic name is invalid or the topic already exists
     # @raise [RdkafkaError] When the topic configuration is invalid
-    def create_topic(topic_name, partition_count, replication_factor, topic_config={})
+    def create_topic(topic_name, partition_count, replication_factor, topic_config = {})
       closed_admin_check(__method__)
 
       # Create a rd_kafka_NewTopic_t representing the new topic
@@ -129,14 +129,12 @@ module Rdkafka
         raise Rdkafka::Config::ConfigError.new(error_buffer.read_string)
       end
 
-      unless topic_config.nil?
-        topic_config.each do |key, value|
-          Rdkafka::Bindings.rd_kafka_NewTopic_set_config(
-            new_topic_ptr,
-            key.to_s,
-            value.to_s
-          )
-        end
+      topic_config&.each do |key, value|
+        Rdkafka::Bindings.rd_kafka_NewTopic_set_config(
+          new_topic_ptr,
+          key.to_s,
+          value.to_s
+        )
       end
 
       # Note that rd_kafka_CreateTopics can create more than one topic at a time
@@ -720,10 +718,12 @@ module Rdkafka
 
         raise
       ensure
-        Rdkafka::Bindings.rd_kafka_ConfigResource_destroy_array(
-          configs_array_ptr,
-          pointer_array.size
-        ) if configs_array_ptr
+        if configs_array_ptr
+          Rdkafka::Bindings.rd_kafka_ConfigResource_destroy_array(
+            configs_array_ptr,
+            pointer_array.size
+          )
+        end
       end
 
       handle
@@ -791,7 +791,6 @@ module Rdkafka
       configs_array_ptr = FFI::MemoryPointer.new(:pointer, pointer_array.size)
       configs_array_ptr.write_array_of_pointer(pointer_array)
 
-
       begin
         @native_kafka.with_inner do |inner|
           Rdkafka::Bindings.rd_kafka_IncrementalAlterConfigs(
@@ -807,10 +806,12 @@ module Rdkafka
 
         raise
       ensure
-        Rdkafka::Bindings.rd_kafka_ConfigResource_destroy_array(
-          configs_array_ptr,
-          pointer_array.size
-        ) if configs_array_ptr
+        if configs_array_ptr
+          Rdkafka::Bindings.rd_kafka_ConfigResource_destroy_array(
+            configs_array_ptr,
+            pointer_array.size
+          )
+        end
       end
 
       handle

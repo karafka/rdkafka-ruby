@@ -9,7 +9,7 @@ module Rdkafka
       # @param data [Hash{String => nil,Partition}] The topic and partition data or nil to create an empty list
       #
       # @return [TopicPartitionList]
-      def initialize(data=nil)
+      def initialize(data = nil)
         @data = data || {}
       end
 
@@ -18,10 +18,10 @@ module Rdkafka
       def count
         i = 0
         @data.each do |_topic, partitions|
-          if partitions
-            i += partitions.count
+          i += if partitions
+            partitions.count
           else
-            i+= 1
+            1
           end
         end
         i
@@ -49,7 +49,7 @@ module Rdkafka
       #
       # @example Add a topic with all topics up to a count
       #   tpl.add_topic("topic", 9)
-      def add_topic(topic, partitions=nil)
+      def add_topic(topic, partitions = nil)
         if partitions.nil?
           @data[topic.to_s] = nil
         else
@@ -90,7 +90,7 @@ module Rdkafka
       # @param other [TopicPartitionList] object to compare with
       # @return [Boolean]
       def ==(other)
-        self.to_h == other.to_h
+        to_h == other.to_h
       end
 
       # Create a new topic partition list based of a native one.
@@ -114,10 +114,10 @@ module Rdkafka
           else
             partitions = data[elem[:topic]] || []
             offset = if elem[:offset] == Rdkafka::Bindings::RD_KAFKA_OFFSET_INVALID
-                       nil
-                     else
-                       elem[:offset]
-                     end
+              nil
+            else
+              elem[:offset]
+            end
             partition = Partition.new(elem[:partition], offset, elem[:err])
             partitions.push(partition)
             data[elem[:topic]] = partitions

@@ -5,13 +5,13 @@ module Rdkafka
     # Extracts attributes of rd_kafka_AclBinding_t
     class AclBindingResult
       attr_reader :result_error, :error_string, :matching_acl_resource_type,
-                  :matching_acl_resource_name, :matching_acl_resource_pattern_type,
-                  :matching_acl_principal, :matching_acl_host, :matching_acl_operation,
-                  :matching_acl_permission_type
+        :matching_acl_resource_name, :matching_acl_resource_pattern_type,
+        :matching_acl_principal, :matching_acl_host, :matching_acl_operation,
+        :matching_acl_permission_type
 
       # This attribute was initially released under the name that is now an alias
       # We keep it for backwards compatibility but it was changed for the consistency
-      alias matching_acl_pattern_type matching_acl_resource_pattern_type
+      alias_method :matching_acl_pattern_type, :matching_acl_resource_pattern_type
 
       # @param matching_acl [FFI::Pointer] pointer to the ACL binding struct
       def initialize(matching_acl)

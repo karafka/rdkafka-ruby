@@ -7,9 +7,9 @@
 # - 0: All expected features found (test passes)
 # - 1: Missing expected features or parsing failed (test fails)
 
-require 'rdkafka'
-require 'logger'
-require 'stringio'
+require "rdkafka"
+require "logger"
+require "stringio"
 
 $stdout.sync = true
 
@@ -39,9 +39,9 @@ Rdkafka::Config.logger = logger
 Rdkafka::Config.ensure_log_thread
 
 config = Rdkafka::Config.new(
-  'bootstrap.servers': 'localhost:9092',
-  'client.id': 'admin-feature-test',
-  'debug': 'all'
+  "bootstrap.servers": "localhost:9092",
+  "client.id": "admin-feature-test",
+  debug: "all"
 )
 
 admin = config.admin
@@ -55,11 +55,10 @@ admin.close
 log_content = captured_output.string
 
 # Find the initialization line that contains builtin.features
-feature_line = log_content.lines.find { |line| line.include?('builtin.features') }
+feature_line = log_content.lines.find { |line| line.include?("builtin.features") }
 
 unless feature_line
-  puts 'ERROR: Could not find \'builtin.features\' in admin debug output'
-  puts 'Make sure debug config is set correctly'
+
   exit(1)
 end
 
@@ -68,21 +67,18 @@ end
 match = feature_line.match(/builtin\.features\s+([^,]+(?:,[^,\s]+)*)/i)
 
 unless match
-  puts "ERROR: Could not parse builtin.features from line: #{feature_line}"
+
   exit(1)
 end
 
 features_string = match[1]
-actual_features = features_string.split(',').map(&:strip)
+actual_features = features_string.split(",").map(&:strip)
 
 # Verify all expected features are present
-expected = ENV['RDKAFKA_PRECOMPILED'] == 'true' ? PRECOMPILED_FEATURES : EXPECTED_BUILTIN_FEATURES
+expected = (ENV["RDKAFKA_PRECOMPILED"] == "true") ? PRECOMPILED_FEATURES : EXPECTED_BUILTIN_FEATURES
 missing_features = expected - actual_features
 
 if missing_features.any?
-  puts "ERROR: Admin missing expected builtin features: #{missing_features.join(', ')}"
-  puts "Build type: #{ENV['RDKAFKA_PRECOMPILED'] == 'true' ? 'precompiled' : 'mini_portile'}"
+
   exit(1)
 end
-
-puts "Admin features: #{actual_features.sort.join(', ')}"

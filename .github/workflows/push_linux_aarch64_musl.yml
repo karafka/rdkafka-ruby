@@ -1,0 +1,95 @@
+name: Push Linux aarch64 musl Platform Gem
+on:
+  push:
+    tags:
+      - v*
+permissions:
+  contents: read
+env:
+  BUNDLE_RETRY: 6
+  BUNDLE_JOBS: 4
+jobs:
+  build:
+    if: github.repository_owner == 'karafka'
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    environment: deployment
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU for ARM64 emulation
+        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
+        with:
+          platforms: linux/arm64
+
+      - name: Build precompiled librdkafka.so in Alpine ARM64 container
+        run: |
+          docker run --rm --platform linux/arm64 \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            alpine:3.23@sha256:865b95f46d98cf867a156fe4a135ad3fe50d2056aa3f25ed31662dff6da4eb62 \
+            sh -c '
+              apk add --no-cache git curl ca-certificates build-base linux-headers \
+                pkgconf perl autoconf automake libtool bison flex file bash wget zstd-dev \
+                openssl-dev cyrus-sasl-dev cyrus-sasl cyrus-sasl-login \
+                cyrus-sasl-crammd5 cyrus-sasl-digestmd5 cyrus-sasl-gssapiv2 cyrus-sasl-scram \
+                krb5-libs openssl zlib zlib-dev zstd-libs && \
+              git config --global --add safe.directory /workspace && \
+              cd /workspace/ext && \
+              bash ./build_linux_aarch64_musl.sh
+            '
+
+      - name: Upload precompiled library
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: librdkafka-precompiled-aarch64-musl
+          path: ext/
+          retention-days: 1
+
+  push:
+    if: github.repository_owner == 'karafka'
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    needs: build
+    environment: deployment
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      # Vendor the attestation patch from rubygems/release-gem (no action execution)
+      - name: Vendor release-gem patch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: rubygems/release-gem
+          ref: a25424ba2ba8b387abc8ef40807c2c85b96cbe32 # v1.1.1
+          path: .github/_release-gem
+
+      - name: Download precompiled library
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: librdkafka-precompiled-aarch64-musl
+          path: ext/
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@80740b3b13bf9857e28854481ca95a84e78a2bdf # v1.284.0
+        with:
+          ruby-version: '4.0.1'
+          bundler-cache: false
+
+      - name: Configure trusted publishing credentials
+        uses: rubygems/configure-rubygems-credentials@bc6dd217f8a4f919d6835fcfefd470ef821f5c44 # v1.0.0
+
+      - name: Build and push platform-specific gem (with Sigstore attestation)
+        env:
+          RUBY_PLATFORM: 'aarch64-linux-musl'
+          # Preload the attestation patch so `gem push` generates & attaches the bundle
+          RUBYOPT: "-r${{ github.workspace }}/.github/_release-gem/rubygems-attestation-patch.rb"
+        run: |
+          gem build *.gemspec
+          gem push *.gem

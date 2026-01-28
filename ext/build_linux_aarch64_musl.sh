@@ -173,7 +173,7 @@ build_openssl_musl() {
 
         # Build with parallel jobs for native ARM64
         log "Building OpenSSL with parallel jobs..."
-        make -j$(nproc)
+        make -j$(get_cpu_count)
 
         # Try the install and capture any errors
         log "Installing OpenSSL..."
@@ -241,7 +241,7 @@ build_krb5_musl() {
 
         # Build with parallel jobs for native ARM64
         log "Building Kerberos (will ignore kadmin build failures)..."
-        make -j$(nproc) || {
+        make -j$(get_cpu_count) || {
             log "Full build failed (expected due to kadmin), continuing with libraries..."
             true
         }
@@ -381,10 +381,10 @@ build_sasl_musl() {
         log "Configuration completed, starting build..."
 
         # Build with parallel jobs for native ARM64
-        make -j$(nproc) || {
+        make -j$(get_cpu_count) || {
             log "Build failed, trying again..."
             make clean
-            make -j$(nproc)
+            make -j$(get_cpu_count)
         }
 
         # Install
@@ -428,7 +428,7 @@ build_static_lib_musl() {
         eval "./configure --prefix=\"$prefix\" $configure_args"
 
         # Build with parallel jobs for native ARM64
-        make -j$(nproc)
+        make -j$(get_cpu_count)
         make install
 
         # Verify the build
@@ -547,7 +547,7 @@ if [ ! -f "$ZSTD_PREFIX/lib/libzstd.a" ]; then
     setup_musl_compiler
 
     # Build static library using ZStd's Makefile with parallel jobs
-    make lib-mt CFLAGS="$CFLAGS" PREFIX="$ZSTD_PREFIX" -j$(nproc)
+    make lib-mt CFLAGS="$CFLAGS" PREFIX="$ZSTD_PREFIX" -j$(get_cpu_count)
     make install PREFIX="$ZSTD_PREFIX"
 
     # Verify the build
@@ -599,7 +599,7 @@ fi
 log "Compiling librdkafka..."
 make clean || true
 # Build with parallel jobs for native ARM64
-make -j$(nproc)
+make -j$(get_cpu_count)
 
 # Verify librdkafka.a exists
 if [ ! -f src/librdkafka.a ]; then

@@ -43,7 +43,7 @@ env:
 jobs:
   specs_install:
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     strategy:
       fail-fast: false
       matrix:
@@ -66,11 +66,6 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-
-      - name: Set up QEMU for ARM64 emulation
-        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
-        with:
-          platforms: linux/arm64
 
       - name: Start Kafka with Docker Compose
         run: |
@@ -113,16 +108,11 @@ jobs:
 
   build_precompiled:
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-
-      - name: Set up QEMU for ARM64 emulation
-        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
-        with:
-          platforms: linux/arm64
 
       - name: Build precompiled librdkafka.so in Alpine ARM64 container
         run: |
@@ -150,7 +140,7 @@ jobs:
 
   specs_precompiled:
     timeout-minutes: 45
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     needs: build_precompiled
     strategy:
       fail-fast: false
@@ -172,11 +162,6 @@ jobs:
         with:
           name: librdkafka-precompiled-aarch64-musl
           path: ext/
-
-      - name: Set up QEMU for ARM64 emulation
-        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
-        with:
-          platforms: linux/arm64
 
       - name: Start Kafka with Docker Compose
         run: |
@@ -216,7 +201,7 @@ jobs:
 
   ci-success:
     name: CI Linux Alpine aarch64 musl Success
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     if: always()
     needs:
       - specs_install

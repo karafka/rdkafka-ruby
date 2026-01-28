@@ -138,10 +138,8 @@ setup_musl_compiler() {
     # (MIT Kerberos, Cyrus SASL) use old-style K&R declarations incompatible with C23.
     # Force C17 standard globally for all dependency builds.
     # This is backwards compatible: GCC 8-14 used gnu17 as default anyway.
-    # Use -O0 for QEMU stability (local testing), CI can use -O2
-    local opt_level="${QEMU_OPT_LEVEL:-O2}"
-    export CFLAGS="-fPIC -${opt_level} -static-libgcc -std=gnu17"
-    export CXXFLAGS="-fPIC -${opt_level} -static-libgcc"
+    export CFLAGS="-fPIC -O2 -static-libgcc -std=gnu17"
+    export CXXFLAGS="-fPIC -O2 -static-libgcc"
     export CPPFLAGS=""
     export LDFLAGS="-static-libgcc"
 
@@ -166,24 +164,16 @@ build_openssl_musl() {
         mkdir -p "$openssl_prefix"
 
         # Configure OpenSSL for musl on ARM64 (linux-aarch64 target)
-        # Support OPENSSL_NO_ASM for QEMU stability during local testing
-        local openssl_config_opts="no-shared no-dso no-engine"
-        if [ "${OPENSSL_NO_ASM:-0}" = "1" ]; then
-            log "⚠️  OpenSSL assembly optimizations disabled (OPENSSL_NO_ASM=1)"
-            openssl_config_opts="$openssl_config_opts no-asm"
-        fi
-
         ./Configure linux-aarch64 \
-            $openssl_config_opts \
+            no-shared no-dso no-engine \
             --prefix="$openssl_prefix" \
             --openssldir="/etc/ssl" \
             --with-rand-seed=os \
             -DOPENSSL_NO_HEARTBEATS
 
-        # Use single-threaded build to avoid QEMU segfaults
-        # QEMU ARM64 emulation is unstable with parallel builds
-        log "Building OpenSSL with single thread (QEMU emulation stability)..."
-        make -j1
+        # Build with parallel jobs for native ARM64
+        log "Building OpenSSL with parallel jobs..."
+        make -j$(nproc)
 
         # Try the install and capture any errors
         log "Installing OpenSSL..."
@@ -249,9 +239,9 @@ build_krb5_musl() {
             --disable-dns-for-realm \
             --without-readline
 
-        # Build with limited parallelism to avoid QEMU emulation issues
+        # Build with parallel jobs for native ARM64
         log "Building Kerberos (will ignore kadmin build failures)..."
-        make -j1 || {
+        make -j$(nproc) || {
             log "Full build failed (expected due to kadmin), continuing with libraries..."
             true
         }
@@ -390,11 +380,11 @@ build_sasl_musl() {
 
         log "Configuration completed, starting build..."
 
-        # Build with reduced parallelism to avoid QEMU emulation issues
-        make -j1 || {
-            log "Build failed, trying single-threaded build..."
+        # Build with parallel jobs for native ARM64
+        make -j$(nproc) || {
+            log "Build failed, trying again..."
             make clean
-            make -j1
+            make -j$(nproc)
         }
 
         # Install
@@ -437,8 +427,8 @@ build_static_lib_musl() {
         # Run configure with provided arguments
         eval "./configure --prefix=\"$prefix\" $configure_args"
 
-        # Use reduced parallelism for QEMU stability
-        make -j1
+        # Build with parallel jobs for native ARM64
+        make -j$(nproc)
         make install
 
         # Verify the build
@@ -556,8 +546,8 @@ if [ ! -f "$ZSTD_PREFIX/lib/libzstd.a" ]; then
 
     setup_musl_compiler
 
-    # Build static library using ZStd's Makefile (single-threaded for QEMU stability)
-    make lib-mt CFLAGS="$CFLAGS" PREFIX="$ZSTD_PREFIX" -j1
+    # Build static library using ZStd's Makefile with parallel jobs
+    make lib-mt CFLAGS="$CFLAGS" PREFIX="$ZSTD_PREFIX" -j$(nproc)
     make install PREFIX="$ZSTD_PREFIX"
 
     # Verify the build
@@ -608,8 +598,8 @@ fi
 # Build librdkafka
 log "Compiling librdkafka..."
 make clean || true
-# Use reduced parallelism for QEMU stability
-make -j1
+# Build with parallel jobs for native ARM64
+make -j$(nproc)
 
 # Verify librdkafka.a exists
 if [ ! -f src/librdkafka.a ]; then

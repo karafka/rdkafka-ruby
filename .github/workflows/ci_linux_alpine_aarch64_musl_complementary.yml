@@ -10,7 +10,6 @@
 # - These tests catch regressions from external changes (OpenSSL updates, Alpine package updates)
 # - Running every 3 days to prevent these slower tests from blocking PR velocity
 # - Manual triggering allows testing workflow changes before they go into schedule
-# - ARM64 emulation adds overhead, making these tests slower than native x86_64
 #
 # SSL TESTING (specs_install + specs_precompiled):
 # - Tests SSL/TLS connectivity with Kafka using docker-compose-ssl.yml on Alpine ARM64
@@ -66,16 +65,11 @@ env:
 jobs:
   build_precompiled:
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-
-      - name: Set up QEMU for ARM64 emulation
-        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
-        with:
-          platforms: linux/arm64
 
       - name: Build precompiled librdkafka.so in Alpine ARM64 container
         run: |
@@ -103,7 +97,7 @@ jobs:
 
   specs_install:
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     strategy:
       fail-fast: false
       matrix:
@@ -118,11 +112,6 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-
-      - name: Set up QEMU for ARM64 emulation
-        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
-        with:
-          platforms: linux/arm64
 
       - name: Start Kafka with Docker Compose
         run: |
@@ -204,7 +193,7 @@ jobs:
           - '3.4'
           - '3.3'
           - '3.2'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -215,11 +204,6 @@ jobs:
         with:
           name: librdkafka-precompiled-aarch64-musl-complementary
           path: ext/
-
-      - name: Set up QEMU for ARM64 emulation
-        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
-        with:
-          platforms: linux/arm64
 
       - name: Start Kafka with Docker Compose
         run: |
@@ -288,7 +272,7 @@ jobs:
 
   ci-success:
     name: CI Linux Complementary Alpine aarch64 musl Success
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     if: always()
     needs:
       - specs_install

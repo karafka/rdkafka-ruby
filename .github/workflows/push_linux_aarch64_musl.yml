@@ -12,17 +12,12 @@ jobs:
   build:
     if: github.repository_owner == 'karafka'
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     environment: deployment
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-
-      - name: Set up QEMU for ARM64 emulation
-        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
-        with:
-          platforms: linux/arm64
 
       - name: Build precompiled librdkafka.so in Alpine ARM64 container
         run: |
@@ -51,7 +46,7 @@ jobs:
   push:
     if: github.repository_owner == 'karafka'
     timeout-minutes: 30
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     needs: build
     environment: deployment
     permissions:

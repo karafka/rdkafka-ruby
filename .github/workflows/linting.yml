@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@80740b3b13bf9857e28854481ca95a84e78a2bdf # v1.284.0
+        uses: ruby/setup-ruby@e69dcf3ded5967f30d7ef595704928d91cdae930 # v1.285.0
         with:
           ruby-version: '4.0.1'
           bundler-cache: true
@@ -54,7 +54,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@80740b3b13bf9857e28854481ca95a84e78a2bdf # v1.284.0
+        uses: ruby/setup-ruby@e69dcf3ded5967f30d7ef595704928d91cdae930 # v1.285.0
         with:
           ruby-version: '4.0.1'
           bundler-cache: true
@@ -71,7 +71,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: '20'
           cache: 'npm'

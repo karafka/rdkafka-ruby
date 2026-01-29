@@ -1,0 +1,218 @@
+# Why We Build and Run Without Caching Native Extensions
+#
+# We intentionally compile the native librdkafka library fresh in each test job
+# rather than caching or pre-building it for several reasons:
+#
+# 1. Architecture Compatibility
+#    - Pre-built native libraries (.so files) are architecture-specific
+#    - Can cause "Exec format error" when build/runtime environments differ
+#    - Building in the same container guarantees compatibility
+#
+# 2. Container Image Variations
+#    - Different Ruby Alpine images may have subtle differences in:
+#      * Base system libraries, compiler toolchains, musl libc versions
+#    - These differences can cause pre-built libraries to fail at runtime
+#
+# 3. Simplicity and Reliability
+#    - Single source of truth: everything builds and runs in same environment
+#    - No artifact management complexity or potential upload/download failures
+#    - Easier debugging when issues are contained in one job
+#
+# Trade-offs: Slightly longer CI times (~2-3 min per job) but much more reliable
+# than dealing with architecture mismatches and artifact corruption issues.
+
+name: CI Linux Alpine aarch64 musl
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    branches: [ master ]
+  schedule:
+    - cron: '0 2 * * *'
+
+permissions:
+  contents: read
+
+env:
+  BUNDLE_RETRY: 6
+  BUNDLE_JOBS: 4
+
+jobs:
+  specs_install:
+    timeout-minutes: 60
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ruby: '3.2'
+            alpine_version: '3.21'
+          - ruby: '3.2'
+            alpine_version: '3.22'
+          - ruby: '3.3'
+            alpine_version: '3.21'
+          - ruby: '3.3'
+            alpine_version: '3.22'
+          - ruby: '3.4'
+            alpine_version: '3.21'
+            coverage: 'true'
+          - ruby: '3.4'
+            alpine_version: '3.22'
+            coverage: 'true'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Start Kafka with Docker Compose
+        run: |
+          docker compose -f docker-compose.yml up -d
+          echo "Waiting for Kafka to be ready..."
+          sleep 10
+          for i in {1..30}; do
+            if docker compose exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1; then
+              echo "Kafka topics command succeeded!"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Run all specs in PLAINTEXT
+        env:
+          GITHUB_COVERAGE: ${{ matrix.coverage }}
+        run: |
+          docker run --rm --platform linux/arm64 \
+            --network host \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e "GITHUB_COVERAGE=${{ matrix.coverage }}" \
+            ruby:${{ matrix.ruby }}-alpine${{ matrix.alpine_version }} \
+            sh -c 'apk add --no-cache git curl ca-certificates build-base linux-headers \
+              pkgconf perl autoconf automake libtool bison flex file \
+              ruby-dev ruby-bundler bash zstd-dev zlib zlib-dev openssl-dev \
+              cyrus-sasl-dev cyrus-sasl cyrus-sasl-login \
+              cyrus-sasl-crammd5 cyrus-sasl-digestmd5 cyrus-sasl-gssapiv2 cyrus-sasl-scram \
+              krb5-libs openssl zlib zstd-libs && \
+              git config --global --add safe.directory /workspace && \
+              bundle config set --local path vendor/bundle && \
+              bundle install && \
+              cd ext && bundle exec rake && \
+              cd .. && \
+              bundle exec ruby -S rspec'
+
+      - name: Verify Kafka warnings
+        run: bin/verify_kafka_warnings
+
+  build_precompiled:
+    timeout-minutes: 60
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Build precompiled librdkafka.so in Alpine ARM64 container
+        run: |
+          docker run --rm --platform linux/arm64 \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e CI=true \
+            alpine:3.23@sha256:865b95f46d98cf867a156fe4a135ad3fe50d2056aa3f25ed31662dff6da4eb62 \
+            sh -c '
+              apk add --no-cache git curl ca-certificates build-base linux-headers \
+                pkgconf perl autoconf automake libtool bison flex file bash wget zstd-dev \
+                openssl-dev cyrus-sasl-dev cyrus-sasl cyrus-sasl-login \
+                cyrus-sasl-crammd5 cyrus-sasl-digestmd5 cyrus-sasl-gssapiv2 cyrus-sasl-scram \
+                krb5-libs openssl zlib zlib-dev zstd-libs && \
+              git config --global --add safe.directory /workspace && \
+              cd /workspace/ext && \
+              bash ./build_linux_aarch64_musl.sh
+            '
+
+      - name: Upload precompiled library
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: librdkafka-precompiled-aarch64-musl
+          path: ext/
+          retention-days: 1
+
+  specs_precompiled:
+    timeout-minutes: 45
+    runs-on: ubuntu-24.04-arm
+    needs: build_precompiled
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+          - '3.4'
+          - '3.3'
+          - '3.2'
+        include:
+          - ruby: '3.4'
+            coverage: 'true'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Download precompiled library
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: librdkafka-precompiled-aarch64-musl
+          path: ext/
+
+      - name: Start Kafka with Docker Compose
+        run: |
+          docker compose -f docker-compose.yml up -d
+          echo "Waiting for Kafka to be ready..."
+          sleep 10
+
+          for i in {1..30}; do
+            if docker compose exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1; then
+              echo "Kafka topics command succeeded!"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Run specs with precompiled library and PLAINTEXT
+        env:
+          GITHUB_COVERAGE: ${{ matrix.coverage }}
+          RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
+          RDKAFKA_PRECOMPILED: "true"
+        run: |
+          docker run --rm --platform linux/arm64 \
+            --network host \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e "GITHUB_COVERAGE=${{ matrix.coverage }}" \
+            -e "RDKAFKA_EXT_PATH=/workspace/ext" \
+            -e "RDKAFKA_PRECOMPILED=true" \
+            ruby:${{ matrix.ruby }}-alpine \
+            sh -c 'apk add --no-cache git build-base linux-headers bash && \
+              git config --global --add safe.directory /workspace && \
+              bundle config set --local path vendor/bundle && \
+              bundle install && bundle exec ruby -S rspec'
+
+      - name: Verify Kafka warnings
+        run: bin/verify_kafka_warnings
+
+  ci-success:
+    name: CI Linux Alpine aarch64 musl Success
+    runs-on: ubuntu-24.04-arm
+    if: always()
+    needs:
+      - specs_install
+      - build_precompiled
+      - specs_precompiled
+    steps:
+      - name: Check all jobs passed
+        if: |
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled') ||
+          contains(needs.*.result, 'skipped')
+        run: exit 1
+      - run: echo "All CI checks passed!"

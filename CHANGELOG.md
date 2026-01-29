@@ -1,5 +1,9 @@
 # Rdkafka Changelog
 
+## 0.25.1 (Unreleased)
+- [Enhancement] Use native ARM64 runners instead of QEMU emulation for Alpine musl aarch64 builds, improving build performance and reliability.
+- [Enhancement] Enable parallel compilation (`make -j$(nproc)`) for ARM64 Alpine musl builds.
+
 ## 0.25.0 (2026-01-20)
 - **[Deprecation]** `AbstractHandle#wait` parameter `max_wait_timeout:` (seconds) is deprecated in favor of `max_wait_timeout_ms:` (milliseconds). The old parameter still works but will be removed in v1.0.0.
 - **[Deprecation]** `PartitionsCountCache` constructor parameter `ttl` (seconds) is deprecated in favor of `ttl_ms:` (milliseconds). The old parameter still works but will be removed in v1.0.0.

@@ -147,7 +147,7 @@ jobs:
           brew list krb5 &>/dev/null || brew install krb5
           echo "/opt/homebrew/bin" >> $GITHUB_PATH
       - name: Cache build-tmp directory
-        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: ext/build-tmp-macos
           key: build-tmp-${{ runner.os }}-${{ hashFiles('ext/*.sh', 'ext/Rakefile') }}-v2

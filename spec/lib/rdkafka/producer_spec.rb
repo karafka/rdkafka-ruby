@@ -1441,5 +1441,69 @@ RSpec.describe Rdkafka::Producer do
         expect(zero_count).to be < all_partitioners.size
       end
     end
+
+    context "multi-byte character handling" do
+      it "correctly uses bytesize for partition key with multi-byte characters" do
+        # Test with a key that has different size vs bytesize
+        # "测试" has 2 characters but 6 bytes in UTF-8
+        multibyte_key = "测试"
+        expect(multibyte_key.size).to eq(2)
+        expect(multibyte_key.bytesize).to eq(6)
+
+        # For deterministic partitioners, the same key should always go to the same partition
+        %w[consistent murmur2 fnv1a].each do |partitioner|
+          partitions = []
+
+          # Produce multiple messages with the same multi-byte key
+          3.times do
+            handle = producer.produce(
+              topic: TestTopics.partitioner_test_topic,
+              payload: "test payload",
+              partition_key: multibyte_key,
+              partitioner: partitioner
+            )
+
+            report = handle.wait(max_wait_timeout_ms: 5_000)
+            partitions << report.partition
+          end
+
+          # All messages should go to the same partition
+          expect(partitions.uniq.size).to eq(1), "#{partitioner} should consistently route multi-byte keys to the same partition"
+        end
+      end
+
+      it "handles different multi-byte strings with same character count but different byte sizes" do
+        # These strings have the same character count but different byte counts
+        key1 = "ab"      # 2 chars, 2 bytes
+        key2 = "测试"    # 2 chars, 6 bytes
+
+        expect(key1.size).to eq(key2.size)
+        expect(key1.bytesize).not_to eq(key2.bytesize)
+
+        # For deterministic partitioners, different keys should potentially go to different partitions
+        %w[consistent murmur2 fnv1a].each do |partitioner|
+          handle1 = producer.produce(
+            topic: TestTopics.partitioner_test_topic,
+            payload: "test payload",
+            partition_key: key1,
+            partitioner: partitioner
+          )
+
+          handle2 = producer.produce(
+            topic: TestTopics.partitioner_test_topic,
+            payload: "test payload",
+            partition_key: key2,
+            partitioner: partitioner
+          )
+
+          report1 = handle1.wait(max_wait_timeout_ms: 5_000)
+          report2 = handle2.wait(max_wait_timeout_ms: 5_000)
+
+          # Both should be valid partitions
+          expect(report1.partition).to be >= 0
+          expect(report2.partition).to be >= 0
+        end
+      end
+    end
   end
 end

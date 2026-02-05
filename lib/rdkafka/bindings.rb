@@ -447,7 +447,7 @@ module Rdkafka
         raise Rdkafka::Config::ConfigError.new("Unknown partitioner: #{partitioner}")
       end
 
-      public_send(method_name, topic_ptr, str_ptr, str.size, partition_count, nil, nil)
+      public_send(method_name, topic_ptr, str_ptr, str.bytesize, partition_count, nil, nil)
     end
 
     # Create Topics

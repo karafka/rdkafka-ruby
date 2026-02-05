@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.25.1 (Unreleased)
+- [Fix] Fix key partitioner to use `#bytesize` instead of `#size` to ensure correct partition assignment for multi-byte character keys (#629)
 - [Enhancement] Use native ARM64 runners instead of QEMU emulation for Alpine musl aarch64 builds, improving build performance and reliability.
 - [Enhancement] Enable parallel compilation (`make -j$(nproc)`) for ARM64 Alpine musl builds.
 

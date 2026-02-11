@@ -74,7 +74,6 @@ module Rdkafka
     def enable_background_queue_io_events(fd, payload = "\x01")
       @native_kafka.enable_background_queue_io_events(fd, payload)
     end
-end
 
     # @return [Proc] finalizer proc for closing the consumer
     # @private

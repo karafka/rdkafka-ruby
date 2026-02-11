@@ -972,6 +972,32 @@ RSpec.describe Rdkafka::Admin do
     end
   end
 
+  describe "file descriptor access" do
+    it "can access the queue FD for fiber scheduler integration" do
+      fd = admin.queue_fd
+      expect(fd).to be_a(Integer)
+      expect(fd).to be >= 0
+    end
+
+    it "can access the background queue FD" do
+      fd = admin.background_queue_fd
+      expect(fd).to be_a(Integer)
+      expect(fd).to be >= 0
+    end
+
+    context "when admin is closed" do
+      before { admin.close }
+
+      it "raises ClosedInnerError when accessing queue_fd" do
+        expect { admin.queue_fd }.to raise_error(Rdkafka::ClosedInnerError)
+      end
+
+      it "raises ClosedInnerError when accessing background_queue_fd" do
+        expect { admin.background_queue_fd }.to raise_error(Rdkafka::ClosedInnerError)
+      end
+    end
+  end
+
   unless RUBY_PLATFORM == "java"
     context "when operating from a fork" do
       # @see https://github.com/ffi/ffi/issues/1114

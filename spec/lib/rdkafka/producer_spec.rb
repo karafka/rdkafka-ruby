@@ -1442,4 +1442,30 @@ RSpec.describe Rdkafka::Producer do
       end
     end
   end
+
+  describe "file descriptor access" do
+    it "can access the queue FD for fiber scheduler integration" do
+      fd = producer.queue_fd
+      expect(fd).to be_a(Integer)
+      expect(fd).to be >= 0
+    end
+
+    it "can access the background queue FD" do
+      fd = producer.background_queue_fd
+      expect(fd).to be_a(Integer)
+      expect(fd).to be >= 0
+    end
+
+    context "when producer is closed" do
+      before { producer.close }
+
+      it "raises ClosedInnerError when accessing queue_fd" do
+        expect { producer.queue_fd }.to raise_error(Rdkafka::ClosedInnerError)
+      end
+
+      it "raises ClosedInnerError when accessing background_queue_fd" do
+        expect { producer.background_queue_fd }.to raise_error(Rdkafka::ClosedInnerError)
+      end
+    end
+  end
 end

@@ -127,11 +127,10 @@ RSpec.describe Rdkafka::NativeKafka do
 
     expect(client.closed?).to be(true)
   end
-
 end
 
 # Separate describe block for FD API tests to avoid interference with mocked threading tests
-RSpec.describe Rdkafka::NativeKafka, "file descriptor access" do
+RSpec.describe Rdkafka::NativeKafka, "#enable_main_queue_io_events and #enable_background_queue_io_events" do
   let(:config) { rdkafka_producer_config }
   let(:native) { config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer) }
   let(:opaque) { Rdkafka::Opaque.new }

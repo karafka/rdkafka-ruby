@@ -127,4 +127,30 @@ RSpec.describe Rdkafka::NativeKafka do
 
     expect(client.closed?).to be(true)
   end
+
+  context "file descriptor access" do
+    it "returns the file descriptor for the main queue" do
+      fd = client.main_queue_fd
+      expect(fd).to be_a(Integer)
+      expect(fd).to be >= 0
+    end
+
+    it "returns the file descriptor for the background queue" do
+      fd = client.background_queue_fd
+      expect(fd).to be_a(Integer)
+      expect(fd).to be >= 0
+    end
+
+    context "when client is closed" do
+      before { client.close }
+
+      it "raises ClosedInnerError when accessing main_queue_fd" do
+        expect { client.main_queue_fd }.to raise_error(Rdkafka::ClosedInnerError)
+      end
+
+      it "raises ClosedInnerError when accessing background_queue_fd" do
+        expect { client.background_queue_fd }.to raise_error(Rdkafka::ClosedInnerError)
+      end
+    end
+  end
 end

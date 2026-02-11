@@ -121,6 +121,29 @@ module Rdkafka
       @closing || @inner.nil?
     end
 
+    # Returns the file descriptor for the main queue
+    # The main queue contains consumer messages if consumer_poll_set is true (default),
+    # or producer/admin events and statistics
+    # @return [Integer] file descriptor
+    # @raise [ClosedInnerError] when the handle is closed
+    def main_queue_fd
+      with_inner do |inner|
+        queue_ptr = Bindings.rd_kafka_queue_get_main(inner)
+        Bindings.rd_kafka_queue_get_fd(queue_ptr)
+      end
+    end
+
+    # Returns the file descriptor for the background queue
+    # The background queue contains background events and statistics
+    # @return [Integer] file descriptor
+    # @raise [ClosedInnerError] when the handle is closed
+    def background_queue_fd
+      with_inner do |inner|
+        queue_ptr = Bindings.rd_kafka_queue_get_background(inner)
+        Bindings.rd_kafka_queue_get_fd(queue_ptr)
+      end
+    end
+
     # Closes the native Kafka handle and cleans up resources
     # @param object_id [Integer, nil] optional object ID (unused, for finalizer compatibility)
     # @yield optional block to execute before destroying the handle

@@ -129,26 +129,41 @@ RSpec.describe Rdkafka::NativeKafka do
   end
 
   context "file descriptor access for fiber scheduler integration" do
-    it "enables IO events on main queue" do
+    it "raises error when background polling thread is active" do
       signal_r, signal_w = IO.pipe
-      expect { client.enable_main_queue_io_events(signal_w.fileno) }.not_to raise_error
+
+      # Client has run_polling_thread: true and polling thread is alive
+      expect { client.enable_main_queue_io_events(signal_w.fileno) }.to raise_error(RuntimeError, /background polling thread/)
+      expect { client.enable_background_queue_io_events(signal_w.fileno) }.to raise_error(RuntimeError, /background polling thread/)
+
       signal_r.close
       signal_w.close
     end
 
-    it "enables IO events on background queue" do
+    it "allows IO events when polling thread is not active" do
+      # Create client with run_polling_thread: false
+      client_no_thread = described_class.new(native, run_polling_thread: false, opaque: opaque)
       signal_r, signal_w = IO.pipe
-      expect { client.enable_background_queue_io_events(signal_w.fileno) }.not_to raise_error
+
+      expect { client_no_thread.enable_main_queue_io_events(signal_w.fileno) }.not_to raise_error
+      expect { client_no_thread.enable_background_queue_io_events(signal_w.fileno) }.not_to raise_error
+
       signal_r.close
       signal_w.close
+      client_no_thread.close
     end
 
-    it "accepts custom payload for IO events" do
+    it "accepts custom payload for IO events when safe" do
+      # Create client with run_polling_thread: false
+      client_no_thread = described_class.new(native, run_polling_thread: false, opaque: opaque)
       signal_r, signal_w = IO.pipe
       payload = "custom"
-      expect { client.enable_main_queue_io_events(signal_w.fileno, payload) }.not_to raise_error
+
+      expect { client_no_thread.enable_main_queue_io_events(signal_w.fileno, payload) }.not_to raise_error
+
       signal_r.close
       signal_w.close
+      client_no_thread.close
     end
 
     context "when client is closed" do

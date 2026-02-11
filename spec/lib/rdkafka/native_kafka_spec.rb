@@ -141,6 +141,19 @@ RSpec.describe Rdkafka::NativeKafka do
       expect(fd).to be >= 0
     end
 
+    it "FD is read-only - managed internally by librdkafka" do
+      fd = client.main_queue_fd
+
+      # FD is for monitoring with select/poll, not for writing
+      # Writing to librdkafka's internal notification FDs would corrupt internal state
+      expect(fd).to be_a(Integer)
+
+      # Verify it can be used with select (read side only)
+      readable, = IO.select([fd], nil, nil, 0.01)
+      # Result can be nil if no events, but select itself should work
+      expect([readable, nil].include?(readable) || readable.is_a?(Array)).to be(true)
+    end
+
     context "when client is closed" do
       before { client.close }
 

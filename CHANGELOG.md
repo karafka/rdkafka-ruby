@@ -3,6 +3,7 @@
 ## 0.25.1 (Unreleased)
 - [Enhancement] Use native ARM64 runners instead of QEMU emulation for Alpine musl aarch64 builds, improving build performance and reliability.
 - [Enhancement] Enable parallel compilation (`make -j$(nproc)`) for ARM64 Alpine musl builds.
+- [Enhancement] Add low-level file descriptor API for fiber scheduler integration. Expose `main_queue_fd` and `background_queue_fd` on `NativeKafka` to enable integration with Ruby fiber schedulers (Falcon, Async) and custom event loops.
 
 ## 0.25.0 (2026-01-20)
 - **[Deprecation]** `AbstractHandle#wait` parameter `max_wait_timeout:` (seconds) is deprecated in favor of `max_wait_timeout_ms:` (milliseconds). The old parameter still works but will be removed in v1.0.0.

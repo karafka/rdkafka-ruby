@@ -231,13 +231,6 @@ module Rdkafka
     # @param payload const void* - data to write to fd
     # @param size size_t - size of payload
     attach_function :rd_kafka_queue_io_event_enable, [:pointer, :int, :pointer, :size_t], :void
-
-    # Queue Callback Event Support - alternative to IO events
-    # Enables callback when queue transitions from empty to non-empty
-    QueueEventCallback = FFI::Function.new(:void, [:pointer, :pointer]) do |rk_ptr, opaque_ptr|
-      # Callback from librdkafka when queue has data
-    end
-    attach_function :rd_kafka_queue_cb_event_enable, [:pointer, QueueEventCallback, :pointer], :void
     # Per topic configs
     attach_function :rd_kafka_topic_conf_new, [], :pointer
     attach_function :rd_kafka_topic_conf_set, [:pointer, :string, :string, :pointer, :int], :kafka_config_response

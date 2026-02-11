@@ -223,8 +223,10 @@ module Rdkafka
     attach_function :rd_kafka_set_log_queue, [:pointer, :pointer], :void
     attach_function :rd_kafka_queue_get_main, [:pointer], :pointer
     attach_function :rd_kafka_queue_get_background, [:pointer], :pointer
-    attach_function :rd_kafka_queue_get_fd, [:pointer], :int
     attach_function :rd_kafka_queue_io_event_enable, [:pointer, :int], :void
+    # Note: rd_kafka_queue_get_fd requires custom patch or librdkafka >= 2.13.0
+    # This binding is defined but will raise FFI::NotFoundError at runtime if not available
+    attach_function :rd_kafka_queue_get_fd, [:pointer], :int
     # Per topic configs
     attach_function :rd_kafka_topic_conf_new, [], :pointer
     attach_function :rd_kafka_topic_conf_set, [:pointer, :string, :string, :pointer, :int], :kafka_config_response

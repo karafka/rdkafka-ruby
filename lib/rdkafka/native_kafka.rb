@@ -124,23 +124,47 @@ module Rdkafka
     # Returns the file descriptor for the main queue
     # The main queue contains consumer messages if consumer_poll_set is true (default),
     # or producer/admin events and statistics
+    #
+    # @note This method requires librdkafka to be compiled with rd_kafka_queue_get_fd support.
+    #   This function is not available in librdkafka < 2.13.0 by default.
+    #   A custom patch may be needed to expose this functionality.
+    #
     # @return [Integer] file descriptor
     # @raise [ClosedInnerError] when the handle is closed
+    # @raise [NotImplementedError] when rd_kafka_queue_get_fd is not available in librdkafka
     def main_queue_fd
       with_inner do |inner|
         queue_ptr = Bindings.rd_kafka_queue_get_main(inner)
-        Bindings.rd_kafka_queue_get_fd(queue_ptr)
+        begin
+          Bindings.rd_kafka_queue_get_fd(queue_ptr)
+        rescue FFI::NotFoundError
+          raise NotImplementedError,
+            "rd_kafka_queue_get_fd is not available in this librdkafka version. " \
+            "Please use librdkafka >= 2.13.0 or apply a custom patch to expose this function."
+        end
       end
     end
 
     # Returns the file descriptor for the background queue
     # The background queue contains background events and statistics
+    #
+    # @note This method requires librdkafka to be compiled with rd_kafka_queue_get_fd support.
+    #   This function is not available in librdkafka < 2.13.0 by default.
+    #   A custom patch may be needed to expose this functionality.
+    #
     # @return [Integer] file descriptor
     # @raise [ClosedInnerError] when the handle is closed
+    # @raise [NotImplementedError] when rd_kafka_queue_get_fd is not available in librdkafka
     def background_queue_fd
       with_inner do |inner|
         queue_ptr = Bindings.rd_kafka_queue_get_background(inner)
-        Bindings.rd_kafka_queue_get_fd(queue_ptr)
+        begin
+          Bindings.rd_kafka_queue_get_fd(queue_ptr)
+        rescue FFI::NotFoundError
+          raise NotImplementedError,
+            "rd_kafka_queue_get_fd is not available in this librdkafka version. " \
+            "Please use librdkafka >= 2.13.0 or apply a custom patch to expose this function."
+        end
       end
     end
 

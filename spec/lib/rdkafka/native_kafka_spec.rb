@@ -18,7 +18,7 @@ RSpec.describe Rdkafka::NativeKafka do
     allow(thread).to receive(:abort_on_exception=).with(anything)
   end
 
-  after { client.close }
+  after { client.close if defined?(@__memoized) && @__memoized.key?(:client) }
 
   context "defaults" do
     it "sets the thread name" do
@@ -129,10 +129,14 @@ RSpec.describe Rdkafka::NativeKafka do
   end
 
   context "file descriptor access for fiber scheduler integration" do
-    # Use real client without thread mocking for FD API tests
-    let(:fd_client) { described_class.new(native, run_polling_thread: false, opaque: Rdkafka::Opaque.new, auto_start: false) }
+    # Create separate native handle for FD API tests to avoid interfering with main tests
+    let(:fd_config) { rdkafka_producer_config }
+    let(:fd_native) { fd_config.send(:native_kafka, fd_config.send(:native_config), :rd_kafka_producer) }
+    let(:fd_opaque) { Rdkafka::Opaque.new }
+    let(:fd_client) { described_class.new(fd_native, run_polling_thread: false, opaque: fd_opaque, auto_start: false) }
 
     after { fd_client.close unless fd_client.closed? }
+    # Don't call client.close in this context since we're not using it
 
     it "allows IO events when polling thread is not active" do
       signal_r, signal_w = IO.pipe

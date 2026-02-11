@@ -121,50 +121,42 @@ module Rdkafka
       @closing || @inner.nil?
     end
 
-    # Returns the file descriptor for the main queue
-    # The main queue contains consumer messages if consumer_poll_set is true (default),
-    # or producer/admin events and statistics
+    # Enable IO event notifications on the main queue
+    # Librdkafka will write to your FD when the queue transitions from empty to non-empty
     #
-    # @note This method requires librdkafka to be compiled with rd_kafka_queue_get_fd support.
-    #   This function is not available in librdkafka < 2.13.0 by default.
-    #   A custom patch may be needed to expose this functionality.
-    #
-    # @return [Integer] file descriptor
+    # @param fd [Integer] your file descriptor (from IO.pipe or eventfd)
+    # @param payload [String] data to write to fd when queue has data (default: "\x01")
+    # @return [nil]
     # @raise [ClosedInnerError] when the handle is closed
-    # @raise [NotImplementedError] when rd_kafka_queue_get_fd is not available in librdkafka
-    def main_queue_fd
+    #
+    # @example
+    #   # Create your own signaling FD
+    #   signal_r, signal_w = IO.pipe
+    #   native_kafka.enable_main_queue_io_events(signal_w.fileno)
+    #
+    #   # Monitor it with select
+    #   readable, = IO.select([signal_r], nil, nil, timeout)
+    #   if readable
+    #     consumer.poll(0)  # Get messages
+    #   end
+    def enable_main_queue_io_events(fd, payload = "\x01")
       with_inner do |inner|
         queue_ptr = Bindings.rd_kafka_queue_get_main(inner)
-        begin
-          Bindings.rd_kafka_queue_get_fd(queue_ptr)
-        rescue FFI::NotFoundError
-          raise NotImplementedError,
-            "rd_kafka_queue_get_fd is not available in this librdkafka version. " \
-            "Please use librdkafka >= 2.13.0 or apply a custom patch to expose this function."
-        end
+        Bindings.rd_kafka_queue_io_event_enable(queue_ptr, fd, payload, payload.bytesize)
       end
     end
 
-    # Returns the file descriptor for the background queue
-    # The background queue contains background events and statistics
+    # Enable IO event notifications on the background queue
+    # Librdkafka will write to your FD when the background queue transitions from empty to non-empty
     #
-    # @note This method requires librdkafka to be compiled with rd_kafka_queue_get_fd support.
-    #   This function is not available in librdkafka < 2.13.0 by default.
-    #   A custom patch may be needed to expose this functionality.
-    #
-    # @return [Integer] file descriptor
+    # @param fd [Integer] your file descriptor (from IO.pipe or eventfd)
+    # @param payload [String] data to write to fd when queue has data (default: "\x01")
+    # @return [nil]
     # @raise [ClosedInnerError] when the handle is closed
-    # @raise [NotImplementedError] when rd_kafka_queue_get_fd is not available in librdkafka
-    def background_queue_fd
+    def enable_background_queue_io_events(fd, payload = "\x01")
       with_inner do |inner|
         queue_ptr = Bindings.rd_kafka_queue_get_background(inner)
-        begin
-          Bindings.rd_kafka_queue_get_fd(queue_ptr)
-        rescue FFI::NotFoundError
-          raise NotImplementedError,
-            "rd_kafka_queue_get_fd is not available in this librdkafka version. " \
-            "Please use librdkafka >= 2.13.0 or apply a custom patch to expose this function."
-        end
+        Bindings.rd_kafka_queue_io_event_enable(queue_ptr, fd, payload, payload.bytesize)
       end
     end
 

@@ -122,18 +122,24 @@ module Rdkafka
       end
     end
 
-    # Returns the file descriptor for the producer queue
-    # @return [Integer] file descriptor for use with select/poll/epoll for fiber scheduler integration
+    # Enable IO event notifications for fiber scheduler integration
+    # When delivery confirmations arrive, librdkafka will write to your FD
+    #
+    # @param fd [Integer] file descriptor to signal (from IO.pipe or eventfd)
+    # @param payload [String] data to write to fd (default: "\x01")
+    # @return [nil]
     # @raise [ClosedInnerError] when the producer is closed
-    def queue_fd
-      @native_kafka.main_queue_fd
+    def enable_queue_io_events(fd, payload = "\x01")
+      @native_kafka.enable_main_queue_io_events(fd, payload)
     end
 
-    # Returns the file descriptor for the background event queue
-    # @return [Integer] file descriptor for background events and statistics
+    # Enable IO event notifications for background events
+    # @param fd [Integer] file descriptor to signal (from IO.pipe or eventfd)
+    # @param payload [String] data to write to fd (default: "\x01")
+    # @return [nil]
     # @raise [ClosedInnerError] when the producer is closed
-    def background_queue_fd
-      @native_kafka.background_queue_fd
+    def enable_background_queue_io_events(fd, payload = "\x01")
+      @native_kafka.enable_background_queue_io_events(fd, payload)
     end
 end
 

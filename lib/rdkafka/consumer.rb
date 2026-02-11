@@ -34,18 +34,45 @@ module Rdkafka
       end
     end
 
-    # Returns the file descriptor for the consumer queue
-    # @return [Integer] file descriptor for use with select/poll/epoll for fiber scheduler integration
+    # Enable IO event notifications for fiber scheduler integration
+    # When the consumer queue has messages, librdkafka will write to your FD
+    #
+    # @param fd [Integer] file descriptor to signal (from IO.pipe or eventfd)
+    # @param payload [String] data to write to fd (default: "\x01")
+    # @return [nil]
     # @raise [ClosedInnerError] when the consumer is closed
-    def queue_fd
-      @native_kafka.main_queue_fd
+    #
+    # @example Using with fiber scheduler
+    #   consumer = config.consumer
+    #   consumer.subscribe("topic")
+    #
+    #   # Create notification FD
+    #   signal_r, signal_w = IO.pipe
+    #
+    #   # Enable librdkafka to signal when messages arrive
+    #   consumer.enable_queue_io_events(signal_w.fileno)
+    #
+    #   # Monitor with select/poll
+    #   loop do
+    #     readable, = IO.select([signal_r], nil, nil, timeout)
+    #     if readable
+    #       signal_r.read_nonblock(1024) rescue nil  # Drain signal
+    #       while msg = consumer.poll(0)
+    #         process(msg)
+    #       end
+    #     end
+    #   end
+    def enable_queue_io_events(fd, payload = "\x01")
+      @native_kafka.enable_main_queue_io_events(fd, payload)
     end
 
-    # Returns the file descriptor for the background event queue
-    # @return [Integer] file descriptor for background events and statistics
+    # Enable IO event notifications for background events
+    # @param fd [Integer] file descriptor to signal (from IO.pipe or eventfd)
+    # @param payload [String] data to write to fd (default: "\x01")
+    # @return [nil]
     # @raise [ClosedInnerError] when the consumer is closed
-    def background_queue_fd
-      @native_kafka.background_queue_fd
+    def enable_background_queue_io_events(fd, payload = "\x01")
+      @native_kafka.enable_background_queue_io_events(fd, payload)
     end
 end
 

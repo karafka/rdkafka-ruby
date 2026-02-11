@@ -84,7 +84,6 @@ module Rdkafka
     def background_queue_fd
       @native_kafka.background_queue_fd
     end
-end
 
     # @return [Proc] finalizer proc for closing the admin
     # @private

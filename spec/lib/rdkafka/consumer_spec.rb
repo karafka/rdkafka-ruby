@@ -1334,26 +1334,32 @@ RSpec.describe Rdkafka::Consumer do
     end
   end
 
-  describe "file descriptor access" do
-    it "can access the queue FD for fiber scheduler integration" do
+  describe "file descriptor access for fiber scheduler integration" do
+    it "enables IO events on consumer queue" do
       consumer.subscribe(TestTopics.consume_test_topic)
 
-      fd = consumer.queue_fd
-      expect(fd).to be_a(Integer)
-      expect(fd).to be >= 0
+      signal_r, signal_w = IO.pipe
+      expect { consumer.enable_queue_io_events(signal_w.fileno) }.not_to raise_error
+      signal_r.close
+      signal_w.close
     end
 
-    it "can access the background queue FD" do
+    it "enables IO events on background queue" do
       consumer.subscribe(TestTopics.consume_test_topic)
 
-      fd = consumer.background_queue_fd
-      expect(fd).to be_a(Integer)
-      expect(fd).to be >= 0
+      signal_r, signal_w = IO.pipe
+      expect { consumer.enable_background_queue_io_events(signal_w.fileno) }.not_to raise_error
+      signal_r.close
+      signal_w.close
     end
 
-    it "can use the FD with IO.select for non-blocking polling" do
+    it "can use enabled FD with IO.select for non-blocking polling" do
       topic = TestTopics.consume_test_topic
       consumer.subscribe(topic)
+
+      # Setup IO event signaling
+      signal_r, signal_w = IO.pipe
+      consumer.enable_queue_io_events(signal_w.fileno)
 
       # Produce some messages
       producer.produce(topic: topic, payload: "test message 1")
@@ -1363,14 +1369,14 @@ RSpec.describe Rdkafka::Consumer do
       # Give consumer time to rebalance and fetch
       sleep 1
 
-      fd = consumer.queue_fd
       messages = []
 
-      # Use IO.select with short timeout to poll the FD
-      readable, _, _ = IO.select([fd], nil, nil, 2.0)
+      # Use IO.select with short timeout to poll the signaling FD
+      readable, _, _ = IO.select([signal_r], nil, nil, 2.0)
 
       if readable
-        # Non-blocking poll after FD indicates readability
+        signal_r.read_nonblock(1024) rescue nil  # Drain signal
+        # Non-blocking poll after FD signals readability
         while msg = consumer.poll(0)
           messages << msg
           break if messages.size >= 2
@@ -1379,14 +1385,17 @@ RSpec.describe Rdkafka::Consumer do
 
       expect(messages).to have_at_least(1).item
       expect(messages.first.payload).to eq("test message 1")
+      signal_r.close
+      signal_w.close
     end
 
-    it "FD becomes readable when messages arrive" do
+    it "FD becomes signaled when messages arrive" do
       topic = TestTopics.consume_test_topic
       consumer.subscribe(topic)
 
-      # Get the FD before messages
-      fd = consumer.queue_fd
+      # Setup IO event signaling
+      signal_r, signal_w = IO.pipe
+      consumer.enable_queue_io_events(signal_w.fileno)
 
       # Produce messages
       producer.produce(topic: topic, payload: "test message 1")
@@ -1396,18 +1405,19 @@ RSpec.describe Rdkafka::Consumer do
       # Give consumer time to rebalance and receive messages
       sleep 1
 
-      # FD should now be readable (or become readable quickly)
+      # Signal FD should become readable when messages arrive
       start_time = Time.now
       readable = nil
 
       loop do
-        readable, = IO.select([fd], nil, nil, 2.0)
+        readable, = IO.select([signal_r], nil, nil, 2.0)
         break if readable || (Time.now - start_time) > 5
       end
 
       expect(readable).not_to be_nil, "FD should become readable when messages arrive"
 
       # Verify we can actually poll messages after FD signals readability
+      signal_r.read_nonblock(1024) rescue nil  # Drain signal
       messages = []
       while msg = consumer.poll(0)
         messages << msg
@@ -1416,17 +1426,25 @@ RSpec.describe Rdkafka::Consumer do
 
       expect(messages).to have_at_least(1).item
       expect(messages.first.payload).to eq("test message 1")
+      signal_r.close
+      signal_w.close
     end
 
     context "when consumer is closed" do
       before { consumer.close }
 
-      it "raises ClosedInnerError when accessing queue_fd" do
-        expect { consumer.queue_fd }.to raise_error(Rdkafka::ClosedInnerError)
+      it "raises ClosedInnerError when enabling queue_io_events" do
+        signal_r, signal_w = IO.pipe
+        expect { consumer.enable_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
+        signal_r.close
+        signal_w.close
       end
 
-      it "raises ClosedInnerError when accessing background_queue_fd" do
-        expect { consumer.background_queue_fd }.to raise_error(Rdkafka::ClosedInnerError)
+      it "raises ClosedInnerError when enabling background_queue_io_events" do
+        signal_r, signal_w = IO.pipe
+        expect { consumer.enable_background_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
+        signal_r.close
+        signal_w.close
       end
     end
   end

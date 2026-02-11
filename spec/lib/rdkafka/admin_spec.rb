@@ -972,28 +972,36 @@ RSpec.describe Rdkafka::Admin do
     end
   end
 
-  describe "file descriptor access" do
-    it "can access the queue FD for fiber scheduler integration" do
-      fd = admin.queue_fd
-      expect(fd).to be_a(Integer)
-      expect(fd).to be >= 0
+  describe "file descriptor access for fiber scheduler integration" do
+    it "enables IO events on admin queue" do
+      signal_r, signal_w = IO.pipe
+      expect { admin.enable_queue_io_events(signal_w.fileno) }.not_to raise_error
+      signal_r.close
+      signal_w.close
     end
 
-    it "can access the background queue FD" do
-      fd = admin.background_queue_fd
-      expect(fd).to be_a(Integer)
-      expect(fd).to be >= 0
+    it "enables IO events on background queue" do
+      signal_r, signal_w = IO.pipe
+      expect { admin.enable_background_queue_io_events(signal_w.fileno) }.not_to raise_error
+      signal_r.close
+      signal_w.close
     end
 
     context "when admin is closed" do
       before { admin.close }
 
-      it "raises ClosedInnerError when accessing queue_fd" do
-        expect { admin.queue_fd }.to raise_error(Rdkafka::ClosedInnerError)
+      it "raises ClosedInnerError when enabling queue_io_events" do
+        signal_r, signal_w = IO.pipe
+        expect { admin.enable_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
+        signal_r.close
+        signal_w.close
       end
 
-      it "raises ClosedInnerError when accessing background_queue_fd" do
-        expect { admin.background_queue_fd }.to raise_error(Rdkafka::ClosedInnerError)
+      it "raises ClosedInnerError when enabling background_queue_io_events" do
+        signal_r, signal_w = IO.pipe
+        expect { admin.enable_background_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
+        signal_r.close
+        signal_w.close
       end
     end
   end

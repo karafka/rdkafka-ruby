@@ -128,41 +128,44 @@ RSpec.describe Rdkafka::NativeKafka do
     expect(client.closed?).to be(true)
   end
 
-  context "file descriptor access" do
-    it "returns the file descriptor for the main queue" do
-      fd = client.main_queue_fd
-      expect(fd).to be_a(Integer)
-      expect(fd).to be >= 0
+  context "file descriptor access for fiber scheduler integration" do
+    it "enables IO events on main queue" do
+      signal_r, signal_w = IO.pipe
+      expect { client.enable_main_queue_io_events(signal_w.fileno) }.not_to raise_error
+      signal_r.close
+      signal_w.close
     end
 
-    it "returns the file descriptor for the background queue" do
-      fd = client.background_queue_fd
-      expect(fd).to be_a(Integer)
-      expect(fd).to be >= 0
+    it "enables IO events on background queue" do
+      signal_r, signal_w = IO.pipe
+      expect { client.enable_background_queue_io_events(signal_w.fileno) }.not_to raise_error
+      signal_r.close
+      signal_w.close
     end
 
-    it "FD is read-only - managed internally by librdkafka" do
-      fd = client.main_queue_fd
-
-      # FD is for monitoring with select/poll, not for writing
-      # Writing to librdkafka's internal notification FDs would corrupt internal state
-      expect(fd).to be_a(Integer)
-
-      # Verify it can be used with select (read side only)
-      readable, = IO.select([fd], nil, nil, 0.01)
-      # Result can be nil if no events, but select itself should work
-      expect([readable, nil].include?(readable) || readable.is_a?(Array)).to be(true)
+    it "accepts custom payload for IO events" do
+      signal_r, signal_w = IO.pipe
+      payload = "custom"
+      expect { client.enable_main_queue_io_events(signal_w.fileno, payload) }.not_to raise_error
+      signal_r.close
+      signal_w.close
     end
 
     context "when client is closed" do
       before { client.close }
 
-      it "raises ClosedInnerError when accessing main_queue_fd" do
-        expect { client.main_queue_fd }.to raise_error(Rdkafka::ClosedInnerError)
+      it "raises ClosedInnerError when enabling main_queue_io_events" do
+        signal_r, signal_w = IO.pipe
+        expect { client.enable_main_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
+        signal_r.close
+        signal_w.close
       end
 
-      it "raises ClosedInnerError when accessing background_queue_fd" do
-        expect { client.background_queue_fd }.to raise_error(Rdkafka::ClosedInnerError)
+      it "raises ClosedInnerError when enabling background_queue_io_events" do
+        signal_r, signal_w = IO.pipe
+        expect { client.enable_background_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
+        signal_r.close
+        signal_w.close
       end
     end
   end

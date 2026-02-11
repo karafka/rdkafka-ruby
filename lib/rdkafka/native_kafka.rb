@@ -153,6 +153,7 @@ module Rdkafka
       with_inner do |inner|
         queue_ptr = Bindings.rd_kafka_queue_get_main(inner)
         Bindings.rd_kafka_queue_io_event_enable(queue_ptr, fd, payload, payload.bytesize)
+        Bindings.rd_kafka_queue_destroy(queue_ptr)
       end
     end
 
@@ -177,6 +178,7 @@ module Rdkafka
       with_inner do |inner|
         queue_ptr = Bindings.rd_kafka_queue_get_background(inner)
         Bindings.rd_kafka_queue_io_event_enable(queue_ptr, fd, payload, payload.bytesize)
+        Bindings.rd_kafka_queue_destroy(queue_ptr)
       end
     end
 

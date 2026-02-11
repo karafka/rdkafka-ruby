@@ -71,6 +71,12 @@ module Rdkafka
       end
     end
 
+    # @return [NativeKafka] the underlying native Kafka handle
+    # @note For advanced use cases like fiber scheduler integration. Use with caution.
+    def native_kafka
+      @native_kafka
+    end
+
     # @return [Proc] finalizer proc for closing the admin
     # @private
     def finalizer

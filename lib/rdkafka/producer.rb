@@ -122,6 +122,12 @@ module Rdkafka
       end
     end
 
+    # @return [NativeKafka] the underlying native Kafka handle
+    # @note For advanced use cases like fiber scheduler integration. Use with caution.
+    def native_kafka
+      @native_kafka
+    end
+
     # Set a callback that will be called every time a message is successfully produced.
     # The callback is called with a {DeliveryReport} and {DeliveryHandle}
     #

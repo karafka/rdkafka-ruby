@@ -141,7 +141,6 @@ module Rdkafka
     def enable_background_queue_io_events(fd, payload = "\x01")
       @native_kafka.enable_background_queue_io_events(fd, payload)
     end
-end
 
     # Set a callback that will be called every time a message is successfully produced.
     # The callback is called with a {DeliveryReport} and {DeliveryHandle}

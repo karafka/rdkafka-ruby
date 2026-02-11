@@ -1335,10 +1335,18 @@ RSpec.describe Rdkafka::Consumer do
   end
 
   describe "file descriptor access" do
-    it "can access the main queue FD for fiber scheduler integration" do
+    it "can access the queue FD for fiber scheduler integration" do
       consumer.subscribe(TestTopics.consume_test_topic)
 
-      fd = consumer.native_kafka.main_queue_fd
+      fd = consumer.queue_fd
+      expect(fd).to be_a(Integer)
+      expect(fd).to be >= 0
+    end
+
+    it "can access the background queue FD" do
+      consumer.subscribe(TestTopics.consume_test_topic)
+
+      fd = consumer.background_queue_fd
       expect(fd).to be_a(Integer)
       expect(fd).to be >= 0
     end
@@ -1355,7 +1363,7 @@ RSpec.describe Rdkafka::Consumer do
       # Give consumer time to rebalance and fetch
       sleep 1
 
-      fd = consumer.native_kafka.main_queue_fd
+      fd = consumer.queue_fd
       messages = []
 
       # Use IO.select with short timeout to poll the FD
@@ -1376,8 +1384,12 @@ RSpec.describe Rdkafka::Consumer do
     context "when consumer is closed" do
       before { consumer.close }
 
-      it "raises ClosedInnerError when accessing main_queue_fd" do
-        expect { consumer.native_kafka.main_queue_fd }.to raise_error(Rdkafka::ClosedInnerError)
+      it "raises ClosedInnerError when accessing queue_fd" do
+        expect { consumer.queue_fd }.to raise_error(Rdkafka::ClosedInnerError)
+      end
+
+      it "raises ClosedInnerError when accessing background_queue_fd" do
+        expect { consumer.background_queue_fd }.to raise_error(Rdkafka::ClosedInnerError)
       end
     end
   end

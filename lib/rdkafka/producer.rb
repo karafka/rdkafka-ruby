@@ -122,11 +122,20 @@ module Rdkafka
       end
     end
 
-    # @return [NativeKafka] the underlying native Kafka handle
-    # @note For advanced use cases like fiber scheduler integration. Use with caution.
-    def native_kafka
-      @native_kafka
+    # Returns the file descriptor for the producer queue
+    # @return [Integer] file descriptor for use with select/poll/epoll for fiber scheduler integration
+    # @raise [ClosedInnerError] when the producer is closed
+    def queue_fd
+      @native_kafka.main_queue_fd
     end
+
+    # Returns the file descriptor for the background event queue
+    # @return [Integer] file descriptor for background events and statistics
+    # @raise [ClosedInnerError] when the producer is closed
+    def background_queue_fd
+      @native_kafka.background_queue_fd
+    end
+end
 
     # Set a callback that will be called every time a message is successfully produced.
     # The callback is called with a {DeliveryReport} and {DeliveryHandle}

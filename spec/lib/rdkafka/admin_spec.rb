@@ -973,6 +973,8 @@ RSpec.describe Rdkafka::Admin do
   end
 
   describe "file descriptor access for fiber scheduler integration" do
+    let(:admin) { config.admin(run_polling_thread: false) }
+
     it "enables IO events on admin queue" do
       signal_r, signal_w = IO.pipe
       expect { admin.enable_queue_io_events(signal_w.fileno) }.not_to raise_error

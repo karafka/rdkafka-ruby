@@ -1444,6 +1444,8 @@ RSpec.describe Rdkafka::Producer do
   end
 
   describe "file descriptor access for fiber scheduler integration" do
+    let(:producer) { rdkafka_producer_config.producer(run_polling_thread: false) }
+
     it "enables IO events on producer queue" do
       signal_r, signal_w = IO.pipe
       expect { producer.enable_queue_io_events(signal_w.fileno) }.not_to raise_error

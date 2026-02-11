@@ -502,7 +502,6 @@ module Rdkafka
 
     # Background Queue and Callback
 
-    attach_function :rd_kafka_queue_get_background, [:pointer], :pointer
     attach_function :rd_kafka_conf_set_background_event_cb, [:pointer, :pointer], :void
     attach_function :rd_kafka_queue_destroy, [:pointer], :void
 

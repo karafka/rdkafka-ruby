@@ -144,9 +144,8 @@ module Rdkafka
     #     consumer.poll(0)  # Get messages
     #   end
     def enable_main_queue_io_events(fd, payload = "\x01")
-      if @run_polling_thread && @polling_thread&.alive?
-        raise RuntimeError,
-          "Cannot enable IO events while background polling thread is active. " \
+      if @run_polling_thread
+        raise "Cannot enable IO events while background polling thread is active. " \
           "Either disable background polling by setting run_polling_thread: false, " \
           "or use manual polling with consumer.poll() instead of the FD API."
       end
@@ -169,9 +168,8 @@ module Rdkafka
     # @raise [ClosedInnerError] when the handle is closed
     # @raise [RuntimeError] when background polling thread is active
     def enable_background_queue_io_events(fd, payload = "\x01")
-      if @run_polling_thread && @polling_thread&.alive?
-        raise RuntimeError,
-          "Cannot enable IO events while background polling thread is active. " \
+      if @run_polling_thread
+        raise "Cannot enable IO events while background polling thread is active. " \
           "Either disable background polling by setting run_polling_thread: false, " \
           "or use manual polling with consumer.poll() instead of the FD API."
       end

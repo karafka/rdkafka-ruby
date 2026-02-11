@@ -1381,6 +1381,43 @@ RSpec.describe Rdkafka::Consumer do
       expect(messages.first.payload).to eq("test message 1")
     end
 
+    it "FD becomes readable when messages arrive" do
+      topic = TestTopics.consume_test_topic
+      consumer.subscribe(topic)
+
+      # Get the FD before messages
+      fd = consumer.queue_fd
+
+      # Produce messages
+      producer.produce(topic: topic, payload: "test message 1")
+      producer.produce(topic: topic, payload: "test message 2")
+      producer.flush
+
+      # Give consumer time to rebalance and receive messages
+      sleep 1
+
+      # FD should now be readable (or become readable quickly)
+      start_time = Time.now
+      readable = nil
+
+      loop do
+        readable, = IO.select([fd], nil, nil, 2.0)
+        break if readable || (Time.now - start_time) > 5
+      end
+
+      expect(readable).not_to be_nil, "FD should become readable when messages arrive"
+
+      # Verify we can actually poll messages after FD signals readability
+      messages = []
+      while msg = consumer.poll(0)
+        messages << msg
+        break if messages.size >= 2
+      end
+
+      expect(messages).to have_at_least(1).item
+      expect(messages.first.payload).to eq("test message 1")
+    end
+
     context "when consumer is closed" do
       before { consumer.close }
 

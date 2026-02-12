@@ -34,6 +34,47 @@ module Rdkafka
       end
     end
 
+    # Enable IO event notifications for fiber scheduler integration
+    # When the consumer queue has messages, librdkafka will write to your FD
+    #
+    # @param fd [Integer] file descriptor to signal (from IO.pipe or eventfd)
+    # @param payload [String] data to write to fd (default: "\x01")
+    # @return [nil]
+    # @raise [ClosedInnerError] when the consumer is closed
+    #
+    # @example Using with fiber scheduler
+    #   consumer = config.consumer
+    #   consumer.subscribe("topic")
+    #
+    #   # Create notification FD
+    #   signal_r, signal_w = IO.pipe
+    #
+    #   # Enable librdkafka to signal when messages arrive
+    #   consumer.enable_queue_io_events(signal_w.fileno)
+    #
+    #   # Monitor with select/poll
+    #   loop do
+    #     readable, = IO.select([signal_r], nil, nil, timeout)
+    #     if readable
+    #       signal_r.read_nonblock(1024) rescue nil  # Drain signal
+    #       while msg = consumer.poll(0)
+    #         process(msg)
+    #       end
+    #     end
+    #   end
+    def enable_queue_io_events(fd, payload = "\x01")
+      @native_kafka.enable_main_queue_io_events(fd, payload)
+    end
+
+    # Enable IO event notifications for background events
+    # @param fd [Integer] file descriptor to signal (from IO.pipe or eventfd)
+    # @param payload [String] data to write to fd (default: "\x01")
+    # @return [nil]
+    # @raise [ClosedInnerError] when the consumer is closed
+    def enable_background_queue_io_events(fd, payload = "\x01")
+      @native_kafka.enable_background_queue_io_events(fd, payload)
+    end
+
     # @return [Proc] finalizer proc for closing the consumer
     # @private
     def finalizer

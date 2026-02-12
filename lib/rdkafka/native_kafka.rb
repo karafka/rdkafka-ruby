@@ -121,6 +121,67 @@ module Rdkafka
       @closing || @inner.nil?
     end
 
+    # Enable IO event notifications on the main queue
+    # Librdkafka will write to your FD when the queue transitions from empty to non-empty
+    #
+    # @note This method is incompatible with background polling threads.
+    #   If background polling is enabled, use manual polling instead (e.g., consumer.poll)
+    #
+    # @param fd [Integer] your file descriptor (from IO.pipe or eventfd)
+    # @param payload [String] data to write to fd when queue has data (default: "\x01")
+    # @return [nil]
+    # @raise [ClosedInnerError] when the handle is closed
+    # @raise [RuntimeError] when background polling thread is active
+    #
+    # @example
+    #   # Create your own signaling FD
+    #   signal_r, signal_w = IO.pipe
+    #   native_kafka.enable_main_queue_io_events(signal_w.fileno)
+    #
+    #   # Monitor it with select
+    #   readable, = IO.select([signal_r], nil, nil, timeout)
+    #   if readable
+    #     consumer.poll(0)  # Get messages
+    #   end
+    def enable_main_queue_io_events(fd, payload = "\x01")
+      if @run_polling_thread
+        raise "Cannot enable IO events while background polling thread is active. " \
+          "Either disable background polling by setting run_polling_thread: false, " \
+          "or use manual polling with consumer.poll() instead of the FD API."
+      end
+
+      with_inner do |inner|
+        queue_ptr = Bindings.rd_kafka_queue_get_main(inner)
+        Bindings.rd_kafka_queue_io_event_enable(queue_ptr, fd, payload, payload.bytesize)
+        Bindings.rd_kafka_queue_destroy(queue_ptr)
+      end
+    end
+
+    # Enable IO event notifications on the background queue
+    # Librdkafka will write to your FD when the background queue transitions from empty to non-empty
+    #
+    # @note This method is incompatible with background polling threads.
+    #   If background polling is enabled, use manual polling instead (e.g., consumer.poll)
+    #
+    # @param fd [Integer] your file descriptor (from IO.pipe or eventfd)
+    # @param payload [String] data to write to fd when queue has data (default: "\x01")
+    # @return [nil]
+    # @raise [ClosedInnerError] when the handle is closed
+    # @raise [RuntimeError] when background polling thread is active
+    def enable_background_queue_io_events(fd, payload = "\x01")
+      if @run_polling_thread
+        raise "Cannot enable IO events while background polling thread is active. " \
+          "Either disable background polling by setting run_polling_thread: false, " \
+          "or use manual polling with consumer.poll() instead of the FD API."
+      end
+
+      with_inner do |inner|
+        queue_ptr = Bindings.rd_kafka_queue_get_background(inner)
+        Bindings.rd_kafka_queue_io_event_enable(queue_ptr, fd, payload, payload.bytesize)
+        Bindings.rd_kafka_queue_destroy(queue_ptr)
+      end
+    end
+
     # Closes the native Kafka handle and cleans up resources
     # @param object_id [Integer, nil] optional object ID (unused, for finalizer compatibility)
     # @yield optional block to execute before destroying the handle

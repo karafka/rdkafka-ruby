@@ -1442,4 +1442,40 @@ RSpec.describe Rdkafka::Producer do
       end
     end
   end
+
+  describe "file descriptor access for fiber scheduler integration" do
+    let(:producer) { rdkafka_producer_config.producer(run_polling_thread: false) }
+
+    it "enables IO events on producer queue" do
+      signal_r, signal_w = IO.pipe
+      expect { producer.enable_queue_io_events(signal_w.fileno) }.not_to raise_error
+      signal_r.close
+      signal_w.close
+    end
+
+    it "enables IO events on background queue" do
+      signal_r, signal_w = IO.pipe
+      expect { producer.enable_background_queue_io_events(signal_w.fileno) }.not_to raise_error
+      signal_r.close
+      signal_w.close
+    end
+
+    context "when producer is closed" do
+      before { producer.close }
+
+      it "raises ClosedInnerError when enabling queue_io_events" do
+        signal_r, signal_w = IO.pipe
+        expect { producer.enable_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
+        signal_r.close
+        signal_w.close
+      end
+
+      it "raises ClosedInnerError when enabling background_queue_io_events" do
+        signal_r, signal_w = IO.pipe
+        expect { producer.enable_background_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
+        signal_r.close
+        signal_w.close
+      end
+    end
+  end
 end

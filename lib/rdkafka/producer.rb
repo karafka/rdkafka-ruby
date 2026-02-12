@@ -122,6 +122,26 @@ module Rdkafka
       end
     end
 
+    # Enable IO event notifications for fiber scheduler integration
+    # When delivery confirmations arrive, librdkafka will write to your FD
+    #
+    # @param fd [Integer] file descriptor to signal (from IO.pipe or eventfd)
+    # @param payload [String] data to write to fd (default: "\x01")
+    # @return [nil]
+    # @raise [ClosedInnerError] when the producer is closed
+    def enable_queue_io_events(fd, payload = "\x01")
+      @native_kafka.enable_main_queue_io_events(fd, payload)
+    end
+
+    # Enable IO event notifications for background events
+    # @param fd [Integer] file descriptor to signal (from IO.pipe or eventfd)
+    # @param payload [String] data to write to fd (default: "\x01")
+    # @return [nil]
+    # @raise [ClosedInnerError] when the producer is closed
+    def enable_background_queue_io_events(fd, payload = "\x01")
+      @native_kafka.enable_background_queue_io_events(fd, payload)
+    end
+
     # Set a callback that will be called every time a message is successfully produced.
     # The callback is called with a {DeliveryReport} and {DeliveryHandle}
     #

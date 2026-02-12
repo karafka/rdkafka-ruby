@@ -222,6 +222,15 @@ module Rdkafka
     # Log queue
     attach_function :rd_kafka_set_log_queue, [:pointer, :pointer], :void
     attach_function :rd_kafka_queue_get_main, [:pointer], :pointer
+    attach_function :rd_kafka_queue_get_background, [:pointer], :pointer
+
+    # Queue IO Event Support - for fiber scheduler integration
+    # Enables notifications to a custom FD when queue transitions from empty to non-empty
+    # @param queue rd_kafka_queue_t* - the queue to monitor
+    # @param fd int - file descriptor to write to (provide your own pipe/eventfd)
+    # @param payload const void* - data to write to fd
+    # @param size size_t - size of payload
+    attach_function :rd_kafka_queue_io_event_enable, [:pointer, :int, :pointer, :size_t], :void
     # Per topic configs
     attach_function :rd_kafka_topic_conf_new, [], :pointer
     attach_function :rd_kafka_topic_conf_set, [:pointer, :string, :string, :pointer, :int], :kafka_config_response
@@ -493,7 +502,6 @@ module Rdkafka
 
     # Background Queue and Callback
 
-    attach_function :rd_kafka_queue_get_background, [:pointer], :pointer
     attach_function :rd_kafka_conf_set_background_event_cb, [:pointer, :pointer], :void
     attach_function :rd_kafka_queue_destroy, [:pointer], :void
 

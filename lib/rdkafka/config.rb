@@ -224,11 +224,13 @@ module Rdkafka
     # @param native_kafka_auto_start [Boolean] should the native kafka operations be started
     #   automatically. Defaults to true. Set to false only when doing complex initialization.
     # @param native_kafka_poll_timeout_ms [Integer] ms poll time of the native Kafka
+    # @param run_polling_thread [Boolean] should the background polling thread be started.
+    #   Defaults to true. Set to false when using the FD API for fiber scheduler integration.
     # @return [Producer] The created producer
     #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    def producer(native_kafka_auto_start: true, native_kafka_poll_timeout_ms: Defaults::NATIVE_KAFKA_POLL_TIMEOUT_MS)
+    def producer(native_kafka_auto_start: true, native_kafka_poll_timeout_ms: Defaults::NATIVE_KAFKA_POLL_TIMEOUT_MS, run_polling_thread: true)
       # Create opaque
       opaque = Opaque.new
       # Create Kafka config
@@ -243,7 +245,7 @@ module Rdkafka
       Rdkafka::Producer.new(
         Rdkafka::NativeKafka.new(
           kafka,
-          run_polling_thread: true,
+          run_polling_thread: run_polling_thread,
           opaque: opaque,
           auto_start: native_kafka_auto_start,
           timeout_ms: native_kafka_poll_timeout_ms
@@ -259,11 +261,13 @@ module Rdkafka
     # @param native_kafka_auto_start [Boolean] should the native kafka operations be started
     #   automatically. Defaults to true. Set to false only when doing complex initialization.
     # @param native_kafka_poll_timeout_ms [Integer] ms poll time of the native Kafka
+    # @param run_polling_thread [Boolean] should the background polling thread be started.
+    #   Defaults to true. Set to false when using the FD API for fiber scheduler integration.
     # @return [Admin] The created admin instance
     #
     # @raise [ConfigError] When the configuration contains invalid options
     # @raise [ClientCreationError] When the native client cannot be created
-    def admin(native_kafka_auto_start: true, native_kafka_poll_timeout_ms: Defaults::NATIVE_KAFKA_POLL_TIMEOUT_MS)
+    def admin(native_kafka_auto_start: true, native_kafka_poll_timeout_ms: Defaults::NATIVE_KAFKA_POLL_TIMEOUT_MS, run_polling_thread: true)
       opaque = Opaque.new
       config = native_config(opaque)
       Rdkafka::Bindings.rd_kafka_conf_set_background_event_cb(config, Rdkafka::Callbacks::BackgroundEventCallbackFunction)
@@ -273,7 +277,7 @@ module Rdkafka
       Rdkafka::Admin.new(
         Rdkafka::NativeKafka.new(
           kafka,
-          run_polling_thread: true,
+          run_polling_thread: run_polling_thread,
           opaque: opaque,
           auto_start: native_kafka_auto_start,
           timeout_ms: native_kafka_poll_timeout_ms

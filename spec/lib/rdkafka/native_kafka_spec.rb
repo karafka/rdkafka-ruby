@@ -128,3 +128,51 @@ RSpec.describe Rdkafka::NativeKafka do
     expect(client.closed?).to be(true)
   end
 end
+
+# Separate describe block for FD API tests to avoid interference with mocked threading tests
+RSpec.describe Rdkafka::NativeKafka, "#enable_main_queue_io_events and #enable_background_queue_io_events" do
+  let(:config) { rdkafka_producer_config }
+  let(:native) { config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer) }
+  let(:opaque) { Rdkafka::Opaque.new }
+  let(:client) { described_class.new(native, run_polling_thread: false, opaque: opaque, auto_start: false) }
+
+  after { client.close unless client.closed? }
+
+  it "allows IO events when polling thread is not active" do
+    signal_r, signal_w = IO.pipe
+
+    expect { client.enable_main_queue_io_events(signal_w.fileno) }.not_to raise_error
+    expect { client.enable_background_queue_io_events(signal_w.fileno) }.not_to raise_error
+
+    signal_r.close
+    signal_w.close
+  end
+
+  it "accepts custom payload for IO events" do
+    signal_r, signal_w = IO.pipe
+    payload = "custom"
+
+    expect { client.enable_main_queue_io_events(signal_w.fileno, payload) }.not_to raise_error
+
+    signal_r.close
+    signal_w.close
+  end
+
+  context "when client is closed" do
+    before { client.close }
+
+    it "raises ClosedInnerError when enabling main_queue_io_events" do
+      signal_r, signal_w = IO.pipe
+      expect { client.enable_main_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
+      signal_r.close
+      signal_w.close
+    end
+
+    it "raises ClosedInnerError when enabling background_queue_io_events" do
+      signal_r, signal_w = IO.pipe
+      expect { client.enable_background_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
+      signal_r.close
+      signal_w.close
+    end
+  end
+end

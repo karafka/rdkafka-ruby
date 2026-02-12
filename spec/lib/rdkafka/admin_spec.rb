@@ -972,6 +972,42 @@ RSpec.describe Rdkafka::Admin do
     end
   end
 
+  describe "file descriptor access for fiber scheduler integration" do
+    let(:admin) { config.admin(run_polling_thread: false) }
+
+    it "enables IO events on admin queue" do
+      signal_r, signal_w = IO.pipe
+      expect { admin.enable_queue_io_events(signal_w.fileno) }.not_to raise_error
+      signal_r.close
+      signal_w.close
+    end
+
+    it "enables IO events on background queue" do
+      signal_r, signal_w = IO.pipe
+      expect { admin.enable_background_queue_io_events(signal_w.fileno) }.not_to raise_error
+      signal_r.close
+      signal_w.close
+    end
+
+    context "when admin is closed" do
+      before { admin.close }
+
+      it "raises ClosedInnerError when enabling queue_io_events" do
+        signal_r, signal_w = IO.pipe
+        expect { admin.enable_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
+        signal_r.close
+        signal_w.close
+      end
+
+      it "raises ClosedInnerError when enabling background_queue_io_events" do
+        signal_r, signal_w = IO.pipe
+        expect { admin.enable_background_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
+        signal_r.close
+        signal_w.close
+      end
+    end
+  end
+
   unless RUBY_PLATFORM == "java"
     context "when operating from a fork" do
       # @see https://github.com/ffi/ffi/issues/1114

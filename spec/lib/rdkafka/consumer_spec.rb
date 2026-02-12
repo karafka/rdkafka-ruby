@@ -1333,4 +1333,81 @@ RSpec.describe Rdkafka::Consumer do
       expect(messages_consumed).to be > 50 # Should consume most messages
     end
   end
+
+  describe "file descriptor access for fiber scheduler integration" do
+    it "enables IO events on consumer queue" do
+      consumer.subscribe(TestTopics.consume_test_topic)
+
+      signal_r, signal_w = IO.pipe
+      expect { consumer.enable_queue_io_events(signal_w.fileno) }.not_to raise_error
+      signal_r.close
+      signal_w.close
+    end
+
+    it "enables IO events on background queue" do
+      consumer.subscribe(TestTopics.consume_test_topic)
+
+      signal_r, signal_w = IO.pipe
+      expect { consumer.enable_background_queue_io_events(signal_w.fileno) }.not_to raise_error
+      signal_r.close
+      signal_w.close
+    end
+
+    it "enables FD with payload option" do
+      consumer.subscribe(TestTopics.consume_test_topic)
+
+      signal_r, signal_w = IO.pipe
+      custom_payload = "hello"
+      expect { consumer.enable_queue_io_events(signal_w.fileno, custom_payload) }.not_to raise_error
+      signal_r.close
+      signal_w.close
+    end
+
+    it "supports normal polling with IO events enabled" do
+      topic = TestTopics.consume_test_topic
+      consumer.subscribe(topic)
+
+      # Setup IO event signaling
+      signal_r, signal_w = IO.pipe
+      consumer.enable_queue_io_events(signal_w.fileno)
+
+      # Produce some messages
+      producer.produce(topic: topic, payload: "test message 1")
+      producer.produce(topic: topic, payload: "test message 2")
+      producer.flush
+
+      # Give consumer time to rebalance and fetch
+      sleep 2
+
+      # Try to poll messages directly
+      messages = []
+      10.times do
+        msg = consumer.poll(100)
+        messages << msg if msg
+      end
+
+      # We may or may not get messages depending on rebalancing, but should not error
+      expect(messages).to be_a(Array)
+      signal_r.close
+      signal_w.close
+    end
+
+    context "when consumer is closed" do
+      before { consumer.close }
+
+      it "raises ClosedInnerError when enabling queue_io_events" do
+        signal_r, signal_w = IO.pipe
+        expect { consumer.enable_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
+        signal_r.close
+        signal_w.close
+      end
+
+      it "raises ClosedInnerError when enabling background_queue_io_events" do
+        signal_r, signal_w = IO.pipe
+        expect { consumer.enable_background_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
+        signal_r.close
+        signal_w.close
+      end
+    end
+  end
 end

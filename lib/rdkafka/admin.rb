@@ -390,6 +390,8 @@ module Rdkafka
     #   - RD_KAFKA_RESOURCE_BROKER  = 4
     # @param resource_name [String] name of the resource
     # @param resource_pattern_type [Integer] rd_kafka_ResourcePatternType_t value:
+    #   - RD_KAFKA_RESOURCE_PATTERN_UNKNOWN  = 0
+    #   - RD_KAFKA_RESOURCE_PATTERN_ANY      = 1
     #   - RD_KAFKA_RESOURCE_PATTERN_MATCH    = 2
     #   - RD_KAFKA_RESOURCE_PATTERN_LITERAL  = 3
     #   - RD_KAFKA_RESOURCE_PATTERN_PREFIXED = 4
@@ -489,6 +491,8 @@ module Rdkafka
     #   - RD_KAFKA_RESOURCE_BROKER  = 4
     # @param resource_name [String, nil] name of the resource or nil for any
     # @param resource_pattern_type [Integer] rd_kafka_ResourcePatternType_t value:
+    #   - RD_KAFKA_RESOURCE_PATTERN_UNKNOWN  = 0
+    #   - RD_KAFKA_RESOURCE_PATTERN_ANY      = 1
     #   - RD_KAFKA_RESOURCE_PATTERN_MATCH    = 2
     #   - RD_KAFKA_RESOURCE_PATTERN_LITERAL  = 3
     #   - RD_KAFKA_RESOURCE_PATTERN_PREFIXED = 4
@@ -590,6 +594,8 @@ module Rdkafka
     #   - RD_KAFKA_RESOURCE_BROKER  = 4
     # @param resource_name [String, nil] name of the resource or nil for any
     # @param resource_pattern_type [Integer] rd_kafka_ResourcePatternType_t value:
+    #   - RD_KAFKA_RESOURCE_PATTERN_UNKNOWN  = 0
+    #   - RD_KAFKA_RESOURCE_PATTERN_ANY      = 1
     #   - RD_KAFKA_RESOURCE_PATTERN_MATCH    = 2
     #   - RD_KAFKA_RESOURCE_PATTERN_LITERAL  = 3
     #   - RD_KAFKA_RESOURCE_PATTERN_PREFIXED = 4

@@ -648,7 +648,8 @@ RSpec.describe Rdkafka::Producer do
     {
       produce: { topic: nil },
       partition_count: nil,
-      queue_size: :no_args
+      queue_size: :no_args,
+      poll_nb: :no_args
     }.each do |method, args|
       it "raises an exception if #{method} is called" do
         expect {
@@ -1439,6 +1440,44 @@ RSpec.describe Rdkafka::Producer do
         end
 
         expect(zero_count).to be < all_partitioners.size
+      end
+    end
+  end
+
+  describe "#poll_nb" do
+    it "returns 0 when there are no events" do
+      expect(producer.poll_nb).to eq(0)
+    end
+
+    it "accepts a timeout parameter" do
+      expect(producer.poll_nb(0)).to eq(0)
+      expect(producer.poll_nb(100)).to be >= 0
+    end
+
+    it "processes delivery callbacks" do
+      callback_called = false
+      producer.delivery_callback = ->(_) { callback_called = true }
+
+      handle = producer.produce(
+        topic: TestTopics.produce_test_topic,
+        payload: "test payload"
+      )
+
+      # Wait for message to be delivered
+      handle.wait(max_wait_timeout_ms: 5_000)
+
+      # poll_nb should process any pending callbacks
+      producer.poll_nb
+
+      # The callback should have been triggered by the background thread or poll
+      expect(callback_called).to be true
+    end
+
+    context "when producer is closed" do
+      before { producer.close }
+
+      it "raises ClosedProducerError" do
+        expect { producer.poll_nb }.to raise_error(Rdkafka::ClosedProducerError, /poll_nb/)
       end
     end
   end

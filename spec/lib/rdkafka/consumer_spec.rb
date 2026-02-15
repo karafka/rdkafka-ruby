@@ -850,6 +850,70 @@ RSpec.describe Rdkafka::Consumer do
     end
   end
 
+  describe "#poll_nb" do
+    it "returns nil if there is no subscription" do
+      expect(consumer.poll_nb).to be_nil
+    end
+
+    it "returns nil if there are no messages" do
+      consumer.subscribe(TestTopics.empty_test_topic)
+      expect(consumer.poll_nb).to be_nil
+    end
+
+    it "accepts a timeout parameter" do
+      consumer.subscribe(TestTopics.empty_test_topic)
+      expect(consumer.poll_nb(0)).to be_nil
+      expect(consumer.poll_nb(100)).to be_nil
+    end
+
+    it "returns a message if there is one" do
+      topic = "it-#{SecureRandom.uuid}"
+
+      producer.produce(
+        topic: topic,
+        payload: "payload poll_nb",
+        key: "key poll_nb"
+      ).wait
+
+      consumer.subscribe(topic)
+      wait_for_assignment(consumer)
+
+      # Give time for message to arrive
+      sleep 1
+
+      message = nil
+      10.times do
+        message = consumer.poll_nb(100)
+        break if message
+        sleep 0.1
+      end
+
+      expect(message).to be_a Rdkafka::Consumer::Message
+      expect(message.payload).to eq("payload poll_nb")
+      expect(message.key).to eq("key poll_nb")
+    end
+
+    it "raises an error when polling fails" do
+      message = Rdkafka::Bindings::Message.new.tap do |message|
+        message[:err] = 20
+      end
+      message_pointer = message.to_ptr
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_consumer_poll_nb).and_return(message_pointer)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(message_pointer)
+      expect {
+        consumer.poll_nb
+      }.to raise_error Rdkafka::RdkafkaError
+    end
+
+    context "when consumer is closed" do
+      before { consumer.close }
+
+      it "raises ClosedConsumerError" do
+        expect { consumer.poll_nb }.to raise_error(Rdkafka::ClosedConsumerError, /poll_nb/)
+      end
+    end
+  end
+
   describe "#poll with headers" do
     it "returns message with headers using string keys (when produced with symbol keys)" do
       report = producer.produce(
@@ -1042,6 +1106,46 @@ RSpec.describe Rdkafka::Consumer do
     end
   end
 
+  # Only relevant in case of a consumer with separate queues
+  describe "#events_poll_nb" do
+    let(:stats) { [] }
+    let(:consumer) do
+      config = rdkafka_consumer_config("statistics.interval.ms": 500)
+      config.consumer_poll_set = false
+      config.consumer
+    end
+
+    before { Rdkafka::Config.statistics_callback = ->(published) { stats << published } }
+
+    after { Rdkafka::Config.statistics_callback = nil }
+
+    it "returns the number of events processed" do
+      consumer.subscribe(TestTopics.consume_test_topic)
+      result = consumer.events_poll_nb
+      expect(result).to be_a(Integer)
+      expect(result).to be >= 0
+    end
+
+    it "accepts a timeout parameter" do
+      consumer.subscribe(TestTopics.consume_test_topic)
+      expect(consumer.events_poll_nb(0)).to be >= 0
+      expect(consumer.events_poll_nb(100)).to be >= 0
+    end
+
+    it "processes events without releasing GVL" do
+      consumer.subscribe(TestTopics.consume_test_topic)
+      consumer.poll(1_000)
+      expect(stats).to be_empty
+
+      # Wait for statistics to be ready
+      sleep 0.6
+
+      # Non-blocking poll should also process stats events
+      consumer.events_poll_nb(100)
+      expect(stats).not_to be_empty
+    end
+  end
+
   describe "#consumer_group_metadata_pointer" do
     let(:pointer) { consumer.consumer_group_metadata_pointer }
 
@@ -1126,7 +1230,8 @@ RSpec.describe Rdkafka::Consumer do
       assignment: nil,
       committed: [],
       query_watermark_offsets: [nil, nil],
-      assignment_lost?: []
+      assignment_lost?: [],
+      poll_nb: []
     }.each do |method, args|
       it "raises an exception if #{method} is called" do
         expect {

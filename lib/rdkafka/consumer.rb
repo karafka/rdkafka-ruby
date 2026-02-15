@@ -602,6 +602,47 @@ module Rdkafka
       end
     end
 
+    # Poll for the next message without releasing the GVL (Global VM Lock).
+    #
+    # This is more efficient than regular polling for non-blocking poll(0) calls,
+    # particularly useful in fiber scheduler contexts where GVL release/reacquire
+    # overhead is wasteful since we don't expect to wait.
+    #
+    # @param timeout_ms [Integer] Timeout of this poll (default: 0 for non-blocking)
+    # @return [Message, nil] A message or nil if there was no new message within the timeout
+    # @raise [RdkafkaError] When polling fails
+    #
+    # @example Using with fiber scheduler
+    #   # After receiving IO notification that messages are available
+    #   while msg = consumer.poll_nb
+    #     process(msg)
+    #   end
+    def poll_nb(timeout_ms = 0)
+      closed_consumer_check(__method__)
+
+      message_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_consumer_poll_nb(inner, timeout_ms)
+      end
+
+      if message_ptr.null?
+        nil
+      else
+        # Create struct wrapper
+        native_message = Rdkafka::Bindings::Message.new(message_ptr)
+        # Raise error if needed
+        if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+          raise Rdkafka::RdkafkaError.new(native_message[:err])
+        end
+        # Create a message to pass out
+        Rdkafka::Consumer::Message.new(native_message)
+      end
+    ensure
+      # Clean up rdkafka message if there is one
+      if message_ptr && !message_ptr.null?
+        Rdkafka::Bindings.rd_kafka_message_destroy(message_ptr)
+      end
+    end
+
     # Polls the main rdkafka queue (not the consumer one). Do **NOT** use it if `consumer_poll_set`
     #   was set to `true`.
     #
@@ -625,6 +666,22 @@ module Rdkafka
     def events_poll(timeout_ms = Defaults::CONSUMER_EVENTS_POLL_TIMEOUT_MS)
       @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_poll(inner, timeout_ms)
+      end
+    end
+
+    # Polls the main rdkafka queue without releasing the GVL (Global VM Lock).
+    #
+    # This is more efficient than regular events_poll for non-blocking poll(0) calls,
+    # particularly useful in fiber scheduler contexts where GVL release/reacquire
+    # overhead is wasteful since we don't expect to wait.
+    #
+    # @param timeout_ms [Integer] poll timeout (default: 0 for non-blocking)
+    # @return [Integer] the number of events served
+    #
+    # @see #events_poll for more details on when to use this method
+    def events_poll_nb(timeout_ms = 0)
+      @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_poll_nb(inner, timeout_ms)
       end
     end
 

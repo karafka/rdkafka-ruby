@@ -258,6 +258,29 @@ module Rdkafka
 
     alias_method :queue_length, :queue_size
 
+    # Polls the producer for events without releasing the GVL (Global VM Lock).
+    #
+    # This is more efficient than regular polling for non-blocking poll(0) calls,
+    # particularly useful in fiber scheduler contexts where GVL release/reacquire
+    # overhead is wasteful since we don't expect to wait.
+    #
+    # @param timeout_ms [Integer] timeout in milliseconds (default: 0 for non-blocking)
+    # @return [Integer] the number of events served
+    # @raise [Rdkafka::ClosedProducerError] if called on a closed producer
+    #
+    # @note This method is thread-safe as it uses the @native_kafka.with_inner synchronization
+    #
+    # @example
+    #   # In a fiber scheduler loop
+    #   producer.poll_nb  # Process any pending delivery callbacks without blocking
+    def poll_nb(timeout_ms = 0)
+      closed_producer_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_poll_nb(inner, timeout_ms)
+      end
+    end
+
     # Partition count for a given topic.
     #
     # @param topic [String] The topic name.

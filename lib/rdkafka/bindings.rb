@@ -90,6 +90,12 @@ module Rdkafka
     attach_function :rd_kafka_poll, [:pointer, :int], :int, blocking: true
     attach_function :rd_kafka_outq_len, [:pointer], :int, blocking: true
 
+    # Non-blocking poll variants (do not release GVL)
+    # These are more efficient for poll(0) calls in fiber schedulers where GVL
+    # release/reacquire overhead is wasteful since we don't expect to wait.
+    # Uses the same underlying C function but with blocking: false to skip GVL release.
+    attach_function :rd_kafka_poll_nb, :rd_kafka_poll, [:pointer, :int], :int, blocking: false
+
     # Metadata
 
     attach_function :rd_kafka_name, [:pointer], :string
@@ -351,6 +357,9 @@ module Rdkafka
     attach_function :rd_kafka_commit, [:pointer, :pointer, :bool], :int, blocking: true
     attach_function :rd_kafka_poll_set_consumer, [:pointer], :void, blocking: true
     attach_function :rd_kafka_consumer_poll, [:pointer, :int], :pointer, blocking: true
+    # Non-blocking consumer poll variant (does not release GVL)
+    # More efficient for poll(0) calls in fiber schedulers.
+    attach_function :rd_kafka_consumer_poll_nb, :rd_kafka_consumer_poll, [:pointer, :int], :pointer, blocking: false
     attach_function :rd_kafka_consumer_close, [:pointer], :void, blocking: true
     attach_function :rd_kafka_offsets_store, [:pointer, :pointer], :int, blocking: true
     attach_function :rd_kafka_pause_partitions, [:pointer, :pointer], :int, blocking: true

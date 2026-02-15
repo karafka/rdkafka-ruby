@@ -70,6 +70,16 @@ RSpec.describe Rdkafka::Bindings do
     }.not_to raise_error
   end
 
+  describe "non-blocking poll bindings" do
+    it "has rd_kafka_poll_nb attached" do
+      expect(described_class).to respond_to(:rd_kafka_poll_nb)
+    end
+
+    it "has rd_kafka_consumer_poll_nb attached" do
+      expect(described_class).to respond_to(:rd_kafka_consumer_poll_nb)
+    end
+  end
+
   describe "log callback" do
     let(:log_queue) { Rdkafka::Config.log_queue }
 

@@ -1144,6 +1144,14 @@ RSpec.describe Rdkafka::Consumer do
       consumer.events_poll_nb(100)
       expect(stats).not_to be_empty
     end
+
+    context "when consumer is closed" do
+      before { consumer.close }
+
+      it "raises ClosedConsumerError" do
+        expect { consumer.events_poll_nb }.to raise_error(Rdkafka::ClosedConsumerError, /events_poll_nb/)
+      end
+    end
   end
 
   describe "#consumer_group_metadata_pointer" do
@@ -1231,7 +1239,8 @@ RSpec.describe Rdkafka::Consumer do
       committed: [],
       query_watermark_offsets: [nil, nil],
       assignment_lost?: [],
-      poll_nb: []
+      poll_nb: [],
+      events_poll_nb: []
     }.each do |method, args|
       it "raises an exception if #{method} is called" do
         expect {

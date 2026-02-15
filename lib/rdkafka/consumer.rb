@@ -677,12 +677,9 @@ module Rdkafka
     #
     # @param timeout_ms [Integer] poll timeout (default: 0 for non-blocking)
     # @return [Integer] the number of events served
-    # @raise [RdkafkaError] When the consumer is closed
     #
     # @see #events_poll for more details on when to use this method
     def events_poll_nb(timeout_ms = 0)
-      closed_consumer_check(__method__)
-
       @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_poll_nb(inner, timeout_ms)
       end

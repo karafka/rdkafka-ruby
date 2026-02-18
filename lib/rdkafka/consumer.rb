@@ -75,6 +75,30 @@ module Rdkafka
       @native_kafka.enable_background_queue_io_events(fd, payload)
     end
 
+    # Provides thread-safe access to the underlying native Kafka handle.
+    #
+    # This method is intended for advanced users who need direct access to librdkafka
+    # bindings for operations not exposed by the high-level API. The block receives
+    # the native FFI pointer and executes with proper synchronization.
+    #
+    # @yield [inner] Block that receives the native Kafka handle
+    # @yieldparam inner [FFI::Pointer] The native rd_kafka_t pointer
+    # @yieldreturn [Object] The block's return value is returned by this method
+    # @return [Object] The result of the block
+    # @raise [Rdkafka::ClosedConsumerError] if called on a closed consumer
+    #
+    # @note The block holds a lock; keep operations brief to avoid blocking other threads
+    # @note This is an advanced API - prefer high-level methods when available
+    #
+    # @example Direct access to poll for custom drain logic
+    #   consumer.with_inner do |inner|
+    #     Rdkafka::Bindings.rd_kafka_poll_nb(inner, 0)
+    #   end
+    def with_inner(&block)
+      closed_consumer_check(__method__)
+      @native_kafka.with_inner(&block)
+    end
+
     # @return [Proc] finalizer proc for closing the consumer
     # @private
     def finalizer

@@ -972,6 +972,35 @@ RSpec.describe Rdkafka::Admin do
     end
   end
 
+  describe "#with_inner" do
+    it "yields the native kafka handle" do
+      admin.with_inner do |inner|
+        expect(inner).to be_a(FFI::Pointer)
+        expect(inner).not_to be_null
+      end
+    end
+
+    it "returns the block result" do
+      result = admin.with_inner { |_| 42 }
+      expect(result).to eq(42)
+    end
+
+    it "allows calling bindings directly" do
+      result = admin.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_name(inner)
+      end
+      expect(result).to be_a(String)
+    end
+
+    context "when admin is closed" do
+      before { admin.close }
+
+      it "raises ClosedAdminError" do
+        expect { admin.with_inner { |_| } }.to raise_error(Rdkafka::ClosedAdminError, /with_inner/)
+      end
+    end
+  end
+
   describe "file descriptor access for fiber scheduler integration" do
     let(:admin) { config.admin(run_polling_thread: false) }
 

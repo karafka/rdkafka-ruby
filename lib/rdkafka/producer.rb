@@ -142,6 +142,30 @@ module Rdkafka
       @native_kafka.enable_background_queue_io_events(fd, payload)
     end
 
+    # Provides thread-safe access to the underlying native Kafka handle.
+    #
+    # This method is intended for advanced users who need direct access to librdkafka
+    # bindings for operations not exposed by the high-level API. The block receives
+    # the native FFI pointer and executes with proper synchronization.
+    #
+    # @yield [inner] Block that receives the native Kafka handle
+    # @yieldparam inner [FFI::Pointer] The native rd_kafka_t pointer
+    # @yieldreturn [Object] The block's return value is returned by this method
+    # @return [Object] The result of the block
+    # @raise [Rdkafka::ClosedProducerError] if called on a closed producer
+    #
+    # @note The block holds a lock; keep operations brief to avoid blocking other threads
+    # @note This is an advanced API - prefer high-level methods when available
+    #
+    # @example Direct access to poll for custom drain logic
+    #   producer.with_inner do |inner|
+    #     Rdkafka::Bindings.rd_kafka_poll_nb(inner, 0)
+    #   end
+    def with_inner(&block)
+      closed_producer_check(__method__)
+      @native_kafka.with_inner(&block)
+    end
+
     # Set a callback that will be called every time a message is successfully produced.
     # The callback is called with a {DeliveryReport} and {DeliveryHandle}
     #
@@ -257,45 +281,6 @@ module Rdkafka
     end
 
     alias_method :queue_length, :queue_size
-
-    # Drains the producer's event queue by continuously polling until empty or time limit reached.
-    #
-    # This method is useful when you need to ensure delivery callbacks are processed within a
-    # bounded time, particularly when polling multiple producers from a single thread where
-    # fair scheduling is required to prevent starvation.
-    #
-    # Uses non-blocking polls internally (no GVL release) for efficiency. The method holds
-    # a single `with_inner` lock for the duration, minimizing per-poll overhead when processing
-    # many events.
-    #
-    # @param timeout_ms [Integer] maximum time to spend draining in milliseconds (default: 100)
-    # @return [Boolean] true if no more events to process, false if stopped due to time limit
-    # @raise [Rdkafka::ClosedProducerError] if called on a closed producer
-    #
-    # @note This method holds the inner lock for up to `timeout_ms`. Other producer operations
-    #   (produce, close, etc.) will wait until this method returns.
-    # @note This method is thread-safe as it uses @native_kafka.with_inner synchronization
-    #
-    # @example Basic usage - drain for up to 100ms
-    #   fully_drained = producer.poll_drain_nb
-    #
-    # @example Round-robin polling multiple producers fairly
-    #   producers.each do |producer|
-    #     fully_drained = producer.poll_drain_nb(10)
-    #     # If false, this producer has more pending events
-    #   end
-    def poll_drain_nb(timeout_ms = 100)
-      closed_producer_check(__method__)
-
-      @native_kafka.with_inner do |inner|
-        deadline = monotonic_now_ms + timeout_ms
-
-        loop do
-          break true if Rdkafka::Bindings.rd_kafka_poll_nb(inner, 0).zero?
-          break false if monotonic_now_ms >= deadline
-        end
-      end
-    end
 
     # Partition count for a given topic.
     #

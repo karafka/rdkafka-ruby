@@ -1439,6 +1439,37 @@ RSpec.describe Rdkafka::Consumer do
     end
   end
 
+  describe "#with_inner" do
+    it "yields the native kafka handle" do
+      consumer.with_inner do |inner|
+        expect(inner).to be_a(FFI::Pointer)
+        expect(inner).not_to be_null
+      end
+    end
+
+    it "returns the block result" do
+      result = consumer.with_inner { |_| 42 }
+      expect(result).to eq(42)
+    end
+
+    it "allows calling bindings directly" do
+      consumer.subscribe(TestTopics.consume_test_topic)
+
+      result = consumer.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_poll_nb(inner, 0)
+      end
+      expect(result).to be_a(Integer)
+    end
+
+    context "when consumer is closed" do
+      before { consumer.close }
+
+      it "raises ClosedConsumerError" do
+        expect { consumer.with_inner { |_| } }.to raise_error(Rdkafka::ClosedConsumerError, /with_inner/)
+      end
+    end
+  end
+
   describe "file descriptor access for fiber scheduler integration" do
     it "enables IO events on consumer queue" do
       consumer.subscribe(TestTopics.consume_test_topic)

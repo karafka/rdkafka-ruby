@@ -649,7 +649,7 @@ RSpec.describe Rdkafka::Producer do
       produce: { topic: nil },
       partition_count: nil,
       queue_size: :no_args,
-      poll_drain_nb: :no_args
+      with_inner: :no_args
     }.each do |method, args|
       it "raises an exception if #{method} is called" do
         expect {
@@ -1444,52 +1444,31 @@ RSpec.describe Rdkafka::Producer do
     end
   end
 
-  describe "#poll_drain_nb" do
-    it "returns a boolean" do
-      result = producer.poll_drain_nb
-      expect([true, false]).to include(result)
+  describe "#with_inner" do
+    it "yields the native kafka handle" do
+      producer.with_inner do |inner|
+        expect(inner).to be_a(FFI::Pointer)
+        expect(inner).not_to be_null
+      end
     end
 
-    it "returns true when queue is empty (no events to process)" do
-      expect(producer.poll_drain_nb).to be(true)
+    it "returns the block result" do
+      result = producer.with_inner { |_| 42 }
+      expect(result).to eq(42)
     end
 
-    it "returns false when timeout is reached while events still pending" do
-      # Stub poll to always return 1 (events processed) to simulate continuous events
-      allow(Rdkafka::Bindings).to receive(:rd_kafka_poll_nb).and_return(1)
-
-      result = producer.poll_drain_nb(1)
-      expect(result).to be(false)
-    end
-
-    it "accepts a timeout parameter" do
-      result = producer.poll_drain_nb(10)
-      expect([true, false]).to include(result)
-    end
-
-    it "processes delivery callbacks" do
-      callback_called = false
-      producer.delivery_callback = ->(_) { callback_called = true }
-
-      handle = producer.produce(
-        topic: TestTopics.produce_test_topic,
-        payload: "poll_drain_nb test"
-      )
-
-      # Wait for message to be delivered
-      handle.wait(max_wait_timeout_ms: 5_000)
-
-      # poll_drain_nb should process any pending callbacks
-      producer.poll_drain_nb
-
-      expect(callback_called).to be(true)
+    it "allows calling bindings directly" do
+      result = producer.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_outq_len(inner)
+      end
+      expect(result).to be_a(Integer)
     end
 
     context "when producer is closed" do
       before { producer.close }
 
       it "raises ClosedProducerError" do
-        expect { producer.poll_drain_nb }.to raise_error(Rdkafka::ClosedProducerError, /poll_drain_nb/)
+        expect { producer.with_inner { |_| } }.to raise_error(Rdkafka::ClosedProducerError, /with_inner/)
       end
     end
   end

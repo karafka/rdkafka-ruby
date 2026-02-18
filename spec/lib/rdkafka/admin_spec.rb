@@ -972,6 +972,47 @@ RSpec.describe Rdkafka::Admin do
     end
   end
 
+  describe "#events_poll_nb_each" do
+    it "does not raise when queue is empty" do
+      expect { admin.events_poll_nb_each { |_| } }.not_to raise_error
+    end
+
+    it "yields the count after each poll" do
+      counts = []
+      # Stub to return events, then zero
+      call_count = 0
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_poll_nb) do
+        call_count += 1
+        call_count <= 2 ? 1 : 0
+      end
+
+      admin.events_poll_nb_each { |count| counts << count }
+
+      expect(counts).to eq([1, 1])
+    end
+
+    it "stops when block returns :stop" do
+      iterations = 0
+      # Stub to always return events
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_poll_nb).and_return(1)
+
+      admin.events_poll_nb_each do |_count|
+        iterations += 1
+        :stop if iterations >= 3
+      end
+
+      expect(iterations).to eq(3)
+    end
+
+    context "when admin is closed" do
+      before { admin.close }
+
+      it "raises ClosedAdminError" do
+        expect { admin.events_poll_nb_each { |_| } }.to raise_error(Rdkafka::ClosedAdminError, /events_poll_nb_each/)
+      end
+    end
+  end
+
   describe "file descriptor access for fiber scheduler integration" do
     let(:admin) { config.admin(run_polling_thread: false) }
 

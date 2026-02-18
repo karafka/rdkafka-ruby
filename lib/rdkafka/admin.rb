@@ -91,6 +91,45 @@ module Rdkafka
       @native_kafka.enable_background_queue_io_events(fd, payload)
     end
 
+    # Polls for events in a non-blocking loop, yielding the count after each iteration.
+    #
+    # This method processes events (stats, errors, etc.) in a single GVL/mutex session,
+    # which is more efficient than repeated individual polls. It uses non-blocking polls
+    # internally (no GVL release between polls).
+    #
+    # Yields the count of events processed after each poll iteration, allowing the caller
+    # to implement timeout or other termination logic by returning `:stop`.
+    #
+    # @yield [count] Called after each poll iteration
+    # @yieldparam count [Integer] Number of events processed in this iteration
+    # @yieldreturn [:stop, Object] Return `:stop` to break the loop, any other value continues
+    # @return [nil]
+    # @raise [Rdkafka::ClosedAdminError] if called on a closed admin client
+    #
+    # @note This method holds the inner lock until the queue is empty or `:stop` is returned.
+    #   Other admin operations will wait until this method returns.
+    # @note This method is thread-safe as it uses @native_kafka.with_inner synchronization
+    #
+    # @example Drain all pending events
+    #   admin.events_poll_nb_each { |_count| }
+    #
+    # @example With timeout control
+    #   deadline = monotonic_now + timeout_ms
+    #   admin.events_poll_nb_each do |_count|
+    #     :stop if monotonic_now >= deadline
+    #   end
+    def events_poll_nb_each
+      closed_admin_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        loop do
+          count = Rdkafka::Bindings.rd_kafka_poll_nb(inner, 0)
+          break if count.zero?
+          break if yield(count) == :stop
+        end
+      end
+    end
+
     # @return [Proc] finalizer proc for closing the admin
     # @private
     def finalizer

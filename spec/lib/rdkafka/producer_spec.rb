@@ -649,7 +649,7 @@ RSpec.describe Rdkafka::Producer do
       produce: { topic: nil },
       partition_count: nil,
       queue_size: :no_args,
-      poll_drain_nb: :no_args
+      events_poll_nb_each: :no_args
     }.each do |method, args|
       it "raises an exception if #{method} is called" do
         expect {
@@ -1444,27 +1444,9 @@ RSpec.describe Rdkafka::Producer do
     end
   end
 
-  describe "#poll_drain_nb" do
-    it "returns a boolean" do
-      result = producer.poll_drain_nb
-      expect([true, false]).to include(result)
-    end
-
-    it "returns true when queue is empty (no events to process)" do
-      expect(producer.poll_drain_nb).to be(true)
-    end
-
-    it "returns false when timeout is reached while events still pending" do
-      # Stub poll to always return 1 (events processed) to simulate continuous events
-      allow(Rdkafka::Bindings).to receive(:rd_kafka_poll_nb).and_return(1)
-
-      result = producer.poll_drain_nb(1)
-      expect(result).to be(false)
-    end
-
-    it "accepts a timeout parameter" do
-      result = producer.poll_drain_nb(10)
-      expect([true, false]).to include(result)
+  describe "#events_poll_nb_each" do
+    it "does not raise when queue is empty" do
+      expect { producer.events_poll_nb_each { |_| } }.not_to raise_error
     end
 
     it "processes delivery callbacks" do
@@ -1473,23 +1455,50 @@ RSpec.describe Rdkafka::Producer do
 
       handle = producer.produce(
         topic: TestTopics.produce_test_topic,
-        payload: "poll_drain_nb test"
+        payload: "events_poll_nb_each test"
       )
 
       # Wait for message to be delivered
       handle.wait(max_wait_timeout_ms: 5_000)
 
-      # poll_drain_nb should process any pending callbacks
-      producer.poll_drain_nb
+      # events_poll_nb_each should process any pending callbacks
+      producer.events_poll_nb_each { |_| }
 
       expect(callback_called).to be(true)
+    end
+
+    it "yields the count after each poll" do
+      counts = []
+      # Stub to return events, then zero
+      call_count = 0
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_poll_nb) do
+        call_count += 1
+        call_count <= 2 ? 1 : 0
+      end
+
+      producer.events_poll_nb_each { |count| counts << count }
+
+      expect(counts).to eq([1, 1])
+    end
+
+    it "stops when block returns :stop" do
+      iterations = 0
+      # Stub to always return events
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_poll_nb).and_return(1)
+
+      producer.events_poll_nb_each do |_count|
+        iterations += 1
+        :stop if iterations >= 3
+      end
+
+      expect(iterations).to eq(3)
     end
 
     context "when producer is closed" do
       before { producer.close }
 
       it "raises ClosedProducerError" do
-        expect { producer.poll_drain_nb }.to raise_error(Rdkafka::ClosedProducerError, /poll_drain_nb/)
+        expect { producer.events_poll_nb_each { |_| } }.to raise_error(Rdkafka::ClosedProducerError, /events_poll_nb_each/)
       end
     end
   end

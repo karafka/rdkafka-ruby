@@ -3,8 +3,10 @@
 ## 0.25.1 (Unreleased)
 - [Enhancement] Use native ARM64 runners instead of QEMU emulation for Alpine musl aarch64 builds, improving build performance and reliability.
 - [Enhancement] Enable parallel compilation (`make -j$(nproc)`) for ARM64 Alpine musl builds.
-- [Enhancement] Add file descriptor API for fiber scheduler integration. Expose `queue_fd` and `background_queue_fd` on `Consumer`, `Producer`, and `Admin` to enable non-blocking monitoring with select/poll/epoll for integration with Ruby fiber schedulers (Falcon, Async) and custom event loops.
-- [Enhancement] Add non-blocking poll methods (`poll_nb`, `events_poll_nb`) that skip GVL release for efficient fiber scheduler integration when using `poll(0)`.
+- [Enhancement] Add file descriptor API for fiber scheduler integration. Expose `enable_queue_io_events` and `enable_background_queue_io_events` on `Consumer`, `Producer`, and `Admin` to enable non-blocking monitoring with select/poll/epoll for integration with Ruby fiber schedulers (Falcon, Async) and custom event loops.
+- [Enhancement] Add non-blocking poll methods (`poll_nb`, `events_poll_nb`) on `Consumer` that skip GVL release for efficient fiber scheduler integration when using `poll(0)`.
+- [Enhancement] Add `events_poll_nb_each` method on `Producer`, `Consumer`, and `Admin` for polling events in a single GVL/mutex session. Yields count after each iteration, caller returns `:stop` to break.
+- [Enhancement] Add `poll_nb_each` method on `Consumer` for non-blocking message polling with proper resource cleanup, yielding each message and supporting early termination via `:stop` return value.
 
 ## 0.25.0 (2026-01-20)
 - **[Deprecation]** `AbstractHandle#wait` parameter `max_wait_timeout:` (seconds) is deprecated in favor of `max_wait_timeout_ms:` (milliseconds). The old parameter still works but will be removed in v1.0.0.

@@ -1439,6 +1439,102 @@ RSpec.describe Rdkafka::Consumer do
     end
   end
 
+  describe "#events_poll_nb_each" do
+    it "does not raise when queue is empty" do
+      expect { consumer.events_poll_nb_each { |_| } }.not_to raise_error
+    end
+
+    it "yields the count after each poll" do
+      counts = []
+      # Stub to return events, then zero
+      call_count = 0
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_poll_nb) do
+        call_count += 1
+        call_count <= 2 ? 1 : 0
+      end
+
+      consumer.events_poll_nb_each { |count| counts << count }
+
+      expect(counts).to eq([1, 1])
+    end
+
+    it "stops when block returns :stop" do
+      iterations = 0
+      # Stub to always return events
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_poll_nb).and_return(1)
+
+      consumer.events_poll_nb_each do |_count|
+        iterations += 1
+        :stop if iterations >= 3
+      end
+
+      expect(iterations).to eq(3)
+    end
+
+    context "when consumer is closed" do
+      before { consumer.close }
+
+      it "raises ClosedConsumerError" do
+        expect { consumer.events_poll_nb_each { |_| } }.to raise_error(Rdkafka::ClosedConsumerError, /events_poll_nb_each/)
+      end
+    end
+  end
+
+  describe "#poll_nb_each" do
+    it "does not raise when queue is empty" do
+      consumer.subscribe(TestTopics.consume_test_topic)
+      # Give it a moment to subscribe
+      sleep 0.5
+
+      messages = []
+      consumer.poll_nb_each { |msg| messages << msg }
+      expect(messages).to be_a(Array)
+    end
+
+    it "yields messages and respects :stop" do
+      topic = TestTopics.consume_test_topic
+      consumer.subscribe(topic)
+
+      # Produce some messages
+      5.times { |i| producer.produce(topic: topic, payload: "poll_nb_each test #{i}") }
+      producer.flush
+
+      # Wait for messages to be available
+      sleep 2
+
+      messages = []
+      consumer.poll_nb_each do |message|
+        messages << message
+        :stop if messages.size >= 2
+      end
+
+      # Should have stopped after 2 messages (or fewer if queue was smaller)
+      expect(messages.size).to be <= 2
+    end
+
+    it "properly cleans up message pointers" do
+      topic = TestTopics.consume_test_topic
+      consumer.subscribe(topic)
+
+      producer.produce(topic: topic, payload: "cleanup test")
+      producer.flush
+      sleep 2
+
+      # This should not leak memory - message_destroy is called in ensure
+      expect {
+        consumer.poll_nb_each { |_| }
+      }.not_to raise_error
+    end
+
+    context "when consumer is closed" do
+      before { consumer.close }
+
+      it "raises ClosedConsumerError" do
+        expect { consumer.poll_nb_each { |_| } }.to raise_error(Rdkafka::ClosedConsumerError, /poll_nb_each/)
+      end
+    end
+  end
+
   describe "file descriptor access for fiber scheduler integration" do
     it "enables IO events on consumer queue" do
       consumer.subscribe(TestTopics.consume_test_topic)

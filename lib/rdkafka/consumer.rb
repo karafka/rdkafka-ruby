@@ -75,6 +75,99 @@ module Rdkafka
       @native_kafka.enable_background_queue_io_events(fd, payload)
     end
 
+    # Polls for events in a non-blocking loop, yielding the count after each iteration.
+    #
+    # This method processes events (stats, errors, etc.) in a single GVL/mutex session,
+    # which is more efficient than repeated individual polls. It uses non-blocking polls
+    # internally (no GVL release between polls).
+    #
+    # Yields the count of events processed after each poll iteration, allowing the caller
+    # to implement timeout or other termination logic by returning `:stop`.
+    #
+    # @yield [count] Called after each poll iteration
+    # @yieldparam count [Integer] Number of events processed in this iteration
+    # @yieldreturn [:stop, Object] Return `:stop` to break the loop, any other value continues
+    # @return [nil]
+    # @raise [Rdkafka::ClosedConsumerError] if called on a closed consumer
+    #
+    # @note This method holds the inner lock until the queue is empty or `:stop` is returned.
+    #   Other consumer operations will wait until this method returns.
+    # @note This method is thread-safe as it uses @native_kafka.with_inner synchronization
+    # @note Do NOT use this if `consumer_poll_set` was set to `true`
+    #
+    # @example Drain all pending events
+    #   consumer.events_poll_nb_each { |_count| }
+    #
+    # @example With timeout control
+    #   deadline = monotonic_now + timeout_ms
+    #   consumer.events_poll_nb_each do |_count|
+    #     :stop if monotonic_now >= deadline
+    #   end
+    def events_poll_nb_each
+      closed_consumer_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        loop do
+          count = Rdkafka::Bindings.rd_kafka_poll_nb(inner, 0)
+          break if count.zero?
+          break if yield(count) == :stop
+        end
+      end
+    end
+
+    # Polls for messages in a non-blocking loop, yielding each message to the caller.
+    #
+    # This method processes messages in a single GVL/mutex session until the queue is empty
+    # or the caller returns `:stop`. It handles the message pointer lifecycle internally,
+    # ensuring proper cleanup via `rd_kafka_message_destroy`.
+    #
+    # @yield [message] Called for each message received
+    # @yieldparam message [Consumer::Message] The received message
+    # @yieldreturn [:stop, Object] Return `:stop` to break the loop, any other value continues
+    # @return [nil]
+    # @raise [Rdkafka::ClosedConsumerError] if called on a closed consumer
+    # @raise [Rdkafka::RdkafkaError] if a Kafka error occurs while polling
+    #
+    # @note This method holds the inner lock for the duration. Other consumer operations
+    #   will wait until this method returns.
+    # @note Timeout/max_messages logic should be implemented by the caller
+    #
+    # @example Process messages until queue is empty
+    #   consumer.poll_nb_each do |message|
+    #     process(message)
+    #   end
+    #
+    # @example Process with early termination
+    #   count = 0
+    #   consumer.poll_nb_each do |message|
+    #     process(message)
+    #     count += 1
+    #     :stop if count >= 10
+    #   end
+    def poll_nb_each
+      closed_consumer_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        loop do
+          message_ptr = Rdkafka::Bindings.rd_kafka_consumer_poll_nb(inner, 0)
+          break if message_ptr.null?
+
+          begin
+            native_message = Rdkafka::Bindings::Message.new(message_ptr)
+
+            if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+              raise Rdkafka::RdkafkaError.new(native_message[:err])
+            end
+
+            result = yield Consumer::Message.new(native_message)
+            break if result == :stop
+          ensure
+            Rdkafka::Bindings.rd_kafka_message_destroy(message_ptr)
+          end
+        end
+      end
+    end
+
     # @return [Proc] finalizer proc for closing the consumer
     # @private
     def finalizer

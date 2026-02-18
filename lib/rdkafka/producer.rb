@@ -258,41 +258,41 @@ module Rdkafka
 
     alias_method :queue_length, :queue_size
 
-    # Drains the producer's event queue by continuously polling until empty or time limit reached.
+    # Polls for events in a non-blocking loop, yielding the count after each iteration.
     #
-    # This method is useful when you need to ensure delivery callbacks are processed within a
-    # bounded time, particularly when polling multiple producers from a single thread where
-    # fair scheduling is required to prevent starvation.
+    # This method processes delivery callbacks in a single GVL/mutex session, which is more
+    # efficient than repeated individual polls. It uses non-blocking polls internally
+    # (no GVL release between polls).
     #
-    # Uses non-blocking polls internally (no GVL release) for efficiency. The method holds
-    # a single `with_inner` lock for the duration, minimizing per-poll overhead when processing
-    # many events.
+    # Yields the count of events processed after each poll iteration, allowing the caller
+    # to implement timeout or other termination logic by returning `:stop`.
     #
-    # @param timeout_ms [Integer] maximum time to spend draining in milliseconds (default: 100)
-    # @return [Boolean] true if no more events to process, false if stopped due to time limit
+    # @yield [count] Called after each poll iteration
+    # @yieldparam count [Integer] Number of events processed in this iteration
+    # @yieldreturn [:stop, Object] Return `:stop` to break the loop, any other value continues
+    # @return [nil]
     # @raise [Rdkafka::ClosedProducerError] if called on a closed producer
     #
-    # @note This method holds the inner lock for up to `timeout_ms`. Other producer operations
-    #   (produce, close, etc.) will wait until this method returns.
+    # @note This method holds the inner lock until the queue is empty or `:stop` is returned.
+    #   Other producer operations (produce, close, etc.) will wait until this method returns.
     # @note This method is thread-safe as it uses @native_kafka.with_inner synchronization
     #
-    # @example Basic usage - drain for up to 100ms
-    #   fully_drained = producer.poll_drain_nb
+    # @example Drain all pending callbacks
+    #   producer.events_poll_nb_each { |_count| }
     #
-    # @example Round-robin polling multiple producers fairly
-    #   producers.each do |producer|
-    #     fully_drained = producer.poll_drain_nb(10)
-    #     # If false, this producer has more pending events
+    # @example With timeout control
+    #   deadline = monotonic_now + timeout_ms
+    #   producer.events_poll_nb_each do |_count|
+    #     :stop if monotonic_now >= deadline
     #   end
-    def poll_drain_nb(timeout_ms = 100)
+    def events_poll_nb_each
       closed_producer_check(__method__)
 
       @native_kafka.with_inner do |inner|
-        deadline = monotonic_now_ms + timeout_ms
-
         loop do
-          break true if Rdkafka::Bindings.rd_kafka_poll_nb(inner, 0).zero?
-          break false if monotonic_now_ms >= deadline
+          count = Rdkafka::Bindings.rd_kafka_poll_nb(inner, 0)
+          break if count.zero?
+          break if yield(count) == :stop
         end
       end
     end

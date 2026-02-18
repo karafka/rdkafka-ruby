@@ -1473,7 +1473,7 @@ RSpec.describe Rdkafka::Producer do
       call_count = 0
       allow(Rdkafka::Bindings).to receive(:rd_kafka_poll_nb) do
         call_count += 1
-        call_count <= 2 ? 1 : 0
+        (call_count <= 2) ? 1 : 0
       end
 
       producer.events_poll_nb_each { |count| counts << count }

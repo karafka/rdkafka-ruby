@@ -148,6 +148,7 @@ module Rdkafka
     # bindings for operations not exposed by the high-level API. The block receives
     # the native FFI pointer and executes with proper synchronization.
     #
+    # @param block [Proc] Block to execute with the native handle
     # @yield [inner] Block that receives the native Kafka handle
     # @yieldparam inner [FFI::Pointer] The native rd_kafka_t pointer
     # @yieldreturn [Object] The block's return value is returned by this method

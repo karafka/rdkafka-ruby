@@ -86,7 +86,7 @@ module Rdkafka
     #
     # @yield [count] Called after each poll iteration
     # @yieldparam count [Integer] Number of events processed in this iteration
-    # @yieldreturn [:stop, Object] Return `:stop` to break the loop, any other value continues
+    # @yieldreturn [Symbol, Object] Return `:stop` to break the loop, any other value continues
     # @return [nil]
     # @raise [Rdkafka::ClosedConsumerError] if called on a closed consumer
     #
@@ -123,11 +123,15 @@ module Rdkafka
     #
     # @yield [message] Called for each message received
     # @yieldparam message [Consumer::Message] The received message
-    # @yieldreturn [:stop, Object] Return `:stop` to break the loop, any other value continues
+    # @yieldreturn [Symbol, Object] Return `:stop` to break the loop, any other value continues
     # @return [nil]
     # @raise [Rdkafka::ClosedConsumerError] if called on a closed consumer
     # @raise [Rdkafka::RdkafkaError] if a Kafka error occurs while polling
     #
+    # @note This method uses `rd_kafka_consumer_poll` to fetch messages, unlike
+    #   `events_poll_nb_each` which uses `rd_kafka_poll` for event callbacks (delivery reports,
+    #   statistics, etc.). For consumers, use this method to receive messages and
+    #   `events_poll_nb_each` for processing background events.
     # @note This method holds the inner lock for the duration. Other consumer operations
     #   will wait until this method returns.
     # @note Timeout/max_messages logic should be implemented by the caller

@@ -1508,8 +1508,8 @@ RSpec.describe Rdkafka::Consumer do
         :stop if messages.size >= 2
       end
 
-      # Should have stopped after 2 messages (or fewer if queue was smaller)
-      expect(messages.size).to be <= 2
+      # Should have stopped after exactly 2 messages
+      expect(messages.size).to eq(2)
     end
 
     it "properly cleans up message pointers" do

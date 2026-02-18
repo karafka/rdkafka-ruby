@@ -102,7 +102,7 @@ module Rdkafka
     #
     # @yield [count] Called after each poll iteration
     # @yieldparam count [Integer] Number of events processed in this iteration
-    # @yieldreturn [:stop, Object] Return `:stop` to break the loop, any other value continues
+    # @yieldreturn [Symbol, Object] Return `:stop` to break the loop, any other value continues
     # @return [nil]
     # @raise [Rdkafka::ClosedAdminError] if called on a closed admin client
     #

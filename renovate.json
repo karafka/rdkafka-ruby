@@ -9,7 +9,8 @@
     "Gemfile",
     "Gemfile.lint",
     "package.json",
-    ".github/workflows/**"
+    ".github/workflows/**",
+    "docker-compose*.yml"
   ],
   "github-actions": {
     "enabled": true,

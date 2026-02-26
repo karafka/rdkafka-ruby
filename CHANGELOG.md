@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.25.1 (Unreleased)
+## 0.25.1 (2026-02-26)
 - [Enhancement] Use native ARM64 runners instead of QEMU emulation for Alpine musl aarch64 builds, improving build performance and reliability.
 - [Enhancement] Enable parallel compilation (`make -j$(nproc)`) for ARM64 Alpine musl builds.
 - [Enhancement] Add file descriptor API for fiber scheduler integration. Expose `enable_queue_io_events` and `enable_background_queue_io_events` on `Consumer`, `Producer`, and `Admin` to enable non-blocking monitoring with select/poll/epoll for integration with Ruby fiber schedulers (Falcon, Async) and custom event loops.

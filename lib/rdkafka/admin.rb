@@ -924,10 +924,10 @@ module Rdkafka
           offset = spec.fetch(:offset)
 
           native_offset = case offset
-          when :earliest      then Rdkafka::Bindings::RD_KAFKA_OFFSET_SPEC_EARLIEST
-          when :latest        then Rdkafka::Bindings::RD_KAFKA_OFFSET_SPEC_LATEST
+          when :earliest then Rdkafka::Bindings::RD_KAFKA_OFFSET_SPEC_EARLIEST
+          when :latest then Rdkafka::Bindings::RD_KAFKA_OFFSET_SPEC_LATEST
           when :max_timestamp then Rdkafka::Bindings::RD_KAFKA_OFFSET_SPEC_MAX_TIMESTAMP
-          when Integer        then offset
+          when Integer then offset
           else
             raise ArgumentError, "Unknown offset specification: #{offset.inspect}"
           end

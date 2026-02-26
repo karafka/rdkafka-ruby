@@ -25,7 +25,7 @@ module Rdkafka
             offset: tp[:offset],
             error_code: tp[:err],
             timestamp: timestamp,
-            leader_epoch: leader_epoch == -1 ? nil : leader_epoch
+            leader_epoch: (leader_epoch == -1) ? nil : leader_epoch
           }
         end
       end

@@ -888,10 +888,10 @@ module Rdkafka
     # @param topic_partition_offsets [Hash{String => Array<Hash>}] hash mapping topic names to
     #   arrays of partition offset specifications. Each specification is a hash with:
     #   - `:partition` [Integer] partition number
-    #   - `:offset` [Symbol, Integer] offset specification — `:earliest`, `:latest`,
+    #   - `:offset` [Symbol, Integer] offset specification - `:earliest`, `:latest`,
     #     `:max_timestamp`, or an integer timestamp in milliseconds
     # @param isolation_level [Integer, nil] optional isolation level:
-    #   - `RD_KAFKA_ISOLATION_LEVEL_READ_UNCOMMITTED` (0) — default
+    #   - `RD_KAFKA_ISOLATION_LEVEL_READ_UNCOMMITTED` (0) - default
     #   - `RD_KAFKA_ISOLATION_LEVEL_READ_COMMITTED` (1)
     #
     # @return [ListOffsetsHandle] handle that can be used to wait for the result

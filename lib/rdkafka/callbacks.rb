@@ -180,6 +180,27 @@ module Rdkafka
       end
     end
 
+    # Extracts attributes of rd_kafka_ListOffsets_result_t
+    #
+    # @private
+    class ListOffsetsResult
+      attr_reader :result_error, :error_string, :result_infos, :result_count
+
+      # @param event_ptr [FFI::Pointer] pointer to the event
+      def initialize(event_ptr)
+        @result_infos = FFI::Pointer::NULL
+        @result_error = Rdkafka::Bindings.rd_kafka_event_error(event_ptr)
+        @error_string = Rdkafka::Bindings.rd_kafka_event_error_string(event_ptr)
+
+        if @result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+          list_offsets_result = Rdkafka::Bindings.rd_kafka_event_ListOffsets_result(event_ptr)
+          pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+          @result_infos = Rdkafka::Bindings.rd_kafka_ListOffsets_result_infos(list_offsets_result, pointer_to_size_t)
+          @result_count = pointer_to_size_t.read_int
+        end
+      end
+    end
+
     # @private
     class BackgroundEventCallback
       # Handles background events from librdkafka
@@ -206,6 +227,8 @@ module Rdkafka
           process_describe_acl(event_ptr)
         when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETEGROUPS_RESULT
           process_delete_groups(event_ptr)
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_LISTOFFSETS_RESULT
+          process_list_offsets(event_ptr)
         end
       end
 
@@ -390,6 +413,26 @@ module Rdkafka
           end
 
           describe_acl_handle.unlock
+        end
+      end
+
+      # Processes list offsets result event
+      # @param event_ptr [FFI::Pointer] pointer to the event
+      def self.process_list_offsets(event_ptr)
+        list_offsets = ListOffsetsResult.new(event_ptr)
+        list_offsets_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
+
+        if list_offsets_handle = Rdkafka::Admin::ListOffsetsHandle.remove(list_offsets_handle_ptr.address)
+          list_offsets_handle[:response] = list_offsets.result_error
+          list_offsets_handle[:response_string] = list_offsets.error_string
+          list_offsets_handle[:pending] = false
+
+          if list_offsets.result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+            list_offsets_handle[:result_infos] = list_offsets.result_infos
+            list_offsets_handle[:result_count] = list_offsets.result_count
+          end
+
+          list_offsets_handle.unlock
         end
       end
     end

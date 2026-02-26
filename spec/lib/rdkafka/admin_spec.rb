@@ -26,6 +26,7 @@ RSpec.describe Rdkafka::Admin do
     expect(Rdkafka::Admin::DescribeAclHandle::REGISTRY).to be_empty
     expect(Rdkafka::Admin::CreateAclHandle::REGISTRY).to be_empty
     expect(Rdkafka::Admin::DeleteAclHandle::REGISTRY).to be_empty
+    expect(Rdkafka::Admin::ListOffsetsHandle::REGISTRY).to be_empty
     admin.close
   end
 
@@ -422,6 +423,130 @@ RSpec.describe Rdkafka::Admin do
 
       it "expect to raise error" do
         expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /invalid_config/)
+      end
+    end
+  end
+
+  describe "#list_offsets" do
+    context "when querying offsets for an existing topic with messages" do
+      let(:topic) { TestTopics.consume_test_topic }
+
+      it "returns earliest offsets" do
+        report = admin.list_offsets(
+          topic => [
+            { partition: 0, offset: :earliest }
+          ]
+        ).wait(max_wait_timeout_ms: 15_000)
+
+        expect(report).to be_a(Rdkafka::Admin::ListOffsetsReport)
+        expect(report.offsets.length).to be >= 1
+
+        first = report.offsets.first
+        expect(first[:topic]).to eq(topic)
+        expect(first[:partition]).to eq(0)
+        expect(first[:offset]).to be >= 0
+        expect(first[:error_code]).to eq(0)
+      end
+
+      it "returns latest offsets" do
+        report = admin.list_offsets(
+          topic => [
+            { partition: 0, offset: :latest }
+          ]
+        ).wait(max_wait_timeout_ms: 15_000)
+
+        expect(report.offsets.length).to be >= 1
+
+        first = report.offsets.first
+        expect(first[:topic]).to eq(topic)
+        expect(first[:partition]).to eq(0)
+        expect(first[:offset]).to be >= 0
+        expect(first[:error_code]).to eq(0)
+      end
+
+      it "returns offsets for multiple partitions at once" do
+        report = admin.list_offsets(
+          topic => [
+            { partition: 0, offset: :earliest },
+            { partition: 1, offset: :latest }
+          ]
+        ).wait(max_wait_timeout_ms: 15_000)
+
+        expect(report.offsets.length).to eq(2)
+        expect(report.offsets.map { |o| o[:partition] }.sort).to eq([0, 1])
+      end
+
+      it "returns offsets with read_committed isolation level" do
+        report = admin.list_offsets(
+          topic => [
+            { partition: 0, offset: :latest }
+          ],
+          isolation_level: Rdkafka::Bindings::RD_KAFKA_ISOLATION_LEVEL_READ_COMMITTED
+        ).wait(max_wait_timeout_ms: 15_000)
+
+        expect(report.offsets.length).to eq(1)
+        expect(report.offsets.first[:error_code]).to eq(0)
+      end
+    end
+
+    context "when querying offsets by timestamp" do
+      let(:topic) { TestTopics.consume_test_topic }
+
+      it "returns offsets for a given timestamp" do
+        # Use a timestamp of 0 (epoch) to get earliest messages
+        report = admin.list_offsets(
+          topic => [
+            { partition: 0, offset: 0 }
+          ]
+        ).wait(max_wait_timeout_ms: 15_000)
+
+        expect(report.offsets.length).to eq(1)
+        first = report.offsets.first
+        expect(first[:topic]).to eq(topic)
+        expect(first[:partition]).to eq(0)
+      end
+    end
+
+    context "when admin is closed" do
+      it "raises ClosedAdminError" do
+        admin.close
+        expect {
+          admin.list_offsets("topic" => [{ partition: 0, offset: :earliest }])
+        }.to raise_error(Rdkafka::ClosedAdminError)
+      end
+    end
+
+    context "edge case" do
+      context "where we are unable to get the background queue" do
+        before do
+          allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_get_background).and_return(FFI::Pointer::NULL)
+        end
+
+        it "raises an exception" do
+          expect {
+            admin.list_offsets("topic" => [{ partition: 0, offset: :earliest }])
+          }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
+        end
+      end
+
+      context "where rd_kafka_ListOffsets raises an exception" do
+        before do
+          allow(Rdkafka::Bindings).to receive(:rd_kafka_ListOffsets).and_raise(RuntimeError.new("oops"))
+        end
+
+        it "raises an exception" do
+          expect {
+            admin.list_offsets("topic" => [{ partition: 0, offset: :earliest }])
+          }.to raise_error RuntimeError, /oops/
+        end
+      end
+    end
+
+    context "with invalid offset specification" do
+      it "raises ArgumentError for unknown symbol" do
+        expect {
+          admin.list_offsets("topic" => [{ partition: 0, offset: :unknown }])
+        }.to raise_error(ArgumentError, /Unknown offset specification/)
       end
     end
   end

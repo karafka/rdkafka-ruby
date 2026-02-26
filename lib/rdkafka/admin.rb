@@ -901,10 +901,10 @@ module Rdkafka
     #
     # @example Query earliest and latest offsets
     #   handle = admin.list_offsets(
-    #     "my_topic" => [
+    #     { "my_topic" => [
     #       { partition: 0, offset: :earliest },
     #       { partition: 1, offset: :latest }
-    #     ]
+    #     ] }
     #   )
     #   report = handle.wait(max_wait_timeout_ms: 15_000)
     #   report.offsets

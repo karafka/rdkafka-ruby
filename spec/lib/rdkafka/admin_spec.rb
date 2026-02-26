@@ -433,9 +433,7 @@ RSpec.describe Rdkafka::Admin do
 
       it "returns earliest offsets" do
         report = admin.list_offsets(
-          topic => [
-            { partition: 0, offset: :earliest }
-          ]
+          { topic => [{ partition: 0, offset: :earliest }] }
         ).wait(max_wait_timeout_ms: 15_000)
 
         expect(report).to be_a(Rdkafka::Admin::ListOffsetsReport)
@@ -450,9 +448,7 @@ RSpec.describe Rdkafka::Admin do
 
       it "returns latest offsets" do
         report = admin.list_offsets(
-          topic => [
-            { partition: 0, offset: :latest }
-          ]
+          { topic => [{ partition: 0, offset: :latest }] }
         ).wait(max_wait_timeout_ms: 15_000)
 
         expect(report.offsets.length).to be >= 1
@@ -466,10 +462,10 @@ RSpec.describe Rdkafka::Admin do
 
       it "returns offsets for multiple partitions at once" do
         report = admin.list_offsets(
-          topic => [
+          { topic => [
             { partition: 0, offset: :earliest },
             { partition: 1, offset: :latest }
-          ]
+          ] }
         ).wait(max_wait_timeout_ms: 15_000)
 
         expect(report.offsets.length).to eq(2)
@@ -478,9 +474,7 @@ RSpec.describe Rdkafka::Admin do
 
       it "returns offsets with read_committed isolation level" do
         report = admin.list_offsets(
-          topic => [
-            { partition: 0, offset: :latest }
-          ],
+          { topic => [{ partition: 0, offset: :latest }] },
           isolation_level: Rdkafka::Bindings::RD_KAFKA_ISOLATION_LEVEL_READ_COMMITTED
         ).wait(max_wait_timeout_ms: 15_000)
 
@@ -495,9 +489,7 @@ RSpec.describe Rdkafka::Admin do
       it "returns offsets for a given timestamp" do
         # Use a timestamp of 0 (epoch) to get earliest messages
         report = admin.list_offsets(
-          topic => [
-            { partition: 0, offset: 0 }
-          ]
+          { topic => [{ partition: 0, offset: 0 }] }
         ).wait(max_wait_timeout_ms: 15_000)
 
         expect(report.offsets.length).to eq(1)
@@ -511,7 +503,7 @@ RSpec.describe Rdkafka::Admin do
       it "raises ClosedAdminError" do
         admin.close
         expect {
-          admin.list_offsets("topic" => [{ partition: 0, offset: :earliest }])
+          admin.list_offsets({ "topic" => [{ partition: 0, offset: :earliest }] })
         }.to raise_error(Rdkafka::ClosedAdminError)
       end
     end
@@ -524,7 +516,7 @@ RSpec.describe Rdkafka::Admin do
 
         it "raises an exception" do
           expect {
-            admin.list_offsets("topic" => [{ partition: 0, offset: :earliest }])
+            admin.list_offsets({ "topic" => [{ partition: 0, offset: :earliest }] })
           }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
         end
       end
@@ -536,7 +528,7 @@ RSpec.describe Rdkafka::Admin do
 
         it "raises an exception" do
           expect {
-            admin.list_offsets("topic" => [{ partition: 0, offset: :earliest }])
+            admin.list_offsets({ "topic" => [{ partition: 0, offset: :earliest }] })
           }.to raise_error RuntimeError, /oops/
         end
       end
@@ -545,7 +537,7 @@ RSpec.describe Rdkafka::Admin do
     context "with invalid offset specification" do
       it "raises ArgumentError for unknown symbol" do
         expect {
-          admin.list_offsets("topic" => [{ partition: 0, offset: :unknown }])
+          admin.list_offsets({ "topic" => [{ partition: 0, offset: :unknown }] })
         }.to raise_error(ArgumentError, /Unknown offset specification/)
       end
     end

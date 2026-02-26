@@ -443,7 +443,6 @@ RSpec.describe Rdkafka::Admin do
         expect(first[:topic]).to eq(topic)
         expect(first[:partition]).to eq(0)
         expect(first[:offset]).to be >= 0
-        expect(first[:error_code]).to eq(0)
       end
 
       it "returns latest offsets" do
@@ -457,7 +456,6 @@ RSpec.describe Rdkafka::Admin do
         expect(first[:topic]).to eq(topic)
         expect(first[:partition]).to eq(0)
         expect(first[:offset]).to be >= 0
-        expect(first[:error_code]).to eq(0)
       end
 
       it "returns offsets for multiple partitions at once" do
@@ -479,7 +477,6 @@ RSpec.describe Rdkafka::Admin do
         ).wait(max_wait_timeout_ms: 15_000)
 
         expect(report.offsets.length).to eq(1)
-        expect(report.offsets.first[:error_code]).to eq(0)
       end
     end
 

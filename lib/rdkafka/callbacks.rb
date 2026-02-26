@@ -194,9 +194,9 @@ module Rdkafka
 
         if @result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
           list_offsets_result = Rdkafka::Bindings.rd_kafka_event_ListOffsets_result(event_ptr)
-          pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+          pointer_to_size_t = FFI::MemoryPointer.new(:size_t)
           @result_infos = Rdkafka::Bindings.rd_kafka_ListOffsets_result_infos(list_offsets_result, pointer_to_size_t)
-          @result_count = pointer_to_size_t.read_int
+          @result_count = pointer_to_size_t.read(:size_t)
         end
       end
     end

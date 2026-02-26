@@ -16,7 +16,7 @@ RSpec.describe Rdkafka::Admin::ListOffsetsHandle do
   describe "#wait" do
     let(:pending_handle) { true }
 
-    it "waits until the timeout and then raise an error" do
+    it "waits until the timeout and then raises an error" do
       expect {
         subject.wait(max_wait_timeout_ms: 100)
       }.to raise_error Rdkafka::Admin::ListOffsetsHandle::WaitTimeoutError, /list offsets/

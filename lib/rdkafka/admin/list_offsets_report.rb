@@ -11,7 +11,7 @@ module Rdkafka
       def initialize(result_infos:, result_count:)
         @offsets = []
 
-        return if result_infos == FFI::Pointer::NULL
+        return if result_infos.null?
 
         result_infos.read_array_of_pointer(result_count).each do |result_info_ptr|
           tp_ptr = Bindings.rd_kafka_ListOffsetsResultInfo_topic_partition(result_info_ptr)

@@ -182,7 +182,6 @@ RSpec.describe Rdkafka::Bindings do
         Rdkafka::Bindings::ErrorCallback.call(nil, 8, "Broker not available", nil)
         expect($received_error.instance_name).to be_nil
       end
-
     end
 
     context "with an error callback and a real client" do

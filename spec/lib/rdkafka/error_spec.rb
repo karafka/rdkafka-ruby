@@ -15,6 +15,14 @@ RSpec.describe Rdkafka::RdkafkaError do
     expect(described_class.new(10, broker_message: "broker message").broker_message).to eq "broker message"
   end
 
+  it "creates an error with an instance name" do
+    expect(described_class.new(10, instance_name: "rdkafka#producer-1").instance_name).to eq "rdkafka#producer-1"
+  end
+
+  it "defaults instance_name to nil" do
+    expect(described_class.new(10).instance_name).to be_nil
+  end
+
   describe "#code" do
     it "handles an invalid response" do
       expect(described_class.new(933975).code).to eq :err_933975?

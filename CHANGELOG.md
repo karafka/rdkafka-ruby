@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.25.2 (2026-02-27)
+- [Feature] Extend `Rdkafka::RdkafkaError` with `instance_name` attribute containing the `rd_kafka_name` for tying errors back to specific native Kafka instances (#181).
+
 ## 0.25.1 (2026-02-26)
 - [Feature] Support `rd_kafka_ListOffsets` admin API for querying partition offsets by specification (earliest, latest, max_timestamp, or by timestamp) without requiring a consumer group (#613).
 - [Enhancement] Use native ARM64 runners instead of QEMU emulation for Alpine musl aarch64 builds, improving build performance and reliability.

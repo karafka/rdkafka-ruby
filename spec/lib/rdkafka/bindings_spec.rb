@@ -177,6 +177,11 @@ RSpec.describe Rdkafka::Bindings do
         expect($received_error.code).to eq(:broker_not_available)
         expect($received_error.broker_message).to eq("Broker not available")
       end
+
+      it "sets instance_name to nil when client_ptr is null" do
+        Rdkafka::Bindings::ErrorCallback.call(nil, 8, "Broker not available", nil)
+        expect($received_error.instance_name).to be_nil
+      end
     end
   end
 

@@ -321,9 +321,10 @@ module Rdkafka
 
     ErrorCallback = FFI::Function.new(
       :void, [:pointer, :int, :string, :pointer]
-    ) do |_client_prr, err_code, reason, _opaque|
+    ) do |client_ptr, err_code, reason, _opaque|
       if Rdkafka::Config.error_callback
-        error = Rdkafka::RdkafkaError.new(err_code, broker_message: reason)
+        name = client_ptr.null? ? nil : Rdkafka::Bindings.rd_kafka_name(client_ptr)
+        error = Rdkafka::RdkafkaError.new(err_code, broker_message: reason, instance_name: name)
         error.set_backtrace(caller)
         Rdkafka::Config.error_callback.call(error)
       end

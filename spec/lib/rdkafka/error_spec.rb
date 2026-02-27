@@ -49,6 +49,14 @@ RSpec.describe Rdkafka::RdkafkaError do
     it "adds the message prefix if present" do
       expect(described_class.new(10, "Error explanation").to_s).to eq "Error explanation - Broker: Message size too large (msg_size_too_large)"
     end
+
+    it "adds the instance name if present" do
+      expect(described_class.new(10, instance_name: "rdkafka#producer-1").to_s).to eq "Broker: Message size too large (msg_size_too_large) [rdkafka#producer-1]"
+    end
+
+    it "adds both message prefix and instance name if present" do
+      expect(described_class.new(10, "Error explanation", instance_name: "rdkafka#producer-1").to_s).to eq "Error explanation - Broker: Message size too large (msg_size_too_large) [rdkafka#producer-1]"
+    end
   end
 
   describe "#message" do
@@ -62,6 +70,10 @@ RSpec.describe Rdkafka::RdkafkaError do
 
     it "adds the message prefix if present" do
       expect(described_class.new(10, "Error explanation").message).to eq "Error explanation - Broker: Message size too large (msg_size_too_large)"
+    end
+
+    it "adds the instance name if present" do
+      expect(described_class.new(10, instance_name: "rdkafka#producer-1").message).to eq "Broker: Message size too large (msg_size_too_large) [rdkafka#producer-1]"
     end
   end
 
@@ -92,6 +104,18 @@ RSpec.describe Rdkafka::RdkafkaError do
 
     it "does not equal another error with no message" do
       expect(subject).not_to eq described_class.new(10)
+    end
+
+    it "does not equal another error with a different instance name" do
+      error_a = described_class.new(10, instance_name: "rdkafka#producer-1")
+      error_b = described_class.new(10, instance_name: "rdkafka#producer-2")
+      expect(error_a).not_to eq error_b
+    end
+
+    it "equals another error with the same instance name" do
+      error_a = described_class.new(10, instance_name: "rdkafka#producer-1")
+      error_b = described_class.new(10, instance_name: "rdkafka#producer-1")
+      expect(error_a).to eq error_b
     end
   end
 end

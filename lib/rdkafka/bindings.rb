@@ -323,8 +323,8 @@ module Rdkafka
       :void, [:pointer, :int, :string, :pointer]
     ) do |client_ptr, err_code, reason, _opaque|
       if Rdkafka::Config.error_callback
-        name = client_ptr.null? ? nil : Rdkafka::Bindings.rd_kafka_name(client_ptr)
-        error = Rdkafka::RdkafkaError.new(err_code, broker_message: reason, instance_name: name)
+        instance_name = client_ptr.null? ? nil : Rdkafka::Bindings.rd_kafka_name(client_ptr)
+        error = Rdkafka::RdkafkaError.new(err_code, broker_message: reason, instance_name: instance_name)
         error.set_backtrace(caller)
         Rdkafka::Config.error_callback.call(error)
       end

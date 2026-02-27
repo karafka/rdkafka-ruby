@@ -54,7 +54,12 @@ module Rdkafka
       else
         ""
       end
-      "#{message_prefix_part}#{Rdkafka::Bindings.rd_kafka_err2str(@rdkafka_response)} (#{code})"
+      instance_name_part = if instance_name
+        " [#{instance_name}]"
+      else
+        ""
+      end
+      "#{message_prefix_part}#{Rdkafka::Bindings.rd_kafka_err2str(@rdkafka_response)} (#{code})#{instance_name_part}"
     end
 
     # Whether this error indicates the partition is EOF.

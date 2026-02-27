@@ -182,6 +182,32 @@ RSpec.describe Rdkafka::Bindings do
         Rdkafka::Bindings::ErrorCallback.call(nil, 8, "Broker not available", nil)
         expect($received_error.instance_name).to be_nil
       end
+
+    end
+
+    context "with an error callback and a real client" do
+      it "sets instance_name from a real client that triggers an error" do
+        received_errors = []
+        Rdkafka::Config.error_callback = lambda do |error|
+          received_errors << error
+        end
+
+        # Create a producer pointing to a non-existent broker to trigger error callbacks
+        config = Rdkafka::Config.new(
+          "bootstrap.servers": "127.0.0.1:19999",
+          "statistics.interval.ms": 0
+        )
+        producer = config.producer
+
+        # Wait for librdkafka to attempt connection and fire error callbacks
+        sleep(2)
+
+        producer.close
+
+        errors_with_name = received_errors.select { |e| e.instance_name }
+        expect(errors_with_name).not_to be_empty
+        expect(errors_with_name.first.instance_name).to include("rdkafka#producer-")
+      end
     end
   end
 

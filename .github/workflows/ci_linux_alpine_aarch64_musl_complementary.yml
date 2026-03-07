@@ -47,7 +47,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/ci_linux_alpine_aarch64_musl_complementary.yml'
-      - 'spec/integrations/**'
+      - 'test/integrations/**'
     branches: [ master ]
   push:
     branches:
@@ -153,7 +153,7 @@ jobs:
               openssl version && \
               apk list --installed | grep -E "(openssl|cyrus-sasl)" && \
               echo "=== Running SSL Specs (Compiled) ===" && \
-              bundle exec ruby -S rspec'
+              bundle exec rake test'
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings
@@ -179,7 +179,7 @@ jobs:
               openssl version && \
               apk list --installed | grep -E "(openssl|cyrus-sasl|zstd|zlib)" && \
               echo "=== Running Integration Specs (Compiled) ===" && \
-              for file in $(ls spec/integrations/*_spec.rb); do \
+              for file in $(ls test/integrations/*_spec.rb); do \
                 echo "Running $file with Ruby ${{ matrix.ruby }} on Alpine ${{ matrix.alpine_version }} ARM64"; \
                 bundle exec ruby "$file" || exit 1; \
               done'
@@ -239,7 +239,7 @@ jobs:
               git config --global --add safe.directory /workspace && \
               bundle config set --local path vendor/bundle && bundle install && \
               apk list --installed | grep -E "(openssl|cyrus-sasl)" && \
-              bundle exec ruby -S rspec'
+              bundle exec rake test'
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings
@@ -266,7 +266,7 @@ jobs:
               bundle install && \
               apk list --installed | grep -E "(openssl|cyrus-sasl|zstd|zlib)" && \
               echo "=== Running Integration Specs (Precompiled) ===" && \
-              for file in $(ls spec/integrations/*_spec.rb); do \
+              for file in $(ls test/integrations/*_spec.rb); do \
                 echo "Running $file with Ruby ${{ matrix.ruby }} (precompiled ARM64)"; \
                 bundle exec ruby "$file" || exit 1; \
               done'

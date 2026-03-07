@@ -132,7 +132,7 @@ jobs:
           GITHUB_COVERAGE: ${{matrix.coverage}}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
         run: |
-          bundle exec rspec
+          bundle exec rake test
 
   build_precompiled:
     timeout-minutes: 45
@@ -278,7 +278,7 @@ jobs:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           RDKAFKA_PRECOMPILED: "true"
         run: |
-          bundle exec rspec
+          bundle exec rake test
 
   ci-success:
     name: CI macOS ARM64 Success

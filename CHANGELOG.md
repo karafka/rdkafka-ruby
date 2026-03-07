@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.25.3 (Unreleased)
+- [Enhancement] Migrate test suite from RSpec to Minitest to reduce supply chain scope and align with broader Ruby ecosystem conventions.
+
 ## 0.25.2 (2026-02-27)
 - [Feature] Extend `Rdkafka::RdkafkaError` with `instance_name` attribute containing the `rd_kafka_name` for tying errors back to specific native Kafka instances (#181).
 

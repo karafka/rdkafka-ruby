@@ -140,7 +140,7 @@ jobs:
               git config --global --add safe.directory /workspace && \
               bundle config set --local path vendor/bundle && \
               bundle install && \
-              bundle exec rspec'
+              bundle exec rake test'
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings
@@ -263,7 +263,7 @@ jobs:
               apt-get install -y git && \
               git config --global --add safe.directory /workspace && \
               bundle config set --local path vendor/bundle && \
-              bundle install && bundle exec rspec'
+              bundle install && bundle exec rake test'
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings

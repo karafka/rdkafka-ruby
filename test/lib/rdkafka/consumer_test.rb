@@ -29,11 +29,15 @@ class ConsumerTest < Minitest::Test
     consumer = rdkafka_consumer_config.consumer(native_kafka_auto_start: false)
     consumer.start
     consumer.close
+  ensure
+    consumer&.close
   end
 
   def test_consumer_without_auto_start_can_close_without_starting
     consumer = rdkafka_consumer_config.consumer(native_kafka_auto_start: false)
     consumer.close
+  ensure
+    consumer&.close
   end
 
   # -- #subscribe, #unsubscribe and #subscription --
@@ -152,7 +156,7 @@ class ConsumerTest < Minitest::Test
     records = @consumer.poll(timeout)
 
     refute_nil records
-
+  ensure
     @consumer.unsubscribe
   end
 
@@ -1326,7 +1330,7 @@ class ConsumerTest < Minitest::Test
     tpl_response = @consumer.offsets_for_times(tpl)
 
     assert_equal message.offset, tpl_response.to_h[TestTopics.consume_test_topic][0].offset
-
+  ensure
     @consumer.unsubscribe
   end
 

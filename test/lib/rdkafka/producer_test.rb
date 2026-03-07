@@ -655,9 +655,10 @@ class ProducerTest < Minitest::Test
 
   def test_produce_raises_after_close
     producer.close
-    assert_raises(Rdkafka::ClosedProducerError) do
+    error = assert_raises(Rdkafka::ClosedProducerError) do
       producer.produce(topic: nil)
     end
+    assert_match(/produce/, error.message)
   end
 
   def test_partition_count_raises_after_close
@@ -747,9 +748,21 @@ class ProducerTest < Minitest::Test
   end
 
   def test_metadata_fetch_recovery_after_first_failure
-    # This test verifies that partition_count recovers after a transient metadata failure.
-    # The actual retry logic is internal, so we just verify the final result works.
-    assert_equal 1, producer.partition_count(TestTopics.example_topic)
+    call_count = 0
+    original_method = Rdkafka::Bindings.method(:rd_kafka_metadata)
+
+    fake_metadata = ->(*args) {
+      call_count += 1
+      if call_count == 1
+        -185
+      else
+        original_method.call(*args)
+      end
+    }
+
+    Rdkafka::Bindings.stub(:rd_kafka_metadata, fake_metadata) do
+      assert_equal 1, producer.partition_count(TestTopics.example_topic)
+    end
   end
 
   # -- #flush --
@@ -1561,9 +1574,10 @@ class ProducerTest < Minitest::Test
 
   def test_events_poll_nb_each_raises_closed_producer_error
     producer.close
-    assert_raises(Rdkafka::ClosedProducerError) do
+    error = assert_raises(Rdkafka::ClosedProducerError) do
       producer.events_poll_nb_each { |_| }
     end
+    assert_match(/events_poll_nb_each/, error.message)
   end
 
   # -- file descriptor access for fiber scheduler integration --

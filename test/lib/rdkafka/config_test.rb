@@ -198,6 +198,14 @@ class ConfigTest < Minitest::Test
     producer.close
   end
 
+  def test_allows_symbol_partitioner_key
+    config = Rdkafka::Config.new(partitioner: "murmur2")
+    producer = config.producer
+
+    assert_kind_of Rdkafka::Producer, producer
+    producer.close
+  end
+
   def test_allows_zstd_compression
     config = Rdkafka::Config.new("compression.codec" => "zstd")
     begin

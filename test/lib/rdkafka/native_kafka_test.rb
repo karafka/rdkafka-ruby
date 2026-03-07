@@ -14,59 +14,65 @@ class NativeKafkaTest < Minitest::Test
     @thread.expect(:abort_on_exception=, nil, [true])
   end
 
+  # Must use a callable to stub Thread.new, otherwise minitest-mock's stub
+  # will invoke the block passed to Thread.new (the polling loop), causing hangs.
   def new_client
     Rdkafka::Bindings.stub(:rd_kafka_name, "producer-1") do
-      Thread.stub(:new, @thread) do
+      Thread.stub(:new, ->(*_args, &_blk) { @thread }) do
         Rdkafka::NativeKafka.new(@native, run_polling_thread: true, opaque: @opaque)
       end
     end
   end
 
   def teardown
-    @client&.close
+    if @client && !@client.closed?
+      # Add close-time expectations before calling close
+      @thread.expect(:[]=, nil, [:closing, true])
+      @thread.expect(:join, nil)
+      @client.close
+    end
     super
   end
 
   def test_sets_thread_name
-    thread = Minitest::Mock.new
-    thread.expect(:name=, nil, ["rdkafka.native_kafka#producer-1"])
-    thread.expect(:[]=, nil, [:closing, false])
-    thread.expect(:abort_on_exception=, nil, [true])
+    @client = new_client
 
-    Rdkafka::Bindings.stub(:rd_kafka_name, "producer-1") do
-      Thread.stub(:new, thread) do
-        @client = Rdkafka::NativeKafka.new(@native, run_polling_thread: true, opaque: @opaque)
-      end
-    end
-    thread.verify
+    @thread.verify
   end
 
   def test_sets_thread_abort_on_exception
     @client = new_client
-    # Verified through mock expectations in setup
+
+    @thread.verify
   end
 
   def test_sets_thread_closing_flag_to_false
     @client = new_client
-    # Verified through mock expectations in setup
+
+    @thread.verify
   end
 
   def test_polling_thread_is_created
     thread_created = false
+    custom_thread = nil
     Rdkafka::Bindings.stub(:rd_kafka_name, "producer-1") do
-      Thread.stub(:new, ->(*args, &block) {
+      Thread.stub(:new, ->(*_args, &_blk) {
         thread_created = true
-        t = Minitest::Mock.new
-        t.expect(:name=, nil, [String])
-        t.expect(:[]=, nil, [:closing, false])
-        t.expect(:abort_on_exception=, nil, [true])
-        t
+        custom_thread = Minitest::Mock.new
+        custom_thread.expect(:name=, nil, [String])
+        custom_thread.expect(:[]=, nil, [:closing, false])
+        custom_thread.expect(:abort_on_exception=, nil, [true])
+        custom_thread
       }) do
         @client = Rdkafka::NativeKafka.new(@native, run_polling_thread: true, opaque: @opaque)
       end
     end
 
     assert thread_created
+    # Close explicitly with the custom thread mock
+    custom_thread.expect(:[]=, nil, [:closing, true])
+    custom_thread.expect(:join, nil)
+    @client.close
   end
 
   def test_exposes_inner_client
@@ -85,17 +91,35 @@ class NativeKafkaTest < Minitest::Test
 
   def test_close_destroys_native_client
     @client = new_client
-    @thread.expect(:join, nil)
     @thread.expect(:[]=, nil, [:closing, true])
+    @thread.expect(:join, nil)
     @client.close
 
     assert_predicate @client, :closed?
   end
 
+  def test_close_indicates_closing_to_polling_thread
+    @client = new_client
+    @thread.expect(:[]=, nil, [:closing, true])
+    @thread.expect(:join, nil)
+    @client.close
+
+    @thread.verify
+  end
+
+  def test_close_joins_polling_thread
+    @client = new_client
+    @thread.expect(:[]=, nil, [:closing, true])
+    @thread.expect(:join, nil)
+    @client.close
+
+    @thread.verify
+  end
+
   def test_closed_after_close
     @client = new_client
-    @thread.expect(:join, nil)
     @thread.expect(:[]=, nil, [:closing, true])
+    @thread.expect(:join, nil)
     @client.close
 
     assert_predicate @client, :closed?
@@ -103,8 +127,8 @@ class NativeKafkaTest < Minitest::Test
 
   def test_double_close_is_safe
     @client = new_client
-    @thread.expect(:join, nil)
     @thread.expect(:[]=, nil, [:closing, true])
+    @thread.expect(:join, nil)
     @client.close
     # Second close should be safe (no-op)
     @client.close
@@ -116,8 +140,8 @@ class NativeKafkaTest < Minitest::Test
     @client = new_client
 
     refute_predicate @client, :closed?
-    @thread.expect(:join, nil)
     @thread.expect(:[]=, nil, [:closing, true])
+    @thread.expect(:join, nil)
     @client.finalizer.call("some-ignored-object-id")
 
     assert_predicate @client, :closed?
@@ -157,6 +181,7 @@ class NativeKafkaFdApiTest < Minitest::Test
   def test_raises_closed_inner_error_for_main_queue_when_closed
     @client.close
     signal_r, signal_w = IO.pipe
+
     assert_raises(Rdkafka::ClosedInnerError) do
       @client.enable_main_queue_io_events(signal_w.fileno)
     end
@@ -167,6 +192,7 @@ class NativeKafkaFdApiTest < Minitest::Test
   def test_raises_closed_inner_error_for_background_queue_when_closed
     @client.close
     signal_r, signal_w = IO.pipe
+
     assert_raises(Rdkafka::ClosedInnerError) do
       @client.enable_background_queue_io_events(signal_w.fileno)
     end

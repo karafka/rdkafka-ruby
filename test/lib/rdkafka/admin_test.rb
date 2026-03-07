@@ -193,9 +193,10 @@ class AdminTest < Minitest::Test
     sleep(1)
 
     resources = [{ resource_type: 2, resource_name: SecureRandom.uuid }]
-    assert_raises(Rdkafka::RdkafkaError) {
+    error = assert_raises(Rdkafka::RdkafkaError) {
       admin.describe_configs(resources).wait.resources
     }
+    assert_match(/unknown_topic_or_part/, error.message)
   end
 
   def test_describe_configs_existing_and_non_existing_topics
@@ -206,9 +207,10 @@ class AdminTest < Minitest::Test
       { resource_type: 2, resource_name: topic_name },
       { resource_type: 2, resource_name: SecureRandom.uuid }
     ]
-    assert_raises(Rdkafka::RdkafkaError) {
+    error = assert_raises(Rdkafka::RdkafkaError) {
       admin.describe_configs(resources).wait.resources
     }
+    assert_match(/unknown_topic_or_part/, error.message)
   end
 
   def test_describe_configs_multiple_existing_topics
@@ -233,9 +235,10 @@ class AdminTest < Minitest::Test
     sleep(1)
 
     resources = [{ resource_type: 0, resource_name: SecureRandom.uuid }]
-    assert_raises(Rdkafka::RdkafkaError) {
+    error = assert_raises(Rdkafka::RdkafkaError) {
       admin.describe_configs(resources).wait.resources
     }
+    assert_match(/invalid_request/, error.message)
   end
 
   def test_describe_configs_invalid_broker
@@ -243,9 +246,10 @@ class AdminTest < Minitest::Test
     sleep(1)
 
     resources = [{ resource_type: 4, resource_name: "non-existing" }]
-    assert_raises(Rdkafka::RdkafkaError) {
+    error = assert_raises(Rdkafka::RdkafkaError) {
       admin.describe_configs(resources).wait.resources
     }
+    assert_match(/invalid_arg/, error.message)
   end
 
   def test_describe_configs_valid_broker

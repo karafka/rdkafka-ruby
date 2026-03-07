@@ -4,6 +4,11 @@ require "test_helper"
 require "zlib"
 
 class BindingsTest < Minitest::Test
+  def setup
+    super
+    Rdkafka::Config.oauthbearer_token_refresh_callback = nil
+  end
+
   def test_loads_librdkafka
     assert_includes Rdkafka::Bindings.ffi_libraries.map(&:name).first, "librdkafka"
   end

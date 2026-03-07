@@ -101,7 +101,7 @@ jobs:
               bundle install && \
               cd ext && bundle exec rake && \
               cd .. && \
-              bundle exec ruby -S rspec'
+              bundle exec rake test'
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings
@@ -194,7 +194,7 @@ jobs:
             sh -c 'apk add --no-cache git build-base linux-headers bash && \
               git config --global --add safe.directory /workspace && \
               bundle config set --local path vendor/bundle && \
-              bundle install && bundle exec ruby -S rspec'
+              bundle install && bundle exec rake test'
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings

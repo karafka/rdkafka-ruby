@@ -1,17 +1,14 @@
 # frozen_string_literal: true
 
 plugins:
-  - rubocop-capybara
-  - rubocop-factory_bot
   - rubocop-performance
-  - rubocop-rspec
-  - rubocop-rspec_rails
+  - rubocop-minitest
   - rubocop-thread_safety
 
 inherit_gem:
   standard: config/base.yml
   standard-performance: config/base.yml
-  standard-rspec: config/base.yml
+  standard-minitest: config/base.yml
 
 AllCops:
   NewCops: enable
@@ -22,16 +19,6 @@ AllCops:
     - "**/Gemfile"
     - "**/Rakefile"
     - Gemfile.lint
-
-# Disabled departments - not a Rails project, no Capybara/FactoryBot
-Capybara:
-  Enabled: false
-
-FactoryBot:
-  Enabled: false
-
-RSpecRails:
-  Enabled: false
 
 # Layout
 Layout/LineLength:
@@ -74,76 +61,6 @@ Security/Open:
 Style/GlobalVars:
   Enabled: false
 
-# RSpec
-RSpec/BeforeAfterAll:
-  Enabled: false
-
-RSpec/Be:
-  Enabled: false
-
-RSpec/ContextWording:
-  Enabled: false
-
-RSpec/ExampleLength:
-  Enabled: false
-
-RSpec/ExpectActual:
-  Enabled: false
-
-RSpec/ExpectInHook:
-  Enabled: false
-
-RSpec/IndexedLet:
-  Enabled: false
-
-RSpec/InstanceVariable:
-  Enabled: false
-
-RSpec/IteratedExpectation:
-  Enabled: false
-
-RSpec/LeakyConstantDeclaration:
-  Enabled: false
-
-RSpec/MessageSpies:
-  Enabled: false
-
-RSpec/MultipleDescribes:
-  Enabled: false
-
-RSpec/MultipleExpectations:
-  Enabled: false
-
-RSpec/MultipleMemoizedHelpers:
-  Max: 25
-
-RSpec/NamedSubject:
-  Enabled: false
-
-RSpec/NestedGroups:
-  Max: 5
-
-RSpec/NoExpectationExample:
-  Enabled: false
-
-RSpec/OverwritingSetup:
-  Enabled: false
-
-RSpec/RepeatedDescription:
-  Enabled: false
-
-RSpec/SpecFilePathFormat:
-  Enabled: false
-
-RSpec/StubbedMock:
-  Enabled: false
-
-RSpec/SubjectStub:
-  Enabled: false
-
-RSpec/VerifiedDoubles:
-  Enabled: false
-
 # ThreadSafety
 ThreadSafety/ClassAndModuleAttributes:
   Enabled: false
@@ -152,4 +69,14 @@ ThreadSafety/ClassInstanceVariable:
   Enabled: false
 
 ThreadSafety/NewThread:
+  Enabled: false
+
+# Minitest
+Minitest/MultipleAssertions:
+  Enabled: false
+
+Minitest/AssertionInLifecycleHook:
+  Enabled: false
+
+Minitest/AssertRaisesCompoundBody:
   Enabled: false

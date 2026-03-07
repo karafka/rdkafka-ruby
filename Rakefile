@@ -1,7 +1,16 @@
 # frozen_string_literal: true
 
 require "bundler/gem_tasks"
+require "minitest/test_task"
 require "./lib/rdkafka"
+
+Minitest::TestTask.create(:test) do |t|
+  t.libs << "test"
+  t.libs << "lib"
+  t.test_globs = ["test/lib/**/*_test.rb"]
+end
+
+task default: :test
 
 desc "Generate some message traffic"
 task :produce_messages do

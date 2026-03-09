@@ -1021,6 +1021,10 @@ class ConsumerTest < Minitest::Test
   def test_lag_returns_nil_if_there_are_no_messages_on_the_topic
     consumer = rdkafka_consumer_config("enable.partition.eof": true).consumer
 
+    # Subscribe to establish the group coordinator before calling committed
+    consumer.subscribe(TestTopics.consume_test_topic)
+    wait_for_assignment(consumer)
+
     list = consumer.committed(Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
       l.add_topic(TestTopics.consume_test_topic, 0..2)
     end)

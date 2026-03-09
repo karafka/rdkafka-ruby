@@ -1264,7 +1264,7 @@ class ConsumerTest < Minitest::Test
     # should break the each loop.
     @consumer.each_with_index do |message, i|
       assert_kind_of Rdkafka::Consumer::Message, message
-      break if i == 10
+      break if i == 9
     end
     @consumer.close
   end

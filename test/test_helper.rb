@@ -204,7 +204,7 @@ rescue Rdkafka::RdkafkaError => e
   retry
 end
 
-def notify_listener(listener, &block)
+def notify_listener(consumer, listener, &block)
   # 1. subscribe and poll
   consumer.subscribe(TestTopics.consume_test_topic)
   wait_for_assignment(consumer)

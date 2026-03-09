@@ -1449,7 +1449,7 @@ class ConsumerTest < Minitest::Test
     @consumer.close
     @consumer = config.consumer
 
-    notify_listener(listener)
+    notify_listener(@consumer, listener)
 
     assert_equal [
       [:assign, TestTopics.consume_test_topic, 0, 1, 2],
@@ -1475,7 +1475,7 @@ class ConsumerTest < Minitest::Test
     @consumer.close
     @consumer = config.consumer
 
-    notify_listener(listener)
+    notify_listener(@consumer, listener)
 
     assert_equal [:assigned, :revoked], listener.queue
   end
@@ -1586,7 +1586,7 @@ class ConsumerTest < Minitest::Test
     @consumer.close
     @consumer = config.consumer
 
-    notify_listener(listener) do
+    notify_listener(@consumer, listener) do
       handles = []
       10.times do
         handles << @producer.produce(

@@ -806,9 +806,7 @@ class ConsumerTest < Minitest::Test
       consumer: consumer
     )
 
-    # Setup committed state
-    consumer.subscribe(TestTopics.consume_test_topic)
-    wait_for_assignment(consumer)
+    # Consumer is already subscribed and assigned from wait_for_message
     list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
       l.add_topic_and_partitions_with_offsets(TestTopics.consume_test_topic, 0 => 1, 1 => 1, 2 => 1)
     end
@@ -840,9 +838,7 @@ class ConsumerTest < Minitest::Test
       consumer: consumer
     )
 
-    # Setup committed state
-    consumer.subscribe(TestTopics.consume_test_topic)
-    wait_for_assignment(consumer)
+    # Consumer is already subscribed and assigned from wait_for_message
     list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
       l.add_topic_and_partitions_with_offsets(TestTopics.consume_test_topic, 0 => 1, 1 => 1, 2 => 1)
     end
@@ -1337,6 +1333,10 @@ class ConsumerTest < Minitest::Test
   # -- #events_poll --
 
   def test_events_poll_propagates_stats_on_events_poll_and_not_poll
+    # Close the producer from setup so its background stats don't interfere
+    @producer.close
+    @producer = nil
+
     stats = []
     config = rdkafka_consumer_config("statistics.interval.ms": 500)
     config.consumer_poll_set = false
@@ -1392,6 +1392,10 @@ class ConsumerTest < Minitest::Test
   end
 
   def test_events_poll_nb_processes_events_without_releasing_gvl
+    # Close the producer from setup so its background stats don't interfere
+    @producer.close
+    @producer = nil
+
     stats = []
     config = rdkafka_consumer_config("statistics.interval.ms": 500)
     config.consumer_poll_set = false

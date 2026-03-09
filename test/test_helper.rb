@@ -249,7 +249,7 @@ def ensure_topics_created
     return if $topics_initialized
 
     admin = rdkafka_config.admin
-    {
+    topics = {
       TestTopics.consume_test_topic => 3,
       TestTopics.empty_test_topic => 3,
       TestTopics.load_test_topic => 3,
@@ -258,7 +258,8 @@ def ensure_topics_created
       TestTopics.watermarks_test_topic => 3,
       TestTopics.partitioner_test_topic => 25,
       TestTopics.example_topic => 1
-    }.each do |topic, partitions|
+    }
+    topics.each do |topic, partitions|
       create_topic_handle = admin.create_topic(topic, partitions, 1)
       begin
         create_topic_handle.wait(max_wait_timeout_ms: 1_000)
@@ -266,6 +267,8 @@ def ensure_topics_created
         raise unless ex.message.match?(/topic_already_exists/)
       end
     end
+    # Wait for all topics to be visible in metadata before proceeding
+    topics.each_key { |topic| wait_for_topic(admin, topic) }
     admin.close
     $topics_initialized = true
   end

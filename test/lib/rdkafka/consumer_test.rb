@@ -1812,15 +1812,21 @@ class ConsumerTest < Minitest::Test
       first_message = @consumer.poll(100)
     end
 
-    # Now test that :stop works - we should get exactly one more message then stop
-    # (we already consumed one with blocking poll above)
+    # poll_nb_each is non-blocking, so we need messages in the local
+    # fetch buffer. Keep doing blocking polls until we confirm more
+    # messages are available, then put them back by seeking.
+    # Alternatively, just wait for the fetch buffer to fill.
     messages = []
-    @consumer.poll_nb_each do |message|
-      messages << message
-      :stop if messages.size >= 1
+    deadline = Time.now + 30
+    while Time.now < deadline && messages.empty?
+      @consumer.poll_nb_each do |message|
+        messages << message
+        :stop if messages.size >= 1
+      end
+      sleep 0.1 if messages.empty?
     end
 
-    # Should have stopped after exactly 1 message (we got 1 via blocking poll earlier)
+    # Should have stopped after exactly 1 message
     assert_equal 1, messages.size
   end
 

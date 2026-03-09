@@ -1594,24 +1594,27 @@ class ConsumerTest < Minitest::Test
     @consumer.close
     @consumer = config.consumer
 
-    notify_listener(@consumer, listener) do
-      handles = []
-      10.times do
-        handles << @producer.produce(
-          topic: TestTopics.consume_test_topic,
-          payload: "payload 1",
-          key: "key 1",
-          partition: 0
-        )
-      end
-      handles.each(&:wait)
+    # Produce messages before closing producer to avoid stats callback interference
+    handles = []
+    10.times do
+      handles << @producer.produce(
+        topic: TestTopics.consume_test_topic,
+        payload: "payload 1",
+        key: "key 1",
+        partition: 0
+      )
+    end
+    handles.each(&:wait)
+    @producer.close
+    @producer = nil
 
+    notify_listener(@consumer, listener) do
       @consumer.subscribe(TestTopics.consume_test_topic)
       # Check the first 10 messages. Then close the consumer, which
       # should break the each loop.
       @consumer.each_with_index do |message, i|
         assert_kind_of Rdkafka::Consumer::Message, message
-        break if i == 10
+        break if i == 9
       end
     end
 

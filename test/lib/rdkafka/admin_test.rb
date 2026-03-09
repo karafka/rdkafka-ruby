@@ -1156,13 +1156,21 @@ class AdminTest < Minitest::Test
   end
 
   def test_delete_group_with_non_existing_group
+    # Warm up the broker's group coordinator by briefly joining a consumer
+    # group. In RSpec, the "existing group" test always ran first (defined
+    # order) which did this implicitly.
+    warmup_consumer = rdkafka_consumer_config.consumer
+    warmup_consumer.subscribe(TestTopics.consume_test_topic)
+    wait_for_assignment(warmup_consumer)
+    warmup_consumer.close
+
     delete_group_handle = admin.delete_group(group_name)
 
     ex = assert_raises(Rdkafka::RdkafkaError) {
       delete_group_handle.wait(max_wait_timeout_ms: 15_000)
     }
     assert_kind_of Rdkafka::RdkafkaError, ex
-    assert_match(/Broker: The group id does not exist \(group_id_not_found\)/, ex.message)
+    assert_match(/group_id_not_found/, ex.message)
   end
 
   # create_partitions tests

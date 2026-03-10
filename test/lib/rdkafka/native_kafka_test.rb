@@ -1,17 +1,47 @@
 # frozen_string_literal: true
 
+# Simple thread double that records interactions without strict mock expectations.
+# This replaces RSpec's `double(Thread)` with `allow(thread).to receive(...)` permissive stubs.
+class ThreadDouble
+  attr_reader :name, :closing, :abort_on_exception
+
+  def initialize
+    @store = {}
+    @joined = false
+  end
+
+  def name=(val)
+    @name = val
+  end
+
+  def []=(key, val)
+    @store[key] = val
+  end
+
+  def [](key)
+    @store[key]
+  end
+
+  def abort_on_exception=(val)
+    @abort_on_exception = val
+  end
+
+  def join
+    @joined = true
+  end
+
+  def joined?
+    @joined
+  end
+end
+
 describe Rdkafka::NativeKafka do
   let(:config) { rdkafka_producer_config }
   let(:native) { config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer) }
   let(:opaque) { Rdkafka::Opaque.new }
-  let(:thread) { Minitest::Mock.new }
+  let(:thread) { ThreadDouble.new }
 
-  # Must use a callable to stub Thread.new, otherwise minitest-mock's stub
-  # will invoke the block passed to Thread.new (the polling loop), causing hangs.
   let(:client) {
-    thread.expect(:name=, nil, ["rdkafka.native_kafka#producer-1"])
-    thread.expect(:[]=, nil, [:closing, false])
-    thread.expect(:abort_on_exception=, nil, [true])
     Rdkafka::Bindings.stub(:rd_kafka_name, "producer-1") do
       Thread.stub(:new, ->(*_args, &_blk) { thread }) do
         Rdkafka::NativeKafka.new(native, run_polling_thread: true, opaque: opaque)
@@ -20,27 +50,25 @@ describe Rdkafka::NativeKafka do
   }
 
   after do
-    if defined?(@_client_closed) == nil && defined?(client) && !client.closed?
-      thread.expect(:[]=, nil, [:closing, true])
-      thread.expect(:join, nil)
-      client.close
+    unless defined?(@_client_closed)
+      client.close unless client.closed?
     end
   end
 
   describe "defaults" do
     it "sets the thread name" do
       client
-      thread.verify
+      assert_equal "rdkafka.native_kafka#producer-1", thread.name
     end
 
     it "sets the thread to abort on exception" do
       client
-      thread.verify
+      assert_equal true, thread.abort_on_exception
     end
 
     it "sets the thread closing flag to false" do
       client
-      thread.verify
+      assert_equal false, thread[:closing]
     end
   end
 
@@ -51,10 +79,7 @@ describe Rdkafka::NativeKafka do
       Rdkafka::Bindings.stub(:rd_kafka_name, "producer-1") do
         Thread.stub(:new, ->(*_args, &_blk) {
           thread_created = true
-          custom_thread = Minitest::Mock.new
-          custom_thread.expect(:name=, nil, [String])
-          custom_thread.expect(:[]=, nil, [:closing, false])
-          custom_thread.expect(:abort_on_exception=, nil, [true])
+          custom_thread = ThreadDouble.new
           custom_thread
         }) do
           @polling_client = Rdkafka::NativeKafka.new(native, run_polling_thread: true, opaque: opaque)
@@ -62,9 +87,6 @@ describe Rdkafka::NativeKafka do
       end
 
       assert thread_created
-      # Close explicitly with the custom thread mock
-      custom_thread.expect(:[]=, nil, [:closing, true])
-      custom_thread.expect(:join, nil)
       @polling_client.close
       @_client_closed = true
     end
@@ -83,8 +105,6 @@ describe Rdkafka::NativeKafka do
 
     describe "and attempt to close" do
       it "closes and unassigns the native client" do
-        thread.expect(:[]=, nil, [:closing, true])
-        thread.expect(:join, nil)
         client.close
         @_client_closed = true
 
@@ -92,29 +112,23 @@ describe Rdkafka::NativeKafka do
       end
 
       it "indicates to the polling thread that it is closing" do
-        thread.expect(:[]=, nil, [:closing, true])
-        thread.expect(:join, nil)
         client.close
         @_client_closed = true
 
-        thread.verify
+        assert_equal true, thread[:closing]
       end
 
       it "joins the polling thread" do
-        thread.expect(:[]=, nil, [:closing, true])
-        thread.expect(:join, nil)
         client.close
         @_client_closed = true
 
-        thread.verify
+        assert thread.joined?
       end
     end
   end
 
   describe "when client was already closed" do
     it "is closed" do
-      thread.expect(:[]=, nil, [:closing, true])
-      thread.expect(:join, nil)
       client.close
       @_client_closed = true
 
@@ -122,10 +136,7 @@ describe Rdkafka::NativeKafka do
     end
 
     it "double close is safe" do
-      thread.expect(:[]=, nil, [:closing, true])
-      thread.expect(:join, nil)
       client.close
-      # Second close should be safe (no-op)
       client.close
       @_client_closed = true
 
@@ -135,8 +146,6 @@ describe Rdkafka::NativeKafka do
 
   it "provides a finalizer that closes the native kafka client" do
     refute_predicate client, :closed?
-    thread.expect(:[]=, nil, [:closing, true])
-    thread.expect(:join, nil)
     client.finalizer.call("some-ignored-object-id")
     @_client_closed = true
 

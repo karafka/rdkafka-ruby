@@ -169,12 +169,7 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer:
       # Once assigned, seek directly to the target offset to avoid scanning
       # through all historical messages from earliest
       if !seeked && !consumer.assignment.empty?
-        tpl = Rdkafka::Consumer::TopicPartitionList.new
-        tpl.add_topic_and_partitions_with_offsets(
-          topic,
-          delivery_report.partition => delivery_report.offset
-        )
-        consumer.seek(tpl)
+        consumer.seek_by(topic, delivery_report.partition, delivery_report.offset)
         seeked = true
       end
 

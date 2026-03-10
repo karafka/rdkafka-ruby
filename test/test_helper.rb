@@ -14,11 +14,10 @@ Warning.process do |warning|
   raise "Warning in your code: #{warning}"
 end
 
-unless ENV["CI"] == "true"
-  require "simplecov"
-  SimpleCov.start do
-    add_filter "/test/"
-  end
+require "simplecov"
+SimpleCov.start do
+  add_filter "/test/"
+  enable_coverage :branch
 end
 
 require "minitest/autorun"

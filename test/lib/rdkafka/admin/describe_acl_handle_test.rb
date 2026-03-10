@@ -48,7 +48,7 @@ describe Rdkafka::Admin::DescribeAclHandle do
       assert_match(/describe acl/, error.message)
     end
 
-    context "when not pending anymore and no error" do
+    describe "when not pending anymore and no error" do
       let(:pending_handle) { false }
 
       it "returns a describe acl report" do

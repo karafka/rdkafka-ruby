@@ -23,7 +23,7 @@ describe Rdkafka::Producer::PartitionsCountCache do
       assert_kind_of Rdkafka::Producer::PartitionsCountCache, custom_ttl_cache
     end
 
-    context "backwards compatibility with ttl (seconds)" do
+    describe "backwards compatibility with ttl (seconds)" do
       it "works with old ttl parameter" do
         old_style_cache = Rdkafka::Producer::PartitionsCountCache.new(1)
 
@@ -76,7 +76,7 @@ describe Rdkafka::Producer::PartitionsCountCache do
   end
 
   describe "#get" do
-    context "when cache is empty" do
+    describe "when cache is empty" do
       it "yields to get the value and caches it" do
         block_called = false
         result = cache.get(topic) do
@@ -98,7 +98,7 @@ describe Rdkafka::Producer::PartitionsCountCache do
       end
     end
 
-    context "when cache has a value" do
+    describe "when cache has a value" do
       before do
         cache.get(topic) { partition_count }
       end
@@ -162,7 +162,7 @@ describe Rdkafka::Producer::PartitionsCountCache do
       end
     end
 
-    context "when new value is obtained" do
+    describe "when new value is obtained" do
       before do
         cache.get(topic) { partition_count }
       end
@@ -215,7 +215,7 @@ describe Rdkafka::Producer::PartitionsCountCache do
   end
 
   describe "#set" do
-    context "when cache is empty" do
+    describe "when cache is empty" do
       it "adds a new entry to the cache" do
         cache.set(topic, partition_count)
 
@@ -225,7 +225,7 @@ describe Rdkafka::Producer::PartitionsCountCache do
       end
     end
 
-    context "when cache already has a value" do
+    describe "when cache already has a value" do
       before do
         cache.set(topic, partition_count)
       end
@@ -261,7 +261,7 @@ describe Rdkafka::Producer::PartitionsCountCache do
       end
     end
 
-    context "with concurrent access" do
+    describe "with concurrent access" do
       it "correctly handles simultaneous updates to the same topic" do
         threads = []
 

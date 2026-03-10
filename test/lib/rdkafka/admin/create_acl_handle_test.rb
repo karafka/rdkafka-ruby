@@ -21,7 +21,7 @@ describe Rdkafka::Admin::CreateAclHandle do
       assert_match(/create acl/, error.message)
     end
 
-    context "when not pending anymore and no error" do
+    describe "when not pending anymore and no error" do
       let(:pending_handle) { false }
 
       it "returns a create acl report" do

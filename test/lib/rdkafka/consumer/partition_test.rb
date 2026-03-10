@@ -29,7 +29,7 @@ describe Rdkafka::Consumer::Partition do
       assert_equal "<Partition 1 offset=100>", subject.to_s
     end
 
-    context "without offset" do
+    describe "without offset" do
       let(:offset) { nil }
 
       it "returns a human readable representation" do
@@ -37,7 +37,7 @@ describe Rdkafka::Consumer::Partition do
       end
     end
 
-    context "with err code" do
+    describe "with err code" do
       let(:err) { 1 }
 
       it "returns a human readable representation" do

@@ -48,7 +48,7 @@ describe Rdkafka::Admin::DeleteAclHandle do
       assert_match(/delete acl/, error.message)
     end
 
-    context "when not pending anymore and no error" do
+    describe "when not pending anymore and no error" do
       let(:pending_handle) { false }
 
       it "returns a delete acl report" do

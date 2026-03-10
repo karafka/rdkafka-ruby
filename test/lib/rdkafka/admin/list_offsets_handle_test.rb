@@ -23,7 +23,7 @@ describe Rdkafka::Admin::ListOffsetsHandle do
       assert_match(/list offsets/, error.message)
     end
 
-    context "when not pending anymore and no error" do
+    describe "when not pending anymore and no error" do
       let(:pending_handle) { false }
 
       it "returns a list offsets report" do

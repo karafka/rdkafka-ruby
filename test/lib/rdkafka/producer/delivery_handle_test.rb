@@ -23,7 +23,7 @@ describe Rdkafka::Producer::DeliveryHandle do
       assert_match(/delivery/, error.message)
     end
 
-    context "when not pending anymore and no error" do
+    describe "when not pending anymore and no error" do
       let(:pending_handle) { false }
 
       it "returns a delivery report" do
@@ -47,7 +47,7 @@ describe Rdkafka::Producer::DeliveryHandle do
   describe "#create_result" do
     let(:pending_handle) { false }
 
-    context "when response is 0" do
+    describe "when response is 0" do
       it "has no error" do
         report = subject.create_result
 
@@ -55,7 +55,7 @@ describe Rdkafka::Producer::DeliveryHandle do
       end
     end
 
-    context "when response is not 0" do
+    describe "when response is not 0" do
       let(:response) { 1 }
 
       it "has an error" do

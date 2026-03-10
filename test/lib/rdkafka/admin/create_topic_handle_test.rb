@@ -23,7 +23,7 @@ describe Rdkafka::Admin::CreateTopicHandle do
       assert_match(/create topic/, error.message)
     end
 
-    context "when not pending anymore and no error" do
+    describe "when not pending anymore and no error" do
       let(:pending_handle) { false }
 
       it "returns a create topic report" do

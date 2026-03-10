@@ -49,7 +49,7 @@ describe Rdkafka::Metadata do
     subject { Rdkafka::Metadata.new(native_kafka, topic_name) }
 
     let(:topic_name) { nil }
-    let(:test_topics) {
+    let(:expected_topics) {
       [TestTopics.consume_test_topic, TestTopics.empty_test_topic, TestTopics.load_test_topic,
        TestTopics.produce_test_topic, TestTopics.rake_test_topic, TestTopics.watermarks_test_topic,
        TestTopics.partitioner_test_topic]
@@ -64,7 +64,7 @@ describe Rdkafka::Metadata do
 
     it "#topics returns data about all of our test topics" do
       result = subject.topics.map { |topic| topic[:topic_name] }
-      test_topics.each do |t|
+      expected_topics.each do |t|
         assert_includes result, t
       end
     end

@@ -7,6 +7,7 @@ require "./lib/rdkafka"
 Minitest::TestTask.create(:test) do |t|
   t.libs << "test"
   t.libs << "lib"
+  t.test_prelude = 'require "test_helper"'
   t.test_globs = ["test/lib/**/*_test.rb"]
 end
 

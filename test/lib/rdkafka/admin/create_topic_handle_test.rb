@@ -1,47 +1,53 @@
 # frozen_string_literal: true
 
-require "test_helper"
+describe Rdkafka::Admin::CreateTopicHandle do
+  let(:response) { 0 }
+  let(:topic_name) { TestTopics.unique }
 
-class CreateTopicHandleTest < Minitest::Test
-  def new_subject(pending_handle:, topic_name: nil)
-    topic_name ||= TestTopics.unique
+  subject do
     Rdkafka::Admin::CreateTopicHandle.new.tap do |handle|
       handle[:pending] = pending_handle
-      handle[:response] = 0
+      handle[:response] = response
       handle[:error_string] = FFI::Pointer::NULL
       handle[:result_name] = FFI::MemoryPointer.from_string(topic_name)
     end
   end
 
-  def test_wait_raises_timeout
-    subject = new_subject(pending_handle: true)
-    error = assert_raises(Rdkafka::Admin::CreateTopicHandle::WaitTimeoutError) do
-      subject.wait(max_wait_timeout_ms: 100)
+  describe "#wait" do
+    let(:pending_handle) { true }
+
+    it "waits until the timeout and then raises an error" do
+      error = assert_raises(Rdkafka::Admin::CreateTopicHandle::WaitTimeoutError) do
+        subject.wait(max_wait_timeout_ms: 100)
+      end
+      assert_match(/create topic/, error.message)
     end
-    assert_match(/create topic/, error.message)
+
+    context "when not pending anymore and no error" do
+      let(:pending_handle) { false }
+
+      it "returns a create topic report" do
+        report = subject.wait
+
+        assert_nil report.error_string
+        assert_equal topic_name, report.result_name
+      end
+
+      it "waits without a timeout" do
+        report = subject.wait(max_wait_timeout_ms: nil)
+
+        assert_nil report.error_string
+        assert_equal topic_name, report.result_name
+      end
+    end
   end
 
-  def test_wait_returns_report_when_not_pending
-    topic_name = TestTopics.unique
-    subject = new_subject(pending_handle: false, topic_name: topic_name)
-    report = subject.wait
+  describe "#raise_error" do
+    let(:pending_handle) { false }
 
-    assert_nil report.error_string
-    assert_equal topic_name, report.result_name
-  end
-
-  def test_wait_without_timeout
-    topic_name = TestTopics.unique
-    subject = new_subject(pending_handle: false, topic_name: topic_name)
-    report = subject.wait(max_wait_timeout_ms: nil)
-
-    assert_nil report.error_string
-    assert_equal topic_name, report.result_name
-  end
-
-  def test_raise_error
-    subject = new_subject(pending_handle: false)
-    error = assert_raises(Rdkafka::RdkafkaError) { subject.raise_error }
-    assert_match(/Success \(no_error\)/, error.message)
+    it "raises the appropriate error" do
+      error = assert_raises(Rdkafka::RdkafkaError) { subject.raise_error }
+      assert_match(/Success \(no_error\)/, error.message)
+    end
   end
 end

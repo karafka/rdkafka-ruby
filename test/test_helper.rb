@@ -22,6 +22,7 @@ unless ENV["CI"] == "true"
 end
 
 require "minitest/autorun"
+require "minitest/spec"
 require "minitest/mock"
 require "pry"
 require "rdkafka"

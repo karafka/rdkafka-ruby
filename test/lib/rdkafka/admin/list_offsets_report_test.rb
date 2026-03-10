@@ -1,9 +1,7 @@
 # frozen_string_literal: true
 
-require "test_helper"
-
-class ListOffsetsReportTest < Minitest::Test
-  def test_returns_empty_offsets_when_null
+describe Rdkafka::Admin::ListOffsetsReport do
+  it "returns empty offsets when null" do
     subject = Rdkafka::Admin::ListOffsetsReport.new(result_infos: FFI::Pointer::NULL, result_count: 0)
 
     assert_equal [], subject.offsets

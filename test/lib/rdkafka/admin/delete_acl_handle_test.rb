@@ -1,19 +1,25 @@
 # frozen_string_literal: true
 
-require "test_helper"
+describe Rdkafka::Admin::DeleteAclHandle do
+  let(:response) { Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR }
+  let(:resource_name) { TestTopics.unique }
+  let(:resource_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC }
+  let(:resource_pattern_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL }
+  let(:principal) { "User:anonymous" }
+  let(:host) { "*" }
+  let(:operation) { Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ }
+  let(:permission_type) { Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW }
 
-class DeleteAclHandleTest < Minitest::Test
-  def new_subject(pending_handle:)
-    resource_name = TestTopics.unique
+  subject do
     error_buffer = FFI::MemoryPointer.from_string(" " * 256)
     delete_acl_ptr = Rdkafka::Bindings.rd_kafka_AclBinding_new(
-      Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC,
+      resource_type,
       FFI::MemoryPointer.from_string(resource_name),
-      Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL,
-      FFI::MemoryPointer.from_string("User:anonymous"),
-      FFI::MemoryPointer.from_string("*"),
-      Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ,
-      Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW,
+      resource_pattern_type,
+      FFI::MemoryPointer.from_string(principal),
+      FFI::MemoryPointer.from_string(host),
+      operation,
+      permission_type,
       error_buffer,
       256
     )
@@ -23,40 +29,48 @@ class DeleteAclHandleTest < Minitest::Test
     delete_acls_array_ptr = FFI::MemoryPointer.new(:pointer)
     delete_acls_array_ptr.write_array_of_pointer(pointer_array)
 
-    handle = Rdkafka::Admin::DeleteAclHandle.new
-    handle[:pending] = pending_handle
-    handle[:response] = Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-    handle[:response_string] = FFI::MemoryPointer.from_string("")
-    handle[:matching_acls] = delete_acls_array_ptr
-    handle[:matching_acls_count] = 1
-    [handle, resource_name]
-  end
-
-  def test_wait_raises_timeout
-    subject, _ = new_subject(pending_handle: true)
-    error = assert_raises(Rdkafka::Admin::DeleteAclHandle::WaitTimeoutError) do
-      subject.wait(max_wait_timeout_ms: 100)
+    Rdkafka::Admin::DeleteAclHandle.new.tap do |handle|
+      handle[:pending] = pending_handle
+      handle[:response] = response
+      handle[:response_string] = FFI::MemoryPointer.from_string("")
+      handle[:matching_acls] = delete_acls_array_ptr
+      handle[:matching_acls_count] = 1
     end
-    assert_match(/delete acl/, error.message)
   end
 
-  def test_wait_returns_report_when_not_pending
-    subject, _ = new_subject(pending_handle: false)
-    report = subject.wait
+  describe "#wait" do
+    let(:pending_handle) { true }
 
-    assert_equal 1, report.deleted_acls.length
+    it "waits until the timeout and then raises an error" do
+      error = assert_raises(Rdkafka::Admin::DeleteAclHandle::WaitTimeoutError) do
+        subject.wait(max_wait_timeout_ms: 100)
+      end
+      assert_match(/delete acl/, error.message)
+    end
+
+    context "when not pending anymore and no error" do
+      let(:pending_handle) { false }
+
+      it "returns a delete acl report" do
+        report = subject.wait
+
+        assert_equal 1, report.deleted_acls.length
+      end
+
+      it "waits without a timeout" do
+        report = subject.wait(max_wait_timeout_ms: nil)
+
+        assert_equal resource_name, report.deleted_acls[0].matching_acl_resource_name
+      end
+    end
   end
 
-  def test_wait_without_timeout
-    subject, resource_name = new_subject(pending_handle: false)
-    report = subject.wait(max_wait_timeout_ms: nil)
+  describe "#raise_error" do
+    let(:pending_handle) { false }
 
-    assert_equal resource_name, report.deleted_acls[0].matching_acl_resource_name
-  end
-
-  def test_raise_error
-    subject, _ = new_subject(pending_handle: false)
-    error = assert_raises(Rdkafka::RdkafkaError) { subject.raise_error }
-    assert_match(/Success \(no_error\)/, error.message)
+    it "raises the appropriate error" do
+      error = assert_raises(Rdkafka::RdkafkaError) { subject.raise_error }
+      assert_match(/Success \(no_error\)/, error.message)
+    end
   end
 end

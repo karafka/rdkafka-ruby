@@ -1,22 +1,13 @@
 # frozen_string_literal: true
 
-require "test_helper"
-
-class MessageTest < Minitest::Test
-  def setup
-    super
-    @native_client = new_native_client
-    @native_topic = new_native_topic(native_client: @native_client)
-  end
-
-  def teardown
-    Rdkafka::Bindings.rd_kafka_destroy(@native_client)
-    super
-  end
-
-  def build_message(payload: nil, key: nil)
+describe Rdkafka::Consumer::Message do
+  let(:native_client) { new_native_client }
+  let(:native_topic) { new_native_topic(native_client: native_client) }
+  let(:payload) { nil }
+  let(:key) { nil }
+  let(:native_message) do
     Rdkafka::Bindings::Message.new.tap do |message|
-      message[:rkt] = @native_topic
+      message[:rkt] = native_topic
       message[:partition] = 3
       message[:offset] = 100
       if payload
@@ -34,102 +25,131 @@ class MessageTest < Minitest::Test
     end
   end
 
-  def with_message(payload: nil, key: nil, &block)
-    native_message = build_message(payload: payload, key: key)
+  after do
+    Rdkafka::Bindings.rd_kafka_destroy(native_client)
+  end
+
+  def with_message(&block)
     Rdkafka::Bindings.stub(:rd_kafka_message_headers, ->(*_args) { Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT }) do
-      subject = Rdkafka::Consumer::Message.new(native_message)
-      block.call(subject)
+      msg = Rdkafka::Consumer::Message.new(native_message)
+      block.call(msg)
     end
   end
 
-  def test_has_topic
-    with_message do |subject|
-      assert_equal "topic_name", subject.topic
+  it "has a topic" do
+    with_message do |msg|
+      assert_equal "topic_name", msg.topic
     end
   end
 
-  def test_has_partition
-    with_message do |subject|
-      assert_equal 3, subject.partition
+  it "has a partition" do
+    with_message do |msg|
+      assert_equal 3, msg.partition
     end
   end
 
-  def test_nil_payload_when_none_present
-    with_message do |subject|
-      assert_nil subject.payload
+  describe "payload" do
+    it "has a nil payload when none is present" do
+      with_message do |msg|
+        assert_nil msg.payload
+      end
     end
-  end
 
-  def test_has_payload
-    with_message(payload: "payload content") do |subject|
-      assert_equal "payload content", subject.payload
-    end
-  end
+    describe "present payload" do
+      let(:payload) { "payload content" }
 
-  def test_nil_key_when_none_present
-    with_message do |subject|
-      assert_nil subject.key
-    end
-  end
-
-  def test_has_key
-    with_message(key: "key content") do |subject|
-      assert_equal "key content", subject.key
-    end
-  end
-
-  def test_has_offset
-    with_message do |subject|
-      assert_equal 100, subject.offset
-    end
-  end
-
-  def test_nil_timestamp_when_not_present
-    native_message = build_message
-    no_headers = ->(*_args) { Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT }
-    no_timestamp = ->(*_args) { -1 }
-    Rdkafka::Bindings.stub(:rd_kafka_message_headers, no_headers) do
-      Rdkafka::Bindings.stub(:rd_kafka_message_timestamp, no_timestamp) do
-        subject = Rdkafka::Consumer::Message.new(native_message)
-
-        assert_nil subject.timestamp
+      it "has a payload" do
+        with_message do |msg|
+          assert_equal "payload content", msg.payload
+        end
       end
     end
   end
 
-  def test_has_timestamp_when_present
-    native_message = build_message
-    no_headers = ->(*_args) { Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT }
-    with_timestamp = ->(*_args) { 1505069646250 }
-    Rdkafka::Bindings.stub(:rd_kafka_message_headers, no_headers) do
-      Rdkafka::Bindings.stub(:rd_kafka_message_timestamp, with_timestamp) do
-        subject = Rdkafka::Consumer::Message.new(native_message)
+  describe "key" do
+    it "has a nil key when none is present" do
+      with_message do |msg|
+        assert_nil msg.key
+      end
+    end
 
-        assert_equal Time.at(1505069646, 250_000), subject.timestamp
+    describe "present key" do
+      let(:key) { "key content" }
+
+      it "has a key" do
+        with_message do |msg|
+          assert_equal "key content", msg.key
+        end
       end
     end
   end
 
-  def test_to_s
-    with_message do |subject|
-      subject.stub(:timestamp, 1000) do
-        assert_equal "<Message in 'topic_name' with key '', payload '', partition 3, offset 100, timestamp 1000>", subject.to_s
+  it "has an offset" do
+    with_message do |msg|
+      assert_equal 100, msg.offset
+    end
+  end
+
+  describe "#timestamp" do
+    describe "without a timestamp" do
+      it "has a nil timestamp if not present" do
+        no_headers = ->(*_args) { Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT }
+        no_timestamp = ->(*_args) { -1 }
+        Rdkafka::Bindings.stub(:rd_kafka_message_headers, no_headers) do
+          Rdkafka::Bindings.stub(:rd_kafka_message_timestamp, no_timestamp) do
+            msg = Rdkafka::Consumer::Message.new(native_message)
+            assert_nil msg.timestamp
+          end
+        end
+      end
+    end
+
+    describe "with a timestamp" do
+      it "has timestamp if present" do
+        no_headers = ->(*_args) { Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT }
+        with_timestamp = ->(*_args) { 1505069646250 }
+        Rdkafka::Bindings.stub(:rd_kafka_message_headers, no_headers) do
+          Rdkafka::Bindings.stub(:rd_kafka_message_timestamp, with_timestamp) do
+            msg = Rdkafka::Consumer::Message.new(native_message)
+            assert_equal Time.at(1505069646, 250_000), msg.timestamp
+          end
+        end
       end
     end
   end
 
-  def test_to_s_with_key_and_payload
-    with_message(key: "key", payload: "payload") do |subject|
-      subject.stub(:timestamp, 1000) do
-        assert_equal "<Message in 'topic_name' with key 'key', payload 'payload', partition 3, offset 100, timestamp 1000>", subject.to_s
+  describe "#to_s" do
+    it "has a human readable representation" do
+      with_message do |msg|
+        msg.stub(:timestamp, 1000) do
+          assert_equal "<Message in 'topic_name' with key '', payload '', partition 3, offset 100, timestamp 1000>", msg.to_s
+        end
       end
     end
-  end
 
-  def test_to_s_with_very_long_key_and_payload
-    with_message(key: "k" * 100_000, payload: "p" * 100_000) do |subject|
-      subject.stub(:timestamp, 1000) do
-        assert_equal "<Message in 'topic_name' with key 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk...', payload 'pppppppppppppppppppppppppppppppppppppppp...', partition 3, offset 100, timestamp 1000>", subject.to_s
+    describe "with key and payload" do
+      let(:key) { "key" }
+      let(:payload) { "payload" }
+
+      it "has a human readable representation" do
+        with_message do |msg|
+          msg.stub(:timestamp, 1000) do
+            assert_equal "<Message in 'topic_name' with key 'key', payload 'payload', partition 3, offset 100, timestamp 1000>", msg.to_s
+          end
+        end
+      end
+    end
+
+    describe "with a very long key and payload" do
+      let(:key) { "k" * 100_000 }
+      let(:payload) { "p" * 100_000 }
+
+      it "has a human readable representation" do
+        with_message do |msg|
+          msg.stub(:timestamp, 1000) do
+            assert_equal "<Message in 'topic_name' with key 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk...', payload 'pppppppppppppppppppppppppppppppppppppppp...', partition 3, offset 100, timestamp 1000>", msg.to_s
+          end
+        end
       end
     end
   end

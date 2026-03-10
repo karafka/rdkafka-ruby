@@ -1,9 +1,7 @@
 # frozen_string_literal: true
 
-require "test_helper"
-
-class TopicPartitionListTest < Minitest::Test
-  def test_creates_list_with_unassigned_topics
+describe Rdkafka::Consumer::TopicPartitionList do
+  it "creates a new list and add unassigned topics" do
     list = Rdkafka::Consumer::TopicPartitionList.new
 
     assert_equal 0, list.count
@@ -21,7 +19,7 @@ class TopicPartitionListTest < Minitest::Test
     assert_equal({ "topic1" => nil, "topic2" => nil }, hash)
   end
 
-  def test_creates_list_with_assigned_topics_as_range
+  it "creates a new list and add assigned topics as a range" do
     list = Rdkafka::Consumer::TopicPartitionList.new
 
     assert_equal 0, list.count
@@ -47,7 +45,7 @@ class TopicPartitionListTest < Minitest::Test
     ], hash["topic2"])
   end
 
-  def test_creates_list_with_assigned_topics_as_array
+  it "creates a new list and add assigned topics as an array" do
     list = Rdkafka::Consumer::TopicPartitionList.new
 
     assert_equal 0, list.count
@@ -73,7 +71,7 @@ class TopicPartitionListTest < Minitest::Test
     ], hash["topic2"])
   end
 
-  def test_creates_list_with_assigned_topics_as_count
+  it "creates a new list and add assigned topics as a count" do
     list = Rdkafka::Consumer::TopicPartitionList.new
 
     assert_equal 0, list.count
@@ -99,7 +97,7 @@ class TopicPartitionListTest < Minitest::Test
     ], hash["topic2"])
   end
 
-  def test_creates_list_with_partitions_and_offsets
+  it "creates a new list and add topics and partitions with an offset" do
     list = Rdkafka::Consumer::TopicPartitionList.new
 
     assert_equal 0, list.count
@@ -117,93 +115,101 @@ class TopicPartitionListTest < Minitest::Test
     ], hash["topic1"])
   end
 
-  def test_to_s
-    expected = if RUBY_VERSION >= "3.4.0"
-      '<TopicPartitionList: {"topic1" => [<Partition 0>, <Partition 1>]}>'
-    else
-      '<TopicPartitionList: {"topic1"=>[<Partition 0>, <Partition 1>]}>'
+  describe "#to_s" do
+    it "returns a human readable representation" do
+      expected = if RUBY_VERSION >= "3.4.0"
+        '<TopicPartitionList: {"topic1" => [<Partition 0>, <Partition 1>]}>'
+      else
+        '<TopicPartitionList: {"topic1"=>[<Partition 0>, <Partition 1>]}>'
+      end
+
+      list = Rdkafka::Consumer::TopicPartitionList.new
+      list.add_topic("topic1", [0, 1])
+
+      assert_equal expected, list.to_s
+    end
+  end
+
+  describe "#==" do
+    it "equals another partition with the same content" do
+      subject = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic1", [0]) }
+      other = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic1", [0]) }
+
+      assert_equal other, subject
     end
 
-    list = Rdkafka::Consumer::TopicPartitionList.new
-    list.add_topic("topic1", [0, 1])
+    it "does not equal another partition with different content" do
+      subject = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic1", [0]) }
 
-    assert_equal expected, list.to_s
+      refute_equal Rdkafka::Consumer::TopicPartitionList.new, subject
+    end
   end
 
-  def test_equals_same_content
-    subject = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic1", [0]) }
-    other = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic1", [0]) }
+  describe ".from_native_tpl" do
+    it "creates a list from an existing native list" do
+      pointer = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(5)
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_add(pointer, "topic", -1)
+      list = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(pointer)
 
-    assert_equal other, subject
-  end
+      other = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic") }
 
-  def test_not_equals_different_content
-    subject = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic1", [0]) }
-
-    refute_equal Rdkafka::Consumer::TopicPartitionList.new, subject
-  end
-
-  def test_from_native_tpl
-    pointer = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(5)
-    Rdkafka::Bindings.rd_kafka_topic_partition_list_add(pointer, "topic", -1)
-    list = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(pointer)
-
-    other = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic") }
-
-    assert_equal other, list
-  end
-
-  def test_from_native_tpl_with_offsets
-    pointer = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(5)
-    Rdkafka::Bindings.rd_kafka_topic_partition_list_add(pointer, "topic", 0)
-    Rdkafka::Bindings.rd_kafka_topic_partition_list_set_offset(pointer, "topic", 0, 100)
-    list = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(pointer)
-
-    other = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic_and_partitions_with_offsets("topic", 0 => 100) }
-
-    assert_equal other, list
-  end
-
-  def test_to_native_tpl
-    list = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic") }
-    tpl = list.to_native_tpl
-    other = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
-
-    assert_equal list, other
-  end
-
-  def test_to_native_tpl_with_partitions
-    list = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic", 0..16) }
-    tpl = list.to_native_tpl
-    other = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
-
-    assert_equal list, other
-  end
-
-  def test_to_native_tpl_with_offsets
-    list = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic_and_partitions_with_offsets("topic", 0 => 100) }
-    tpl = list.to_native_tpl
-    other = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
-
-    assert_equal list, other
-  end
-
-  def test_to_native_tpl_with_timestamp_offsets
-    list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-      l.add_topic_and_partitions_with_offsets("topic", 0 => Time.at(1505069646, 250_000))
+      assert_equal other, list
     end
 
-    tpl = list.to_native_tpl
+    it "creates a list from an existing native list with offsets" do
+      pointer = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(5)
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_add(pointer, "topic", 0)
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_set_offset(pointer, "topic", 0, 100)
+      list = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(pointer)
 
-    compare_list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-      l.add_topic_and_partitions_with_offsets(
-        "topic",
-        0 => (Time.at(1505069646, 250_000).to_f * 1000).floor
-      )
+      other = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic_and_partitions_with_offsets("topic", 0 => 100) }
+
+      assert_equal other, list
+    end
+  end
+
+  describe "#to_native_tpl" do
+    it "creates a native list" do
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic") }
+      tpl = list.to_native_tpl
+      other = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+
+      assert_equal list, other
     end
 
-    native_list = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+    it "creates a native list with partitions" do
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic", 0..16) }
+      tpl = list.to_native_tpl
+      other = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
 
-    assert_equal compare_list, native_list
+      assert_equal list, other
+    end
+
+    it "creates a native list with offsets" do
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic_and_partitions_with_offsets("topic", 0 => 100) }
+      tpl = list.to_native_tpl
+      other = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+
+      assert_equal list, other
+    end
+
+    it "creates a native list with timestamp offsets if offsets are Time" do
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
+        l.add_topic_and_partitions_with_offsets("topic", 0 => Time.at(1505069646, 250_000))
+      end
+
+      tpl = list.to_native_tpl
+
+      compare_list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
+        l.add_topic_and_partitions_with_offsets(
+          "topic",
+          0 => (Time.at(1505069646, 250_000).to_f * 1000).floor
+        )
+      end
+
+      native_list = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+
+      assert_equal compare_list, native_list
+    end
   end
 end

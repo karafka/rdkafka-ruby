@@ -1,31 +1,27 @@
 # frozen_string_literal: true
 
-require "test_helper"
+describe Rdkafka::Producer::DeliveryReport do
+  subject { Rdkafka::Producer::DeliveryReport.new(2, 100, topic_name, -1) }
 
-class DeliveryReportTest < Minitest::Test
-  def setup
-    super
-    @topic_name = TestTopics.unique
-    @subject = Rdkafka::Producer::DeliveryReport.new(2, 100, @topic_name, -1)
+  let(:topic_name) { TestTopics.unique }
+
+  it "gets the partition" do
+    assert_equal 2, subject.partition
   end
 
-  def test_gets_partition
-    assert_equal 2, @subject.partition
+  it "gets the offset" do
+    assert_equal 100, subject.offset
   end
 
-  def test_gets_offset
-    assert_equal 100, @subject.offset
+  it "gets the topic_name" do
+    assert_equal topic_name, subject.topic_name
   end
 
-  def test_gets_topic_name
-    assert_equal @topic_name, @subject.topic_name
+  it "gets the same topic name under topic alias" do
+    assert_equal topic_name, subject.topic
   end
 
-  def test_gets_topic_alias
-    assert_equal @topic_name, @subject.topic
-  end
-
-  def test_gets_error
-    assert_equal(-1, @subject.error)
+  it "gets the error" do
+    assert_equal(-1, subject.error)
   end
 end

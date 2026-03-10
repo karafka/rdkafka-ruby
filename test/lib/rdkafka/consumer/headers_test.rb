@@ -1,11 +1,8 @@
 # frozen_string_literal: true
 
-require "test_helper"
-
-class HeadersTest < Minitest::Test
-  def setup
-    super
-    @headers = {
+describe Rdkafka::Consumer::Headers do
+  let(:headers) do
+    {
       "version" => ["2.1.3", "2.1.4"],
       "type" => "String"
     }
@@ -14,22 +11,19 @@ class HeadersTest < Minitest::Test
   def stub_header_calls(&block)
     headers_ptr = Object.new
 
-    # Header data for rd_kafka_header_get_all
     header_data = [
-      { name: "version", value: @headers["version"][0], size: @headers["version"][0].size },
-      { name: "version", value: @headers["version"][1], size: @headers["version"][1].size },
-      { name: "type", value: @headers["type"], size: @headers["type"].size }
+      { name: "version", value: headers["version"][0], size: headers["version"][0].size },
+      { name: "version", value: headers["version"][1], size: headers["version"][1].size },
+      { name: "type", value: headers["type"], size: headers["type"].size }
     ]
 
     native_message = Object.new
 
-    # Stub rd_kafka_message_headers
     message_headers_stub = proc do |msg, ptr|
       ptr.write_pointer(headers_ptr.object_id)
       Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
     end
 
-    # Stub rd_kafka_header_get_all
     header_get_all_stub = proc do |_ptr, idx, name_ptrptr, value_ptrptr, size_ptr|
       if idx >= header_data.size
         Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT
@@ -55,33 +49,35 @@ class HeadersTest < Minitest::Test
     end
   end
 
-  def test_from_native_returns_headers
-    stub_header_calls do |result|
-      assert_equal @headers, result
+  describe ".from_native" do
+    it "returns headers" do
+      stub_header_calls do |result|
+        assert_equal headers, result
+      end
     end
-  end
 
-  def test_from_native_is_frozen
-    stub_header_calls do |result|
-      assert_predicate result, :frozen?
+    it "is frozen" do
+      stub_header_calls do |result|
+        assert_predicate result, :frozen?
+      end
     end
-  end
 
-  def test_from_native_returns_array_for_duplicate_headers
-    stub_header_calls do |result|
-      assert_equal ["2.1.3", "2.1.4"], result["version"]
+    it "returns array for duplicate headers" do
+      stub_header_calls do |result|
+        assert_equal ["2.1.3", "2.1.4"], result["version"]
+      end
     end
-  end
 
-  def test_from_native_returns_string_for_single_headers
-    stub_header_calls do |result|
-      assert_equal "String", result["type"]
+    it "returns string for single headers" do
+      stub_header_calls do |result|
+        assert_equal "String", result["type"]
+      end
     end
-  end
 
-  def test_from_native_does_not_support_symbol_mappings
-    stub_header_calls do |result|
-      refute result.key?(:version)
+    it "does not support symbol mappings" do
+      stub_header_calls do |result|
+        refute result.key?(:version)
+      end
     end
   end
 end

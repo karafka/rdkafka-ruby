@@ -158,6 +158,7 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer:
   timeout = Time.now.to_i + timeout_in_seconds
   retry_count = 0
   max_retries = 10
+  seeked = false
 
   loop do
     if timeout <= Time.now.to_i
@@ -165,6 +166,18 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer:
     end
 
     begin
+      # Once assigned, seek directly to the target offset to avoid scanning
+      # through all historical messages from earliest
+      if !seeked && !consumer.assignment.empty?
+        tpl = Rdkafka::Consumer::TopicPartitionList.new
+        tpl.add_topic_and_partitions_with_offsets(
+          topic,
+          delivery_report.partition => delivery_report.offset
+        )
+        consumer.seek(tpl)
+        seeked = true
+      end
+
       message = consumer.poll(100)
       if message &&
           message.partition == delivery_report.partition &&

@@ -98,6 +98,7 @@ describe Rdkafka::Consumer::Message do
         Rdkafka::Bindings.stub(:rd_kafka_message_headers, no_headers) do
           Rdkafka::Bindings.stub(:rd_kafka_message_timestamp, no_timestamp) do
             msg = Rdkafka::Consumer::Message.new(native_message)
+
             assert_nil msg.timestamp
           end
         end
@@ -111,6 +112,7 @@ describe Rdkafka::Consumer::Message do
         Rdkafka::Bindings.stub(:rd_kafka_message_headers, no_headers) do
           Rdkafka::Bindings.stub(:rd_kafka_message_timestamp, with_timestamp) do
             msg = Rdkafka::Consumer::Message.new(native_message)
+
             assert_equal Time.at(1505069646, 250_000), msg.timestamp
           end
         end

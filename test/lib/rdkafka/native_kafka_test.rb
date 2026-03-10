@@ -3,15 +3,11 @@
 # Simple thread double that records interactions without strict mock expectations.
 # This replaces RSpec's `double(Thread)` with `allow(thread).to receive(...)` permissive stubs.
 class ThreadDouble
-  attr_reader :name, :closing, :abort_on_exception
+  attr_accessor :name, :closing, :abort_on_exception
 
   def initialize
     @store = {}
     @joined = false
-  end
-
-  def name=(val)
-    @name = val
   end
 
   def []=(key, val)
@@ -20,10 +16,6 @@ class ThreadDouble
 
   def [](key)
     @store[key]
-  end
-
-  def abort_on_exception=(val)
-    @abort_on_exception = val
   end
 
   def join
@@ -58,17 +50,20 @@ describe Rdkafka::NativeKafka do
   describe "defaults" do
     it "sets the thread name" do
       client
+
       assert_equal "rdkafka.native_kafka#producer-1", thread.name
     end
 
     it "sets the thread to abort on exception" do
       client
-      assert_equal true, thread.abort_on_exception
+
+      assert thread.abort_on_exception
     end
 
     it "sets the thread closing flag to false" do
       client
-      assert_equal false, thread[:closing]
+
+      refute thread[:closing]
     end
   end
 
@@ -115,14 +110,14 @@ describe Rdkafka::NativeKafka do
         client.close
         @_client_closed = true
 
-        assert_equal true, thread[:closing]
+        assert thread[:closing]
       end
 
       it "joins the polling thread" do
         client.close
         @_client_closed = true
 
-        assert thread.joined?
+        assert_predicate thread, :joined?
       end
     end
   end

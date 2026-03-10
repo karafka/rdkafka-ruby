@@ -50,9 +50,11 @@ describe Rdkafka::Metadata do
 
     let(:topic_name) { nil }
     let(:expected_topics) {
-      [TestTopics.consume_test_topic, TestTopics.empty_test_topic, TestTopics.load_test_topic,
-       TestTopics.produce_test_topic, TestTopics.rake_test_topic, TestTopics.watermarks_test_topic,
-       TestTopics.partitioner_test_topic]
+      [
+        TestTopics.consume_test_topic, TestTopics.empty_test_topic, TestTopics.load_test_topic,
+        TestTopics.produce_test_topic, TestTopics.rake_test_topic, TestTopics.watermarks_test_topic,
+        TestTopics.partitioner_test_topic
+      ]
     }
 
     it "#brokers returns our single broker" do
@@ -64,6 +66,7 @@ describe Rdkafka::Metadata do
 
     it "#topics returns data about all of our test topics" do
       result = subject.topics.map { |topic| topic[:topic_name] }
+
       expected_topics.each do |t|
         assert_includes result, t
       end

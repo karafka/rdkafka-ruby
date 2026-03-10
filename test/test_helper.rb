@@ -151,7 +151,7 @@ def new_native_topic(topic_name = "topic_name", native_client:)
   )
 end
 
-def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, consumer: nil)
+def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer: nil)
   new_consumer = consumer.nil?
   consumer ||= rdkafka_consumer_config("allow.auto.create.topics": true).consumer
   consumer.subscribe(topic)

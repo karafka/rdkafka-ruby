@@ -27,7 +27,7 @@ describe Rdkafka::Admin::DescribeAclReport do
     pointer_array = [describe_acl_ptr]
     describe_acls_array_ptr = FFI::MemoryPointer.new(:pointer)
     describe_acls_array_ptr.write_array_of_pointer(pointer_array)
-    Rdkafka::Admin::DescribeAclReport.new(acls: describe_acls_array_ptr, acls_count: 1)
+    described_class.new(acls: describe_acls_array_ptr, acls_count: 1)
   end
 
   it "gets matching acl resource type as Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC" do

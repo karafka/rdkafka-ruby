@@ -1,23 +1,6 @@
 # frozen_string_literal: true
 
-class BadTestHandle < Rdkafka::AbstractHandle
-  layout :pending, :bool,
-    :response, :int
-end
-
-class TestHandle < Rdkafka::AbstractHandle
-  layout :pending, :bool,
-    :response, :int,
-    :result, :int
-
-  def operation_name
-    "test_operation"
-  end
-
-  def create_result
-    self[:result]
-  end
-end
+require_relative "../../support/test_handles"
 
 describe Rdkafka::AbstractHandle do
   let(:response) { 0 }

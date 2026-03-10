@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 describe Rdkafka::Consumer::Partition do
-  subject { Rdkafka::Consumer::Partition.new(1, offset, err) }
+  subject { described_class.new(1, offset, err) }
 
   let(:offset) { 100 }
   let(:err) { 0 }
@@ -48,11 +48,11 @@ describe Rdkafka::Consumer::Partition do
 
   describe "#==" do
     it "equals another partition with the same content" do
-      assert_equal Rdkafka::Consumer::Partition.new(1, 100), subject
+      assert_equal described_class.new(1, 100), subject
     end
 
     it "does not equal another partition with different content" do
-      refute_equal Rdkafka::Consumer::Partition.new(2, 101), subject
+      refute_equal described_class.new(2, 101), subject
     end
   end
 end

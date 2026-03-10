@@ -5,7 +5,7 @@ describe Rdkafka::Admin::DeleteTopicHandle do
   let(:topic_name) { TestTopics.unique }
 
   subject do
-    Rdkafka::Admin::DeleteTopicHandle.new.tap do |handle|
+    described_class.new.tap do |handle|
       handle[:pending] = pending_handle
       handle[:response] = response
       handle[:error_string] = FFI::Pointer::NULL

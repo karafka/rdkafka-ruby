@@ -2,7 +2,7 @@
 
 describe Rdkafka::Consumer::TopicPartitionList do
   it "creates a new list and add unassigned topics" do
-    list = Rdkafka::Consumer::TopicPartitionList.new
+    list = described_class.new
 
     assert_equal 0, list.count
     assert_empty list
@@ -20,7 +20,7 @@ describe Rdkafka::Consumer::TopicPartitionList do
   end
 
   it "creates a new list and add assigned topics as a range" do
-    list = Rdkafka::Consumer::TopicPartitionList.new
+    list = described_class.new
 
     assert_equal 0, list.count
     assert_empty list
@@ -46,7 +46,7 @@ describe Rdkafka::Consumer::TopicPartitionList do
   end
 
   it "creates a new list and add assigned topics as an array" do
-    list = Rdkafka::Consumer::TopicPartitionList.new
+    list = described_class.new
 
     assert_equal 0, list.count
     assert_empty list
@@ -72,7 +72,7 @@ describe Rdkafka::Consumer::TopicPartitionList do
   end
 
   it "creates a new list and add assigned topics as a count" do
-    list = Rdkafka::Consumer::TopicPartitionList.new
+    list = described_class.new
 
     assert_equal 0, list.count
     assert_empty list
@@ -98,7 +98,7 @@ describe Rdkafka::Consumer::TopicPartitionList do
   end
 
   it "creates a new list and add topics and partitions with an offset" do
-    list = Rdkafka::Consumer::TopicPartitionList.new
+    list = described_class.new
 
     assert_equal 0, list.count
     assert_empty list
@@ -123,7 +123,7 @@ describe Rdkafka::Consumer::TopicPartitionList do
         '<TopicPartitionList: {"topic1"=>[<Partition 0>, <Partition 1>]}>'
       end
 
-      list = Rdkafka::Consumer::TopicPartitionList.new
+      list = described_class.new
       list.add_topic("topic1", [0, 1])
 
       assert_equal expected, list.to_s
@@ -132,16 +132,16 @@ describe Rdkafka::Consumer::TopicPartitionList do
 
   describe "#==" do
     it "equals another partition with the same content" do
-      subject = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic1", [0]) }
-      other = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic1", [0]) }
+      subject = described_class.new.tap { |l| l.add_topic("topic1", [0]) }
+      other = described_class.new.tap { |l| l.add_topic("topic1", [0]) }
 
       assert_equal other, subject
     end
 
     it "does not equal another partition with different content" do
-      subject = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic1", [0]) }
+      subject = described_class.new.tap { |l| l.add_topic("topic1", [0]) }
 
-      refute_equal Rdkafka::Consumer::TopicPartitionList.new, subject
+      refute_equal described_class.new, subject
     end
   end
 
@@ -149,9 +149,9 @@ describe Rdkafka::Consumer::TopicPartitionList do
     it "creates a list from an existing native list" do
       pointer = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(5)
       Rdkafka::Bindings.rd_kafka_topic_partition_list_add(pointer, "topic", -1)
-      list = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(pointer)
+      list = described_class.from_native_tpl(pointer)
 
-      other = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic") }
+      other = described_class.new.tap { |l| l.add_topic("topic") }
 
       assert_equal other, list
     end
@@ -160,9 +160,9 @@ describe Rdkafka::Consumer::TopicPartitionList do
       pointer = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(5)
       Rdkafka::Bindings.rd_kafka_topic_partition_list_add(pointer, "topic", 0)
       Rdkafka::Bindings.rd_kafka_topic_partition_list_set_offset(pointer, "topic", 0, 100)
-      list = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(pointer)
+      list = described_class.from_native_tpl(pointer)
 
-      other = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic_and_partitions_with_offsets("topic", 0 => 100) }
+      other = described_class.new.tap { |l| l.add_topic_and_partitions_with_offsets("topic", 0 => 100) }
 
       assert_equal other, list
     end
@@ -170,44 +170,44 @@ describe Rdkafka::Consumer::TopicPartitionList do
 
   describe "#to_native_tpl" do
     it "creates a native list" do
-      list = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic") }
+      list = described_class.new.tap { |l| l.add_topic("topic") }
       tpl = list.to_native_tpl
-      other = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+      other = described_class.from_native_tpl(tpl)
 
       assert_equal list, other
     end
 
     it "creates a native list with partitions" do
-      list = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic("topic", 0..16) }
+      list = described_class.new.tap { |l| l.add_topic("topic", 0..16) }
       tpl = list.to_native_tpl
-      other = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+      other = described_class.from_native_tpl(tpl)
 
       assert_equal list, other
     end
 
     it "creates a native list with offsets" do
-      list = Rdkafka::Consumer::TopicPartitionList.new.tap { |l| l.add_topic_and_partitions_with_offsets("topic", 0 => 100) }
+      list = described_class.new.tap { |l| l.add_topic_and_partitions_with_offsets("topic", 0 => 100) }
       tpl = list.to_native_tpl
-      other = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+      other = described_class.from_native_tpl(tpl)
 
       assert_equal list, other
     end
 
     it "creates a native list with timestamp offsets if offsets are Time" do
-      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
+      list = described_class.new.tap do |l|
         l.add_topic_and_partitions_with_offsets("topic", 0 => Time.at(1505069646, 250_000))
       end
 
       tpl = list.to_native_tpl
 
-      compare_list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
+      compare_list = described_class.new.tap do |l|
         l.add_topic_and_partitions_with_offsets(
           "topic",
           0 => (Time.at(1505069646, 250_000).to_f * 1000).floor
         )
       end
 
-      native_list = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(tpl)
+      native_list = described_class.from_native_tpl(tpl)
 
       assert_equal compare_list, native_list
     end

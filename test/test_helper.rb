@@ -28,6 +28,11 @@ require "rdkafka"
 require "timeout"
 require "securerandom"
 
+require_relative "support/minitest_extensions"
+require_relative "support/minitest_setup"
+require_relative "support/timeout_test"
+require_relative "support/rd_kafka_test_consumer"
+
 # Module to hold dynamically generated test topics with UUIDs
 # Topics are generated once when first accessed and then cached
 module TestTopics
@@ -218,26 +223,6 @@ def notify_listener(consumer, listener, &block)
   consumer.close
 end
 
-class RdKafkaTestConsumer
-  def self.with
-    config = Rdkafka::Bindings.rd_kafka_conf_new
-    errstr = FFI::MemoryPointer.new(:char, 256)
-    consumer = Rdkafka::Bindings.rd_kafka_new(
-      :rd_kafka_consumer,
-      config,
-      errstr,
-      256
-    )
-    raise "Failed to create test consumer: #{errstr.read_string}" if consumer.null?
-    yield consumer
-  ensure
-    if consumer && !consumer.null?
-      Rdkafka::Bindings.rd_kafka_consumer_close(consumer)
-      Rdkafka::Bindings.rd_kafka_destroy(consumer)
-    end
-  end
-end
-
 # Suite-level topic creation (replaces before(:suite))
 TOPICS_CREATED_MUTEX = Mutex.new
 $topics_initialized = false
@@ -273,20 +258,3 @@ def ensure_topics_created
     $topics_initialized = true
   end
 end
-
-# Base test class with per-test state reset and timeout
-class Minitest::Test
-  def setup
-    ensure_topics_created
-    Rdkafka::Config.statistics_callback = nil
-    Rdkafka::Producer.partitions_count_cache.to_h.clear
-  end
-end
-
-# 90-second timeout per test (replaces around hook)
-module TimeoutTest
-  def run(...)
-    Timeout.timeout(90) { super }
-  end
-end
-Minitest::Test.prepend(TimeoutTest)

@@ -29,7 +29,7 @@ describe Rdkafka::Admin::DeleteAclHandle do
     delete_acls_array_ptr = FFI::MemoryPointer.new(:pointer)
     delete_acls_array_ptr.write_array_of_pointer(pointer_array)
 
-    Rdkafka::Admin::DeleteAclHandle.new.tap do |handle|
+    described_class.new.tap do |handle|
       handle[:pending] = pending_handle
       handle[:response] = response
       handle[:response_string] = FFI::MemoryPointer.from_string("")

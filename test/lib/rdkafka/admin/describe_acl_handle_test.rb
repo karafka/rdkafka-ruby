@@ -29,7 +29,7 @@ describe Rdkafka::Admin::DescribeAclHandle do
     describe_acls_array_ptr = FFI::MemoryPointer.new(:pointer)
     describe_acls_array_ptr.write_array_of_pointer(pointer_array)
 
-    Rdkafka::Admin::DescribeAclHandle.new.tap do |handle|
+    described_class.new.tap do |handle|
       handle[:pending] = pending_handle
       handle[:response] = response
       handle[:response_string] = FFI::MemoryPointer.from_string("")

@@ -3,8 +3,8 @@
 describe Rdkafka::Producer::PartitionsCountCache do
   let(:default_ttl_ms) { 1_000 }
   let(:custom_ttl_ms) { 500 }
-  let(:cache) { Rdkafka::Producer::PartitionsCountCache.new(ttl_ms: default_ttl_ms) }
-  let(:custom_ttl_cache) { Rdkafka::Producer::PartitionsCountCache.new(ttl_ms: custom_ttl_ms) }
+  let(:cache) { described_class.new(ttl_ms: default_ttl_ms) }
+  let(:custom_ttl_cache) { described_class.new(ttl_ms: custom_ttl_ms) }
   let(:topic) { TestTopics.unique }
   let(:topic2) { TestTopics.unique }
   let(:partition_count) { 5 }
@@ -14,24 +14,24 @@ describe Rdkafka::Producer::PartitionsCountCache do
 
   describe "#initialize" do
     it "creates a cache with default TTL when no TTL is specified" do
-      standard_cache = Rdkafka::Producer::PartitionsCountCache.new
+      standard_cache = described_class.new
 
-      assert_kind_of Rdkafka::Producer::PartitionsCountCache, standard_cache
+      assert_kind_of described_class, standard_cache
     end
 
     it "creates a cache with custom TTL when specified" do
-      assert_kind_of Rdkafka::Producer::PartitionsCountCache, custom_ttl_cache
+      assert_kind_of described_class, custom_ttl_cache
     end
 
     describe "backwards compatibility with ttl (seconds)" do
       it "works with old ttl parameter" do
-        old_style_cache = Rdkafka::Producer::PartitionsCountCache.new(1)
+        old_style_cache = described_class.new(1)
 
-        assert_kind_of Rdkafka::Producer::PartitionsCountCache, old_style_cache
+        assert_kind_of described_class, old_style_cache
       end
 
       it "converts seconds to milliseconds correctly" do
-        old_style_cache = Rdkafka::Producer::PartitionsCountCache.new(2)
+        old_style_cache = described_class.new(2)
 
         old_style_cache.set(topic, partition_count)
 
@@ -52,13 +52,13 @@ describe Rdkafka::Producer::PartitionsCountCache do
       end
 
       it "accepts both ttl and ttl_ms parameters" do
-        cache_instance = Rdkafka::Producer::PartitionsCountCache.new(1, ttl_ms: 1000)
+        cache_instance = described_class.new(1, ttl_ms: 1000)
 
-        assert_kind_of Rdkafka::Producer::PartitionsCountCache, cache_instance
+        assert_kind_of described_class, cache_instance
       end
 
       it "uses ttl_ms when both parameters are provided" do
-        both_params_cache = Rdkafka::Producer::PartitionsCountCache.new(10, ttl_ms: 500)
+        both_params_cache = described_class.new(10, ttl_ms: 500)
 
         both_params_cache.set(topic, partition_count)
 

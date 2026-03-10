@@ -4,7 +4,7 @@ describe Rdkafka::Admin::ListOffsetsHandle do
   let(:response) { Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR }
 
   subject do
-    Rdkafka::Admin::ListOffsetsHandle.new.tap do |handle|
+    described_class.new.tap do |handle|
       handle[:pending] = pending_handle
       handle[:response] = response
       handle[:response_string] = FFI::MemoryPointer.from_string("")

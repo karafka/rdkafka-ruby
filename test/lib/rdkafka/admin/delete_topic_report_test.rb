@@ -2,7 +2,7 @@
 
 describe Rdkafka::Admin::DeleteTopicReport do
   subject do
-    Rdkafka::Admin::DeleteTopicReport.new(
+    described_class.new(
       FFI::MemoryPointer.from_string("error string"),
       FFI::MemoryPointer.from_string("result name")
     )

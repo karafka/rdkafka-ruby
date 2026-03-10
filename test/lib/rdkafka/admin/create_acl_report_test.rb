@@ -2,7 +2,7 @@
 
 describe Rdkafka::Admin::CreateAclReport do
   subject do
-    Rdkafka::Admin::CreateAclReport.new(
+    described_class.new(
       rdkafka_response: Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR,
       rdkafka_response_string: FFI::MemoryPointer.from_string("")
     )

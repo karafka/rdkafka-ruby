@@ -27,7 +27,7 @@ describe Rdkafka::Admin::DeleteAclReport do
     pointer_array = [delete_acl_ptr]
     delete_acls_array_ptr = FFI::MemoryPointer.new(:pointer)
     delete_acls_array_ptr.write_array_of_pointer(pointer_array)
-    Rdkafka::Admin::DeleteAclReport.new(matching_acls: delete_acls_array_ptr, matching_acls_count: 1)
+    described_class.new(matching_acls: delete_acls_array_ptr, matching_acls_count: 1)
   end
 
   it "gets deleted acl resource type as Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC" do

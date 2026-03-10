@@ -27,7 +27,7 @@ describe Rdkafka::Metadata do
     describe "that is one of our test topics" do
       subject { Rdkafka::Metadata.new(native_kafka, topic_name) }
 
-      let(:topic_name) { TestTopics.partitioner_test_topic }
+      let(:topic_name) { create_topic_for_test(partitions: 25) }
 
       it "#brokers returns our single broker" do
         assert_equal 1, subject.brokers.length
@@ -49,13 +49,6 @@ describe Rdkafka::Metadata do
     subject { Rdkafka::Metadata.new(native_kafka, topic_name) }
 
     let(:topic_name) { nil }
-    let(:expected_topics) {
-      [
-        TestTopics.consume_test_topic, TestTopics.empty_test_topic, TestTopics.load_test_topic,
-        TestTopics.produce_test_topic, TestTopics.rake_test_topic, TestTopics.watermarks_test_topic,
-        TestTopics.partitioner_test_topic
-      ]
-    }
 
     it "#brokers returns our single broker" do
       assert_equal 1, subject.brokers.length
@@ -64,12 +57,10 @@ describe Rdkafka::Metadata do
       assert_equal rdkafka_base_config[:"bootstrap.servers"].split(":").last.to_i, subject.brokers[0][:broker_port]
     end
 
-    it "#topics returns data about all of our test topics" do
+    it "#topics returns data about existing topics" do
       result = subject.topics.map { |topic| topic[:topic_name] }
 
-      expected_topics.each do |t|
-        assert_includes result, t
-      end
+      assert_includes result, TestTopics.example_topic
     end
   end
 

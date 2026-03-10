@@ -7,7 +7,7 @@ describe Rdkafka::Producer::DeliveryHandle do
       handle[:response] = response
       handle[:partition] = 2
       handle[:offset] = 100
-      handle.topic = TestTopics.produce_test_topic
+      handle.topic = "produce_test_topic"
     end
   end
 
@@ -31,7 +31,7 @@ describe Rdkafka::Producer::DeliveryHandle do
 
         assert_equal 2, report.partition
         assert_equal 100, report.offset
-        assert_equal TestTopics.produce_test_topic, report.topic_name
+        assert_equal "produce_test_topic", report.topic_name
       end
 
       it "waits without a timeout" do
@@ -39,7 +39,7 @@ describe Rdkafka::Producer::DeliveryHandle do
 
         assert_equal 2, report.partition
         assert_equal 100, report.offset
-        assert_equal TestTopics.produce_test_topic, report.topic_name
+        assert_equal "produce_test_topic", report.topic_name
       end
     end
   end

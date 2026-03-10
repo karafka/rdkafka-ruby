@@ -76,14 +76,14 @@ describe Rdkafka::Admin do
       end
 
       it "raises an exception with the name of a topic that already exists" do
-        existing_topic_name = TestTopics.empty_test_topic
+        existing_topic_name = create_topic_for_test
         create_topic_handle = admin.create_topic(existing_topic_name, topic_partition_count, topic_replication_factor)
         ex = assert_raises(Rdkafka::RdkafkaError) {
           create_topic_handle.wait(max_wait_timeout_ms: 15_000)
         }
         assert_kind_of Rdkafka::RdkafkaError, ex
         assert_match(/Broker: Topic already exists \(topic_already_exists\)/, ex.message)
-        assert_match(/Topic '#{Regexp.escape(TestTopics.empty_test_topic)}' already exists/, ex.broker_message)
+        assert_match(/Topic '#{Regexp.escape(existing_topic_name)}' already exists/, ex.broker_message)
       end
 
       it "raises an exception with an invalid partition count" do
@@ -419,7 +419,7 @@ describe Rdkafka::Admin do
 
   describe "#list_offsets" do
     it "returns earliest offsets" do
-      topic = TestTopics.consume_test_topic
+      topic = create_topic_for_test
 
       report = admin.list_offsets(
         { topic => [{ partition: 0, offset: :earliest }] }
@@ -436,7 +436,7 @@ describe Rdkafka::Admin do
     end
 
     it "returns latest offsets" do
-      topic = TestTopics.consume_test_topic
+      topic = create_topic_for_test
 
       report = admin.list_offsets(
         { topic => [{ partition: 0, offset: :latest }] }
@@ -452,7 +452,7 @@ describe Rdkafka::Admin do
     end
 
     it "returns offsets for multiple partitions" do
-      topic = TestTopics.consume_test_topic
+      topic = create_topic_for_test
 
       report = admin.list_offsets(
         { topic => [
@@ -466,7 +466,7 @@ describe Rdkafka::Admin do
     end
 
     it "works with read_committed isolation level" do
-      topic = TestTopics.consume_test_topic
+      topic = create_topic_for_test
 
       report = admin.list_offsets(
         { topic => [{ partition: 0, offset: :latest }] },
@@ -477,7 +477,7 @@ describe Rdkafka::Admin do
     end
 
     it "returns offsets by timestamp" do
-      topic = TestTopics.consume_test_topic
+      topic = create_topic_for_test
 
       # Use a timestamp of 0 (epoch) to get earliest messages
       report = admin.list_offsets(
@@ -1135,7 +1135,7 @@ describe Rdkafka::Admin do
       # group. In RSpec, the "existing group" test always ran first (defined
       # order) which did this implicitly.
       warmup_consumer = rdkafka_consumer_config.consumer
-      warmup_consumer.subscribe(TestTopics.consume_test_topic)
+      warmup_consumer.subscribe(create_topic_for_test)
       wait_for_assignment(warmup_consumer)
       warmup_consumer.close
 

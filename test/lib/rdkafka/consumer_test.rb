@@ -6,6 +6,7 @@ require "securerandom"
 describe Rdkafka::Consumer do
   let(:consumer) { rdkafka_consumer_config.consumer }
   let(:producer) { rdkafka_producer_config.producer }
+  let(:topic) { create_topic_for_test }
 
   before do
     @consumer = consumer
@@ -50,11 +51,11 @@ describe Rdkafka::Consumer do
     it "subscribes, unsubscribes and returns the subscription" do
       assert_empty @consumer.subscription
 
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
 
       refute_empty @consumer.subscription
       expected_subscription = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-        list.add_topic(TestTopics.consume_test_topic)
+        list.add_topic(topic)
       end
 
       assert_equal expected_subscription, @consumer.subscription
@@ -67,7 +68,7 @@ describe Rdkafka::Consumer do
     it "raises an error when subscribing fails" do
       Rdkafka::Bindings.stub(:rd_kafka_subscribe, 20) do
         assert_raises(Rdkafka::RdkafkaError) do
-          @consumer.subscribe(TestTopics.consume_test_topic)
+          @consumer.subscribe(topic)
         end
       end
     end
@@ -96,11 +97,11 @@ describe Rdkafka::Consumer do
 
         assert_empty consumer.subscription
 
-        consumer.subscribe(TestTopics.consume_test_topic)
+        consumer.subscribe(topic)
 
         refute_empty consumer.subscription
         expected_subscription = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-          list.add_topic(TestTopics.consume_test_topic)
+          list.add_topic(topic)
         end
 
         assert_equal expected_subscription, consumer.subscription
@@ -120,7 +121,7 @@ describe Rdkafka::Consumer do
     describe "subscription" do
       it "pauses and then resumes" do
         timeout = 2000
-        @consumer.subscribe(TestTopics.consume_test_topic)
+        @consumer.subscribe(topic)
 
         # 1. partitions are assigned
         wait_for_assignment(@consumer)
@@ -129,7 +130,7 @@ describe Rdkafka::Consumer do
 
         # 2. send a first message
         @producer.produce(
-          topic: TestTopics.consume_test_topic,
+          topic: topic,
           payload: "payload 1",
           key: "key 1"
         ).wait
@@ -142,14 +143,14 @@ describe Rdkafka::Consumer do
 
         # 4. send a second message
         @producer.produce(
-          topic: TestTopics.consume_test_topic,
+          topic: topic,
           payload: "payload 1",
           key: "key 1"
         ).wait
 
         # 5. pause the subscription
         tpl = Rdkafka::Consumer::TopicPartitionList.new
-        tpl.add_topic(TestTopics.consume_test_topic, 0..2)
+        tpl.add_topic(topic, 0..2)
         @consumer.pause(tpl)
 
         # 6. ensure that messages are not available
@@ -159,7 +160,7 @@ describe Rdkafka::Consumer do
 
         # 7. resume the subscription
         tpl = Rdkafka::Consumer::TopicPartitionList.new
-        tpl.add_topic(TestTopics.consume_test_topic, 0..2)
+        tpl.add_topic(topic, 0..2)
         @consumer.resume(tpl)
 
         # 8. ensure that message is successfully consumed
@@ -475,26 +476,26 @@ describe Rdkafka::Consumer do
 
     it "assigns specific topic partitions and returns that assignment" do
       tpl = Rdkafka::Consumer::TopicPartitionList.new
-      tpl.add_topic(TestTopics.consume_test_topic, 0..2)
+      tpl.add_topic(topic, 0..2)
       @consumer.assign(tpl)
 
       assignment = @consumer.assignment
 
       refute_empty assignment
-      assert_equal 3, assignment.to_h[TestTopics.consume_test_topic].length
+      assert_equal 3, assignment.to_h[topic].length
     end
 
     it "returns the assignment when subscribed" do
       # Make sure there's a message
       @producer.produce(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         payload: "payload 1",
         key: "key 1",
         partition: 0
       ).wait
 
       # Subscribe and poll until partitions are assigned
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
       100.times do
         @consumer.poll(100)
         break unless @consumer.assignment.empty?
@@ -503,7 +504,7 @@ describe Rdkafka::Consumer do
       assignment = @consumer.assignment
 
       refute_empty assignment
-      assert_equal 3, assignment.to_h[TestTopics.consume_test_topic].length
+      assert_equal 3, assignment.to_h[topic].length
     end
 
     it "raises an error when getting assignment fails" do
@@ -519,9 +520,9 @@ describe Rdkafka::Consumer do
 
   describe "#assignment_lost?" do
     it "does not return true when we have an assignment" do
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
       Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-        list.add_topic(TestTopics.consume_test_topic)
+        list.add_topic(topic)
       end
 
       refute_predicate @consumer, :assignment_lost?
@@ -529,9 +530,9 @@ describe Rdkafka::Consumer do
     end
 
     it "does not return true after voluntary unsubscribing" do
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
       Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-        list.add_topic(TestTopics.consume_test_topic)
+        list.add_topic(topic)
       end
 
       @consumer.unsubscribe
@@ -544,10 +545,10 @@ describe Rdkafka::Consumer do
 
   describe "#close" do
     it "closes a consumer" do
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
       100.times do |i|
         @producer.produce(
-          topic: TestTopics.consume_test_topic,
+          topic: topic,
           payload: "payload #{i}",
           key: "key #{i}",
           partition: 0
@@ -566,7 +567,7 @@ describe Rdkafka::Consumer do
       # Run a long running poll
       thread = Thread.new do
         times << Time.now
-        @consumer.subscribe(TestTopics.empty_test_topic)
+        @consumer.subscribe(topic)
         times << Time.now
         @consumer.poll(1_000)
         times << Time.now
@@ -609,7 +610,7 @@ describe Rdkafka::Consumer do
       10.times do
         (0..2).each do |i|
           handles << @producer.produce(
-            topic: TestTopics.consume_test_topic,
+            topic: topic,
             payload: "payload 1",
             key: "key 1",
             partition: i
@@ -618,19 +619,19 @@ describe Rdkafka::Consumer do
       end
       handles.each(&:wait)
 
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
       wait_for_assignment(@consumer)
       list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-        l.add_topic_and_partitions_with_offsets(TestTopics.consume_test_topic, 0 => 1, 1 => 1, 2 => 1)
+        l.add_topic_and_partitions_with_offsets(topic, 0 => 1, 1 => 1, 2 => 1)
       end
       @consumer.commit(list)
 
       list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-        l.add_topic_and_partitions_with_offsets(TestTopics.consume_test_topic, 0 => 1, 1 => 2, 2 => 3)
+        l.add_topic_and_partitions_with_offsets(topic, 0 => 1, 1 => 2, 2 => 3)
       end
       @consumer.commit(list)
 
-      partitions = @consumer.committed(list).to_h[TestTopics.consume_test_topic]
+      partitions = @consumer.committed(list).to_h[topic]
 
       assert_equal 1, partitions[0].offset
       assert_equal 2, partitions[1].offset
@@ -643,7 +644,7 @@ describe Rdkafka::Consumer do
       10.times do
         (0..2).each do |i|
           handles << @producer.produce(
-            topic: TestTopics.consume_test_topic,
+            topic: topic,
             payload: "payload 1",
             key: "key 1",
             partition: i
@@ -652,10 +653,10 @@ describe Rdkafka::Consumer do
       end
       handles.each(&:wait)
 
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
       wait_for_assignment(@consumer)
       list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-        l.add_topic_and_partitions_with_offsets(TestTopics.consume_test_topic, 0 => 1, 1 => 1, 2 => 1)
+        l.add_topic_and_partitions_with_offsets(topic, 0 => 1, 1 => 1, 2 => 1)
       end
       @consumer.commit(list)
 
@@ -672,7 +673,7 @@ describe Rdkafka::Consumer do
       10.times do
         (0..2).each do |i|
           handles << @producer.produce(
-            topic: TestTopics.consume_test_topic,
+            topic: topic,
             payload: "payload 1",
             key: "key 1",
             partition: i
@@ -681,14 +682,14 @@ describe Rdkafka::Consumer do
       end
       handles.each(&:wait)
 
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
       wait_for_assignment(@consumer)
       list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-        l.add_topic_and_partitions_with_offsets(TestTopics.consume_test_topic, 0 => 1, 1 => 1, 2 => 1)
+        l.add_topic_and_partitions_with_offsets(topic, 0 => 1, 1 => 1, 2 => 1)
       end
       @consumer.commit(list)
 
-      partitions = @consumer.committed.to_h[TestTopics.consume_test_topic]
+      partitions = @consumer.committed.to_h[topic]
 
       refute_nil partitions
       assert_equal 1, partitions[0].offset
@@ -700,7 +701,7 @@ describe Rdkafka::Consumer do
       10.times do
         (0..2).each do |i|
           handles << @producer.produce(
-            topic: TestTopics.consume_test_topic,
+            topic: topic,
             payload: "payload 1",
             key: "key 1",
             partition: i
@@ -709,17 +710,17 @@ describe Rdkafka::Consumer do
       end
       handles.each(&:wait)
 
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
       wait_for_assignment(@consumer)
       list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-        l.add_topic_and_partitions_with_offsets(TestTopics.consume_test_topic, 0 => 1, 1 => 1, 2 => 1)
+        l.add_topic_and_partitions_with_offsets(topic, 0 => 1, 1 => 1, 2 => 1)
       end
       @consumer.commit(list)
 
       list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-        l.add_topic(TestTopics.consume_test_topic, [0, 1, 2])
+        l.add_topic(topic, [0, 1, 2])
       end
-      partitions = @consumer.committed(list).to_h[TestTopics.consume_test_topic]
+      partitions = @consumer.committed(list).to_h[topic]
 
       refute_nil partitions
       assert_equal 1, partitions[0].offset
@@ -730,7 +731,7 @@ describe Rdkafka::Consumer do
     it "raises an error when getting committed fails" do
       Rdkafka::Bindings.stub(:rd_kafka_committed, 20) do
         list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-          l.add_topic(TestTopics.consume_test_topic, [0, 1, 2])
+          l.add_topic(topic, [0, 1, 2])
         end
         assert_raises(Rdkafka::RdkafkaError) do
           @consumer.committed(list)
@@ -744,14 +745,14 @@ describe Rdkafka::Consumer do
   describe "#store_offset" do
     it "stores the offset for a message" do
       report = @producer.produce(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         payload: "payload 1",
         key: "key 1",
         partition: 0
       ).wait
 
       message = wait_for_message(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         delivery_report: report,
         consumer: @consumer
       )
@@ -764,16 +765,16 @@ describe Rdkafka::Consumer do
       }
 
       new_consumer = rdkafka_consumer_config(base_config).consumer
-      new_consumer.subscribe(TestTopics.consume_test_topic)
+      new_consumer.subscribe(topic)
       wait_for_assignment(new_consumer)
 
       new_consumer.store_offset(message)
       new_consumer.commit
 
       list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-        l.add_topic(TestTopics.consume_test_topic, [0, 1, 2])
+        l.add_topic(topic, [0, 1, 2])
       end
-      partitions = new_consumer.committed(list).to_h[TestTopics.consume_test_topic]
+      partitions = new_consumer.committed(list).to_h[topic]
 
       refute_nil partitions
       assert_equal(message.offset + 1, partitions[message.partition].offset)
@@ -783,14 +784,14 @@ describe Rdkafka::Consumer do
 
     it "raises an error with invalid input" do
       report = @producer.produce(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         payload: "payload 1",
         key: "key 1",
         partition: 0
       ).wait
 
       message = wait_for_message(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         delivery_report: report,
         consumer: @consumer
       )
@@ -803,7 +804,7 @@ describe Rdkafka::Consumer do
       }
 
       new_consumer = rdkafka_consumer_config(base_config).consumer
-      new_consumer.subscribe(TestTopics.consume_test_topic)
+      new_consumer.subscribe(topic)
       wait_for_assignment(new_consumer)
 
       message.stub(:partition, 9999) do
@@ -819,23 +820,23 @@ describe Rdkafka::Consumer do
       consumer = rdkafka_consumer_config("enable.auto.offset.store": true).consumer
 
       report = @producer.produce(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         payload: "payload 1",
         key: "key 1",
         partition: 0
       ).wait
 
       message = wait_for_message(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         delivery_report: report,
         consumer: consumer
       )
 
       # Setup committed state
-      consumer.subscribe(TestTopics.consume_test_topic)
+      consumer.subscribe(topic)
       wait_for_assignment(consumer)
       list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-        l.add_topic_and_partitions_with_offsets(TestTopics.consume_test_topic, 0 => 1, 1 => 1, 2 => 1)
+        l.add_topic_and_partitions_with_offsets(topic, 0 => 1, 1 => 1, 2 => 1)
       end
       consumer.commit(list)
 
@@ -855,27 +856,27 @@ describe Rdkafka::Consumer do
       consumer = rdkafka_consumer_config("enable.auto.offset.store": false).consumer
 
       report = @producer.produce(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         payload: "payload 1",
         key: "key 1",
         partition: 0
       ).wait
 
       message = wait_for_message(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         delivery_report: report,
         consumer: consumer
       )
 
       # Consumer is already subscribed and assigned from wait_for_message
       list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-        l.add_topic_and_partitions_with_offsets(TestTopics.consume_test_topic, 0 => 1, 1 => 1, 2 => 1)
+        l.add_topic_and_partitions_with_offsets(topic, 0 => 1, 1 => 1, 2 => 1)
       end
       consumer.commit(list)
 
       consumer.store_offset(message)
 
-      partitions = consumer.position.to_h[TestTopics.consume_test_topic]
+      partitions = consumer.position.to_h[topic]
 
       refute_nil partitions
       assert_equal message.offset + 1, partitions[0].offset
@@ -887,30 +888,30 @@ describe Rdkafka::Consumer do
       consumer = rdkafka_consumer_config("enable.auto.offset.store": false).consumer
 
       report = @producer.produce(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         payload: "payload 1",
         key: "key 1",
         partition: 0
       ).wait
 
       message = wait_for_message(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         delivery_report: report,
         consumer: consumer
       )
 
       # Consumer is already subscribed and assigned from wait_for_message
       list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-        l.add_topic_and_partitions_with_offsets(TestTopics.consume_test_topic, 0 => 1, 1 => 1, 2 => 1)
+        l.add_topic_and_partitions_with_offsets(topic, 0 => 1, 1 => 1, 2 => 1)
       end
       consumer.commit(list)
 
       consumer.store_offset(message)
 
       list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-        l.add_topic_and_partitions_with_offsets(TestTopics.consume_test_topic, 0 => nil, 1 => nil, 2 => nil)
+        l.add_topic_and_partitions_with_offsets(topic, 0 => nil, 1 => nil, 2 => nil)
       end
-      partitions = consumer.position(list).to_h[TestTopics.consume_test_topic]
+      partitions = consumer.position(list).to_h[topic]
 
       refute_nil partitions
       assert_equal message.offset + 1, partitions[0].offset
@@ -926,7 +927,7 @@ describe Rdkafka::Consumer do
       10.times do
         (0..2).each do |i|
           handles << @producer.produce(
-            topic: TestTopics.consume_test_topic,
+            topic: topic,
             payload: "payload 1",
             key: "key 1",
             partition: i
@@ -935,10 +936,10 @@ describe Rdkafka::Consumer do
       end
       handles.each(&:wait)
 
-      consumer.subscribe(TestTopics.consume_test_topic)
+      consumer.subscribe(topic)
       wait_for_assignment(consumer)
       list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-        l.add_topic_and_partitions_with_offsets(TestTopics.consume_test_topic, 0 => 1, 1 => 1, 2 => 1)
+        l.add_topic_and_partitions_with_offsets(topic, 0 => 1, 1 => 1, 2 => 1)
       end
       consumer.commit(list)
 
@@ -958,13 +959,13 @@ describe Rdkafka::Consumer do
     it "returns the watermark offsets" do
       # Make sure there's a message
       @producer.produce(
-        topic: TestTopics.watermarks_test_topic,
+        topic: topic,
         payload: "payload 1",
         key: "key 1",
         partition: 0
       ).wait
 
-      low, high = @consumer.query_watermark_offsets(TestTopics.watermarks_test_topic, 0, 5000)
+      low, high = @consumer.query_watermark_offsets(topic, 0, 5000)
 
       assert_equal 0, low
       assert_operator high, :>, 0
@@ -973,7 +974,7 @@ describe Rdkafka::Consumer do
     it "raises an error when querying fails" do
       Rdkafka::Bindings.stub(:rd_kafka_query_watermark_offsets, 20) do
         assert_raises(Rdkafka::RdkafkaError) do
-          @consumer.query_watermark_offsets(TestTopics.consume_test_topic, 0, 5000)
+          @consumer.query_watermark_offsets(topic, 0, 5000)
         end
       end
     end
@@ -989,22 +990,24 @@ describe Rdkafka::Consumer do
       # wait for the message to make sure everything is committed.
       (0..2).each do |i|
         @producer.produce(
-          topic: TestTopics.consume_test_topic,
+          topic: topic,
           key: "key lag #{i}",
           partition: i
         ).wait
       end
 
       # Consume to the end
-      consumer.subscribe(TestTopics.consume_test_topic)
+      consumer.subscribe(topic)
       eof_count = 0
+      message_count = 0
       loop do
-        consumer.poll(100)
+        message = consumer.poll(100)
+        message_count += 1 if message
       rescue Rdkafka::RdkafkaError => error
         if error.is_partition_eof?
           eof_count += 1
         end
-        break if eof_count == 3
+        break if eof_count == 3 && message_count >= 3
       end
 
       # Commit
@@ -1012,13 +1015,13 @@ describe Rdkafka::Consumer do
 
       # Create list to fetch lag for
       list = consumer.committed(Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-        l.add_topic(TestTopics.consume_test_topic, 0..2)
+        l.add_topic(topic, 0..2)
       end)
 
       # Lag should be 0 now
       lag = consumer.lag(list)
       expected_lag = {
-        TestTopics.consume_test_topic => {
+        topic => {
           0 => 0,
           1 => 0,
           2 => 0
@@ -1030,7 +1033,7 @@ describe Rdkafka::Consumer do
       # Produce message on every topic again
       (0..2).each do |i|
         @producer.produce(
-          topic: TestTopics.consume_test_topic,
+          topic: topic,
           key: "key lag #{i}",
           partition: i
         ).wait
@@ -1039,7 +1042,7 @@ describe Rdkafka::Consumer do
       # Lag should be 1 now
       lag = consumer.lag(list)
       expected_lag = {
-        TestTopics.consume_test_topic => {
+        topic => {
           0 => 1,
           1 => 1,
           2 => 1
@@ -1055,16 +1058,16 @@ describe Rdkafka::Consumer do
       consumer = rdkafka_consumer_config("enable.partition.eof": true).consumer
 
       # Subscribe to establish the group coordinator before calling committed
-      consumer.subscribe(TestTopics.consume_test_topic)
+      consumer.subscribe(topic)
       wait_for_assignment(consumer)
 
       list = consumer.committed(Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-        l.add_topic(TestTopics.consume_test_topic, 0..2)
+        l.add_topic(topic, 0..2)
       end)
 
       lag = consumer.lag(list)
       expected_lag = {
-        TestTopics.consume_test_topic => {}
+        topic => {}
       }
 
       assert_equal expected_lag, lag
@@ -1077,7 +1080,7 @@ describe Rdkafka::Consumer do
 
   describe "#cluster_id" do
     it "returns the current cluster id" do
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
       wait_for_assignment(@consumer)
 
       refute_empty @consumer.cluster_id
@@ -1088,7 +1091,7 @@ describe Rdkafka::Consumer do
 
   describe "#member_id" do
     it "returns the current member id" do
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
       wait_for_assignment(@consumer)
 
       assert @consumer.member_id.start_with?("rdkafka-")
@@ -1103,7 +1106,7 @@ describe Rdkafka::Consumer do
     end
 
     it "returns nil if there are no messages" do
-      @consumer.subscribe(TestTopics.empty_test_topic)
+      @consumer.subscribe(topic)
 
       assert_nil @consumer.poll(1000)
     end
@@ -1148,13 +1151,13 @@ describe Rdkafka::Consumer do
     end
 
     it "returns nil if there are no messages" do
-      @consumer.subscribe(TestTopics.empty_test_topic)
+      @consumer.subscribe(topic)
 
       assert_nil @consumer.poll_nb
     end
 
     it "accepts a timeout parameter" do
-      @consumer.subscribe(TestTopics.empty_test_topic)
+      @consumer.subscribe(topic)
 
       assert_nil @consumer.poll_nb(0)
       assert_nil @consumer.poll_nb(100)
@@ -1216,12 +1219,12 @@ describe Rdkafka::Consumer do
   describe "#poll with headers" do
     it "returns message with headers using symbol keys" do
       report = @producer.produce(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         key: "key headers",
         headers: { foo: "bar" }
       ).wait
 
-      message = wait_for_message(topic: TestTopics.consume_test_topic, consumer: @consumer, delivery_report: report)
+      message = wait_for_message(topic: topic, consumer: @consumer, delivery_report: report)
 
       refute_nil message
       assert_equal "key headers", message.key
@@ -1231,12 +1234,12 @@ describe Rdkafka::Consumer do
 
     it "returns message with headers using string keys" do
       report = @producer.produce(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         key: "key headers",
         headers: { "foo" => "bar" }
       ).wait
 
-      message = wait_for_message(topic: TestTopics.consume_test_topic, consumer: @consumer, delivery_report: report)
+      message = wait_for_message(topic: topic, consumer: @consumer, delivery_report: report)
 
       refute_nil message
       assert_equal "key headers", message.key
@@ -1246,12 +1249,12 @@ describe Rdkafka::Consumer do
 
     it "returns message with no headers" do
       report = @producer.produce(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         key: "key no headers",
         headers: nil
       ).wait
 
-      message = wait_for_message(topic: TestTopics.consume_test_topic, consumer: @consumer, delivery_report: report)
+      message = wait_for_message(topic: topic, consumer: @consumer, delivery_report: report)
 
       refute_nil message
       assert_equal "key no headers", message.key
@@ -1260,14 +1263,14 @@ describe Rdkafka::Consumer do
 
     it "raises an error when message headers are not readable" do
       report = @producer.produce(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         key: "key err headers",
         headers: nil
       ).wait
 
       Rdkafka::Bindings.stub(:rd_kafka_message_headers, 1) do
         err = assert_raises(Rdkafka::RdkafkaError) do
-          wait_for_message(topic: TestTopics.consume_test_topic, consumer: @consumer, delivery_report: report)
+          wait_for_message(topic: topic, consumer: @consumer, delivery_report: report)
         end
         assert err.message.start_with?("Error reading message headers")
       end
@@ -1275,14 +1278,14 @@ describe Rdkafka::Consumer do
 
     it "raises an error when the first message header is not readable" do
       report = @producer.produce(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         key: "key err headers",
         headers: { foo: "bar" }
       ).wait
 
       Rdkafka::Bindings.stub(:rd_kafka_header_get_all, 1) do
         err = assert_raises(Rdkafka::RdkafkaError) do
-          wait_for_message(topic: TestTopics.consume_test_topic, consumer: @consumer, delivery_report: report)
+          wait_for_message(topic: topic, consumer: @consumer, delivery_report: report)
         end
         assert err.message.start_with?("Error reading a message header at index 0")
       end
@@ -1296,7 +1299,7 @@ describe Rdkafka::Consumer do
       handles = []
       10.times do
         handles << @producer.produce(
-          topic: TestTopics.consume_test_topic,
+          topic: topic,
           payload: "payload 1",
           key: "key 1",
           partition: 0
@@ -1304,7 +1307,7 @@ describe Rdkafka::Consumer do
       end
       handles.each(&:wait)
 
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
       # Check the first 10 messages. Then close the consumer, which
       # should break the each loop.
       @consumer.each_with_index do |message, i|
@@ -1343,7 +1346,7 @@ describe Rdkafka::Consumer do
     it "returns a TopicPartitionList with updated offsets" do
       timeout = 1000
 
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
 
       # 1. partitions are assigned
       wait_for_assignment(@consumer)
@@ -1356,7 +1359,7 @@ describe Rdkafka::Consumer do
       # 3. send messages
       [:a, :b, :c].each do |val|
         @producer.produce(
-          topic: TestTopics.consume_test_topic,
+          topic: topic,
           payload: "payload #{val}",
           key: "key 0",
           partition: 0
@@ -1369,7 +1372,7 @@ describe Rdkafka::Consumer do
 
       tpl = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
         list.add_topic_and_partitions_with_offsets(
-          TestTopics.consume_test_topic,
+          topic,
           [
             [0, message.timestamp]
           ]
@@ -1378,7 +1381,7 @@ describe Rdkafka::Consumer do
 
       tpl_response = @consumer.offsets_for_times(tpl)
 
-      assert_equal message.offset, tpl_response.to_h[TestTopics.consume_test_topic][0].offset
+      assert_equal message.offset, tpl_response.to_h[topic][0].offset
     ensure
       @consumer.unsubscribe
     end
@@ -1399,7 +1402,7 @@ describe Rdkafka::Consumer do
 
       Rdkafka::Config.statistics_callback = ->(published) { stats << published }
 
-      consumer.subscribe(TestTopics.consume_test_topic)
+      consumer.subscribe(topic)
       consumer.poll(1_000)
 
       assert_empty stats
@@ -1422,7 +1425,7 @@ describe Rdkafka::Consumer do
 
       Rdkafka::Config.statistics_callback = ->(published) {}
 
-      consumer.subscribe(TestTopics.consume_test_topic)
+      consumer.subscribe(topic)
       result = consumer.events_poll_nb
 
       assert_kind_of Integer, result
@@ -1439,7 +1442,7 @@ describe Rdkafka::Consumer do
 
       Rdkafka::Config.statistics_callback = ->(published) {}
 
-      consumer.subscribe(TestTopics.consume_test_topic)
+      consumer.subscribe(topic)
 
       assert_operator consumer.events_poll_nb(0), :>=, 0
       assert_operator consumer.events_poll_nb(100), :>=, 0
@@ -1460,7 +1463,7 @@ describe Rdkafka::Consumer do
 
       Rdkafka::Config.statistics_callback = ->(published) { stats << published }
 
-      consumer.subscribe(TestTopics.consume_test_topic)
+      consumer.subscribe(topic)
       consumer.poll(1_000)
 
       assert_empty stats
@@ -1514,11 +1517,11 @@ describe Rdkafka::Consumer do
       @consumer.close
       @consumer = config.consumer
 
-      notify_listener(@consumer, listener)
+      notify_listener(@consumer, listener, topic: topic)
 
       assert_equal [
-        [:assign, TestTopics.consume_test_topic, 0, 1, 2],
-        [:revoke, TestTopics.consume_test_topic, 0, 1, 2]
+        [:assign, topic, 0, 1, 2],
+        [:revoke, topic, 0, 1, 2]
       ], listener.queue
     end
 
@@ -1540,7 +1543,7 @@ describe Rdkafka::Consumer do
       @consumer.close
       @consumer = config.consumer
 
-      notify_listener(@consumer, listener)
+      notify_listener(@consumer, listener, topic: topic)
 
       assert_equal [:assigned, :revoked], listener.queue
     end
@@ -1661,7 +1664,7 @@ describe Rdkafka::Consumer do
       handles = []
       10.times do
         handles << @producer.produce(
-          topic: TestTopics.consume_test_topic,
+          topic: topic,
           payload: "payload 1",
           key: "key 1",
           partition: 0
@@ -1671,8 +1674,8 @@ describe Rdkafka::Consumer do
       @producer.close
       @producer = nil
 
-      notify_listener(@consumer, listener) do
-        @consumer.subscribe(TestTopics.consume_test_topic)
+      notify_listener(@consumer, listener, topic: topic) do
+        @consumer.subscribe(topic)
         # Check the first 10 messages. Then close the consumer, which
         # should break the each loop.
         @consumer.each_with_index do |message, i|
@@ -1682,8 +1685,8 @@ describe Rdkafka::Consumer do
       end
 
       assert_equal [
-        [:assign, TestTopics.consume_test_topic, 0, 1, 2],
-        [:revoke, TestTopics.consume_test_topic, 0, 1, 2]
+        [:assign, topic, 0, 1, 2],
+        [:revoke, topic, 0, 1, 2]
       ], listener.queue
     end
   end
@@ -1747,14 +1750,14 @@ describe Rdkafka::Consumer do
 
       (0..2).each do |i|
         @producer.produce(
-          topic: TestTopics.consume_test_topic,
+          topic: topic,
           key: "key lag #{i}",
           partition: i
         ).wait
       end
 
       # Consume to the end
-      consumer.subscribe(TestTopics.consume_test_topic)
+      consumer.subscribe(topic)
       eof_error = nil
 
       loop do
@@ -1776,7 +1779,7 @@ describe Rdkafka::Consumer do
 
   describe "long running consumption" do
     it "consumes messages continuously for 60 seconds" do
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
       wait_for_assignment(@consumer)
 
       messages_consumed = 0
@@ -1787,7 +1790,7 @@ describe Rdkafka::Consumer do
         counter = 0
         while Time.now - start_time < 60
           @producer.produce(
-            topic: TestTopics.consume_test_topic,
+            topic: topic,
             payload: "payload #{counter}",
             key: "key #{counter}",
             partition: 0
@@ -1802,7 +1805,7 @@ describe Rdkafka::Consumer do
         message = @consumer.poll(1000)
         if message
           assert_kind_of Rdkafka::Consumer::Message, message
-          assert_equal TestTopics.consume_test_topic, message.topic
+          assert_equal topic, message.topic
           messages_consumed += 1
           @consumer.commit if messages_consumed % 10 == 0
         end
@@ -1862,7 +1865,7 @@ describe Rdkafka::Consumer do
 
   describe "#poll_nb_each" do
     it "does not raise when queue is empty" do
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
       # Give it a moment to subscribe
       sleep 0.5
 
@@ -1873,7 +1876,7 @@ describe Rdkafka::Consumer do
     end
 
     it "yields messages and respects :stop" do
-      topic = TestTopics.consume_test_topic
+      topic = topic
       @consumer.subscribe(topic)
 
       # Produce some messages
@@ -1907,7 +1910,7 @@ describe Rdkafka::Consumer do
     end
 
     it "properly cleans up message pointers" do
-      topic = TestTopics.consume_test_topic
+      topic = topic
       @consumer.subscribe(topic)
 
       @producer.produce(topic: topic, payload: "cleanup test")
@@ -1931,7 +1934,7 @@ describe Rdkafka::Consumer do
 
   describe "file descriptor access for fiber scheduler integration" do
     it "enables IO events on consumer queue" do
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
 
       signal_r, signal_w = IO.pipe
       @consumer.enable_queue_io_events(signal_w.fileno)
@@ -1940,7 +1943,7 @@ describe Rdkafka::Consumer do
     end
 
     it "enables IO events on background queue" do
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
 
       signal_r, signal_w = IO.pipe
       @consumer.enable_background_queue_io_events(signal_w.fileno)
@@ -1949,7 +1952,7 @@ describe Rdkafka::Consumer do
     end
 
     it "enables FD with payload option" do
-      @consumer.subscribe(TestTopics.consume_test_topic)
+      @consumer.subscribe(topic)
 
       signal_r, signal_w = IO.pipe
       custom_payload = "hello"
@@ -1959,7 +1962,7 @@ describe Rdkafka::Consumer do
     end
 
     it "supports normal polling with IO events enabled" do
-      topic = TestTopics.consume_test_topic
+      topic = topic
       @consumer.subscribe(topic)
 
       # Setup IO event signaling

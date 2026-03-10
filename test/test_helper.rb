@@ -34,7 +34,6 @@ require_relative "support/timeout_test"
 require_relative "support/rd_kafka_test_consumer"
 
 # Module to hold dynamically generated test topics with UUIDs
-# Topics are generated once when first accessed and then cached
 module TestTopics
   class << self
     # Generate a unique topic name with it- prefix and UUID
@@ -42,35 +41,7 @@ module TestTopics
       "it-#{SecureRandom.uuid}"
     end
 
-    # Shared topics initialized once on first access
-    def consume_test_topic
-      @consume_test_topic ||= unique
-    end
-
-    def empty_test_topic
-      @empty_test_topic ||= unique
-    end
-
-    def load_test_topic
-      @load_test_topic ||= unique
-    end
-
-    def produce_test_topic
-      @produce_test_topic ||= unique
-    end
-
-    def rake_test_topic
-      @rake_test_topic ||= unique
-    end
-
-    def watermarks_test_topic
-      @watermarks_test_topic ||= unique
-    end
-
-    def partitioner_test_topic
-      @partitioner_test_topic ||= unique
-    end
-
+    # Shared topic for partition_count tests (needs stable partition count = 1)
     def example_topic
       @example_topic ||= unique
     end
@@ -158,7 +129,6 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer:
   timeout = Time.now.to_i + timeout_in_seconds
   retry_count = 0
   max_retries = 10
-  seeked = false
 
   loop do
     if timeout <= Time.now.to_i
@@ -166,13 +136,6 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer:
     end
 
     begin
-      # Once assigned, seek directly to the target offset to avoid scanning
-      # through all historical messages from earliest
-      if !seeked && !consumer.assignment.empty?
-        consumer.seek_by(topic, delivery_report.partition, delivery_report.offset)
-        seeked = true
-      end
-
       message = consumer.poll(100)
       if message &&
           message.partition == delivery_report.partition &&
@@ -182,7 +145,7 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer:
     rescue Rdkafka::RdkafkaError => e
       if e.code == :unknown_topic_or_part && retry_count < max_retries
         retry_count += 1
-        sleep(0.1) # Small delay before retry
+        sleep(0.1)
         next
       else
         raise
@@ -217,9 +180,9 @@ rescue Rdkafka::RdkafkaError => e
   retry
 end
 
-def notify_listener(consumer, listener, &block)
+def notify_listener(consumer, listener, topic:, &block)
   # 1. subscribe and poll
-  consumer.subscribe(TestTopics.consume_test_topic)
+  consumer.subscribe(topic)
   wait_for_assignment(consumer)
   consumer.poll(100)
 
@@ -231,7 +194,19 @@ def notify_listener(consumer, listener, &block)
   consumer.close
 end
 
-# Suite-level topic creation (replaces before(:suite))
+# Creates a unique topic for test isolation and waits for it to be ready.
+# Returns the topic name.
+def create_topic_for_test(partitions: 3)
+  topic_name = "it-#{SecureRandom.uuid}"
+  admin = rdkafka_config.admin
+  handle = admin.create_topic(topic_name, partitions, 1)
+  handle.wait(max_wait_timeout_ms: 15_000)
+  wait_for_topic(admin, topic_name)
+  admin.close
+  topic_name
+end
+
+# Suite-level topic creation for topics that are truly shared across tests
 TOPICS_CREATED_MUTEX = Mutex.new
 $topics_initialized = false
 
@@ -242,14 +217,8 @@ def ensure_topics_created
     return if $topics_initialized
 
     admin = rdkafka_config.admin
+    # Only pre-create topics that are genuinely shared and don't need clean state
     topics = {
-      TestTopics.consume_test_topic => 3,
-      TestTopics.empty_test_topic => 3,
-      TestTopics.load_test_topic => 3,
-      TestTopics.produce_test_topic => 3,
-      TestTopics.rake_test_topic => 3,
-      TestTopics.watermarks_test_topic => 3,
-      TestTopics.partitioner_test_topic => 25,
       TestTopics.example_topic => 1
     }
     topics.each do |topic, partitions|
@@ -260,7 +229,6 @@ def ensure_topics_created
         raise unless ex.message.match?(/topic_already_exists/)
       end
     end
-    # Wait for all topics to be visible in metadata before proceeding
     topics.each_key { |topic| wait_for_topic(admin, topic) }
     admin.close
     $topics_initialized = true

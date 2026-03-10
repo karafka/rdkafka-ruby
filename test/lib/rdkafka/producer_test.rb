@@ -6,6 +6,8 @@ describe Rdkafka::Producer do
   let(:producer) { rdkafka_producer_config.producer }
   let(:all_partitioners) { %w[random consistent consistent_random murmur2 murmur2_random fnv1a fnv1a_random] }
   let(:consumer) { rdkafka_consumer_config.consumer }
+  let(:topic) { create_topic_for_test }
+  let(:topic_25) { create_topic_for_test(partitions: 25) }
 
   after do
     # Registry should always end up being empty
@@ -84,13 +86,13 @@ describe Rdkafka::Producer do
           assert_equal "label", report.label
           assert_equal 1, report.partition
           assert_operator report.offset, :>=, 0
-          assert_equal TestTopics.produce_test_topic, report.topic_name
+          assert_equal topic, report.topic_name
           callback_called = true
         end
 
         # Produce a message
         handle = producer.produce(
-          topic: TestTopics.produce_test_topic,
+          topic: topic,
           payload: "payload",
           key: "key",
           label: "label"
@@ -115,7 +117,7 @@ describe Rdkafka::Producer do
 
         # Produce a message
         handle = producer.produce(
-          topic: TestTopics.produce_test_topic,
+          topic: topic,
           payload: "payload",
           key: "key"
         )
@@ -156,7 +158,7 @@ describe Rdkafka::Producer do
 
         # Produce a message
         handle = producer.produce(
-          topic: TestTopics.produce_test_topic,
+          topic: topic,
           payload: "payload",
           key: "key"
         )
@@ -171,7 +173,7 @@ describe Rdkafka::Producer do
         refute_nil called_report.first
         assert_equal 1, called_report.first.partition
         assert_operator called_report.first.offset, :>=, 0
-        assert_equal TestTopics.produce_test_topic, called_report.first.topic_name
+        assert_equal topic, called_report.first.topic_name
       end
 
       it "provides handle" do
@@ -189,7 +191,7 @@ describe Rdkafka::Producer do
 
         # Produce a message
         handle = producer.produce(
-          topic: TestTopics.produce_test_topic,
+          topic: topic,
           payload: "payload",
           key: "key"
         )
@@ -224,7 +226,7 @@ describe Rdkafka::Producer do
   it "produces a message" do
     # Produce a message
     handle = producer.produce(
-      topic: TestTopics.produce_test_topic,
+      topic: topic,
       payload: "payload",
       key: "key",
       label: "label"
@@ -249,7 +251,7 @@ describe Rdkafka::Producer do
 
     # Consume message and verify its content
     message = wait_for_message(
-      topic: TestTopics.produce_test_topic,
+      topic: topic,
       delivery_report: report,
       consumer: consumer
     )
@@ -263,7 +265,7 @@ describe Rdkafka::Producer do
   it "produces a message with a specified partition" do
     # Produce a message
     handle = producer.produce(
-      topic: TestTopics.produce_test_topic,
+      topic: topic,
       payload: "payload partition",
       key: "key partition",
       partition: 1
@@ -272,7 +274,7 @@ describe Rdkafka::Producer do
 
     # Consume message and verify its content
     message = wait_for_message(
-      topic: TestTopics.produce_test_topic,
+      topic: topic,
       delivery_report: report,
       consumer: consumer
     )
@@ -286,7 +288,7 @@ describe Rdkafka::Producer do
     while true
       key = ("a".."z").to_a.shuffle.take(10).join("")
       partition_key = ("a".."z").to_a.shuffle.take(10).join("")
-      partition_count = producer.partition_count(TestTopics.partitioner_test_topic)
+      partition_count = producer.partition_count(topic_25)
       break if (Zlib.crc32(key) % partition_count) != (Zlib.crc32(partition_key) % partition_count)
     end
 
@@ -295,7 +297,7 @@ describe Rdkafka::Producer do
 
     messages = messages_config.map do |m|
       handle = producer.produce(
-        topic: TestTopics.partitioner_test_topic,
+        topic: topic_25,
         payload: "payload partition",
         key: m[:key],
         partition_key: m[:partition_key]
@@ -303,7 +305,7 @@ describe Rdkafka::Producer do
       report = handle.wait(max_wait_timeout_ms: 5_000)
 
       wait_for_message(
-        topic: TestTopics.partitioner_test_topic,
+        topic: topic_25,
         delivery_report: report
       )
     end
@@ -320,7 +322,7 @@ describe Rdkafka::Producer do
 
     messages = messages_config.map do |m|
       handle = producer.produce(
-        topic: TestTopics.partitioner_test_topic,
+        topic: topic_25,
         payload: "payload partition",
         key: m[:key],
         partition_key: m[:partition_key]
@@ -328,7 +330,7 @@ describe Rdkafka::Producer do
       report = handle.wait(max_wait_timeout_ms: 5_000)
 
       wait_for_message(
-        topic: TestTopics.partitioner_test_topic,
+        topic: topic_25,
         delivery_report: report
       )
     end
@@ -339,7 +341,7 @@ describe Rdkafka::Producer do
 
   it "produces a message with utf-8 encoding" do
     handle = producer.produce(
-      topic: TestTopics.produce_test_topic,
+      topic: topic,
       payload: "Τη γλώσσα μου έδωσαν ελληνική",
       key: "key utf8"
     )
@@ -347,7 +349,7 @@ describe Rdkafka::Producer do
 
     # Consume message and verify its content
     message = wait_for_message(
-      topic: TestTopics.produce_test_topic,
+      topic: topic,
       delivery_report: report,
       consumer: consumer
     )
@@ -403,7 +405,7 @@ describe Rdkafka::Producer do
     it "raises a type error if not nil, integer or time" do
       assert_raises(TypeError) do
         producer.produce(
-          topic: TestTopics.produce_test_topic,
+          topic: topic,
           payload: "payload timestamp",
           key: "key timestamp",
           timestamp: "10101010"
@@ -413,7 +415,7 @@ describe Rdkafka::Producer do
 
     it "produces a message with an integer timestamp" do
       handle = producer.produce(
-        topic: TestTopics.produce_test_topic,
+        topic: topic,
         payload: "payload timestamp",
         key: "key timestamp",
         timestamp: 1505069646252
@@ -422,7 +424,7 @@ describe Rdkafka::Producer do
 
       # Consume message and verify its content
       message = wait_for_message(
-        topic: TestTopics.produce_test_topic,
+        topic: topic,
         delivery_report: report,
         consumer: consumer
       )
@@ -434,7 +436,7 @@ describe Rdkafka::Producer do
 
     it "produces a message with a time timestamp" do
       handle = producer.produce(
-        topic: TestTopics.produce_test_topic,
+        topic: topic,
         payload: "payload timestamp",
         key: "key timestamp",
         timestamp: Time.at(1505069646, 353_000)
@@ -443,7 +445,7 @@ describe Rdkafka::Producer do
 
       # Consume message and verify its content
       message = wait_for_message(
-        topic: TestTopics.produce_test_topic,
+        topic: topic,
         delivery_report: report,
         consumer: consumer
       )
@@ -456,14 +458,14 @@ describe Rdkafka::Producer do
 
   it "produces a message with nil key" do
     handle = producer.produce(
-      topic: TestTopics.produce_test_topic,
+      topic: topic,
       payload: "payload no key"
     )
     report = handle.wait(max_wait_timeout_ms: 5_000)
 
     # Consume message and verify its content
     message = wait_for_message(
-      topic: TestTopics.produce_test_topic,
+      topic: topic,
       delivery_report: report,
       consumer: consumer
     )
@@ -474,14 +476,14 @@ describe Rdkafka::Producer do
 
   it "produces a message with nil payload" do
     handle = producer.produce(
-      topic: TestTopics.produce_test_topic,
+      topic: topic,
       key: "key no payload"
     )
     report = handle.wait(max_wait_timeout_ms: 5_000)
 
     # Consume message and verify its content
     message = wait_for_message(
-      topic: TestTopics.produce_test_topic,
+      topic: topic,
       delivery_report: report,
       consumer: consumer
     )
@@ -492,7 +494,7 @@ describe Rdkafka::Producer do
 
   it "produces a message with headers" do
     handle = producer.produce(
-      topic: TestTopics.produce_test_topic,
+      topic: topic,
       payload: "payload headers",
       key: "key headers",
       headers: { foo: :bar, baz: :foobar }
@@ -501,7 +503,7 @@ describe Rdkafka::Producer do
 
     # Consume message and verify its content
     message = wait_for_message(
-      topic: TestTopics.produce_test_topic,
+      topic: topic,
       delivery_report: report,
       consumer: consumer
     )
@@ -515,7 +517,7 @@ describe Rdkafka::Producer do
 
   it "produces a message with empty headers" do
     handle = producer.produce(
-      topic: TestTopics.produce_test_topic,
+      topic: topic,
       payload: "payload headers",
       key: "key headers",
       headers: {}
@@ -524,7 +526,7 @@ describe Rdkafka::Producer do
 
     # Consume message and verify its content
     message = wait_for_message(
-      topic: TestTopics.produce_test_topic,
+      topic: topic,
       delivery_report: report,
       consumer: consumer
     )
@@ -538,7 +540,7 @@ describe Rdkafka::Producer do
     5.times do
       200.times do
         producer.produce(
-          topic: TestTopics.produce_test_topic,
+          topic: topic,
           payload: "payload not waiting",
           key: "key not waiting"
         )
@@ -569,7 +571,7 @@ describe Rdkafka::Producer do
       forked_producer = rdkafka_producer_config.producer
 
       handle = forked_producer.produce(
-        topic: TestTopics.produce_test_topic,
+        topic: topic,
         payload: "payload-forked",
         key: "key-forked"
       )
@@ -601,7 +603,7 @@ describe Rdkafka::Producer do
 
     # Consume message and verify its content
     message = wait_for_message(
-      topic: TestTopics.produce_test_topic,
+      topic: topic,
       delivery_report: report,
       consumer: consumer
     )
@@ -615,7 +617,7 @@ describe Rdkafka::Producer do
     Rdkafka::Bindings.stub(:rd_kafka_producev, 20) do
       assert_raises(Rdkafka::RdkafkaError) do
         producer.produce(
-          topic: TestTopics.produce_test_topic,
+          topic: topic,
           key: "key error"
         )
       end
@@ -624,7 +626,7 @@ describe Rdkafka::Producer do
 
   it "raises a timeout error when waiting too long" do
     handle = producer.produce(
-      topic: TestTopics.produce_test_topic,
+      topic: topic,
       payload: "payload timeout",
       key: "key timeout"
     )
@@ -677,7 +679,7 @@ describe Rdkafka::Producer do
         "message.timeout.ms": 100
       ).producer
 
-      handler = prod.produce(topic: TestTopics.produce_test_topic, payload: nil, label: "na")
+      handler = prod.produce(topic: topic, payload: nil, label: "na")
       # Wait for the async callbacks and delivery registry to update
       sleep(2)
 
@@ -753,7 +755,7 @@ describe Rdkafka::Producer do
   describe "#flush" do
     it "returns true when can flush all outstanding messages" do
       producer.produce(
-        topic: TestTopics.produce_test_topic,
+        topic: topic,
         payload: "payload headers",
         key: "key headers",
         headers: {}
@@ -769,7 +771,7 @@ describe Rdkafka::Producer do
       ).producer
 
       prod.produce(
-        topic: TestTopics.produce_test_topic,
+        topic: topic,
         payload: "payload headers",
         key: "key headers",
         headers: {}
@@ -813,7 +815,7 @@ describe Rdkafka::Producer do
       ).producer
 
       prod.produce(
-        topic: TestTopics.produce_test_topic,
+        topic: topic,
         payload: "payload headers"
       )
 
@@ -830,7 +832,7 @@ describe Rdkafka::Producer do
       ).producer
 
       handle = prod.produce(
-        topic: TestTopics.produce_test_topic,
+        topic: topic,
         payload: "payload headers"
       )
 
@@ -854,7 +856,7 @@ describe Rdkafka::Producer do
       prod.delivery_callback = ->(delivery_report) { delivery_reports << delivery_report }
 
       prod.produce(
-        topic: TestTopics.produce_test_topic,
+        topic: topic,
         payload: "payload headers"
       )
 
@@ -881,7 +883,7 @@ describe Rdkafka::Producer do
       begin
         10.times do
           slow_producer.produce(
-            topic: TestTopics.produce_test_topic,
+            topic: topic,
             payload: "test payload"
           )
         end
@@ -899,7 +901,7 @@ describe Rdkafka::Producer do
 
     it "returns 0 after flush completes" do
       producer.produce(
-        topic: TestTopics.produce_test_topic,
+        topic: topic,
         payload: "test payload"
       ).wait(max_wait_timeout_ms: 5_000)
 
@@ -976,12 +978,12 @@ describe Rdkafka::Producer do
       }
 
       report = producer.produce(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         key: "key headers",
         headers: headers
       ).wait
 
-      message = wait_for_message(topic: TestTopics.consume_test_topic, consumer: consumer, delivery_report: report)
+      message = wait_for_message(topic: topic, consumer: consumer, delivery_report: report)
 
       refute_nil message
       assert_equal "key headers", message.key
@@ -996,12 +998,12 @@ describe Rdkafka::Producer do
       }
 
       report = producer.produce(
-        topic: TestTopics.consume_test_topic,
+        topic: topic,
         key: "key headers",
         headers: headers
       ).wait
 
-      message = wait_for_message(topic: TestTopics.consume_test_topic, consumer: consumer, delivery_report: report)
+      message = wait_for_message(topic: topic, consumer: consumer, delivery_report: report)
 
       refute_nil message
       assert_equal "key headers", message.key
@@ -1017,19 +1019,19 @@ describe Rdkafka::Producer do
 
       # This call will make a blocking request to the metadata cache
       prod.produce(
-        topic: TestTopics.produce_test_topic,
+        topic: topic,
         payload: "payload headers",
         partition_key: "test"
       ).wait
 
       count_cache_hash = Rdkafka::Producer.partitions_count_cache.to_h
-      pre_statistics_ttl = count_cache_hash.fetch(TestTopics.produce_test_topic, [])[0]
+      pre_statistics_ttl = count_cache_hash.fetch(topic, [])[0]
 
       # We wait to make sure that statistics are triggered and that there is a refresh
       sleep(1.5)
 
       count_cache_hash = Rdkafka::Producer.partitions_count_cache.to_h
-      post_statistics_ttl = count_cache_hash.fetch(TestTopics.produce_test_topic, [])[0]
+      post_statistics_ttl = count_cache_hash.fetch(topic, [])[0]
 
       assert_operator pre_statistics_ttl, :<, post_statistics_ttl
     ensure
@@ -1042,19 +1044,19 @@ describe Rdkafka::Producer do
 
       # This call will make a blocking request to the metadata cache
       prod.produce(
-        topic: TestTopics.produce_test_topic,
+        topic: topic,
         payload: "payload headers"
       ).wait
 
       count_cache_hash = Rdkafka::Producer.partitions_count_cache.to_h
-      pre_statistics_ttl = count_cache_hash.fetch(TestTopics.produce_test_topic, [])[0]
+      pre_statistics_ttl = count_cache_hash.fetch(topic, [])[0]
 
       # We wait to make sure that statistics are triggered and that there is a refresh
       sleep(1.5)
 
       # This will anyhow be populated from statistic
       count_cache_hash = Rdkafka::Producer.partitions_count_cache.to_h
-      post_statistics_ttl = count_cache_hash.fetch(TestTopics.produce_test_topic, [])[0]
+      post_statistics_ttl = count_cache_hash.fetch(topic, [])[0]
 
       assert_nil pre_statistics_ttl
       refute_nil post_statistics_ttl
@@ -1069,19 +1071,19 @@ describe Rdkafka::Producer do
 
       # This call will make a blocking request to the metadata cache
       prod.produce(
-        topic: TestTopics.produce_test_topic,
+        topic: topic,
         payload: "payload headers",
         partition_key: "test"
       ).wait
 
       count_cache_hash = Rdkafka::Producer.partitions_count_cache.to_h
-      pre_statistics_ttl = count_cache_hash.fetch(TestTopics.produce_test_topic, [])[0]
+      pre_statistics_ttl = count_cache_hash.fetch(topic, [])[0]
 
       # We wait to make sure that statistics are triggered and that there is a refresh
       sleep(1.5)
 
       count_cache_hash = Rdkafka::Producer.partitions_count_cache.to_h
-      post_statistics_ttl = count_cache_hash.fetch(TestTopics.produce_test_topic, [])[0]
+      post_statistics_ttl = count_cache_hash.fetch(topic, [])[0]
 
       assert_equal pre_statistics_ttl, post_statistics_ttl
     ensure
@@ -1093,19 +1095,19 @@ describe Rdkafka::Producer do
 
       # This call will make a blocking request to the metadata cache
       prod.produce(
-        topic: TestTopics.produce_test_topic,
+        topic: topic,
         payload: "payload headers"
       ).wait
 
       count_cache_hash = Rdkafka::Producer.partitions_count_cache.to_h
-      pre_statistics_ttl = count_cache_hash.fetch(TestTopics.produce_test_topic, [])[0]
+      pre_statistics_ttl = count_cache_hash.fetch(topic, [])[0]
 
       # We wait to make sure that statistics are triggered and that there is a refresh
       sleep(1.5)
 
       # This should not be populated because stats are not in use
       count_cache_hash = Rdkafka::Producer.partitions_count_cache.to_h
-      post_statistics_ttl = count_cache_hash.fetch(TestTopics.produce_test_topic, [])[0]
+      post_statistics_ttl = count_cache_hash.fetch(topic, [])[0]
 
       assert_nil pre_statistics_ttl
       assert_nil post_statistics_ttl
@@ -1134,7 +1136,7 @@ describe Rdkafka::Producer do
 
       all_partitioners.each do |partitioner|
         handle = producer.produce(
-          topic: TestTopics.partitioner_test_topic,
+          topic: topic_25,
           payload: "test payload",
           partition_key: test_key,
           partitioner: partitioner
@@ -1153,7 +1155,7 @@ describe Rdkafka::Producer do
     it "produces with empty string partition key without crashing" do
       all_partitioners.each do |partitioner|
         handle = producer.produce(
-          topic: TestTopics.partitioner_test_topic,
+          topic: topic_25,
           payload: "test payload",
           key: "test-key",
           partition_key: "",
@@ -1168,7 +1170,7 @@ describe Rdkafka::Producer do
 
     it "handles nil partition key gracefully" do
       handle = producer.produce(
-        topic: TestTopics.partitioner_test_topic,
+        topic: topic_25,
         payload: "test payload",
         key: "test-key",
         partition_key: nil
@@ -1177,13 +1179,13 @@ describe Rdkafka::Producer do
       report = handle.wait(max_wait_timeout_ms: 5_000)
 
       assert_operator report.partition, :>=, 0
-      assert_operator report.partition, :<, producer.partition_count(TestTopics.partitioner_test_topic)
+      assert_operator report.partition, :<, producer.partition_count(topic_25)
     end
 
     it "handles very short keys with all partitioners" do
       all_partitioners.each do |partitioner|
         handle = producer.produce(
-          topic: TestTopics.partitioner_test_topic,
+          topic: topic_25,
           payload: "test payload",
           partition_key: "a",
           partitioner: partitioner
@@ -1192,7 +1194,7 @@ describe Rdkafka::Producer do
         report = handle.wait(max_wait_timeout_ms: 5_000)
 
         assert_operator report.partition, :>=, 0
-        assert_operator report.partition, :<, producer.partition_count(TestTopics.partitioner_test_topic)
+        assert_operator report.partition, :<, producer.partition_count(topic_25)
       end
     end
 
@@ -1201,7 +1203,7 @@ describe Rdkafka::Producer do
 
       all_partitioners.each do |partitioner|
         handle = producer.produce(
-          topic: TestTopics.partitioner_test_topic,
+          topic: topic_25,
           payload: "test payload",
           partition_key: long_key,
           partitioner: partitioner
@@ -1210,7 +1212,7 @@ describe Rdkafka::Producer do
         report = handle.wait(max_wait_timeout_ms: 5_000)
 
         assert_operator report.partition, :>=, 0
-        assert_operator report.partition, :<, producer.partition_count(TestTopics.partitioner_test_topic)
+        assert_operator report.partition, :<, producer.partition_count(topic_25)
       end
     end
 
@@ -1219,7 +1221,7 @@ describe Rdkafka::Producer do
 
       all_partitioners.each do |partitioner|
         handle = producer.produce(
-          topic: TestTopics.partitioner_test_topic,
+          topic: topic_25,
           payload: "test payload",
           partition_key: unicode_key,
           partitioner: partitioner
@@ -1228,7 +1230,7 @@ describe Rdkafka::Producer do
         report = handle.wait(max_wait_timeout_ms: 5_000)
 
         assert_operator report.partition, :>=, 0
-        assert_operator report.partition, :<, producer.partition_count(TestTopics.partitioner_test_topic)
+        assert_operator report.partition, :<, producer.partition_count(topic_25)
       end
     end
 
@@ -1238,7 +1240,7 @@ describe Rdkafka::Producer do
 
         reports = 5.times.map do
           handle = producer.produce(
-            topic: TestTopics.partitioner_test_topic,
+            topic: topic_25,
             payload: "test payload #{Time.now.to_f}",
             partition_key: partition_key,
             partitioner: "consistent"
@@ -1256,7 +1258,7 @@ describe Rdkafka::Producer do
 
         reports = 5.times.map do
           handle = producer.produce(
-            topic: TestTopics.partitioner_test_topic,
+            topic: topic_25,
             payload: "test payload #{Time.now.to_f}",
             partition_key: partition_key,
             partitioner: "murmur2"
@@ -1274,7 +1276,7 @@ describe Rdkafka::Producer do
 
         reports = 5.times.map do
           handle = producer.produce(
-            topic: TestTopics.partitioner_test_topic,
+            topic: topic_25,
             payload: "test payload #{Time.now.to_f}",
             partition_key: partition_key,
             partitioner: "fnv1a"
@@ -1294,7 +1296,7 @@ describe Rdkafka::Producer do
 
         reports = 10.times.map do
           handle = producer.produce(
-            topic: TestTopics.partitioner_test_topic,
+            topic: topic_25,
             payload: "test payload #{Time.now.to_f}",
             partition_key: partition_key,
             partitioner: "random"
@@ -1305,7 +1307,7 @@ describe Rdkafka::Producer do
         partitions = reports.map(&:partition)
         partitions.each do |partition|
           assert_operator partition, :>=, 0
-          assert_operator partition, :<, producer.partition_count(TestTopics.partitioner_test_topic)
+          assert_operator partition, :<, producer.partition_count(topic_25)
         end
       end
 
@@ -1314,7 +1316,7 @@ describe Rdkafka::Producer do
 
         reports = 10.times.map do
           handle = producer.produce(
-            topic: TestTopics.partitioner_test_topic,
+            topic: topic_25,
             payload: "test payload #{Time.now.to_f}",
             partition_key: partition_key,
             partitioner: "consistent_random"
@@ -1325,7 +1327,7 @@ describe Rdkafka::Producer do
         partitions = reports.map(&:partition)
         partitions.each do |partition|
           assert_operator partition, :>=, 0
-          assert_operator partition, :<, producer.partition_count(TestTopics.partitioner_test_topic)
+          assert_operator partition, :<, producer.partition_count(topic_25)
         end
       end
 
@@ -1334,7 +1336,7 @@ describe Rdkafka::Producer do
 
         reports = 10.times.map do
           handle = producer.produce(
-            topic: TestTopics.partitioner_test_topic,
+            topic: topic_25,
             payload: "test payload #{Time.now.to_f}",
             partition_key: partition_key,
             partitioner: "murmur2_random"
@@ -1345,7 +1347,7 @@ describe Rdkafka::Producer do
         partitions = reports.map(&:partition)
         partitions.each do |partition|
           assert_operator partition, :>=, 0
-          assert_operator partition, :<, producer.partition_count(TestTopics.partitioner_test_topic)
+          assert_operator partition, :<, producer.partition_count(topic_25)
         end
       end
 
@@ -1354,7 +1356,7 @@ describe Rdkafka::Producer do
 
         reports = 10.times.map do
           handle = producer.produce(
-            topic: TestTopics.partitioner_test_topic,
+            topic: topic_25,
             payload: "test payload #{Time.now.to_f}",
             partition_key: partition_key,
             partitioner: "fnv1a_random"
@@ -1365,7 +1367,7 @@ describe Rdkafka::Producer do
         partitions = reports.map(&:partition)
         partitions.each do |partition|
           assert_operator partition, :>=, 0
-          assert_operator partition, :<, producer.partition_count(TestTopics.partitioner_test_topic)
+          assert_operator partition, :<, producer.partition_count(topic_25)
         end
       end
     end
@@ -1377,7 +1379,7 @@ describe Rdkafka::Producer do
         all_partitioners.each do |partitioner|
           reports = keys.map do |key|
             handle = producer.produce(
-              topic: TestTopics.partitioner_test_topic,
+              topic: topic_25,
               payload: "test payload",
               partition_key: key,
               partitioner: partitioner
@@ -1389,7 +1391,7 @@ describe Rdkafka::Producer do
 
           # Should distribute across multiple partitions for most partitioners
           # (though some might hash all keys to same partition by chance)
-          assert partitions.all? { |p| p >= 0 && p < producer.partition_count(TestTopics.partitioner_test_topic) }
+          assert partitions.all? { |p| p >= 0 && p < producer.partition_count(topic_25) }
         end
       end
     end
@@ -1402,7 +1404,7 @@ describe Rdkafka::Producer do
 
         # Message with both keys
         handle1 = producer.produce(
-          topic: TestTopics.partitioner_test_topic,
+          topic: topic_25,
           payload: "test payload 1",
           key: regular_key,
           partition_key: partition_key
@@ -1410,14 +1412,14 @@ describe Rdkafka::Producer do
 
         # Message with only partition key (should go to same partition)
         handle2 = producer.produce(
-          topic: TestTopics.partitioner_test_topic,
+          topic: topic_25,
           payload: "test payload 2",
           partition_key: partition_key
         )
 
         # Message with only regular key (should go to different partition)
         handle3 = producer.produce(
-          topic: TestTopics.partitioner_test_topic,
+          topic: topic_25,
           payload: "test payload 3",
           key: regular_key
         )
@@ -1438,7 +1440,7 @@ describe Rdkafka::Producer do
       it "handles nil partition key with all partitioners" do
         all_partitioners.each do |partitioner|
           handle = producer.produce(
-            topic: TestTopics.partitioner_test_topic,
+            topic: topic_25,
             payload: "test payload",
             key: "test-key",
             partition_key: nil,
@@ -1448,14 +1450,14 @@ describe Rdkafka::Producer do
           report = handle.wait(max_wait_timeout_ms: 5_000)
 
           assert_operator report.partition, :>=, 0
-          assert_operator report.partition, :<, producer.partition_count(TestTopics.partitioner_test_topic)
+          assert_operator report.partition, :<, producer.partition_count(topic_25)
         end
       end
 
       it "handles whitespace-only partition key with all partitioners" do
         all_partitioners.each do |partitioner|
           handle = producer.produce(
-            topic: TestTopics.partitioner_test_topic,
+            topic: topic_25,
             payload: "test payload",
             partition_key: "   ",
             partitioner: partitioner
@@ -1464,14 +1466,14 @@ describe Rdkafka::Producer do
           report = handle.wait(max_wait_timeout_ms: 5_000)
 
           assert_operator report.partition, :>=, 0
-          assert_operator report.partition, :<, producer.partition_count(TestTopics.partitioner_test_topic)
+          assert_operator report.partition, :<, producer.partition_count(topic_25)
         end
       end
 
       it "handles newline characters in partition key with all partitioners" do
         all_partitioners.each do |partitioner|
           handle = producer.produce(
-            topic: TestTopics.partitioner_test_topic,
+            topic: topic_25,
             payload: "test payload",
             partition_key: "key\nwith\nnewlines",
             partitioner: partitioner
@@ -1480,7 +1482,7 @@ describe Rdkafka::Producer do
           report = handle.wait(max_wait_timeout_ms: 5_000)
 
           assert_operator report.partition, :>=, 0
-          assert_operator report.partition, :<, producer.partition_count(TestTopics.partitioner_test_topic)
+          assert_operator report.partition, :<, producer.partition_count(topic_25)
         end
       end
     end
@@ -1492,7 +1494,7 @@ describe Rdkafka::Producer do
 
         all_partitioners.each do |partitioner|
           handle = producer.produce(
-            topic: TestTopics.partitioner_test_topic,
+            topic: topic_25,
             payload: "debug payload",
             partition_key: test_key,
             partitioner: partitioner
@@ -1517,7 +1519,7 @@ describe Rdkafka::Producer do
       producer.delivery_callback = ->(_) { callback_called = true }
 
       handle = producer.produce(
-        topic: TestTopics.produce_test_topic,
+        topic: topic,
         payload: "events_poll_nb_each test"
       )
 

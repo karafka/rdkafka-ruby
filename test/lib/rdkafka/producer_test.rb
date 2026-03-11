@@ -560,6 +560,9 @@ describe Rdkafka::Producer do
   it "produces a message in a forked process" do
     skip "Kernel#fork is not available" if defined?(JRUBY_VERSION)
 
+    # Eagerly evaluate topic before fork so the child process has the name
+    topic_name = topic
+
     # Fork, produce a message, send the report over a pipe and
     # wait for and check the message in the main process.
     reader, writer = IO.pipe
@@ -571,7 +574,7 @@ describe Rdkafka::Producer do
       forked_producer = rdkafka_producer_config.producer
 
       handle = forked_producer.produce(
-        topic: topic,
+        topic: topic_name,
         payload: "payload-forked",
         key: "key-forked"
       )
@@ -603,7 +606,7 @@ describe Rdkafka::Producer do
 
     # Consume message and verify its content
     message = wait_for_message(
-      topic: topic,
+      topic: topic_name,
       delivery_report: report,
       consumer: consumer
     )

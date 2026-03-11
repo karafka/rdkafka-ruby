@@ -563,11 +563,14 @@ describe Rdkafka::Consumer do
 
     it "waits for outgoing operations in other threads" do
       times = []
+      # Eagerly evaluate topic before spawning thread since create_topic_for_test
+      # takes time and the main thread would close the consumer before subscribe
+      topic_name = topic
 
       # Run a long running poll
       thread = Thread.new do
         times << Time.now
-        @consumer.subscribe(topic)
+        @consumer.subscribe(topic_name)
         times << Time.now
         @consumer.poll(1_000)
         times << Time.now

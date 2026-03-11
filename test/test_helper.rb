@@ -126,7 +126,6 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer:
   new_consumer = consumer.nil?
   consumer ||= rdkafka_consumer_config("allow.auto.create.topics": true).consumer
   consumer.subscribe(topic)
-  wait_for_assignment(consumer)
   timeout = Time.now.to_i + timeout_in_seconds
 
   loop do
@@ -155,8 +154,8 @@ ensure
 end
 
 def wait_for_assignment(consumer)
-  10.times do
-    break if !consumer.assignment.empty?
+  30.times do
+    return if !consumer.assignment.empty?
     sleep 1
   end
 end

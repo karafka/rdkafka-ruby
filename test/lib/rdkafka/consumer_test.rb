@@ -986,6 +986,9 @@ describe Rdkafka::Consumer do
   # -- #lag --
 
   describe "#lag" do
+    # Lag tests need isolated topics since they assert exact message counts
+    let(:lag_topic) { create_topic_for_test }
+
     it "calculates the consumer lag" do
       consumer = rdkafka_consumer_config("enable.partition.eof": true).consumer
 
@@ -993,24 +996,32 @@ describe Rdkafka::Consumer do
       # wait for the message to make sure everything is committed.
       (0..2).each do |i|
         @producer.produce(
-          topic: topic,
+          topic: lag_topic,
           key: "key lag #{i}",
           partition: i
         ).wait
       end
 
-      # Consume to the end
-      consumer.subscribe(topic)
-      wait_for_assignment(consumer)
+      # Consume to the end — wait until all 3 partitions are assigned
+      consumer.subscribe(lag_topic)
+      30.times do
+        consumer.poll(200)
+        break if consumer.assignment.to_h[lag_topic]&.length == 3
+        sleep 1
+      end
+
       message_count = 0
+      eof_count = 0
       loop do
         begin
           message = consumer.poll(1000)
           message_count += 1 if message
         rescue Rdkafka::RdkafkaError => error
           raise unless error.is_partition_eof?
+          eof_count += 1
         end
-        break if message_count >= 3
+        # Wait until we've seen EOF on all 3 partitions
+        break if eof_count >= 3
       end
 
       # Commit
@@ -1018,13 +1029,13 @@ describe Rdkafka::Consumer do
 
       # Create list to fetch lag for
       list = consumer.committed(Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-        l.add_topic(topic, 0..2)
+        l.add_topic(lag_topic, 0..2)
       end)
 
       # Lag should be 0 now
       lag = consumer.lag(list)
       expected_lag = {
-        topic => {
+        lag_topic => {
           0 => 0,
           1 => 0,
           2 => 0
@@ -1036,7 +1047,7 @@ describe Rdkafka::Consumer do
       # Produce message on every topic again
       (0..2).each do |i|
         @producer.produce(
-          topic: topic,
+          topic: lag_topic,
           key: "key lag #{i}",
           partition: i
         ).wait
@@ -1045,7 +1056,7 @@ describe Rdkafka::Consumer do
       # Lag should be 1 now
       lag = consumer.lag(list)
       expected_lag = {
-        topic => {
+        lag_topic => {
           0 => 1,
           1 => 1,
           2 => 1
@@ -1061,16 +1072,16 @@ describe Rdkafka::Consumer do
       consumer = rdkafka_consumer_config("enable.partition.eof": true).consumer
 
       # Subscribe to establish the group coordinator before calling committed
-      consumer.subscribe(topic)
+      consumer.subscribe(lag_topic)
       wait_for_assignment(consumer)
 
       list = consumer.committed(Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
-        l.add_topic(topic, 0..2)
+        l.add_topic(lag_topic, 0..2)
       end)
 
       lag = consumer.lag(list)
       expected_lag = {
-        topic => {}
+        lag_topic => {}
       }
 
       assert_equal expected_lag, lag

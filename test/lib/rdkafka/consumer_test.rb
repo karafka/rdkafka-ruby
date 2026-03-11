@@ -1518,6 +1518,7 @@ describe Rdkafka::Consumer do
       @consumer = config.consumer
 
       notify_listener(@consumer, listener, topic: topic)
+      @consumer = nil # notify_listener already closed the consumer
 
       assert_equal [
         [:assign, topic, 0, 1, 2],
@@ -1544,6 +1545,7 @@ describe Rdkafka::Consumer do
       @consumer = config.consumer
 
       notify_listener(@consumer, listener, topic: topic)
+      @consumer = nil # notify_listener already closed the consumer
 
       assert_equal [:assigned, :revoked], listener.queue
     end
@@ -1683,6 +1685,7 @@ describe Rdkafka::Consumer do
           break if i == 9
         end
       end
+      @consumer = nil # notify_listener already closed the consumer
 
       assert_equal [
         [:assign, topic, 0, 1, 2],
@@ -1876,7 +1879,6 @@ describe Rdkafka::Consumer do
     end
 
     it "yields messages and respects :stop" do
-      topic = topic
       @consumer.subscribe(topic)
 
       # Produce some messages
@@ -1910,7 +1912,6 @@ describe Rdkafka::Consumer do
     end
 
     it "properly cleans up message pointers" do
-      topic = topic
       @consumer.subscribe(topic)
 
       @producer.produce(topic: topic, payload: "cleanup test")
@@ -1962,7 +1963,6 @@ describe Rdkafka::Consumer do
     end
 
     it "supports normal polling with IO events enabled" do
-      topic = topic
       @consumer.subscribe(topic)
 
       # Setup IO event signaling

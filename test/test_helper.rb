@@ -138,9 +138,18 @@ def new_native_topic(topic_name = "topic_name", native_client:)
 end
 
 def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer: nil)
-  new_consumer = consumer.nil?
-  consumer ||= rdkafka_consumer_config("allow.auto.create.topics": true).consumer
-  consumer.subscribe(topic)
+  # Always create a dedicated consumer with auto-commit disabled so we can
+  # use direct partition assignment (assign + seek) instead of subscribe.
+  # This avoids consumer group rebalance delays that cause flaky timeouts.
+  fetch_consumer = rdkafka_consumer_config(
+    "enable.auto.commit": false,
+    "allow.auto.create.topics": true
+  ).consumer
+
+  tpl = Rdkafka::Consumer::TopicPartitionList.new
+  tpl.add_topic(topic, [delivery_report.partition])
+  fetch_consumer.assign(tpl)
+
   timeout = Time.now.to_i + timeout_in_seconds
 
   loop do
@@ -149,14 +158,12 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer:
     end
 
     begin
-      message = consumer.poll(1000)
-      if message &&
-          message.partition == delivery_report.partition &&
-          message.offset == delivery_report.offset
-        return message
-      end
+      # First poll triggers partition assignment; then seek to exact offset
+      fetch_consumer.poll(500)
+      fetch_consumer.seek_by(topic, delivery_report.partition, delivery_report.offset)
+      break
     rescue Rdkafka::RdkafkaError => e
-      if %i[unknown_topic_or_part not_coordinator].include?(e.code)
+      if %i[unknown_topic_or_part not_leader_for_partition].include?(e.code)
         sleep(0.5)
         next
       else
@@ -164,8 +171,21 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer:
       end
     end
   end
+
+  loop do
+    if timeout <= Time.now.to_i
+      raise "Timeout of #{timeout_in_seconds} seconds reached in wait_for_message"
+    end
+
+    message = fetch_consumer.poll(1000)
+    if message &&
+        message.partition == delivery_report.partition &&
+        message.offset == delivery_report.offset
+      return message
+    end
+  end
 ensure
-  consumer.close if new_consumer
+  fetch_consumer&.close
 end
 
 def wait_for_assignment(consumer)

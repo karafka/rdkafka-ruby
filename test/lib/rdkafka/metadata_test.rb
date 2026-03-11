@@ -27,7 +27,7 @@ describe Rdkafka::Metadata do
     describe "that is one of our test topics" do
       subject { Rdkafka::Metadata.new(native_kafka, topic_name) }
 
-      let(:topic_name) { create_topic_for_test(partitions: 25) }
+      let(:topic_name) { TestTopics.partitioner_test_topic }
 
       it "#brokers returns our single broker" do
         assert_equal 1, subject.brokers.length

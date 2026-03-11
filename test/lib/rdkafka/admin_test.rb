@@ -418,11 +418,11 @@ describe Rdkafka::Admin do
   end
 
   describe "#list_offsets" do
-    it "returns earliest offsets" do
-      topic = create_topic_for_test
+    let(:offsets_topic) { TestTopics.produce_test_topic }
 
+    it "returns earliest offsets" do
       report = admin.list_offsets(
-        { topic => [{ partition: 0, offset: :earliest }] }
+        { offsets_topic => [{ partition: 0, offset: :earliest }] }
       ).wait(max_wait_timeout_ms: 15_000)
 
       assert_kind_of Rdkafka::Admin::ListOffsetsReport, report
@@ -430,32 +430,28 @@ describe Rdkafka::Admin do
 
       first = report.offsets.first
 
-      assert_equal topic, first[:topic]
+      assert_equal offsets_topic, first[:topic]
       assert_equal 0, first[:partition]
       assert_operator first[:offset], :>=, 0
     end
 
     it "returns latest offsets" do
-      topic = create_topic_for_test
-
       report = admin.list_offsets(
-        { topic => [{ partition: 0, offset: :latest }] }
+        { offsets_topic => [{ partition: 0, offset: :latest }] }
       ).wait(max_wait_timeout_ms: 15_000)
 
       assert_operator report.offsets.length, :>=, 1
 
       first = report.offsets.first
 
-      assert_equal topic, first[:topic]
+      assert_equal offsets_topic, first[:topic]
       assert_equal 0, first[:partition]
       assert_operator first[:offset], :>=, 0
     end
 
     it "returns offsets for multiple partitions" do
-      topic = create_topic_for_test
-
       report = admin.list_offsets(
-        { topic => [
+        { offsets_topic => [
           { partition: 0, offset: :earliest },
           { partition: 1, offset: :latest }
         ] }
@@ -466,10 +462,8 @@ describe Rdkafka::Admin do
     end
 
     it "works with read_committed isolation level" do
-      topic = create_topic_for_test
-
       report = admin.list_offsets(
-        { topic => [{ partition: 0, offset: :latest }] },
+        { offsets_topic => [{ partition: 0, offset: :latest }] },
         isolation_level: Rdkafka::Bindings::RD_KAFKA_ISOLATION_LEVEL_READ_COMMITTED
       ).wait(max_wait_timeout_ms: 15_000)
 
@@ -477,17 +471,15 @@ describe Rdkafka::Admin do
     end
 
     it "returns offsets by timestamp" do
-      topic = create_topic_for_test
-
       # Use a timestamp of 0 (epoch) to get earliest messages
       report = admin.list_offsets(
-        { topic => [{ partition: 0, offset: 0 }] }
+        { offsets_topic => [{ partition: 0, offset: 0 }] }
       ).wait(max_wait_timeout_ms: 15_000)
 
       assert_equal 1, report.offsets.length
       first = report.offsets.first
 
-      assert_equal topic, first[:topic]
+      assert_equal offsets_topic, first[:topic]
       assert_equal 0, first[:partition]
     end
 
@@ -1135,7 +1127,7 @@ describe Rdkafka::Admin do
       # group. In RSpec, the "existing group" test always ran first (defined
       # order) which did this implicitly.
       warmup_consumer = rdkafka_consumer_config.consumer
-      warmup_consumer.subscribe(create_topic_for_test)
+      warmup_consumer.subscribe(TestTopics.produce_test_topic)
       wait_for_assignment(warmup_consumer)
       warmup_consumer.close
 

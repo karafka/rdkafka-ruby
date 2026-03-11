@@ -6,7 +6,7 @@ require "securerandom"
 describe Rdkafka::Consumer do
   let(:consumer) { rdkafka_consumer_config.consumer }
   let(:producer) { rdkafka_producer_config.producer }
-  let(:topic) { create_topic_for_test }
+  let(:topic) { TestTopics.consume_test_topic }
 
   before do
     @consumer = consumer
@@ -563,8 +563,8 @@ describe Rdkafka::Consumer do
 
     it "waits for outgoing operations in other threads" do
       times = []
-      # Eagerly evaluate topic before spawning thread since create_topic_for_test
-      # takes time and the main thread would close the consumer before subscribe
+      # Eagerly evaluate topic before spawning thread so the main thread
+      # doesn't close the consumer before subscribe completes
       topic_name = topic
 
       # Run a long running poll

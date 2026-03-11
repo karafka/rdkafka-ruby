@@ -46,6 +46,11 @@ module TestTopics
       @example_topic ||= unique
     end
 
+    # Shared topic for consumer tests (3 partitions)
+    def consume_test_topic
+      @consume_test_topic ||= unique
+    end
+
     # Shared topic for producer tests (3 partitions)
     def produce_test_topic
       @produce_test_topic ||= unique
@@ -226,6 +231,7 @@ def ensure_topics_created
     admin = rdkafka_config.admin
     topics = {
       TestTopics.example_topic => 1,
+      TestTopics.consume_test_topic => 3,
       TestTopics.produce_test_topic => 3,
       TestTopics.partitioner_test_topic => 25
     }

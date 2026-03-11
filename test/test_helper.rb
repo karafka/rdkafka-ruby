@@ -148,7 +148,7 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer:
         return message
       end
     rescue Rdkafka::RdkafkaError => e
-      if e.code == :unknown_topic_or_part
+      if %i[unknown_topic_or_part not_coordinator].include?(e.code)
         sleep(0.5)
         next
       else

@@ -419,8 +419,8 @@ describe Rdkafka::Producer do
       # Consume message and verify its content
       message = wait_for_message(
         topic: topic,
-        delivery_report: report,
-        )
+        delivery_report: report
+      )
 
       assert_equal 2, message.partition
       assert_equal "key timestamp", message.key
@@ -439,8 +439,8 @@ describe Rdkafka::Producer do
       # Consume message and verify its content
       message = wait_for_message(
         topic: topic,
-        delivery_report: report,
-        )
+        delivery_report: report
+      )
 
       assert_equal 2, message.partition
       assert_equal "key timestamp", message.key

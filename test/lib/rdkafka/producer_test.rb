@@ -250,7 +250,7 @@ describe Rdkafka::Producer do
     # Consume message and verify its content
     message = wait_for_message(
       topic: topic,
-      delivery_report: report,
+      delivery_report: report
     )
 
     assert_equal 1, message.partition
@@ -272,7 +272,7 @@ describe Rdkafka::Producer do
     # Consume message and verify its content
     message = wait_for_message(
       topic: topic,
-      delivery_report: report,
+      delivery_report: report
     )
 
     assert_equal 1, message.partition
@@ -346,7 +346,7 @@ describe Rdkafka::Producer do
     # Consume message and verify its content
     message = wait_for_message(
       topic: topic,
-      delivery_report: report,
+      delivery_report: report
     )
 
     assert_equal 1, message.partition
@@ -386,7 +386,7 @@ describe Rdkafka::Producer do
     # Consume message and verify its content
     message = wait_for_message(
       topic: new_topic,
-      delivery_report: report,
+      delivery_report: report
     )
 
     assert_equal 0, message.partition
@@ -458,7 +458,7 @@ describe Rdkafka::Producer do
     # Consume message and verify its content
     message = wait_for_message(
       topic: topic,
-      delivery_report: report,
+      delivery_report: report
     )
 
     assert_nil message.key
@@ -475,7 +475,7 @@ describe Rdkafka::Producer do
     # Consume message and verify its content
     message = wait_for_message(
       topic: topic,
-      delivery_report: report,
+      delivery_report: report
     )
 
     assert_equal "key no payload", message.key
@@ -494,7 +494,7 @@ describe Rdkafka::Producer do
     # Consume message and verify its content
     message = wait_for_message(
       topic: topic,
-      delivery_report: report,
+      delivery_report: report
     )
 
     assert_equal "payload headers", message.payload
@@ -516,7 +516,7 @@ describe Rdkafka::Producer do
     # Consume message and verify its content
     message = wait_for_message(
       topic: topic,
-      delivery_report: report,
+      delivery_report: report
     )
 
     assert_equal "payload headers", message.payload
@@ -595,7 +595,7 @@ describe Rdkafka::Producer do
     # Consume message and verify its content
     message = wait_for_message(
       topic: topic_name,
-      delivery_report: report,
+      delivery_report: report
     )
 
     assert_equal 0, message.partition

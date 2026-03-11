@@ -1001,16 +1001,16 @@ describe Rdkafka::Consumer do
 
       # Consume to the end
       consumer.subscribe(topic)
-      eof_count = 0
+      wait_for_assignment(consumer)
       message_count = 0
       loop do
-        message = consumer.poll(100)
-        message_count += 1 if message
-      rescue Rdkafka::RdkafkaError => error
-        if error.is_partition_eof?
-          eof_count += 1
+        begin
+          message = consumer.poll(1000)
+          message_count += 1 if message
+        rescue Rdkafka::RdkafkaError => error
+          raise unless error.is_partition_eof?
         end
-        break if eof_count == 3 && message_count >= 3
+        break if message_count >= 3
       end
 
       # Commit

@@ -756,8 +756,7 @@ describe Rdkafka::Consumer do
 
       message = wait_for_message(
         topic: topic,
-        delivery_report: report,
-        consumer: @consumer
+        delivery_report: report
       )
 
       group_id = SecureRandom.uuid
@@ -795,8 +794,7 @@ describe Rdkafka::Consumer do
 
       message = wait_for_message(
         topic: topic,
-        delivery_report: report,
-        consumer: @consumer
+        delivery_report: report
       )
 
       group_id = SecureRandom.uuid
@@ -1238,7 +1236,7 @@ describe Rdkafka::Consumer do
         headers: { foo: "bar" }
       ).wait
 
-      message = wait_for_message(topic: topic, consumer: @consumer, delivery_report: report)
+      message = wait_for_message(topic: topic, delivery_report: report)
 
       refute_nil message
       assert_equal "key headers", message.key
@@ -1253,7 +1251,7 @@ describe Rdkafka::Consumer do
         headers: { "foo" => "bar" }
       ).wait
 
-      message = wait_for_message(topic: topic, consumer: @consumer, delivery_report: report)
+      message = wait_for_message(topic: topic, delivery_report: report)
 
       refute_nil message
       assert_equal "key headers", message.key
@@ -1268,7 +1266,7 @@ describe Rdkafka::Consumer do
         headers: nil
       ).wait
 
-      message = wait_for_message(topic: topic, consumer: @consumer, delivery_report: report)
+      message = wait_for_message(topic: topic, delivery_report: report)
 
       refute_nil message
       assert_equal "key no headers", message.key
@@ -1284,7 +1282,7 @@ describe Rdkafka::Consumer do
 
       Rdkafka::Bindings.stub(:rd_kafka_message_headers, 1) do
         err = assert_raises(Rdkafka::RdkafkaError) do
-          wait_for_message(topic: topic, consumer: @consumer, delivery_report: report)
+          wait_for_message(topic: topic, delivery_report: report)
         end
         assert err.message.start_with?("Error reading message headers")
       end
@@ -1299,7 +1297,7 @@ describe Rdkafka::Consumer do
 
       Rdkafka::Bindings.stub(:rd_kafka_header_get_all, 1) do
         err = assert_raises(Rdkafka::RdkafkaError) do
-          wait_for_message(topic: topic, consumer: @consumer, delivery_report: report)
+          wait_for_message(topic: topic, delivery_report: report)
         end
         assert err.message.start_with?("Error reading a message header at index 0")
       end

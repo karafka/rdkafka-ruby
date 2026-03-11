@@ -5,7 +5,6 @@ require "zlib"
 describe Rdkafka::Producer do
   let(:producer) { rdkafka_producer_config.producer }
   let(:all_partitioners) { %w[random consistent consistent_random murmur2 murmur2_random fnv1a fnv1a_random] }
-  let(:consumer) { rdkafka_consumer_config.consumer }
   let(:topic) { TestTopics.produce_test_topic }
   let(:topic_25) { TestTopics.partitioner_test_topic }
 
@@ -15,7 +14,6 @@ describe Rdkafka::Producer do
 
     assert_empty registry, registry.inspect
     producer&.close
-    consumer&.close
   end
 
   describe "producer without auto-start" do
@@ -253,7 +251,6 @@ describe Rdkafka::Producer do
     message = wait_for_message(
       topic: topic,
       delivery_report: report,
-      consumer: consumer
     )
 
     assert_equal 1, message.partition
@@ -276,7 +273,6 @@ describe Rdkafka::Producer do
     message = wait_for_message(
       topic: topic,
       delivery_report: report,
-      consumer: consumer
     )
 
     assert_equal 1, message.partition
@@ -351,7 +347,6 @@ describe Rdkafka::Producer do
     message = wait_for_message(
       topic: topic,
       delivery_report: report,
-      consumer: consumer
     )
 
     assert_equal 1, message.partition
@@ -392,7 +387,6 @@ describe Rdkafka::Producer do
     message = wait_for_message(
       topic: new_topic,
       delivery_report: report,
-      consumer: consumer
     )
 
     assert_equal 0, message.partition
@@ -426,8 +420,7 @@ describe Rdkafka::Producer do
       message = wait_for_message(
         topic: topic,
         delivery_report: report,
-        consumer: consumer
-      )
+        )
 
       assert_equal 2, message.partition
       assert_equal "key timestamp", message.key
@@ -447,8 +440,7 @@ describe Rdkafka::Producer do
       message = wait_for_message(
         topic: topic,
         delivery_report: report,
-        consumer: consumer
-      )
+        )
 
       assert_equal 2, message.partition
       assert_equal "key timestamp", message.key
@@ -467,7 +459,6 @@ describe Rdkafka::Producer do
     message = wait_for_message(
       topic: topic,
       delivery_report: report,
-      consumer: consumer
     )
 
     assert_nil message.key
@@ -485,7 +476,6 @@ describe Rdkafka::Producer do
     message = wait_for_message(
       topic: topic,
       delivery_report: report,
-      consumer: consumer
     )
 
     assert_equal "key no payload", message.key
@@ -505,7 +495,6 @@ describe Rdkafka::Producer do
     message = wait_for_message(
       topic: topic,
       delivery_report: report,
-      consumer: consumer
     )
 
     assert_equal "payload headers", message.payload
@@ -528,7 +517,6 @@ describe Rdkafka::Producer do
     message = wait_for_message(
       topic: topic,
       delivery_report: report,
-      consumer: consumer
     )
 
     assert_equal "payload headers", message.payload
@@ -608,7 +596,6 @@ describe Rdkafka::Producer do
     message = wait_for_message(
       topic: topic_name,
       delivery_report: report,
-      consumer: consumer
     )
 
     assert_equal 0, message.partition
@@ -986,7 +973,7 @@ describe Rdkafka::Producer do
         headers: headers
       ).wait
 
-      message = wait_for_message(topic: topic, consumer: consumer, delivery_report: report)
+      message = wait_for_message(topic: topic, delivery_report: report)
 
       refute_nil message
       assert_equal "key headers", message.key
@@ -1006,7 +993,7 @@ describe Rdkafka::Producer do
         headers: headers
       ).wait
 
-      message = wait_for_message(topic: topic, consumer: consumer, delivery_report: report)
+      message = wait_for_message(topic: topic, delivery_report: report)
 
       refute_nil message
       assert_equal "key headers", message.key

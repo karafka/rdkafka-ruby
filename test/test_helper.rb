@@ -138,19 +138,48 @@ def new_native_topic(topic_name = "topic_name", native_client:)
 end
 
 def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer: nil)
-  # Always create a dedicated consumer with auto-commit disabled so we can
-  # use direct partition assignment (assign + seek) instead of subscribe.
-  # This avoids consumer group rebalance delays that cause flaky timeouts.
-  fetch_consumer = rdkafka_consumer_config(
-    "enable.auto.commit": false,
-    "allow.auto.create.topics": true
-  ).consumer
+  # When no consumer is passed, use direct partition assignment with auto-commit
+  # disabled. This avoids consumer group rebalance delays that cause flaky timeouts.
+  # When a consumer IS passed, use subscribe so the caller retains group state
+  # (needed for tests that check position/committed offsets after consuming).
+  if consumer
+    consumer.subscribe(topic)
+    wait_for_assignment(consumer)
+    fetch_consumer = consumer
+  else
+    fetch_consumer = rdkafka_consumer_config(
+      "enable.auto.commit": false,
+      "allow.auto.create.topics": true
+    ).consumer
 
-  tpl = Rdkafka::Consumer::TopicPartitionList.new
-  tpl.add_topic(topic, [delivery_report.partition])
-  fetch_consumer.assign(tpl)
+    tpl = Rdkafka::Consumer::TopicPartitionList.new
+    tpl.add_topic(topic, [delivery_report.partition])
+    fetch_consumer.assign(tpl)
 
-  timeout = Time.now.to_i + timeout_in_seconds
+    timeout = Time.now.to_i + timeout_in_seconds
+
+    # Poll + seek loop: wait for partition to be ready, then seek to target offset
+    loop do
+      if timeout <= Time.now.to_i
+        raise "Timeout of #{timeout_in_seconds} seconds reached in wait_for_message"
+      end
+
+      begin
+        fetch_consumer.poll(500)
+        fetch_consumer.seek_by(topic, delivery_report.partition, delivery_report.offset)
+        break
+      rescue Rdkafka::RdkafkaError => e
+        if %i[unknown_topic_or_part not_leader_for_partition].include?(e.code)
+          sleep(0.5)
+          next
+        else
+          raise
+        end
+      end
+    end
+  end
+
+  timeout ||= Time.now.to_i + timeout_in_seconds
 
   loop do
     if timeout <= Time.now.to_i
@@ -158,12 +187,14 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer:
     end
 
     begin
-      # First poll triggers partition assignment; then seek to exact offset
-      fetch_consumer.poll(500)
-      fetch_consumer.seek_by(topic, delivery_report.partition, delivery_report.offset)
-      break
+      message = fetch_consumer.poll(1000)
+      if message &&
+          message.partition == delivery_report.partition &&
+          message.offset == delivery_report.offset
+        return message
+      end
     rescue Rdkafka::RdkafkaError => e
-      if %i[unknown_topic_or_part not_leader_for_partition].include?(e.code)
+      if %i[unknown_topic_or_part not_coordinator].include?(e.code)
         sleep(0.5)
         next
       else
@@ -171,21 +202,8 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer:
       end
     end
   end
-
-  loop do
-    if timeout <= Time.now.to_i
-      raise "Timeout of #{timeout_in_seconds} seconds reached in wait_for_message"
-    end
-
-    message = fetch_consumer.poll(1000)
-    if message &&
-        message.partition == delivery_report.partition &&
-        message.offset == delivery_report.offset
-      return message
-    end
-  end
 ensure
-  fetch_consumer&.close
+  fetch_consumer&.close unless consumer
 end
 
 def wait_for_assignment(consumer)

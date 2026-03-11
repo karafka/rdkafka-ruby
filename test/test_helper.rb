@@ -45,6 +45,16 @@ module TestTopics
     def example_topic
       @example_topic ||= unique
     end
+
+    # Shared topic for producer tests (3 partitions)
+    def produce_test_topic
+      @produce_test_topic ||= unique
+    end
+
+    # Shared topic for producer partitioner tests (25 partitions)
+    def partitioner_test_topic
+      @partitioner_test_topic ||= unique
+    end
   end
 end
 
@@ -125,14 +135,7 @@ end
 def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer: nil)
   new_consumer = consumer.nil?
   consumer ||= rdkafka_consumer_config("allow.auto.create.topics": true).consumer
-
-  # Use direct partition assignment instead of subscribe to avoid slow consumer
-  # group rebalance, since we already know the exact partition and offset
-  tpl = Rdkafka::Consumer::TopicPartitionList.new
-  tpl.add_topic(topic, [delivery_report.partition])
-  consumer.assign(tpl)
-  consumer.seek_by(topic, delivery_report.partition, delivery_report.offset)
-
+  consumer.subscribe(topic)
   timeout = Time.now.to_i + timeout_in_seconds
 
   loop do
@@ -221,9 +224,10 @@ def ensure_topics_created
     return if $topics_initialized
 
     admin = rdkafka_config.admin
-    # Only pre-create topics that are genuinely shared and don't need clean state
     topics = {
-      TestTopics.example_topic => 1
+      TestTopics.example_topic => 1,
+      TestTopics.produce_test_topic => 3,
+      TestTopics.partitioner_test_topic => 25
     }
     topics.each do |topic, partitions|
       create_topic_handle = admin.create_topic(topic, partitions, 1)

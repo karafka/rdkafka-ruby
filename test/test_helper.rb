@@ -125,7 +125,14 @@ end
 def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer: nil)
   new_consumer = consumer.nil?
   consumer ||= rdkafka_consumer_config("allow.auto.create.topics": true).consumer
-  consumer.subscribe(topic)
+
+  # Use direct partition assignment instead of subscribe to avoid slow consumer
+  # group rebalance, since we already know the exact partition and offset
+  tpl = Rdkafka::Consumer::TopicPartitionList.new
+  tpl.add_topic(topic, [delivery_report.partition])
+  consumer.assign(tpl)
+  consumer.seek_by(topic, delivery_report.partition, delivery_report.offset)
+
   timeout = Time.now.to_i + timeout_in_seconds
 
   loop do

@@ -1,0 +1,49 @@
+# frozen_string_literal: true
+
+describe Rdkafka::Admin::CreateAclHandle do
+  let(:response) { Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR }
+
+  subject do
+    described_class.new.tap do |handle|
+      handle[:pending] = pending_handle
+      handle[:response] = response
+      handle[:response_string] = FFI::MemoryPointer.from_string("")
+    end
+  end
+
+  describe "#wait" do
+    let(:pending_handle) { true }
+
+    it "waits until the timeout and then raises an error" do
+      error = assert_raises(Rdkafka::Admin::CreateAclHandle::WaitTimeoutError) do
+        subject.wait(max_wait_timeout_ms: 100)
+      end
+      assert_match(/create acl/, error.message)
+    end
+
+    describe "when not pending anymore and no error" do
+      let(:pending_handle) { false }
+
+      it "returns a create acl report" do
+        report = subject.wait
+
+        assert_equal "", report.rdkafka_response_string
+      end
+
+      it "waits without a timeout" do
+        report = subject.wait(max_wait_timeout_ms: nil)
+
+        assert_equal "", report.rdkafka_response_string
+      end
+    end
+  end
+
+  describe "#raise_error" do
+    let(:pending_handle) { false }
+
+    it "raises the appropriate error" do
+      error = assert_raises(Rdkafka::RdkafkaError) { subject.raise_error }
+      assert_match(/Success \(no_error\)/, error.message)
+    end
+  end
+end

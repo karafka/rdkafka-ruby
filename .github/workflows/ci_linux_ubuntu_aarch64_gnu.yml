@@ -120,7 +120,7 @@ jobs:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
         continue-on-error: ${{ matrix.continue-on-error || false }}
         run: |
-          bundle exec rspec
+          bundle exec rake test
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings
@@ -268,7 +268,7 @@ jobs:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           RDKAFKA_PRECOMPILED: "true"
         run: |
-          bundle exec rspec
+          bundle exec rake test
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings

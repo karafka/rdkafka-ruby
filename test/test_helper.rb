@@ -137,35 +137,13 @@ def new_native_topic(topic_name = "topic_name", native_client:)
   )
 end
 
-TRANSIENT_ERRORS = %i[
-  unknown_topic_or_part
-  not_coordinator
-  not_leader_for_partition
-].freeze
-
-def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer: nil)
-  # When a consumer IS passed, use subscribe so the caller retains group state
-  # (needed for tests that check position/committed offsets after consuming).
-  # Otherwise, create a lightweight consumer with direct partition assignment
-  # to avoid consumer group rebalance delays.
-  if consumer
-    consumer.subscribe(topic)
-    wait_for_assignment(consumer)
-    fetch_consumer = consumer
-  else
-    fetch_consumer = rdkafka_consumer_config(
-      "enable.auto.commit": false,
-      "enable.auto.offset.store": false,
-      "allow.auto.create.topics": true
-    ).consumer
-
-    tpl = Rdkafka::Consumer::TopicPartitionList.new
-    tpl.add_topic(topic, [delivery_report.partition])
-    fetch_consumer.assign(tpl)
-  end
-
+def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, consumer: nil)
+  new_consumer = consumer.nil?
+  consumer ||= rdkafka_consumer_config("allow.auto.create.topics": true).consumer
+  consumer.subscribe(topic)
   timeout = Time.now.to_i + timeout_in_seconds
-  seek_done = !!consumer # skip seeking for subscribe path
+  retry_count = 0
+  max_retries = 10
 
   loop do
     if timeout <= Time.now.to_i
@@ -173,29 +151,24 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer:
     end
 
     begin
-      # Re-seek to target offset until it sticks (first polls trigger fetch setup)
-      unless seek_done
-        begin
-          fetch_consumer.seek_by(topic, delivery_report.partition, delivery_report.offset)
-          seek_done = true
-        rescue Rdkafka::RdkafkaError => e
-          raise unless TRANSIENT_ERRORS.include?(e.code)
-        end
-      end
-
-      message = fetch_consumer.poll(1000)
+      message = consumer.poll(100)
       if message &&
           message.partition == delivery_report.partition &&
           message.offset == delivery_report.offset
         return message
       end
     rescue Rdkafka::RdkafkaError => e
-      raise unless TRANSIENT_ERRORS.include?(e.code)
-      sleep(0.5)
+      if e.code == :unknown_topic_or_part && retry_count < max_retries
+        retry_count += 1
+        sleep(0.1)
+        next
+      else
+        raise
+      end
     end
   end
 ensure
-  fetch_consumer&.close unless consumer
+  consumer.close if new_consumer
 end
 
 def wait_for_assignment(consumer)

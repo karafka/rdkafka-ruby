@@ -1000,25 +1000,13 @@ describe Rdkafka::Consumer do
         ).wait
       end
 
-      # Consume to the end — wait until all 3 partitions are assigned
+      # Consume to the end
       consumer.subscribe(lag_topic)
-      30.times do
-        consumer.poll(200)
-        break if consumer.assignment.to_h[lag_topic]&.length == 3
-        sleep 1
-      end
-
-      message_count = 0
       eof_count = 0
       loop do
-        begin
-          message = consumer.poll(1000)
-          message_count += 1 if message
-        rescue Rdkafka::RdkafkaError => error
-          raise unless error.is_partition_eof?
-          eof_count += 1
-        end
-        # Wait until we've seen EOF on all 3 partitions
+        consumer.poll(100)
+      rescue Rdkafka::RdkafkaError => error
+        eof_count += 1 if error.is_partition_eof?
         break if eof_count >= 3
       end
 

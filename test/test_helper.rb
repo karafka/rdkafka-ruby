@@ -169,7 +169,7 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 60, consumer:
         fetch_consumer.seek_by(topic, delivery_report.partition, delivery_report.offset)
         break
       rescue Rdkafka::RdkafkaError => e
-        if %i[unknown_topic_or_part not_leader_for_partition].include?(e.code)
+        if %i[unknown_topic_or_part not_leader_for_partition not_coordinator].include?(e.code)
           sleep(0.5)
           next
         else

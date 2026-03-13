@@ -10,7 +10,7 @@ RSpec.describe Rdkafka::Admin do
   let(:topic_config) { { "cleanup.policy" => "compact", "min.cleanable.dirty.ratio" => 0.8 } }
   let(:invalid_topic_config) { { "cleeeeenup.policee" => "campact" } }
   let(:group_name) { "test-group-#{SecureRandom.uuid}" }
-  let(:resource_name) { "it-#{SecureRandom.uuid}" }
+  let(:resource_name) { TestTopics.unique }
   let(:resource_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC }
   let(:resource_pattern_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL }
   let(:principal) { "User:anonymous" }

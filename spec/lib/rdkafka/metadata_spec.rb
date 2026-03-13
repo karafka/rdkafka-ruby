@@ -26,7 +26,7 @@ RSpec.describe Rdkafka::Metadata do
     context "that is one of our test topics" do
       subject { described_class.new(native_kafka, topic_name) }
 
-      let(:topic_name) { TestTopics.partitioner_test_topic }
+      let(:topic_name) { create_topic_for_test(partitions: 25) }
 
       it "#brokers returns our single broker" do
         expect(subject.brokers.length).to eq(1)
@@ -48,9 +48,7 @@ RSpec.describe Rdkafka::Metadata do
     subject { described_class.new(native_kafka, topic_name) }
 
     let(:topic_name) { nil }
-    let(:test_topics) {
-      [TestTopics.consume_test_topic, TestTopics.empty_test_topic, TestTopics.load_test_topic, TestTopics.produce_test_topic, TestTopics.rake_test_topic, TestTopics.watermarks_test_topic, TestTopics.partitioner_test_topic]
-    } # Test topics crated in spec_helper.rb
+    let(:test_topic) { create_topic_for_test }
 
     it "#brokers returns our single broker" do
       expect(subject.brokers.length).to eq(1)
@@ -59,9 +57,11 @@ RSpec.describe Rdkafka::Metadata do
       expect(subject.brokers[0][:broker_port]).to eq(rdkafka_base_config[:"bootstrap.servers"].split(":").last.to_i)
     end
 
-    it "#topics returns data about all of our test topics" do
+    it "#topics returns data about existing topics" do
+      # Force topic creation before querying metadata
+      test_topic
       result = subject.topics.map { |topic| topic[:topic_name] }
-      expect(result).to include(*test_topics)
+      expect(result).to include(test_topic)
     end
   end
 

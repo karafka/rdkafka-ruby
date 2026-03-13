@@ -10,7 +10,7 @@ RSpec.describe Rdkafka::Admin do
   let(:topic_config) { { "cleanup.policy" => "compact", "min.cleanable.dirty.ratio" => 0.8 } }
   let(:invalid_topic_config) { { "cleeeeenup.policee" => "campact" } }
   let(:group_name) { "test-group-#{SecureRandom.uuid}" }
-  let(:resource_name) { TestTopics.unique }
+  let(:resource_name) { "it-#{SecureRandom.uuid}" }
   let(:resource_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC }
   let(:resource_pattern_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL }
   let(:principal) { "User:anonymous" }
@@ -71,7 +71,7 @@ RSpec.describe Rdkafka::Admin do
       end
 
       describe "with the name of a topic that already exists" do
-        let(:topic_name) { TestTopics.empty_test_topic } # created in spec_helper.rb
+        let(:topic_name) { create_topic_for_test }
 
         it "raises an exception" do
           create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor)
@@ -80,7 +80,7 @@ RSpec.describe Rdkafka::Admin do
           }.to raise_exception { |ex|
             expect(ex).to be_a(Rdkafka::RdkafkaError)
             expect(ex.message).to match(/Broker: Topic already exists \(topic_already_exists\)/)
-            expect(ex.broker_message).to match(/Topic '#{Regexp.escape(TestTopics.empty_test_topic)}' already exists/)
+            expect(ex.broker_message).to match(/Topic '#{Regexp.escape(topic_name)}' already exists/)
           }
         end
       end
@@ -429,7 +429,7 @@ RSpec.describe Rdkafka::Admin do
 
   describe "#list_offsets" do
     context "when querying offsets for an existing topic with messages" do
-      let(:topic) { TestTopics.consume_test_topic }
+      let(:topic) { create_topic_for_test }
 
       it "returns earliest offsets" do
         report = admin.list_offsets(
@@ -481,7 +481,7 @@ RSpec.describe Rdkafka::Admin do
     end
 
     context "when querying offsets by timestamp" do
-      let(:topic) { TestTopics.consume_test_topic }
+      let(:topic) { create_topic_for_test }
 
       it "returns offsets for a given timestamp" do
         # Use a timestamp of 0 (epoch) to get earliest messages

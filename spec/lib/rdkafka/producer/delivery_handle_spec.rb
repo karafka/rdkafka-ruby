@@ -7,7 +7,7 @@ RSpec.describe Rdkafka::Producer::DeliveryHandle do
       handle[:response] = response
       handle[:partition] = 2
       handle[:offset] = 100
-      handle.topic = TestTopics.produce_test_topic
+      handle.topic = "it-test-topic"
     end
   end
 
@@ -30,7 +30,7 @@ RSpec.describe Rdkafka::Producer::DeliveryHandle do
 
         expect(report.partition).to eq(2)
         expect(report.offset).to eq(100)
-        expect(report.topic_name).to eq(TestTopics.produce_test_topic)
+        expect(report.topic_name).to eq("it-test-topic")
       end
 
       it "waits without a timeout" do
@@ -38,7 +38,7 @@ RSpec.describe Rdkafka::Producer::DeliveryHandle do
 
         expect(report.partition).to eq(2)
         expect(report.offset).to eq(100)
-        expect(report.topic_name).to eq(TestTopics.produce_test_topic)
+        expect(report.topic_name).to eq("it-test-topic")
       end
     end
   end

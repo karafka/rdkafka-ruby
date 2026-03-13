@@ -36,39 +36,20 @@ module TestTopics
       "it-#{SecureRandom.uuid}"
     end
 
-    # Shared topics initialized once on first access
-    def consume_test_topic
-      @consume_test_topic ||= unique
-    end
-
-    def empty_test_topic
-      @empty_test_topic ||= unique
-    end
-
-    def load_test_topic
-      @load_test_topic ||= unique
-    end
-
-    def produce_test_topic
-      @produce_test_topic ||= unique
-    end
-
-    def rake_test_topic
-      @rake_test_topic ||= unique
-    end
-
-    def watermarks_test_topic
-      @watermarks_test_topic ||= unique
-    end
-
-    def partitioner_test_topic
-      @partitioner_test_topic ||= unique
-    end
-
     def example_topic
       @example_topic ||= unique
     end
   end
+end
+
+def create_topic_for_test(partitions: 3)
+  topic_name = "it-#{SecureRandom.uuid}"
+  admin = rdkafka_config.admin
+  handle = admin.create_topic(topic_name, partitions, 1)
+  handle.wait(max_wait_timeout_ms: 15_000)
+  wait_for_topic(admin, topic_name)
+  admin.close
+  topic_name
 end
 
 def rdkafka_base_config
@@ -203,9 +184,9 @@ rescue Rdkafka::RdkafkaError => e
   retry
 end
 
-def notify_listener(listener, &block)
+def notify_listener(listener, topic:, &block)
   # 1. subscribe and poll
-  consumer.subscribe(TestTopics.consume_test_topic)
+  consumer.subscribe(topic)
   wait_for_assignment(consumer)
   consumer.poll(100)
 
@@ -232,13 +213,6 @@ RSpec.configure do |config|
   config.before(:suite) do
     admin = rdkafka_config.admin
     {
-      TestTopics.consume_test_topic => 3,
-      TestTopics.empty_test_topic => 3,
-      TestTopics.load_test_topic => 3,
-      TestTopics.produce_test_topic => 3,
-      TestTopics.rake_test_topic => 3,
-      TestTopics.watermarks_test_topic => 3,
-      TestTopics.partitioner_test_topic => 25,
       TestTopics.example_topic => 1
     }.each do |topic, partitions|
       create_topic_handle = admin.create_topic(topic, partitions, 1)

@@ -431,6 +431,13 @@ RSpec.describe Rdkafka::Admin do
     context "when querying offsets for an existing topic with messages" do
       let(:topic) { create_topic_for_test }
 
+      before do
+        # Produce a message to ensure partition leaders are fully established
+        producer = rdkafka_config.producer
+        producer.produce(topic: topic, payload: "warmup", partition: 0).wait
+        producer.close
+      end
+
       it "returns earliest offsets" do
         report = admin.list_offsets(
           { topic => [{ partition: 0, offset: :earliest }] }

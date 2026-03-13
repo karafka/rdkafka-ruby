@@ -1533,23 +1533,26 @@ RSpec.describe Rdkafka::Consumer do
       5.times { |i| producer.produce(topic: topic, payload: "poll_nb_each test #{i}") }
       producer.flush
 
-      # Use blocking poll first to ensure consumer is ready and messages are fetched
-      # poll_nb_each is non-blocking so we need to ensure messages are available first
+      # Consume messages with blocking poll to ensure they are fetched into the buffer
       deadline = Time.now + 30
-      first_message = nil
-      while Time.now < deadline && first_message.nil?
-        first_message = consumer.poll(100)
+      consumed = 0
+      while Time.now < deadline && consumed < 2
+        msg = consumer.poll(100)
+        consumed += 1 if msg
       end
 
-      # Now test that :stop works - we should get exactly one more message then stop
-      # (we already consumed one with blocking poll above)
+      # Produce more messages to ensure poll_nb_each has something to yield
+      3.times { |i| producer.produce(topic: topic, payload: "poll_nb_each extra #{i}") }
+      producer.flush
+      sleep 1
+
+      # Now test that :stop works
       messages = []
       consumer.poll_nb_each do |message|
         messages << message
         :stop if messages.size >= 1
       end
 
-      # Should have stopped after exactly 1 message (we got 1 via blocking poll earlier)
       expect(messages.size).to eq(1)
     end
 

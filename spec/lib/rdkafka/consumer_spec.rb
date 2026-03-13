@@ -550,9 +550,7 @@ RSpec.describe Rdkafka::Consumer do
           end
         end
         handles.each(&:wait)
-      end
 
-      before do
         consumer.subscribe(topic)
         wait_for_assignment(consumer)
         list = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|

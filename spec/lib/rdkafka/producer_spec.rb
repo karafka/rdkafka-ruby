@@ -430,8 +430,7 @@ RSpec.describe Rdkafka::Producer do
       # Consume message and verify its content
       message = wait_for_message(
         topic: topic,
-        delivery_report: report,
-        consumer: consumer
+        delivery_report: report
       )
 
       expect(message.partition).to eq 2
@@ -451,8 +450,7 @@ RSpec.describe Rdkafka::Producer do
       # Consume message and verify its content
       message = wait_for_message(
         topic: topic,
-        delivery_report: report,
-        consumer: consumer
+        delivery_report: report
       )
 
       expect(message.partition).to eq 2

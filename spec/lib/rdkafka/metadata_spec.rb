@@ -26,7 +26,7 @@ RSpec.describe Rdkafka::Metadata do
     context "that is one of our test topics" do
       subject { described_class.new(native_kafka, topic_name) }
 
-      let(:topic_name) { create_topic_for_test(partitions: 25) }
+      let(:topic_name) { TestTopics.create(partitions: 25) }
 
       it "#brokers returns our single broker" do
         expect(subject.brokers.length).to eq(1)
@@ -48,7 +48,7 @@ RSpec.describe Rdkafka::Metadata do
     subject { described_class.new(native_kafka, topic_name) }
 
     let(:topic_name) { nil }
-    let(:test_topic) { create_topic_for_test }
+    let(:test_topic) { TestTopics.create }
 
     it "#brokers returns our single broker" do
       expect(subject.brokers.length).to eq(1)

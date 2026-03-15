@@ -6,7 +6,7 @@ require "securerandom"
 RSpec.describe Rdkafka::Consumer do
   let(:consumer) { rdkafka_consumer_config.consumer }
   let(:producer) { rdkafka_producer_config.producer }
-  let(:topic) { create_topic_for_test }
+  let(:topic) { TestTopics.create }
 
   after {
     consumer.close

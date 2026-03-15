@@ -71,7 +71,7 @@ RSpec.describe Rdkafka::Admin do
       end
 
       describe "with the name of a topic that already exists" do
-        let(:topic_name) { create_topic_for_test }
+        let(:topic_name) { TestTopics.create }
 
         it "raises an exception" do
           create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor)
@@ -429,7 +429,7 @@ RSpec.describe Rdkafka::Admin do
 
   describe "#list_offsets" do
     context "when querying offsets for an existing topic with messages" do
-      let(:topic) { create_topic_for_test }
+      let(:topic) { TestTopics.create }
 
       before do
         # Produce a message to ensure partition leaders are fully established
@@ -488,7 +488,7 @@ RSpec.describe Rdkafka::Admin do
     end
 
     context "when querying offsets by timestamp" do
-      let(:topic) { create_topic_for_test }
+      let(:topic) { TestTopics.create }
 
       it "returns offsets for a given timestamp" do
         # Use a timestamp of 0 (epoch) to get earliest messages

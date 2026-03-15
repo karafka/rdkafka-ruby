@@ -7,8 +7,8 @@ RSpec.describe Rdkafka::Producer do
   let(:all_partitioners) { %w[random consistent consistent_random murmur2 murmur2_random fnv1a fnv1a_random] }
   let(:producer) { rdkafka_producer_config.producer }
   let(:consumer) { rdkafka_consumer_config.consumer }
-  let(:topic) { create_topic_for_test }
-  let(:topic_25) { create_topic_for_test(partitions: 25) }
+  let(:topic) { TestTopics.create }
+  let(:topic_25) { TestTopics.create(partitions: 25) }
 
   after do
     # Registry should always end up being empty

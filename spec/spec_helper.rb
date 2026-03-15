@@ -39,19 +39,19 @@ module TestTopics
     def example_topic
       @example_topic ||= unique
     end
-  end
-end
 
-def create_topic_for_test(partitions: 3)
-  topic_name = "it-#{SecureRandom.uuid}"
-  admin = rdkafka_config.admin
-  begin
-    handle = admin.create_topic(topic_name, partitions, 1)
-    handle.wait(max_wait_timeout_ms: 15_000)
-    wait_for_topic(admin, topic_name)
-    topic_name
-  ensure
-    admin.close
+    def create(partitions: 3)
+      topic_name = unique
+      admin = rdkafka_config.admin
+      begin
+        handle = admin.create_topic(topic_name, partitions, 1)
+        handle.wait(max_wait_timeout_ms: 15_000)
+        wait_for_topic(admin, topic_name)
+        topic_name
+      ensure
+        admin.close
+      end
+    end
   end
 end
 

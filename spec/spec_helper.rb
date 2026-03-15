@@ -134,40 +134,19 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, consumer:
   consumer ||= rdkafka_consumer_config("allow.auto.create.topics": true).consumer
   consumer.subscribe(topic)
   wait_for_assignment(consumer)
+  consumer.seek_by(topic, delivery_report.partition, delivery_report.offset)
   timeout = Time.now.to_i + timeout_in_seconds
-  retry_count = 0
-  max_retries = 10
-  seen_messages = 0
-  nil_polls = 0
 
   loop do
     if timeout <= Time.now.to_i
-      raise "Timeout of #{timeout_in_seconds} seconds reached in wait_for_message. " \
-            "Topic: #{topic}, expected partition: #{delivery_report.partition}, " \
-            "expected offset: #{delivery_report.offset}, " \
-            "assignment: #{consumer.assignment.to_h}, " \
-            "seen_messages: #{seen_messages}, nil_polls: #{nil_polls}"
+      raise "Timeout of #{timeout_in_seconds} seconds reached in wait_for_message"
     end
 
-    begin
-      message = consumer.poll(100)
-      if message
-        seen_messages += 1
-        if message.partition == delivery_report.partition &&
-            message.offset == delivery_report.offset
-          return message
-        end
-      else
-        nil_polls += 1
-      end
-    rescue Rdkafka::RdkafkaError => e
-      if e.code == :unknown_topic_or_part && retry_count < max_retries
-        retry_count += 1
-        sleep(0.1) # Small delay before retry
-        next
-      else
-        raise
-      end
+    message = consumer.poll(100)
+    if message &&
+        message.partition == delivery_report.partition &&
+        message.offset == delivery_report.offset
+      return message
     end
   end
 ensure

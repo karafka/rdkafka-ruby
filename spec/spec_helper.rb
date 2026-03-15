@@ -36,37 +36,21 @@ module TestTopics
       "it-#{SecureRandom.uuid}"
     end
 
-    # Shared topics initialized once on first access
-    def consume_test_topic
-      @consume_test_topic ||= unique
-    end
-
-    def empty_test_topic
-      @empty_test_topic ||= unique
-    end
-
-    def load_test_topic
-      @load_test_topic ||= unique
-    end
-
-    def produce_test_topic
-      @produce_test_topic ||= unique
-    end
-
-    def rake_test_topic
-      @rake_test_topic ||= unique
-    end
-
-    def watermarks_test_topic
-      @watermarks_test_topic ||= unique
-    end
-
-    def partitioner_test_topic
-      @partitioner_test_topic ||= unique
-    end
-
     def example_topic
       @example_topic ||= unique
+    end
+
+    def create(partitions: 3)
+      topic_name = unique
+      admin = rdkafka_config.admin
+      begin
+        handle = admin.create_topic(topic_name, partitions, 1)
+        handle.wait(max_wait_timeout_ms: 15_000)
+        wait_for_topic(admin, topic_name)
+        topic_name
+      ensure
+        admin.close
+      end
     end
   end
 end
@@ -148,31 +132,32 @@ end
 def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, consumer: nil)
   new_consumer = consumer.nil?
   consumer ||= rdkafka_consumer_config("allow.auto.create.topics": true).consumer
-  consumer.subscribe(topic)
+
+  if new_consumer
+    # Use direct partition assignment to avoid group coordination delays
+    tpl = Rdkafka::Consumer::TopicPartitionList.new
+    tpl.add_topic_and_partitions_with_offsets(
+      topic,
+      delivery_report.partition => delivery_report.offset
+    )
+    consumer.assign(tpl)
+  else
+    consumer.subscribe(topic)
+    wait_for_assignment(consumer)
+  end
+
   timeout = Time.now.to_i + timeout_in_seconds
-  retry_count = 0
-  max_retries = 10
 
   loop do
     if timeout <= Time.now.to_i
       raise "Timeout of #{timeout_in_seconds} seconds reached in wait_for_message"
     end
 
-    begin
-      message = consumer.poll(100)
-      if message &&
-          message.partition == delivery_report.partition &&
-          message.offset == delivery_report.offset
-        return message
-      end
-    rescue Rdkafka::RdkafkaError => e
-      if e.code == :unknown_topic_or_part && retry_count < max_retries
-        retry_count += 1
-        sleep(0.1) # Small delay before retry
-        next
-      else
-        raise
-      end
+    message = consumer.poll(100)
+    if message &&
+        message.partition == delivery_report.partition &&
+        message.offset == delivery_report.offset
+      return message
     end
   end
 ensure
@@ -203,9 +188,9 @@ rescue Rdkafka::RdkafkaError => e
   retry
 end
 
-def notify_listener(listener, &block)
+def notify_listener(listener, topic:, &block)
   # 1. subscribe and poll
-  consumer.subscribe(TestTopics.consume_test_topic)
+  consumer.subscribe(topic)
   wait_for_assignment(consumer)
   consumer.poll(100)
 
@@ -232,13 +217,6 @@ RSpec.configure do |config|
   config.before(:suite) do
     admin = rdkafka_config.admin
     {
-      TestTopics.consume_test_topic => 3,
-      TestTopics.empty_test_topic => 3,
-      TestTopics.load_test_topic => 3,
-      TestTopics.produce_test_topic => 3,
-      TestTopics.rake_test_topic => 3,
-      TestTopics.watermarks_test_topic => 3,
-      TestTopics.partitioner_test_topic => 25,
       TestTopics.example_topic => 1
     }.each do |topic, partitions|
       create_topic_handle = admin.create_topic(topic, partitions, 1)

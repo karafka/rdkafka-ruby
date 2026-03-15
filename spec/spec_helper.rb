@@ -133,6 +133,7 @@ def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, consumer:
   new_consumer = consumer.nil?
   consumer ||= rdkafka_consumer_config("allow.auto.create.topics": true).consumer
   consumer.subscribe(topic)
+  wait_for_assignment(consumer)
   timeout = Time.now.to_i + timeout_in_seconds
   retry_count = 0
   max_retries = 10

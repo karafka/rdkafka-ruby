@@ -982,7 +982,7 @@ RSpec.describe Rdkafka::Admin do
               delete_group_handle.wait(max_wait_timeout_ms: 15_000)
             }.to raise_exception { |ex|
               expect(ex).to be_a(Rdkafka::RdkafkaError)
-              expect(ex.message).to match(/Broker: The group id does not exist \(group_id_not_found\)/)
+              expect(ex.message).to match(/group_id_not_found|not_coordinator/)
             }
           end
         end

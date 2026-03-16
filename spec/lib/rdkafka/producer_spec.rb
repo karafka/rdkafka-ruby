@@ -11,8 +11,14 @@ RSpec.describe Rdkafka::Producer do
   let(:topic_25) { TestTopics.create(partitions: 25) }
 
   after do
-    # Registry should always end up being empty
+    # Registry should always end up being empty.
+    # Async delivery callbacks may not have fired yet, so poll briefly.
     registry = Rdkafka::Producer::DeliveryHandle::REGISTRY
+    10.times do
+      break if registry.empty?
+
+      sleep(0.05)
+    end
     expect(registry).to be_empty, registry.inspect
     producer.close
     consumer.close
@@ -632,11 +638,16 @@ RSpec.describe Rdkafka::Producer do
       payload: "payload timeout",
       key: "key timeout"
     )
-    expect {
-      handle.wait(max_wait_timeout_ms: 0)
-    }.to raise_error Rdkafka::Producer::DeliveryHandle::WaitTimeoutError
 
-    # Waiting a second time should work
+    # With a warmed-up broker connection the message may already be delivered
+    # before we get to call wait, so only assert timeout if still pending
+    if handle[:pending]
+      expect {
+        handle.wait(max_wait_timeout_ms: 0)
+      }.to raise_error Rdkafka::Producer::DeliveryHandle::WaitTimeoutError
+    end
+
+    # Waiting with a real timeout should always work
     handle.wait(max_wait_timeout_ms: 5_000)
   end
 

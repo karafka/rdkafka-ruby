@@ -115,6 +115,12 @@ RSpec.describe Rdkafka::Config do
         described_class.error_callback = "a string"
       }.to raise_error(TypeError)
     end
+
+    it "accepts nil to clear the callback" do
+      expect {
+        described_class.error_callback = nil
+      }.not_to raise_error
+    end
   end
 
   context "oauthbearer calllback" do

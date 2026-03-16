@@ -92,7 +92,7 @@ module Rdkafka
     # @param callback [Proc, #call] callable object to handle errors
     # @return [nil]
     def self.error_callback=(callback)
-      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call)
+      raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call) || callback.nil?
       @@error_callback = callback
     end
 

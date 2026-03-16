@@ -1,19 +1,18 @@
 # frozen_string_literal: true
 
 RSpec.describe Rdkafka::Consumer::Headers do
-  let(:headers) do
+  def headers
     { # Note String keys!
       "version" => ["2.1.3", "2.1.4"],
       "type" => "String"
     }
   end
-  let(:native_message) { double("native message") }
-  let(:headers_ptr) { double("headers pointer") }
 
   describe ".from_native" do
-    subject { described_class.from_native(native_message) }
-
     before do
+      native_message = double("native message")
+      headers_ptr = double("headers pointer")
+
       expect(Rdkafka::Bindings).to receive(:rd_kafka_message_headers).with(native_message, anything) do |_, headers_ptrptr|
         expect(headers_ptrptr).to receive(:read_pointer).and_return(headers_ptr)
         Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
@@ -53,21 +52,28 @@ RSpec.describe Rdkafka::Consumer::Headers do
         receive(:rd_kafka_header_get_all)
         .with(headers_ptr, 3, anything, anything, anything)
         .and_return(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT)
+
+      @result = described_class.from_native(native_message)
     end
 
-    it { is_expected.to eq(headers) }
-    it { is_expected.to be_frozen }
+    it "returns the expected headers" do
+      expect(@result).to eq(headers)
+    end
+
+    it "is frozen" do
+      expect(@result).to be_frozen
+    end
 
     it "returns array for duplicate headers" do
-      expect(subject["version"]).to eq(["2.1.3", "2.1.4"])
+      expect(@result["version"]).to eq(["2.1.3", "2.1.4"])
     end
 
     it "returns string for single headers" do
-      expect(subject["type"]).to eq("String")
+      expect(@result["type"]).to eq("String")
     end
 
     it "does not support symbols mappings" do
-      expect(subject.key?(:version)).to be(false)
+      expect(@result.key?(:version)).to be(false)
     end
   end
 end

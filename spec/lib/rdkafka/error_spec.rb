@@ -88,22 +88,24 @@ RSpec.describe Rdkafka::RdkafkaError do
   end
 
   describe "#==" do
-    subject { described_class.new(10, "Error explanation") }
+    def build_error
+      Rdkafka::RdkafkaError.new(10, "Error explanation")
+    end
 
     it "equals another error with the same content" do
-      expect(subject).to eq described_class.new(10, "Error explanation")
+      expect(build_error).to eq described_class.new(10, "Error explanation")
     end
 
     it "does not equal another error with a different error code" do
-      expect(subject).not_to eq described_class.new(20, "Error explanation")
+      expect(build_error).not_to eq described_class.new(20, "Error explanation")
     end
 
     it "does not equal another error with a different message" do
-      expect(subject).not_to eq described_class.new(10, "Different error explanation")
+      expect(build_error).not_to eq described_class.new(10, "Different error explanation")
     end
 
     it "does not equal another error with no message" do
-      expect(subject).not_to eq described_class.new(10)
+      expect(build_error).not_to eq described_class.new(10)
     end
 
     it "does not equal another error with a different instance name" do

@@ -3,12 +3,25 @@
 require "zlib"
 
 RSpec.describe Rdkafka::Producer do
-  let(:producer) { rdkafka_producer_config.producer }
-  let(:all_partitioners) { %w[random consistent consistent_random murmur2 murmur2_random fnv1a fnv1a_random] }
-  let(:producer) { rdkafka_producer_config.producer }
-  let(:consumer) { rdkafka_consumer_config.consumer }
-  let(:topic) { TestTopics.create }
-  let(:topic_25) { TestTopics.create(partitions: 25) }
+  def producer
+    @producer ||= rdkafka_producer_config.producer
+  end
+
+  def all_partitioners
+    %w[random consistent consistent_random murmur2 murmur2_random fnv1a fnv1a_random]
+  end
+
+  def consumer
+    @consumer ||= rdkafka_consumer_config.consumer
+  end
+
+  def topic
+    @topic ||= TestTopics.create
+  end
+
+  def topic_25
+    @topic_25 ||= TestTopics.create(partitions: 25)
+  end
 
   after do
     # Registry should always end up being empty
@@ -19,7 +32,9 @@ RSpec.describe Rdkafka::Producer do
   end
 
   describe "producer without auto-start" do
-    let(:producer) { rdkafka_producer_config.producer(native_kafka_auto_start: false) }
+    def producer
+      @producer ||= rdkafka_producer_config.producer(native_kafka_auto_start: false)
+    end
 
     it "expect to be able to start it later and close" do
       producer.start
@@ -54,8 +69,8 @@ RSpec.describe Rdkafka::Producer do
       context "when alteration should change behavior" do
         # This is set incorrectly for a reason
         # If alteration would not work, this will hang the spec suite
-        let(:producer) do
-          rdkafka_producer_config(
+        def producer
+          @producer ||= rdkafka_producer_config(
             "message.timeout.ms": 1_000_000,
             "bootstrap.servers": "127.0.0.1:9094"
           ).producer
@@ -668,8 +683,8 @@ RSpec.describe Rdkafka::Producer do
   end
 
   context "when not being able to deliver the message" do
-    let(:producer) do
-      rdkafka_producer_config(
+    def producer
+      @producer ||= rdkafka_producer_config(
         "bootstrap.servers": "127.0.0.1:9095",
         "message.timeout.ms": 100
       ).producer
@@ -685,8 +700,8 @@ RSpec.describe Rdkafka::Producer do
   end
 
   context "when topic does not exist and allow.auto.create.topics is false" do
-    let(:producer) do
-      rdkafka_producer_config(
+    def producer
+      @producer ||= rdkafka_producer_config(
         "bootstrap.servers": "127.0.0.1:9092",
         "message.timeout.ms": 100,
         "allow.auto.create.topics": false
@@ -745,11 +760,13 @@ RSpec.describe Rdkafka::Producer do
   end
 
   describe "metadata fetch request recovery" do
-    subject(:partition_count) { producer.partition_count(TestTopics.example_topic) }
+    def build_subject
+      producer.partition_count(TestTopics.example_topic)
+    end
 
     describe "metadata initialization recovery" do
       context "when all good" do
-        it { expect(partition_count).to eq(1) }
+        it { expect(build_subject).to eq(1) }
       end
 
       context "when we fail for the first time with handled error" do
@@ -766,7 +783,7 @@ RSpec.describe Rdkafka::Producer do
           end
         end
 
-        it { expect(partition_count).to eq(1) }
+        it { expect(build_subject).to eq(1) }
       end
     end
   end
@@ -784,8 +801,8 @@ RSpec.describe Rdkafka::Producer do
     end
 
     context "when it cannot flush due to a timeout" do
-      let(:producer) do
-        rdkafka_producer_config(
+      def producer
+        @producer ||= rdkafka_producer_config(
           "bootstrap.servers": "127.0.0.1:9095",
           "message.timeout.ms": 2_000
         ).producer
@@ -810,7 +827,7 @@ RSpec.describe Rdkafka::Producer do
     end
 
     context "when there is a different error" do
-      before { allow(Rdkafka::Bindings).to receive(:rd_kafka_flush).and_return(-199) }
+      before { stub_binding_return(:rd_kafka_flush, -199) }
 
       it "raises it" do
         expect { producer.flush }.to raise_error(Rdkafka::RdkafkaError)
@@ -832,8 +849,8 @@ RSpec.describe Rdkafka::Producer do
     end
 
     context "when there are outgoing things in the queue" do
-      let(:producer) do
-        rdkafka_producer_config(
+      def producer
+        @producer ||= rdkafka_producer_config(
           "bootstrap.servers": "127.0.0.1:9095",
           "message.timeout.ms": 2_000
         ).producer
@@ -861,10 +878,12 @@ RSpec.describe Rdkafka::Producer do
       end
 
       context "when using delivery_callback" do
-        let(:delivery_reports) { [] }
+        def delivery_reports
+          @delivery_reports ||= []
+        end
 
-        let(:delivery_callback) do
-          ->(delivery_report) { delivery_reports << delivery_report }
+        def delivery_callback
+          @delivery_callback ||= ->(delivery_report) { delivery_reports << delivery_report }
         end
 
         before { producer.delivery_callback = delivery_callback }
@@ -1027,13 +1046,13 @@ RSpec.describe Rdkafka::Producer do
   end
 
   describe "with active statistics callback" do
-    let(:producer) do
-      rdkafka_producer_config("statistics.interval.ms": 1_000).producer
+    def producer
+      @producer ||= rdkafka_producer_config("statistics.interval.ms": 1_000).producer
     end
 
-    let(:count_cache_hash) { described_class.partitions_count_cache.to_h }
-    let(:pre_statistics_ttl) { count_cache_hash.fetch(topic, [])[0] }
-    let(:post_statistics_ttl) { count_cache_hash.fetch(topic, [])[0] }
+    def count_cache_hash
+      Rdkafka::Producer.partitions_count_cache.to_h
+    end
 
     context "when using partition key" do
       before do
@@ -1046,16 +1065,16 @@ RSpec.describe Rdkafka::Producer do
           partition_key: "test"
         ).wait
 
-        pre_statistics_ttl
+        @pre_statistics_ttl = count_cache_hash.fetch(topic, [])[0]
 
         # We wait to make sure that statistics are triggered and that there is a refresh
         sleep(1.5)
 
-        post_statistics_ttl
+        @post_statistics_ttl = count_cache_hash.fetch(topic, [])[0]
       end
 
       it "expect to update ttl on the partitions count cache via statistics" do
-        expect(pre_statistics_ttl).to be < post_statistics_ttl
+        expect(@pre_statistics_ttl).to be < @post_statistics_ttl
       end
     end
 
@@ -1069,30 +1088,30 @@ RSpec.describe Rdkafka::Producer do
           payload: "payload headers"
         ).wait
 
-        pre_statistics_ttl
+        @pre_statistics_ttl = count_cache_hash.fetch(topic, [])[0]
 
         # We wait to make sure that statistics are triggered and that there is a refresh
         sleep(1.5)
 
         # This will anyhow be populated from statistic
-        post_statistics_ttl
+        @post_statistics_ttl = count_cache_hash.fetch(topic, [])[0]
       end
 
       it "expect not to update ttl on the partitions count cache via blocking but via use stats" do
-        expect(pre_statistics_ttl).to be_nil
-        expect(post_statistics_ttl).not_to be_nil
+        expect(@pre_statistics_ttl).to be_nil
+        expect(@post_statistics_ttl).not_to be_nil
       end
     end
   end
 
   describe "without active statistics callback" do
-    let(:producer) do
-      rdkafka_producer_config("statistics.interval.ms": 1_000).producer
+    def producer
+      @producer ||= rdkafka_producer_config("statistics.interval.ms": 1_000).producer
     end
 
-    let(:count_cache_hash) { described_class.partitions_count_cache.to_h }
-    let(:pre_statistics_ttl) { count_cache_hash.fetch(topic, [])[0] }
-    let(:post_statistics_ttl) { count_cache_hash.fetch(topic, [])[0] }
+    def count_cache_hash
+      Rdkafka::Producer.partitions_count_cache.to_h
+    end
 
     context "when using partition key" do
       before do
@@ -1103,16 +1122,16 @@ RSpec.describe Rdkafka::Producer do
           partition_key: "test"
         ).wait
 
-        pre_statistics_ttl
+        @pre_statistics_ttl = count_cache_hash.fetch(topic, [])[0]
 
         # We wait to make sure that statistics are triggered and that there is a refresh
         sleep(1.5)
 
-        post_statistics_ttl
+        @post_statistics_ttl = count_cache_hash.fetch(topic, [])[0]
       end
 
       it "expect not to update ttl on the partitions count cache via statistics" do
-        expect(pre_statistics_ttl).to eq post_statistics_ttl
+        expect(@pre_statistics_ttl).to eq @post_statistics_ttl
       end
     end
 
@@ -1124,18 +1143,18 @@ RSpec.describe Rdkafka::Producer do
           payload: "payload headers"
         ).wait
 
-        pre_statistics_ttl
+        @pre_statistics_ttl = count_cache_hash.fetch(topic, [])[0]
 
         # We wait to make sure that statistics are triggered and that there is a refresh
         sleep(1.5)
 
         # This should not be populated because stats are not in use
-        post_statistics_ttl
+        @post_statistics_ttl = count_cache_hash.fetch(topic, [])[0]
       end
 
       it "expect not to update ttl on the partitions count cache via anything" do
-        expect(pre_statistics_ttl).to be_nil
-        expect(post_statistics_ttl).to be_nil
+        expect(@pre_statistics_ttl).to be_nil
+        expect(@post_statistics_ttl).to be_nil
       end
     end
   end
@@ -1506,7 +1525,9 @@ RSpec.describe Rdkafka::Producer do
   end
 
   describe "file descriptor access for fiber scheduler integration" do
-    let(:producer) { rdkafka_producer_config.producer(run_polling_thread: false) }
+    def producer
+      @producer ||= rdkafka_producer_config.producer(run_polling_thread: false)
+    end
 
     it "enables IO events on producer queue" do
       signal_r, signal_w = IO.pipe

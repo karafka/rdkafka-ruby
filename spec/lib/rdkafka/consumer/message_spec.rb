@@ -1,13 +1,15 @@
 # frozen_string_literal: true
 
 RSpec.describe Rdkafka::Consumer::Message do
-  subject { described_class.new(native_message) }
+  def native_client
+    @native_client ||= new_native_client
+  end
 
-  let(:native_client) { new_native_client }
-  let(:native_topic) { new_native_topic(native_client: native_client) }
-  let(:payload) { nil }
-  let(:key) { nil }
-  let(:native_message) do
+  def native_topic
+    @native_topic ||= new_native_topic(native_client: native_client)
+  end
+
+  def build_native_message(payload: nil, key: nil)
     Rdkafka::Bindings::Message.new.tap do |message|
       message[:rkt] = native_topic
       message[:partition] = 3
@@ -27,110 +29,102 @@ RSpec.describe Rdkafka::Consumer::Message do
     end
   end
 
+  def build_message(payload: nil, key: nil)
+    Rdkafka::Consumer::Message.new(build_native_message(payload: payload, key: key))
+  end
+
   after do
     Rdkafka::Bindings.rd_kafka_destroy(native_client)
   end
 
   before do
-    # mock headers, because it produces 'segmentation fault' while settings or reading headers for
-    # a message which is created from scratch
-    #
-    # Code dump example:
-    #
-    # ```
-    # frame #7: 0x000000010dacf5ab librdkafka.dylib`rd_list_destroy + 11
-    # frame #8: 0x000000010dae5a7e librdkafka.dylib`rd_kafka_headers_destroy + 14
-    # frame #9: 0x000000010da9ab40 librdkafka.dylib`rd_kafka_message_set_headers + 32
-    # ```
-    expect(Rdkafka::Bindings).to receive(:rd_kafka_message_headers).with(any_args).and_return(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT)
+    # Safety mock: prevents segfault when reading headers from a manually constructed message.
+    # See MockBindingsHelpers#stub_message_headers_unavailable for details.
+    stub_message_headers_unavailable
   end
 
   it "has a topic" do
-    expect(subject.topic).to eq "topic_name"
+    expect(build_message.topic).to eq "topic_name"
   end
 
   it "has a partition" do
-    expect(subject.partition).to eq 3
+    expect(build_message.partition).to eq 3
   end
 
   context "payload" do
     it "has a nil payload when none is present" do
-      expect(subject.payload).to be_nil
+      expect(build_message.payload).to be_nil
     end
 
     context "present payload" do
-      let(:payload) { "payload content" }
-
       it "has a payload" do
-        expect(subject.payload).to eq "payload content"
+        expect(build_message(payload: "payload content").payload).to eq "payload content"
       end
     end
   end
 
   context "key" do
     it "has a nil key when none is present" do
-      expect(subject.key).to be_nil
+      expect(build_message.key).to be_nil
     end
 
     context "present key" do
-      let(:key) { "key content" }
-
       it "has a key" do
-        expect(subject.key).to eq "key content"
+        expect(build_message(key: "key content").key).to eq "key content"
       end
     end
   end
 
   it "has an offset" do
-    expect(subject.offset).to eq 100
+    expect(build_message.offset).to eq 100
   end
 
   describe "#timestamp" do
     context "without a timestamp" do
       before do
-        allow(Rdkafka::Bindings).to receive(:rd_kafka_message_timestamp).and_return(-1)
+        stub_message_timestamp(-1)
       end
 
       it "has a nil timestamp if not present" do
-        expect(subject.timestamp).to be_nil
+        expect(build_message.timestamp).to be_nil
       end
     end
 
     context "with a timestamp" do
       before do
-        allow(Rdkafka::Bindings).to receive(:rd_kafka_message_timestamp).and_return(1505069646250)
+        stub_message_timestamp(1505069646250)
       end
 
       it "has timestamp if present" do
-        expect(subject.timestamp).to eq Time.at(1505069646, 250_000)
+        expect(build_message.timestamp).to eq Time.at(1505069646, 250_000)
       end
     end
   end
 
   describe "#to_s" do
     before do
-      allow(subject).to receive(:timestamp).and_return(1000)
+      stub_message_timestamp(1000000)
     end
 
     it "has a human readable representation" do
-      expect(subject.to_s).to eq "<Message in 'topic_name' with key '', payload '', partition 3, offset 100, timestamp 1000>"
+      msg = build_message
+      allow(msg).to receive(:timestamp).and_return(1000)
+      expect(msg.to_s).to eq "<Message in 'topic_name' with key '', payload '', partition 3, offset 100, timestamp 1000>"
     end
 
     context "with key and payload" do
-      let(:key) { "key" }
-      let(:payload) { "payload" }
-
       it "has a human readable representation" do
-        expect(subject.to_s).to eq "<Message in 'topic_name' with key 'key', payload 'payload', partition 3, offset 100, timestamp 1000>"
+        msg = build_message(key: "key", payload: "payload")
+        allow(msg).to receive(:timestamp).and_return(1000)
+        expect(msg.to_s).to eq "<Message in 'topic_name' with key 'key', payload 'payload', partition 3, offset 100, timestamp 1000>"
       end
     end
 
     context "with a very long key and payload" do
-      let(:key) { "k" * 100_000 }
-      let(:payload) { "p" * 100_000 }
-
       it "has a human readable representation" do
-        expect(subject.to_s).to eq "<Message in 'topic_name' with key 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk...', payload 'pppppppppppppppppppppppppppppppppppppppp...', partition 3, offset 100, timestamp 1000>"
+        msg = build_message(key: "k" * 100_000, payload: "p" * 100_000)
+        allow(msg).to receive(:timestamp).and_return(1000)
+        expect(msg.to_s).to eq "<Message in 'topic_name' with key 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk...', payload 'pppppppppppppppppppppppppppppppppppppppp...', partition 3, offset 100, timestamp 1000>"
       end
     end
   end

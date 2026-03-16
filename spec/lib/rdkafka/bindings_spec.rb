@@ -81,7 +81,9 @@ RSpec.describe Rdkafka::Bindings do
   end
 
   describe "log callback" do
-    let(:log_queue) { Rdkafka::Config.log_queue }
+    def log_queue
+      @log_queue ||= Rdkafka::Config.log_queue
+    end
 
     before do
       allow(log_queue).to receive(:<<)

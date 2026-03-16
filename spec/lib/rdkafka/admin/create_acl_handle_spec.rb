@@ -1,41 +1,26 @@
 # frozen_string_literal: true
 
 RSpec.describe Rdkafka::Admin::CreateAclHandle do
-  # If create acl was successful there is no error object
-  # the error code is set to RD_KAFKA_RESP_ERR_NO_ERRORa
-  # https://github.com/confluentinc/librdkafka/blob/1f9f245ac409f50f724695c628c7a0d54a763b9a/src/rdkafka_error.c#L169
-  subject do
-    described_class.new.tap do |handle|
-      handle[:pending] = pending_handle
-      handle[:response] = response
-      # If create acl was successful there is no error object and the error_string is set to ""
-      # https://github.com/confluentinc/librdkafka/blob/1f9f245ac409f50f724695c628c7a0d54a763b9a/src/rdkafka_error.c#L178
-      handle[:response_string] = FFI::MemoryPointer.from_string("")
-    end
-  end
-
-  let(:response) { Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR }
-
   describe "#wait" do
-    let(:pending_handle) { true }
-
     it "waits until the timeout and then raise an error" do
+      handle = build_create_acl_handle(pending: true)
+
       expect {
-        subject.wait(max_wait_timeout_ms: 100)
+        handle.wait(max_wait_timeout_ms: 100)
       }.to raise_error Rdkafka::Admin::CreateAclHandle::WaitTimeoutError, /create acl/
     end
 
     context "when not pending anymore and no error" do
-      let(:pending_handle) { false }
-
       it "returns a create acl report" do
-        report = subject.wait
+        handle = build_create_acl_handle(pending: false)
+        report = handle.wait
 
         expect(report.rdkafka_response_string).to eq("")
       end
 
       it "waits without a timeout" do
-        report = subject.wait(max_wait_timeout_ms: nil)
+        handle = build_create_acl_handle(pending: false)
+        report = handle.wait(max_wait_timeout_ms: nil)
 
         expect(report.rdkafka_response_string).to eq("")
       end
@@ -43,11 +28,11 @@ RSpec.describe Rdkafka::Admin::CreateAclHandle do
   end
 
   describe "#raise_error" do
-    let(:pending_handle) { false }
-
     it "raises the appropriate error" do
+      handle = build_create_acl_handle(pending: false)
+
       expect {
-        subject.raise_error
+        handle.raise_error
       }.to raise_exception(Rdkafka::RdkafkaError, /Success \(no_error\)/)
     end
   end

@@ -4,9 +4,17 @@ require "ostruct"
 require "securerandom"
 
 RSpec.describe Rdkafka::Consumer do
-  let(:consumer) { rdkafka_consumer_config.consumer }
-  let(:producer) { rdkafka_producer_config.producer }
-  let(:topic) { TestTopics.create }
+  def consumer
+    @consumer ||= rdkafka_consumer_config.consumer
+  end
+
+  def producer
+    @producer ||= rdkafka_producer_config.producer
+  end
+
+  def topic
+    @topic ||= TestTopics.create
+  end
 
   after {
     consumer.close
@@ -18,7 +26,9 @@ RSpec.describe Rdkafka::Consumer do
   end
 
   describe "consumer without auto-start" do
-    let(:consumer) { rdkafka_consumer_config.consumer(native_kafka_auto_start: false) }
+    def consumer
+      @consumer ||= rdkafka_consumer_config.consumer(native_kafka_auto_start: false)
+    end
 
     it "expect to be able to start it later and close" do
       consumer.start
@@ -72,10 +82,12 @@ RSpec.describe Rdkafka::Consumer do
     end
 
     context "when using consumer without the poll set" do
-      let(:consumer) do
-        config = rdkafka_consumer_config
-        config.consumer_poll_set = false
-        config.consumer
+      def consumer
+        @consumer ||= begin
+          config = rdkafka_consumer_config
+          config.consumer_poll_set = false
+          config.consumer
+        end
       end
 
       it "subscribe,s unsubscribe and return the subscription" do
@@ -98,7 +110,9 @@ RSpec.describe Rdkafka::Consumer do
 
   describe "#pause and #resume" do
     context "subscription" do
-      let(:timeout) { 2000 }
+      def timeout
+        2000
+      end
 
       before { consumer.subscribe(topic) }
       after { consumer.unsubscribe }
@@ -173,7 +187,9 @@ RSpec.describe Rdkafka::Consumer do
   end
 
   describe "#seek" do
-    let(:topic) { "it-#{SecureRandom.uuid}" }
+    def topic
+      @topic ||= "it-#{SecureRandom.uuid}"
+    end
 
     before do
       admin = rdkafka_producer_config.admin
@@ -192,10 +208,15 @@ RSpec.describe Rdkafka::Consumer do
     end
 
     context "subscription" do
-      let(:timeout) { 1000 }
+      def timeout
+        1000
+      end
+
       # Some specs here test the manual offset commit hence we want to ensure, that we have some
       # offsets in-memory that we can manually commit
-      let(:consumer) { rdkafka_consumer_config("auto.commit.interval.ms": 60_000).consumer }
+      def consumer
+        @consumer ||= rdkafka_consumer_config("auto.commit.interval.ms": 60_000).consumer
+      end
 
       before do
         consumer.subscribe(topic)
@@ -275,10 +296,21 @@ RSpec.describe Rdkafka::Consumer do
   end
 
   describe "#seek_by" do
-    let(:consumer) { rdkafka_consumer_config("auto.commit.interval.ms": 60_000).consumer }
-    let(:topic) { "it-#{SecureRandom.uuid}" }
-    let(:partition) { 0 }
-    let(:offset) { 0 }
+    def consumer
+      @consumer ||= rdkafka_consumer_config("auto.commit.interval.ms": 60_000).consumer
+    end
+
+    def topic
+      @topic ||= "it-#{SecureRandom.uuid}"
+    end
+
+    def partition
+      0
+    end
+
+    def offset
+      0
+    end
 
     before do
       admin = rdkafka_producer_config.admin
@@ -295,7 +327,9 @@ RSpec.describe Rdkafka::Consumer do
     end
 
     context "subscription" do
-      let(:timeout) { 1000 }
+      def timeout
+        1000
+      end
 
       before do
         consumer.subscribe(topic)
@@ -496,8 +530,8 @@ RSpec.describe Rdkafka::Consumer do
 
   describe "#position, #commit, #committed and #store_offset" do
     # Make sure there are messages to work with
-    let!(:report) do
-      producer.produce(
+    def report
+      @report ||= producer.produce(
         topic: topic,
         payload: "payload 1",
         key: "key 1",
@@ -505,8 +539,11 @@ RSpec.describe Rdkafka::Consumer do
       ).wait
     end
 
-    let(:message) do
-      wait_for_message(
+    # Force eager evaluation like let!
+    before { report }
+
+    def message
+      @message ||= wait_for_message(
         topic: topic,
         delivery_report: report,
         consumer: consumer
@@ -609,10 +646,19 @@ RSpec.describe Rdkafka::Consumer do
       end
 
       describe "#store_offset" do
-        let(:consumer) { rdkafka_consumer_config("enable.auto.offset.store": false).consumer }
-        let(:metadata) { SecureRandom.uuid }
-        let(:group_id) { SecureRandom.uuid }
-        let(:base_config) do
+        def consumer
+          @consumer ||= rdkafka_consumer_config("enable.auto.offset.store": false).consumer
+        end
+
+        def metadata
+          @metadata ||= SecureRandom.uuid
+        end
+
+        def group_id
+          @group_id ||= SecureRandom.uuid
+        end
+
+        def base_config
           {
             "group.id": group_id,
             "enable.auto.offset.store": false,
@@ -622,8 +668,8 @@ RSpec.describe Rdkafka::Consumer do
 
         # Produce a fresh message and consume it with a dedicated consumer
         # to avoid conflicts with the committed offsets from the parent context
-        let(:store_offset_report) do
-          producer.produce(
+        def store_offset_report
+          @store_offset_report ||= producer.produce(
             topic: topic,
             payload: "payload store_offset",
             key: "key store_offset",
@@ -631,8 +677,8 @@ RSpec.describe Rdkafka::Consumer do
           ).wait
         end
 
-        let(:message) do
-          wait_for_message(
+        def message
+          @message ||= wait_for_message(
             topic: topic,
             delivery_report: store_offset_report
           )
@@ -670,20 +716,22 @@ RSpec.describe Rdkafka::Consumer do
         end
 
         describe "#position" do
-          let(:polled_message) do
-            # consumer must poll the message directly (not via a separate consumer)
-            # for position to reflect the fetch offset
-            report = producer.produce(
-              topic: topic,
-              payload: "payload position",
-              key: "key position",
-              partition: 0
-            ).wait
-            wait_for_message(
-              topic: topic,
-              delivery_report: report,
-              consumer: consumer
-            )
+          def polled_message
+            @polled_message ||= begin
+              # consumer must poll the message directly (not via a separate consumer)
+              # for position to reflect the fetch offset
+              report = producer.produce(
+                topic: topic,
+                payload: "payload position",
+                key: "key position",
+                partition: 0
+              ).wait
+              wait_for_message(
+                topic: topic,
+                delivery_report: report,
+                consumer: consumer
+              )
+            end
           end
 
           it "fetches the positions for the current assignment" do
@@ -715,7 +763,9 @@ RSpec.describe Rdkafka::Consumer do
         end
 
         context "when trying to use with enable.auto.offset.store set to true" do
-          let(:consumer) { rdkafka_consumer_config("enable.auto.offset.store": true).consumer }
+          def consumer
+            @consumer ||= rdkafka_consumer_config("enable.auto.offset.store": true).consumer
+          end
 
           it "expect to raise invalid configuration error" do
             expect { consumer.store_offset(message) }.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
@@ -749,7 +799,9 @@ RSpec.describe Rdkafka::Consumer do
   end
 
   describe "#lag" do
-    let(:consumer) { rdkafka_consumer_config("enable.partition.eof": true).consumer }
+    def consumer
+      @consumer ||= rdkafka_consumer_config("enable.partition.eof": true).consumer
+    end
 
     it "calculates the consumer lag" do
       # Make sure there's a message in every partition and
@@ -1068,7 +1120,9 @@ RSpec.describe Rdkafka::Consumer do
     end
 
     context "when subscribed" do
-      let(:timeout) { 1000 }
+      def timeout
+        1000
+      end
 
       before do
         consumer.subscribe(topic)
@@ -1119,11 +1173,16 @@ RSpec.describe Rdkafka::Consumer do
 
   # Only relevant in case of a consumer with separate queues
   describe "#events_poll" do
-    let(:stats) { [] }
-    let(:consumer) do
-      config = rdkafka_consumer_config("statistics.interval.ms": 500)
-      config.consumer_poll_set = false
-      config.consumer
+    def stats
+      @stats ||= []
+    end
+
+    def consumer
+      @consumer ||= begin
+        config = rdkafka_consumer_config("statistics.interval.ms": 500)
+        config.consumer_poll_set = false
+        config.consumer
+      end
     end
 
     before { Rdkafka::Config.statistics_callback = ->(published) { stats << published } }
@@ -1141,11 +1200,16 @@ RSpec.describe Rdkafka::Consumer do
 
   # Only relevant in case of a consumer with separate queues
   describe "#events_poll_nb" do
-    let(:stats) { [] }
-    let(:consumer) do
-      config = rdkafka_consumer_config("statistics.interval.ms": 500)
-      config.consumer_poll_set = false
-      config.consumer
+    def stats
+      @stats ||= []
+    end
+
+    def consumer
+      @consumer ||= begin
+        config = rdkafka_consumer_config("statistics.interval.ms": 500)
+        config.consumer_poll_set = false
+        config.consumer
+      end
     end
 
     before { Rdkafka::Config.statistics_callback = ->(published) { stats << published } }
@@ -1180,7 +1244,9 @@ RSpec.describe Rdkafka::Consumer do
   end
 
   describe "#consumer_group_metadata_pointer" do
-    let(:pointer) { consumer.consumer_group_metadata_pointer }
+    def pointer
+      @pointer ||= consumer.consumer_group_metadata_pointer
+    end
 
     after { Rdkafka::Bindings.rd_kafka_consumer_group_metadata_destroy(pointer) }
 
@@ -1190,15 +1256,17 @@ RSpec.describe Rdkafka::Consumer do
   end
 
   describe "a rebalance listener" do
-    let(:consumer) do
-      config = rdkafka_consumer_config
-      config.consumer_rebalance_listener = listener
-      config.consumer
+    def consumer
+      @consumer ||= begin
+        config = rdkafka_consumer_config
+        config.consumer_rebalance_listener = listener
+        config.consumer
+      end
     end
 
     context "with a working listener" do
-      let(:listener) do
-        Struct.new(:queue) do
+      def listener
+        @listener ||= Struct.new(:queue) do
           def on_partitions_assigned(list)
             collect(:assign, list)
           end
@@ -1225,8 +1293,8 @@ RSpec.describe Rdkafka::Consumer do
     end
 
     context "with a broken listener" do
-      let(:listener) do
-        Struct.new(:queue) do
+      def listener
+        @listener ||= Struct.new(:queue) do
           def on_partitions_assigned(list)
             queue << :assigned
             raise "boom"
@@ -1287,19 +1355,21 @@ RSpec.describe Rdkafka::Consumer do
   end
 
   context "when the rebalance protocol is cooperative" do
-    let(:consumer) do
-      config = rdkafka_consumer_config(
-        {
-          "partition.assignment.strategy": "cooperative-sticky",
-          debug: "consumer"
-        }
-      )
-      config.consumer_rebalance_listener = listener
-      config.consumer
+    def consumer
+      @consumer ||= begin
+        config = rdkafka_consumer_config(
+          {
+            "partition.assignment.strategy": "cooperative-sticky",
+            debug: "consumer"
+          }
+        )
+        config.consumer_rebalance_listener = listener
+        config.consumer
+      end
     end
 
-    let(:listener) do
-      Struct.new(:queue) do
+    def listener
+      @listener ||= Struct.new(:queue) do
         def on_partitions_assigned(list)
           collect(:assign, list)
         end
@@ -1396,7 +1466,9 @@ RSpec.describe Rdkafka::Consumer do
   end
 
   describe "when reaching eof on a topic and eof reporting enabled" do
-    let(:consumer) { rdkafka_consumer_config("enable.partition.eof": true).consumer }
+    def consumer
+      @consumer ||= rdkafka_consumer_config("enable.partition.eof": true).consumer
+    end
 
     it "returns proper details" do
       (0..2).each do |i|
@@ -1425,8 +1497,13 @@ RSpec.describe Rdkafka::Consumer do
   end
 
   describe "long running consumption" do
-    let(:consumer) { rdkafka_consumer_config.consumer }
-    let(:producer) { rdkafka_producer_config.producer }
+    def consumer
+      @consumer ||= rdkafka_consumer_config.consumer
+    end
+
+    def producer
+      @producer ||= rdkafka_producer_config.producer
+    end
 
     after {
       consumer.close

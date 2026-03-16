@@ -89,7 +89,7 @@ module Rdkafka
     # If this callback is not set, global errors such as brokers becoming unavailable will only be sent to the logger, as defined by librdkafka.
     # The callback is called with an instance of RdKafka::Error.
     #
-    # @param callback [Proc, #call] callable object to handle errors
+    # @param callback [Proc, #call, nil] callable object to handle errors or nil to clear
     # @return [nil]
     def self.error_callback=(callback)
       raise TypeError.new("Callback has to be callable") unless callback.respond_to?(:call) || callback.nil?

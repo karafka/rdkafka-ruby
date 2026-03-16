@@ -32,8 +32,6 @@ require_relative "support/kafka_config_helpers"
 require_relative "support/kafka_wait_helpers"
 require_relative "support/native_client_helpers"
 require_relative "support/test_topics"
-require_relative "support/handle_test_helpers"
-require_relative "support/mock_bindings_helpers"
 
 RSpec.configure do |config|
   config.disable_monkey_patching!
@@ -41,8 +39,6 @@ RSpec.configure do |config|
   config.include KafkaConfigHelpers
   config.include KafkaWaitHelpers
   config.include NativeClientHelpers
-  config.include HandleTestHelpers
-  config.include MockBindingsHelpers
 
   config.filter_run focus: true
   config.run_all_when_everything_filtered = true

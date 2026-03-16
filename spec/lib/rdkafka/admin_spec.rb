@@ -3,65 +3,21 @@
 require "ostruct"
 
 RSpec.describe Rdkafka::Admin do
-  def config
-    @config ||= rdkafka_config
-  end
-
-  def topic_name
-    @topic_name ||= "test-topic-#{SecureRandom.uuid}"
-  end
-
-  def topic_partition_count
-    3
-  end
-
-  def topic_replication_factor
-    1
-  end
-
-  def topic_config
-    { "cleanup.policy" => "compact", "min.cleanable.dirty.ratio" => 0.8 }
-  end
-
-  def invalid_topic_config
-    { "cleeeeenup.policee" => "campact" }
-  end
-
-  def group_name
-    @group_name ||= "test-group-#{SecureRandom.uuid}"
-  end
-
-  def resource_name
-    @resource_name ||= TestTopics.unique
-  end
-
-  def resource_type
-    Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC
-  end
-
-  def resource_pattern_type
-    Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL
-  end
-
-  def principal
-    "User:anonymous"
-  end
-
-  def host
-    "*"
-  end
-
-  def operation
-    Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ
-  end
-
-  def permission_type
-    Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW
-  end
-
-  def admin
-    @admin ||= config.admin
-  end
+  let(:config) { rdkafka_config }
+  let(:topic_name) { "test-topic-#{SecureRandom.uuid}" }
+  let(:topic_partition_count) { 3 }
+  let(:topic_replication_factor) { 1 }
+  let(:topic_config) { { "cleanup.policy" => "compact", "min.cleanable.dirty.ratio" => 0.8 } }
+  let(:invalid_topic_config) { { "cleeeeenup.policee" => "campact" } }
+  let(:group_name) { "test-group-#{SecureRandom.uuid}" }
+  let(:resource_name) { TestTopics.unique }
+  let(:resource_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC }
+  let(:resource_pattern_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL }
+  let(:principal) { "User:anonymous" }
+  let(:host) { "*" }
+  let(:operation) { Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ }
+  let(:permission_type) { Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW }
+  let(:admin) { config.admin }
 
   after do
     # Registry should always end up being empty
@@ -75,9 +31,7 @@ RSpec.describe Rdkafka::Admin do
   end
 
   describe "#describe_errors" do
-    def errors
-      @errors ||= admin.class.describe_errors
-    end
+    let(:errors) { admin.class.describe_errors }
 
     it { expect(errors.size).to eq(172) }
     it { expect(errors[-184]).to eq(code: -184, description: "Local: Queue full", name: "_QUEUE_FULL") }
@@ -85,9 +39,7 @@ RSpec.describe Rdkafka::Admin do
   end
 
   describe "admin without auto-start" do
-    def admin
-      @admin ||= config.admin(native_kafka_auto_start: false)
-    end
+    let(:admin) { config.admin(native_kafka_auto_start: false) }
 
     it "expect to be able to start it later and close" do
       admin.start
@@ -104,9 +56,7 @@ RSpec.describe Rdkafka::Admin do
       describe "with an invalid topic name" do
         # https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/common/internals/Topic.java#L29
         # public static final String LEGAL_CHARS = "[a-zA-Z0-9._-]";
-        def topic_name
-          "[!@#]"
-        end
+        let(:topic_name) { "[!@#]" }
 
         it "raises an exception" do
           create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor)
@@ -121,9 +71,7 @@ RSpec.describe Rdkafka::Admin do
       end
 
       describe "with the name of a topic that already exists" do
-        def topic_name
-          @topic_name ||= TestTopics.create
-        end
+        let(:topic_name) { TestTopics.create }
 
         it "raises an exception" do
           create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor)
@@ -138,9 +86,7 @@ RSpec.describe Rdkafka::Admin do
       end
 
       describe "with an invalid partition count" do
-        def topic_partition_count
-          -999
-        end
+        let(:topic_partition_count) { -999 }
 
         it "raises an exception" do
           expect {
@@ -150,9 +96,7 @@ RSpec.describe Rdkafka::Admin do
       end
 
       describe "with an invalid replication factor" do
-        def topic_replication_factor
-          -2
-        end
+        let(:topic_replication_factor) { -2 }
 
         it "raises an exception" do
           expect {
@@ -174,7 +118,7 @@ RSpec.describe Rdkafka::Admin do
     context "edge case" do
       context "where we are unable to get the background queue" do
         before do
-          stub_null_background_queue
+          allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_get_background).and_return(FFI::Pointer::NULL)
         end
 
         it "raises an exception" do
@@ -186,7 +130,7 @@ RSpec.describe Rdkafka::Admin do
 
       context "where rd_kafka_CreateTopics raises an exception" do
         before do
-          stub_binding_raise(:rd_kafka_CreateTopics, RuntimeError.new("oops"))
+          allow(Rdkafka::Bindings).to receive(:rd_kafka_CreateTopics).and_raise(RuntimeError.new("oops"))
         end
 
         it "raises an exception" do
@@ -206,9 +150,7 @@ RSpec.describe Rdkafka::Admin do
   end
 
   describe "describe_configs" do
-    def resources_results
-      @resources_results ||= admin.describe_configs(resources).wait.resources
-    end
+    let(:resources_results) { admin.describe_configs(resources).wait.resources }
 
     before do
       admin.create_topic(topic_name, 2, 1).wait
@@ -216,9 +158,7 @@ RSpec.describe Rdkafka::Admin do
     end
 
     context "when describing config of an existing topic" do
-      def resources
-        @resources ||= [{ resource_type: 2, resource_name: topic_name }]
-      end
+      let(:resources) { [{ resource_type: 2, resource_name: topic_name }] }
 
       it do
         expect(resources_results.size).to eq(1)
@@ -232,9 +172,7 @@ RSpec.describe Rdkafka::Admin do
     end
 
     context "when describing config of a non-existing topic" do
-      def resources
-        @resources ||= [{ resource_type: 2, resource_name: SecureRandom.uuid }]
-      end
+      let(:resources) { [{ resource_type: 2, resource_name: SecureRandom.uuid }] }
 
       it "expect to raise error" do
         expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /unknown_topic_or_part/)
@@ -242,8 +180,8 @@ RSpec.describe Rdkafka::Admin do
     end
 
     context "when describing both existing and non-existing topics" do
-      def resources
-        @resources ||= [
+      let(:resources) do
+        [
           { resource_type: 2, resource_name: topic_name },
           { resource_type: 2, resource_name: SecureRandom.uuid }
         ]
@@ -255,8 +193,8 @@ RSpec.describe Rdkafka::Admin do
     end
 
     context "when describing multiple existing topics" do
-      def resources
-        @resources ||= [
+      let(:resources) do
+        [
           { resource_type: 2, resource_name: TestTopics.example_topic },
           { resource_type: 2, resource_name: topic_name }
         ]
@@ -272,9 +210,7 @@ RSpec.describe Rdkafka::Admin do
     end
 
     context "when trying to describe invalid resource type" do
-      def resources
-        @resources ||= [{ resource_type: 0, resource_name: SecureRandom.uuid }]
-      end
+      let(:resources) { [{ resource_type: 0, resource_name: SecureRandom.uuid }] }
 
       it "expect to raise error" do
         expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /invalid_request/)
@@ -282,9 +218,7 @@ RSpec.describe Rdkafka::Admin do
     end
 
     context "when trying to describe invalid broker" do
-      def resources
-        [{ resource_type: 4, resource_name: "non-existing" }]
-      end
+      let(:resources) { [{ resource_type: 4, resource_name: "non-existing" }] }
 
       it "expect to raise error" do
         expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
@@ -292,9 +226,7 @@ RSpec.describe Rdkafka::Admin do
     end
 
     context "when trying to describe valid broker" do
-      def resources
-        [{ resource_type: 4, resource_name: "1" }]
-      end
+      let(:resources) { [{ resource_type: 4, resource_name: "1" }] }
 
       it do
         expect(resources_results.size).to eq(1)
@@ -308,8 +240,8 @@ RSpec.describe Rdkafka::Admin do
     end
 
     context "when describing valid broker with topics in one request" do
-      def resources
-        @resources ||= [
+      let(:resources) do
+        [
           { resource_type: 4, resource_name: "1" },
           { resource_type: 2, resource_name: topic_name }
         ]
@@ -332,9 +264,7 @@ RSpec.describe Rdkafka::Admin do
   end
 
   describe "incremental_alter_configs" do
-    def resources_results
-      @resources_results ||= admin.incremental_alter_configs(resources_with_configs).wait.resources
-    end
+    let(:resources_results) { admin.incremental_alter_configs(resources_with_configs).wait.resources }
 
     before do
       admin.create_topic(topic_name, 2, 1).wait
@@ -342,12 +272,9 @@ RSpec.describe Rdkafka::Admin do
     end
 
     context "when altering one topic with one valid config via set" do
-      def target_retention
-        @target_retention ||= rand(86400002..86410001).to_s
-      end
-
-      def resources_with_configs
-        @resources_with_configs ||= [
+      let(:target_retention) { rand(86400002..86410001).to_s }
+      let(:resources_with_configs) do
+        [
           {
             resource_type: 2,
             resource_name: topic_name,
@@ -378,12 +305,9 @@ RSpec.describe Rdkafka::Admin do
     end
 
     context "when altering one topic with one valid config via delete" do
-      def target_retention
-        @target_retention ||= rand(8640002..8650001).to_s
-      end
-
-      def resources_with_configs
-        @resources_with_configs ||= [
+      let(:target_retention) { rand(8640002..8650001).to_s }
+      let(:resources_with_configs) do
+        [
           {
             resource_type: 2,
             resource_name: topic_name,
@@ -414,12 +338,9 @@ RSpec.describe Rdkafka::Admin do
     end
 
     context "when altering one topic with one valid config via append" do
-      def target_policy
-        "compact"
-      end
-
-      def resources_with_configs
-        @resources_with_configs ||= [
+      let(:target_policy) { "compact" }
+      let(:resources_with_configs) do
+        [
           {
             resource_type: 2,
             resource_name: topic_name,
@@ -450,12 +371,9 @@ RSpec.describe Rdkafka::Admin do
     end
 
     context "when altering one topic with one valid config via subtrack" do
-      def target_policy
-        "delete"
-      end
-
-      def resources_with_configs
-        @resources_with_configs ||= [
+      let(:target_policy) { "delete" }
+      let(:resources_with_configs) do
+        [
           {
             resource_type: 2,
             resource_name: topic_name,
@@ -486,12 +404,9 @@ RSpec.describe Rdkafka::Admin do
     end
 
     context "when altering one topic with invalid config" do
-      def target_retention
-        "-10"
-      end
-
-      def resources_with_configs
-        @resources_with_configs ||= [
+      let(:target_retention) { "-10" }
+      let(:resources_with_configs) do
+        [
           {
             resource_type: 2,
             resource_name: topic_name,
@@ -514,9 +429,7 @@ RSpec.describe Rdkafka::Admin do
 
   describe "#list_offsets" do
     context "when querying offsets for an existing topic with messages" do
-      def topic
-        @topic ||= TestTopics.create
-      end
+      let(:topic) { TestTopics.create }
 
       before do
         # Produce a message to ensure partition leaders are fully established
@@ -575,9 +488,7 @@ RSpec.describe Rdkafka::Admin do
     end
 
     context "when querying offsets by timestamp" do
-      def topic
-        @topic ||= TestTopics.create
-      end
+      let(:topic) { TestTopics.create }
 
       it "returns offsets for a given timestamp" do
         # Use a timestamp of 0 (epoch) to get earliest messages
@@ -604,7 +515,7 @@ RSpec.describe Rdkafka::Admin do
     context "edge case" do
       context "where we are unable to get the background queue" do
         before do
-          stub_null_background_queue
+          allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_get_background).and_return(FFI::Pointer::NULL)
         end
 
         it "raises an exception" do
@@ -616,7 +527,7 @@ RSpec.describe Rdkafka::Admin do
 
       context "where rd_kafka_ListOffsets raises an exception" do
         before do
-          stub_binding_raise(:rd_kafka_ListOffsets, RuntimeError.new("oops"))
+          allow(Rdkafka::Bindings).to receive(:rd_kafka_ListOffsets).and_raise(RuntimeError.new("oops"))
         end
 
         it "raises an exception" do
@@ -641,9 +552,7 @@ RSpec.describe Rdkafka::Admin do
       # https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/common/internals/Topic.java#L29
       # public static final String LEGAL_CHARS = "[a-zA-Z0-9._-]";
       describe "with an invalid topic name" do
-        def topic_name
-          "[!@#]"
-        end
+        let(:topic_name) { "[!@#]" }
 
         it "raises an exception" do
           delete_topic_handle = admin.delete_topic(topic_name)
@@ -674,7 +583,7 @@ RSpec.describe Rdkafka::Admin do
     context "edge case" do
       context "where we are unable to get the background queue" do
         before do
-          stub_null_background_queue
+          allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_get_background).and_return(FFI::Pointer::NULL)
         end
 
         it "raises an exception" do
@@ -686,7 +595,7 @@ RSpec.describe Rdkafka::Admin do
 
       context "where rd_kafka_DeleteTopics raises an exception" do
         before do
-          stub_binding_raise(:rd_kafka_DeleteTopics, RuntimeError.new("oops"))
+          allow(Rdkafka::Bindings).to receive(:rd_kafka_DeleteTopics).and_raise(RuntimeError.new("oops"))
         end
 
         it "raises an exception" do
@@ -722,9 +631,7 @@ RSpec.describe Rdkafka::Admin do
   end
 
   describe "#ACL tests for topic resource" do
-    def non_existing_resource_name
-      "non-existing-topic"
-    end
+    let(:non_existing_resource_name) { "non-existing-topic" }
 
     before do
       # create topic for testing acl
@@ -826,37 +733,14 @@ RSpec.describe Rdkafka::Admin do
   end
 
   describe "#ACL tests for transactional_id" do
-    def transactional_id_resource_name
-      "test-transactional-id"
-    end
-
-    def non_existing_transactional_id
-      "non-existing-transactional-id"
-    end
-
-    def transactional_id_resource_type
-      Rdkafka::Bindings::RD_KAFKA_RESOURCE_TRANSACTIONAL_ID
-    end
-
-    def transactional_id_resource_pattern_type
-      Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL
-    end
-
-    def transactional_id_principal
-      "User:test-user"
-    end
-
-    def transactional_id_host
-      "*"
-    end
-
-    def transactional_id_operation
-      Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_WRITE
-    end
-
-    def transactional_id_permission_type
-      Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW
-    end
+    let(:transactional_id_resource_name) { "test-transactional-id" }
+    let(:non_existing_transactional_id) { "non-existing-transactional-id" }
+    let(:transactional_id_resource_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_TRANSACTIONAL_ID }
+    let(:transactional_id_resource_pattern_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL }
+    let(:transactional_id_principal) { "User:test-user" }
+    let(:transactional_id_host) { "*" }
+    let(:transactional_id_operation) { Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_WRITE }
+    let(:transactional_id_permission_type) { Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW }
 
     after do
       # Clean up any ACLs that might have been created during tests
@@ -1051,21 +935,10 @@ RSpec.describe Rdkafka::Admin do
   describe("Group tests") do
     describe "#delete_group" do
       describe("with an existing group") do
-        def consumer_config
-          @consumer_config ||= rdkafka_consumer_config("group.id": group_name)
-        end
-
-        def producer_config
-          @producer_config ||= rdkafka_producer_config
-        end
-
-        def producer
-          @producer ||= producer_config.producer
-        end
-
-        def consumer
-          @consumer ||= consumer_config.consumer
-        end
+        let(:consumer_config) { rdkafka_consumer_config("group.id": group_name) }
+        let(:producer_config) { rdkafka_producer_config }
+        let(:producer) { producer_config.producer }
+        let(:consumer) { consumer_config.consumer }
 
         before do
           # Create a topic, post a message to it, consume it and commit offsets, this will create a group that we can then delete.
@@ -1118,16 +991,14 @@ RSpec.describe Rdkafka::Admin do
   end
 
   describe "#create_partitions" do
-    def metadata
-      @metadata ||= begin
-        admin.metadata(topic_name).topics.first
-      rescue Rdkafka::RdkafkaError
-        # We have to wait because if we query too fast after topic creation request, it may not
-        # yet be available throwing an error.
-        # This occurs mostly on slow CIs
-        sleep(1)
-        admin.metadata(topic_name).topics.first
-      end
+    let(:metadata) do
+      admin.metadata(topic_name).topics.first
+    rescue Rdkafka::RdkafkaError
+      # We have to wait because if we query too fast after topic creation request, it may not
+      # yet be available throwing an error.
+      # This occurs mostly on slow CIs
+      sleep(1)
+      admin.metadata(topic_name).topics.first
     end
 
     context "when topic does not exist" do
@@ -1264,9 +1135,7 @@ RSpec.describe Rdkafka::Admin do
   end
 
   describe "file descriptor access for fiber scheduler integration" do
-    def admin
-      @admin ||= config.admin(run_polling_thread: false)
-    end
+    let(:admin) { config.admin(run_polling_thread: false) }
 
     it "enables IO events on admin queue" do
       signal_r, signal_w = IO.pipe

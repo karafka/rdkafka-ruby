@@ -114,13 +114,15 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
   end
 
   describe "#to_s" do
-    it "returns a human readable representation" do
-      expected = if RUBY_VERSION >= "3.4.0"
+    let(:expected) do
+      if RUBY_VERSION >= "3.4.0"
         "<TopicPartitionList: {\"topic1\" => [<Partition 0>, <Partition 1>]}>"
       else
         "<TopicPartitionList: {\"topic1\"=>[<Partition 0>, <Partition 1>]}>"
       end
+    end
 
+    it "returns a human readable representation" do
       list = described_class.new
       list.add_topic("topic1", [0, 1])
 
@@ -129,8 +131,8 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
   end
 
   describe "#==" do
-    def build_list
-      Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+    let(:list) do
+      described_class.new.tap do |list|
         list.add_topic("topic1", [0])
       end
     end
@@ -139,11 +141,11 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
       other = described_class.new.tap do |list|
         list.add_topic("topic1", [0])
       end
-      expect(build_list).to eq other
+      expect(list).to eq other
     end
 
     it "does not equal another partition with different content" do
-      expect(build_list).not_to eq described_class.new
+      expect(list).not_to eq described_class.new
     end
   end
 

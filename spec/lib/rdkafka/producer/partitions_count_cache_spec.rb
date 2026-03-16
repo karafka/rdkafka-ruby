@@ -3,45 +3,16 @@
 require "spec_helper"
 
 RSpec.describe Rdkafka::Producer::PartitionsCountCache do
-  def default_ttl_ms
-    1_000
-  end
-
-  def custom_ttl_ms
-    500
-  end
-
-  def cache
-    @cache ||= Rdkafka::Producer::PartitionsCountCache.new(ttl_ms: default_ttl_ms)
-  end
-
-  def custom_ttl_cache
-    @custom_ttl_cache ||= Rdkafka::Producer::PartitionsCountCache.new(ttl_ms: custom_ttl_ms)
-  end
-
-  def topic
-    @topic ||= TestTopics.unique
-  end
-
-  def topic2
-    @topic2 ||= TestTopics.unique
-  end
-
-  def partition_count
-    5
-  end
-
-  def higher_partition_count
-    10
-  end
-
-  def lower_partition_count
-    3
-  end
-
-  def even_higher_partition_count
-    15
-  end
+  let(:default_ttl_ms) { 1_000 } # Reduced from 30000 to speed up tests
+  let(:custom_ttl_ms) { 500 } # Half the default TTL
+  let(:cache) { described_class.new(ttl_ms: default_ttl_ms) }
+  let(:custom_ttl_cache) { described_class.new(ttl_ms: custom_ttl_ms) }
+  let(:topic) { TestTopics.unique }
+  let(:topic2) { TestTopics.unique }
+  let(:partition_count) { 5 }
+  let(:higher_partition_count) { 10 }
+  let(:lower_partition_count) { 3 }
+  let(:even_higher_partition_count) { 15 }
 
   describe "#initialize" do
     it "creates a cache with default TTL when no TTL is specified" do

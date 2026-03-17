@@ -816,6 +816,11 @@ RSpec.describe Rdkafka::Consumer do
     end
 
     it "returns nil if there are no messages on the topic" do
+      # Subscribe first to establish a group coordinator, otherwise
+      # committed() can fail with not_coordinator in random test order
+      consumer.subscribe(topic)
+      wait_for_assignment(consumer)
+
       list = consumer.committed(Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
         l.add_topic(topic, 0..2)
       end)

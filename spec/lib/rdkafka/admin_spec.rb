@@ -491,10 +491,20 @@ RSpec.describe Rdkafka::Admin do
       let(:topic) { TestTopics.create }
 
       it "returns offsets for a given timestamp" do
-        # Use a timestamp of 0 (epoch) to get earliest messages
-        report = admin.list_offsets(
-          { topic => [{ partition: 0, offset: 0 }] }
-        ).wait(max_wait_timeout_ms: 15_000)
+        # Use a timestamp of 0 (epoch) to get earliest messages.
+        # Retry on transient broker errors (not_leader_for_partition) that can
+        # occur when partition leadership hasn't fully settled after topic creation.
+        report = nil
+        3.times do
+          report = admin.list_offsets(
+            { topic => [{ partition: 0, offset: 0 }] }
+          ).wait(max_wait_timeout_ms: 15_000)
+          break
+        rescue Rdkafka::RdkafkaError => e
+          raise unless e.message.include?("not_leader_for_partition")
+
+          sleep(1)
+        end
 
         expect(report.offsets.length).to eq(1)
         first = report.offsets.first

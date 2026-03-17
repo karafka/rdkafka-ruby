@@ -7,15 +7,24 @@ module TestTopics
   extend KafkaWaitHelpers
 
   class << self
-    # Generate a unique topic name with it- prefix and UUID
+    # Generates a unique topic name with an +it-+ prefix and a random UUID.
+    #
+    # @return [String] unique topic name
     def unique
       "it-#{SecureRandom.uuid}"
     end
 
+    # Returns a cached example topic name, generating it once on first access.
+    #
+    # @return [String] the example topic name
     def example_topic
       @example_topic ||= unique
     end
 
+    # Creates a new Kafka topic with a unique name and waits until it is available.
+    #
+    # @param partitions [Integer] the number of partitions for the topic
+    # @return [String] the created topic name
     def create(partitions: 3)
       topic_name = unique
       admin = rdkafka_config.admin

@@ -109,9 +109,9 @@ describe "Unregistered Scheme File" do
 
     log_lines.each do |line|
       refute_includes line, "routines::unregistered scheme",
-                      "Found 'unregistered scheme' error in SSL logs"
+        "Found 'unregistered scheme' error in SSL logs"
       refute_includes line, "system library::No such file or directory",
-                      "Found 'No such file or directory' error in SSL logs"
+        "Found 'No such file or directory' error in SSL logs"
     end
   end
 end

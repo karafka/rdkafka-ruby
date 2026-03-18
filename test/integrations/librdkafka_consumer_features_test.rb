@@ -71,14 +71,14 @@ describe "Librdkafka Consumer Features" do
 
     # Verify all expected features are present
     expected = if ENV["RDKAFKA_PRECOMPILED"] == "true"
-                 CONSUMER_PRECOMPILED_FEATURES
-               else
-                 CONSUMER_EXPECTED_BUILTIN_FEATURES
-               end
+      CONSUMER_PRECOMPILED_FEATURES
+    else
+      CONSUMER_EXPECTED_BUILTIN_FEATURES
+    end
 
     missing_features = expected - actual_features
 
     assert_empty missing_features,
-                 "Missing expected builtin features: #{missing_features.join(', ')}"
+      "Missing expected builtin features: #{missing_features.join(", ")}"
   end
 end

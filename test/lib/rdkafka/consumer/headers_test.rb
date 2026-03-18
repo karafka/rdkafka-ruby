@@ -22,7 +22,7 @@ describe Rdkafka::Consumer::Headers do
       header_data = [
         { name: "version", value: "2.1.3" },
         { name: "version", value: "2.1.4" },
-        { name: "type",    value: "String" }
+        { name: "type", value: "String" }
       ]
 
       headers_ptr = @headers_ptr

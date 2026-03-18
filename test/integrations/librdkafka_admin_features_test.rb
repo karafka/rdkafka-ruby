@@ -70,14 +70,14 @@ describe "Librdkafka Admin Features" do
 
     # Verify all expected features are present
     expected = if ENV["RDKAFKA_PRECOMPILED"] == "true"
-                 ADMIN_PRECOMPILED_FEATURES
-               else
-                 ADMIN_EXPECTED_BUILTIN_FEATURES
-               end
+      ADMIN_PRECOMPILED_FEATURES
+    else
+      ADMIN_EXPECTED_BUILTIN_FEATURES
+    end
 
     missing_features = expected - actual_features
 
     assert_empty missing_features,
-                 "Missing expected builtin features: #{missing_features.join(', ')}"
+      "Missing expected builtin features: #{missing_features.join(", ")}"
   end
 end

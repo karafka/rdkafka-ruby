@@ -7,7 +7,8 @@ gemspec
 group :development do
   gem "ostruct"
   gem "pry"
-  gem "rspec"
+  gem "minitest"
+  gem "mocha"
   gem "simplecov"
   gem "warning"
 end

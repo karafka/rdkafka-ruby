@@ -124,3 +124,13 @@ module GlobalBeforeEach
 end
 
 Minitest::Spec.prepend(GlobalBeforeEach)
+
+# Force GC after all tests to trigger native kafka handle finalizers in an orderly fashion.
+# Without this, finalizers run during Ruby's shutdown phase and can race with librdkafka's
+# internal cleanup, causing segfaults (exit code 139) when run via Minitest::TestTask.
+Minitest.after_run do
+  # Multiple GC passes to ensure all weak-ref and nested native objects are collected
+  3.times { GC.start }
+  # Give librdkafka background threads time to finish cleanup
+  sleep 1
+end

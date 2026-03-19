@@ -6,20 +6,20 @@
 # schedule and when workflow changes are made.
 #
 # WHY COMPLEMENTARY TESTING FOR ALPINE/MUSL:
-# - SSL specs have been stable for 3+ years and rarely break due to code changes
-# - Integration specs test musl libc and Alpine package compatibility
+# - SSL tests have been stable for 3+ years and rarely break due to code changes
+# - Integration tests test musl libc and Alpine package compatibility
 # - These tests catch regressions from external changes (OpenSSL updates, Alpine package updates)
 # - Running every 3 days to prevent these slower tests from blocking PR velocity
 # - Manual triggering allows testing workflow changes before they go into schedule
 #
-# SSL TESTING (specs_install + specs_precompiled):
+# SSL TESTING (tests_install + tests_precompiled):
 # - Tests SSL/TLS connectivity with Kafka using docker-compose-ssl.yml on Alpine
 # - Validates certificate handling and SSL handshakes across Ruby versions on musl
 # - Ensures SSL works with both compiled-from-source and precompiled flows on Alpine
 # - Catches OpenSSL version compatibility issues and SSL library regressions on musl
 # - Tests real SSL scenarios that mirror Alpine-based production deployments
 #
-# INTEGRATION TESTING (integration specs in both jobs):
+# INTEGRATION TESTING (integration tests in both jobs):
 # - Tests musl libc and Alpine system library compatibility without requiring Kafka infrastructure
 # - Validates libssl, libsasl2, libzstd, zlib integration across Alpine versions
 # - Ensures native extensions work with different Alpine package versions
@@ -48,7 +48,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/ci_linux_alpine_x86_64_musl_complementary.yml'
-      - 'spec/integrations/**'
+      - 'test/integrations/**'
     branches: [ master ]
   push:
     branches:
@@ -99,7 +99,7 @@ jobs:
           path: ext/
           retention-days: 1
 
-  specs_install:
+  tests_install:
     timeout-minutes: 45
     runs-on: ubuntu-latest
     strategy:
@@ -131,7 +131,7 @@ jobs:
             sleep 2
           done
 
-      - name: Run all specs in SSL (compiled flow)
+      - name: Run all tests in SSL (compiled flow)
         env:
           KAFKA_SSL_ENABLED: "true"
         run: |
@@ -155,13 +155,13 @@ jobs:
               echo "=== SSL Library Versions ===" && \
               openssl version && \
               apk list --installed | grep -E "(openssl|cyrus-sasl)" && \
-              echo "=== Running SSL Specs (Compiled) ===" && \
-              bundle exec ruby -S rspec'
+              echo "=== Running SSL Tests (Compiled) ===" && \
+              bundle exec rake test'
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings
 
-      - name: Run integration specs (compiled flow)
+      - name: Run integration tests (compiled flow)
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
@@ -181,13 +181,13 @@ jobs:
               echo "=== Alpine/musl Library Versions ===" && \
               openssl version && \
               apk list --installed | grep -E "(openssl|cyrus-sasl|zstd|zlib)" && \
-              echo "=== Running Integration Specs (Compiled) ===" && \
-              for file in $(ls spec/integrations/*_spec.rb); do \
+              echo "=== Running Integration Tests (Compiled) ===" && \
+              for file in $(ls test/integrations/*_test.rb); do \
                 echo "Running $file with Ruby ${{ matrix.ruby }} on Alpine ${{ matrix.alpine_version }}"; \
                 bundle exec ruby "$file" || exit 1; \
               done'
 
-  specs_precompiled:
+  tests_precompiled:
     timeout-minutes: 30
     needs: build_precompiled
     strategy:
@@ -222,7 +222,7 @@ jobs:
             sleep 2
           done
 
-      - name: Run specs with precompiled library and SSL
+      - name: Run tests with precompiled library and SSL
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           KAFKA_SSL_ENABLED: "true"
@@ -240,12 +240,12 @@ jobs:
               git config --global --add safe.directory /workspace && \
               bundle config set --local path vendor/bundle && bundle install && \
               apk list --installed | grep -E "(openssl|cyrus-sasl)" && \
-              bundle exec ruby -S rspec'
+              bundle exec rake test'
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings
 
-      - name: Run integration specs (precompiled flow)
+      - name: Run integration tests (precompiled flow)
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           RDKAFKA_PRECOMPILED: "true"
@@ -266,8 +266,8 @@ jobs:
               bundle config set --local path vendor/bundle && \
               bundle install && \
               apk list --installed | grep -E "(openssl|cyrus-sasl|zstd|zlib)" && \
-              echo "=== Running Integration Specs (Precompiled) ===" && \
-              for file in $(ls spec/integrations/*_spec.rb); do \
+              echo "=== Running Integration Tests (Precompiled) ===" && \
+              for file in $(ls test/integrations/*_test.rb); do \
                 echo "Running $file with Ruby ${{ matrix.ruby }} (precompiled)"; \
                 bundle exec ruby "$file" || exit 1; \
               done'
@@ -277,9 +277,9 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs:
-      - specs_install
+      - tests_install
       - build_precompiled
-      - specs_precompiled
+      - tests_precompiled
     steps:
       - name: Check all jobs passed
         if: |

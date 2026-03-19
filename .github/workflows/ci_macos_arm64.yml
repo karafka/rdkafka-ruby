@@ -20,7 +20,7 @@ env:
   CONFLUENT_VERSION: "8.0.0"
 
 jobs:
-  specs_install:
+  tests_install:
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -127,12 +127,12 @@ jobs:
           set -e
           cd ext && bundle exec rake
           cd ..
-      - name: Run all specs
+      - name: Run all tests
         env:
           GITHUB_COVERAGE: ${{matrix.coverage}}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
         run: |
-          bundle exec rspec
+          bundle exec rake test
 
   build_precompiled:
     timeout-minutes: 45
@@ -162,7 +162,7 @@ jobs:
           path: ext/
           retention-days: 1
 
-  specs_precompiled:
+  tests_precompiled:
     timeout-minutes: 30
     needs: build_precompiled
     strategy:
@@ -272,22 +272,22 @@ jobs:
         run: |
           bundle install
           echo "Bundle install completed with precompiled library"
-      - name: Run specs with precompiled library
+      - name: Run tests with precompiled library
         env:
           GITHUB_COVERAGE: ${{ matrix.coverage }}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           RDKAFKA_PRECOMPILED: "true"
         run: |
-          bundle exec rspec
+          bundle exec rake test
 
   ci-success:
     name: CI macOS ARM64 Success
     runs-on: ubuntu-latest
     if: always()
     needs:
-      - specs_install
+      - tests_install
       - build_precompiled
-      - specs_precompiled
+      - tests_precompiled
     steps:
       - name: Check all jobs passed
         if: |

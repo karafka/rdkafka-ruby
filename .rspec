@@ -1,4 +1,0 @@
---require spec_helper
---format documentation
---pattern spec/lib/**/*_spec.rb
---order rand

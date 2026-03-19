@@ -2,6 +2,13 @@
 
 require "bundler/gem_tasks"
 require "./lib/rdkafka"
+require "minitest/test_task"
+
+Minitest::TestTask.create(:test) do |t|
+  t.test_globs = ["test/lib/**/*_test.rb"]
+end
+
+task default: :test
 
 desc "Generate some message traffic"
 task :produce_messages do

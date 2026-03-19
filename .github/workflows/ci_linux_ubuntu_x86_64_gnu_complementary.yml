@@ -8,12 +8,12 @@
 # WHY COMPLEMENTARY TESTING:
 # - Precompiled binary testing is stable (rarely breaks from code changes)
 # - Edge Ruby versions (4.0-preview, JRuby) need testing but shouldn't block PRs
-# - Integration specs test OS library compatibility, which changes with system updates
+# - Integration tests test OS library compatibility, which changes with system updates
 # - These tests catch regressions from external changes (system libs, Ruby updates)
 # - Running every 3 days to prevent these slower tests from blocking PR velocity
 # - Manual triggering allows testing workflow changes before they go into schedule
 #
-# PRECOMPILED BINARY TESTING (build_precompiled + specs_precompiled):
+# PRECOMPILED BINARY TESTING (build_precompiled + tests_precompiled):
 # - Tests static library distribution works across Ubuntu versions
 # - Validates precompiled libraries don't have unexpected system dependencies
 # - Ensures binary compatibility between different Ubuntu LTS versions
@@ -22,7 +22,7 @@
 #
 # EXTENDED COMPATIBILITY TESTING:
 # - Edge case Ruby versions: 4.0, JRuby-10.0
-# - Integration specs testing system library compatibility
+# - Integration tests testing system library compatibility
 # - Both compilation and precompiled flows for comprehensive coverage
 # - Cross-platform compatibility validation
 #
@@ -48,7 +48,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/ci_linux_ubuntu_x86_64_gnu_complementary.yml'
-      - 'spec/integrations/**'
+      - 'test/integrations/**'
     branches: [ master ]
   push:
     branches:
@@ -66,7 +66,7 @@ env:
 jobs:
   build_precompiled:
     timeout-minutes: 30
-    # We precompile on older Ubuntu and check compatibility by running specs since we aim to
+    # We precompile on older Ubuntu and check compatibility by running tests since we aim to
     # release only one precompiled version for all supported Ubuntu versions
     # This is why we do not want Renovate to update it automatically
     runs-on: ubuntu-22.04 # renovate: ignore
@@ -119,7 +119,7 @@ jobs:
           path: ext/
           retention-days: 1
 
-  specs_install:
+  tests_install:
     timeout-minutes: 50
     strategy:
       fail-fast: false
@@ -183,26 +183,26 @@ jobs:
           set -e
           cd ext && bundle exec rake
           cd ..
-      - name: Run all specs in SSL (compiled flow)
+      - name: Run all tests in SSL (compiled flow)
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           KAFKA_SSL_ENABLED: "true"
         continue-on-error: ${{ matrix.continue-on-error || false }}
         run: |
-          bundle exec rspec
+          bundle exec rake test
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings
 
-      - name: Run integration specs (compiled flow)
+      - name: Run integration tests (compiled flow)
         continue-on-error: ${{ matrix.continue-on-error || false }}
         run: |
-          for file in $(ls spec/integrations/*_spec.rb); do
+          for file in $(ls test/integrations/*_test.rb); do
             echo "Running $file with Ruby ${{ matrix.ruby }}";
             bundle exec ruby "$file" || exit 1;
           done
 
-  specs_precompiled:
+  tests_precompiled:
     timeout-minutes: 30
     needs: build_precompiled
     strategy:
@@ -280,23 +280,23 @@ jobs:
           echo "Build dependencies removal completed"
           echo "Remaining build tools:"
           which gcc g++ make 2>/dev/null || echo "No build tools found in PATH (good!)"
-      - name: Run specs with precompiled library and SSL
+      - name: Run tests with precompiled library and SSL
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           KAFKA_SSL_ENABLED: "true"
           RDKAFKA_PRECOMPILED: "true"
         run: |
-          bundle exec rspec
+          bundle exec rake test
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings
 
-      - name: Run integration specs (precompiled flow)
+      - name: Run integration tests (precompiled flow)
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           RDKAFKA_PRECOMPILED: "true"
         run: |
-          for file in $(ls spec/integrations/*_spec.rb); do
+          for file in $(ls test/integrations/*_test.rb); do
             echo "Running $file with Ruby ${{ matrix.ruby }} (precompiled)";
             bundle exec ruby "$file" || exit 1;
           done
@@ -306,9 +306,9 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs:
-      - specs_install
+      - tests_install
       - build_precompiled
-      - specs_precompiled
+      - tests_precompiled
     steps:
       - name: Check all jobs passed
         if: |

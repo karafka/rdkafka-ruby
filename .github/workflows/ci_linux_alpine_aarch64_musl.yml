@@ -41,7 +41,7 @@ env:
   BUNDLE_JOBS: 4
 
 jobs:
-  specs_install:
+  tests_install:
     timeout-minutes: 60
     runs-on: ubuntu-24.04-arm
     strategy:
@@ -80,7 +80,7 @@ jobs:
             sleep 2
           done
 
-      - name: Run all specs in PLAINTEXT
+      - name: Run all tests in PLAINTEXT
         env:
           GITHUB_COVERAGE: ${{ matrix.coverage }}
         run: |
@@ -101,7 +101,7 @@ jobs:
               bundle install && \
               cd ext && bundle exec rake && \
               cd .. && \
-              bundle exec ruby -S rspec'
+              bundle exec rake test'
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings
@@ -139,7 +139,7 @@ jobs:
           path: ext/
           retention-days: 1
 
-  specs_precompiled:
+  tests_precompiled:
     timeout-minutes: 45
     runs-on: ubuntu-24.04-arm
     needs: build_precompiled
@@ -178,7 +178,7 @@ jobs:
             sleep 2
           done
 
-      - name: Run specs with precompiled library and PLAINTEXT
+      - name: Run tests with precompiled library and PLAINTEXT
         env:
           GITHUB_COVERAGE: ${{ matrix.coverage }}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
@@ -195,7 +195,7 @@ jobs:
             sh -c 'apk add --no-cache git build-base linux-headers bash && \
               git config --global --add safe.directory /workspace && \
               bundle config set --local path vendor/bundle && \
-              bundle install && bundle exec ruby -S rspec'
+              bundle install && bundle exec rake test'
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings
@@ -205,9 +205,9 @@ jobs:
     runs-on: ubuntu-24.04-arm
     if: always()
     needs:
-      - specs_install
+      - tests_install
       - build_precompiled
-      - specs_precompiled
+      - tests_precompiled
     steps:
       - name: Check all jobs passed
         if: |

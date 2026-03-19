@@ -18,6 +18,7 @@ Gem::Specification.new do |gem|
   files = files.reject do |file|
     next true if file.start_with?(".")
     next true if file.start_with?("spec/")
+    next true if file.start_with?("test/")
     next true if file.start_with?("ext/README.md")
 
     false

@@ -1131,7 +1131,13 @@ RSpec.describe Rdkafka::Consumer do
       config.consumer
     end
 
-    before { Rdkafka::Config.statistics_callback = ->(published) { stats << published } }
+    before do
+      # Force topic creation before setting the statistics callback so the admin
+      # client used inside TestTopics.create closes without the StatsCallback
+      # competing for the GVL (which can hang the admin's polling thread join).
+      topic
+      Rdkafka::Config.statistics_callback = ->(published) { stats << published }
+    end
 
     after { Rdkafka::Config.statistics_callback = nil }
 
@@ -1153,7 +1159,13 @@ RSpec.describe Rdkafka::Consumer do
       config.consumer
     end
 
-    before { Rdkafka::Config.statistics_callback = ->(published) { stats << published } }
+    before do
+      # Force topic creation before setting the statistics callback so the admin
+      # client used inside TestTopics.create closes without the StatsCallback
+      # competing for the GVL (which can hang the admin's polling thread join).
+      topic
+      Rdkafka::Config.statistics_callback = ->(published) { stats << published }
+    end
 
     after { Rdkafka::Config.statistics_callback = nil }
 

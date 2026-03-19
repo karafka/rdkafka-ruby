@@ -1048,6 +1048,10 @@ RSpec.describe Rdkafka::Producer do
 
     context "when using partition key" do
       before do
+        # Force topic creation before setting the statistics callback so the admin
+        # client used inside TestTopics.create closes without the StatsCallback
+        # competing for the GVL (which can hang the admin's polling thread join).
+        topic
         Rdkafka::Config.statistics_callback = ->(*) {}
 
         # This call will make a blocking request to the metadata cache
@@ -1072,6 +1076,10 @@ RSpec.describe Rdkafka::Producer do
 
     context "when not using partition key" do
       before do
+        # Force topic creation before setting the statistics callback so the admin
+        # client used inside TestTopics.create closes without the StatsCallback
+        # competing for the GVL (which can hang the admin's polling thread join).
+        topic
         Rdkafka::Config.statistics_callback = ->(*) {}
 
         # This call will make a blocking request to the metadata cache

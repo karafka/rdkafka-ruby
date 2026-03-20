@@ -691,16 +691,15 @@ RSpec.describe Rdkafka::Admin do
       end
 
       it "create acls and describe the newly created acls" do
-        # create_acl
-        create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: "test_acl_topic_1", resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
-        create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
-        expect(create_acl_report.rdkafka_response).to eq(0)
-        expect(create_acl_report.rdkafka_response_string).to eq("")
+        acl_names = [TestTopics.unique, TestTopics.unique]
 
-        create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: "test_acl_topic_2", resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
-        create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
-        expect(create_acl_report.rdkafka_response).to eq(0)
-        expect(create_acl_report.rdkafka_response_string).to eq("")
+        # create_acl
+        acl_names.each do |acl_name|
+          create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: acl_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
+          create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
+          expect(create_acl_report.rdkafka_response).to eq(0)
+          expect(create_acl_report.rdkafka_response_string).to eq("")
+        end
 
         # Since we create and immediately check, this is slow on loaded CIs, hence we wait
         sleep(2)
@@ -710,6 +709,12 @@ RSpec.describe Rdkafka::Admin do
         describe_acl_report = describe_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(describe_acl_handle[:response]).to eq(0)
         expect(describe_acl_report.acls.length).to eq(2)
+
+        # Clean up created ACLs to avoid leaking state to other tests
+        acl_names.each do |acl_name|
+          delete_acl_handle = admin.delete_acl(resource_type: resource_type, resource_name: acl_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
+          delete_acl_handle.wait(max_wait_timeout_ms: 15_000)
+        end
       end
     end
 

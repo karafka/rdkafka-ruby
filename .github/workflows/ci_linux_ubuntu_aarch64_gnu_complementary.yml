@@ -72,6 +72,9 @@ jobs:
     # This is why we do not want Renovate to update it automatically
     runs-on: ubuntu-22.04-arm # renovate: ignore
     steps:
+      - name: Disable needrestart
+        run: sudo apt-get autopurge -y needrestart
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
@@ -139,6 +142,9 @@ jobs:
             continue-on-error: true
     runs-on: ubuntu-${{ matrix.ubuntu-version }}-arm
     steps:
+      - name: Disable needrestart
+        run: sudo apt-get autopurge -y needrestart
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
@@ -218,6 +224,9 @@ jobs:
 
     runs-on: ubuntu-${{ matrix.ubuntu-version }}-arm
     steps:
+      - name: Disable needrestart
+        run: sudo apt-get autopurge -y needrestart
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0

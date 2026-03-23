@@ -244,8 +244,9 @@ RSpec.describe Rdkafka::Admin do
         expect(resources_results.first.type).to eq(4)
         expect(resources_results.first.name).to eq("1")
         expect(resources_results.first.configs.size).to be > 230
-        expect(resources_results.first.configs.first.name).to eq("log.cleaner.min.compaction.lag.ms")
-        expect(resources_results.first.configs.first.value).to eq("0")
+        config = resources_results.first.configs.find { |c| c.name == "log.cleaner.min.compaction.lag.ms" }
+        expect(config).not_to be_nil
+        expect(config.value).to eq("0")
         expect(resources_results.first.configs.map(&:synonyms)).not_to be_empty
       end
     end
@@ -263,13 +264,15 @@ RSpec.describe Rdkafka::Admin do
         expect(resources_results.first.type).to eq(4)
         expect(resources_results.first.name).to eq("1")
         expect(resources_results.first.configs.size).to be > 230
-        expect(resources_results.first.configs.first.name).to eq("log.cleaner.min.compaction.lag.ms")
-        expect(resources_results.first.configs.first.value).to eq("0")
+        config = resources_results.first.configs.find { |c| c.name == "log.cleaner.min.compaction.lag.ms" }
+        expect(config).not_to be_nil
+        expect(config.value).to eq("0")
         expect(resources_results.last.type).to eq(2)
         expect(resources_results.last.name).to eq(topic_name)
         expect(resources_results.last.configs.size).to be > 25
-        expect(resources_results.last.configs.first.name).to eq("compression.type")
-        expect(resources_results.last.configs.first.value).to eq("producer")
+        topic_config = resources_results.last.configs.find { |c| c.name == "compression.type" }
+        expect(topic_config).not_to be_nil
+        expect(topic_config.value).to eq("producer")
       end
     end
   end

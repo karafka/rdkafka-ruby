@@ -19,15 +19,26 @@ RSpec.describe Rdkafka::Admin do
   let(:permission_type) { Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW }
   let(:admin) { config.admin }
 
-  after do
-    # Registry should always end up being empty
-    expect(Rdkafka::Admin::CreateTopicHandle::REGISTRY).to be_empty
-    expect(Rdkafka::Admin::CreatePartitionsHandle::REGISTRY).to be_empty
-    expect(Rdkafka::Admin::DescribeAclHandle::REGISTRY).to be_empty
-    expect(Rdkafka::Admin::CreateAclHandle::REGISTRY).to be_empty
-    expect(Rdkafka::Admin::DeleteAclHandle::REGISTRY).to be_empty
-    expect(Rdkafka::Admin::ListOffsetsHandle::REGISTRY).to be_empty
+  around do |example|
+    example.run
+  ensure
+    # Registry should always end up being empty after each test.
+    # We check and then clear to prevent cascading failures when a single test
+    # leaves a leaked handle (e.g. due to a timeout or broker error).
+    registry_leaks = [
+      Rdkafka::Admin::CreateTopicHandle,
+      Rdkafka::Admin::CreatePartitionsHandle,
+      Rdkafka::Admin::DescribeAclHandle,
+      Rdkafka::Admin::CreateAclHandle,
+      Rdkafka::Admin::DeleteAclHandle,
+      Rdkafka::Admin::ListOffsetsHandle
+    ].reject { |handle_class| handle_class::REGISTRY.empty? }
+
+    registry_leaks.each { |handle_class| handle_class::REGISTRY.clear }
+
     admin.close
+
+    expect(registry_leaks).to be_empty, "Leaked handles in: #{registry_leaks.map(&:name).join(", ")}"
   end
 
   describe "#describe_errors" do

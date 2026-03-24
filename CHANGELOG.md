@@ -1,5 +1,10 @@
 # Rdkafka Changelog
 
+## 0.25.3 (Unreleased)
+- [Fix] Register `ObjectSpace.define_finalizer` in `Rdkafka::Consumer` to prevent segfaults when a consumer is GC'd without being explicitly closed (jturkel).
+- [Fix] Remove dead `#finalizer` instance methods from `Consumer` and `Admin` that could never work as GC finalizers.
+- [Fix] Prevent cascading test failures in admin specs when a single handle leaks into the registry.
+
 ## 0.25.2 (2026-02-27)
 - [Feature] Extend `Rdkafka::RdkafkaError` with `instance_name` attribute containing the `rd_kafka_name` for tying errors back to specific native Kafka instances (#181).
 

@@ -130,12 +130,6 @@ module Rdkafka
       end
     end
 
-    # @return [Proc] finalizer proc for closing the admin
-    # @private
-    def finalizer
-      ->(_) { close }
-    end
-
     # Performs the metadata request using admin
     #
     # @param topic_name [String, nil] metadat about particular topic or all if nil

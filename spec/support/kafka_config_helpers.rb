@@ -55,7 +55,7 @@ module KafkaConfigHelpers
     # Add consumer specific fields to it
     config[:"auto.offset.reset"] = "earliest"
     config[:"enable.partition.eof"] = false
-    config[:"group.id"] = "ruby-test-#{SecureRandom.uuid}"
+    config[:"group.id"] = "ruby-test-#{TestTopics.spec_hash}-#{SecureRandom.uuid}"
     # Enable debug mode if required
     if ENV["DEBUG_CONSUMER"]
       config[:debug] = "cgrp,topic,fetch"

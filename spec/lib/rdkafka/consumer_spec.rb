@@ -173,7 +173,7 @@ RSpec.describe Rdkafka::Consumer do
   end
 
   describe "#seek" do
-    let(:topic) { "it-#{SecureRandom.uuid}" }
+    let(:topic) { TestTopics.unique }
 
     before do
       admin = rdkafka_producer_config.admin
@@ -276,7 +276,7 @@ RSpec.describe Rdkafka::Consumer do
 
   describe "#seek_by" do
     let(:consumer) { rdkafka_consumer_config("auto.commit.interval.ms": 60_000).consumer }
-    let(:topic) { "it-#{SecureRandom.uuid}" }
+    let(:topic) { TestTopics.unique }
     let(:partition) { 0 }
     let(:offset) { 0 }
 
@@ -860,7 +860,7 @@ RSpec.describe Rdkafka::Consumer do
     end
 
     it "returns a message if there is one" do
-      topic = "it-#{SecureRandom.uuid}"
+      topic = TestTopics.unique
 
       producer.produce(
         topic: topic,
@@ -905,7 +905,7 @@ RSpec.describe Rdkafka::Consumer do
     end
 
     it "returns a message if there is one" do
-      topic = "it-#{SecureRandom.uuid}"
+      topic = TestTopics.unique
 
       producer.produce(
         topic: topic,

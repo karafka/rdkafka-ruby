@@ -4,12 +4,12 @@ require "ostruct"
 
 RSpec.describe Rdkafka::Admin do
   let(:config) { rdkafka_config }
-  let(:topic_name) { "test-topic-#{SecureRandom.uuid}" }
+  let(:topic_name) { TestTopics.unique }
   let(:topic_partition_count) { 3 }
   let(:topic_replication_factor) { 1 }
   let(:topic_config) { { "cleanup.policy" => "compact", "min.cleanable.dirty.ratio" => 0.8 } }
   let(:invalid_topic_config) { { "cleeeeenup.policee" => "campact" } }
-  let(:group_name) { "test-group-#{SecureRandom.uuid}" }
+  let(:group_name) { "test-group-#{TestTopics.spec_hash}-#{SecureRandom.uuid}" }
   let(:resource_name) { TestTopics.unique }
   let(:resource_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC }
   let(:resource_pattern_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL }

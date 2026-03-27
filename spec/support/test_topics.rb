@@ -1,17 +1,35 @@
 # frozen_string_literal: true
 
+require "digest"
+
 # Module to hold dynamically generated test topics with UUIDs.
 # Topics are generated once when first accessed and then cached.
 module TestTopics
   extend KafkaConfigHelpers
   extend KafkaWaitHelpers
 
+  SPEC_HASH = begin
+    gem_root = File.expand_path(File.join(__dir__, "..", ".."))
+    absolute_program = File.expand_path($PROGRAM_NAME)
+    relative_path = absolute_program.sub("#{gem_root}/", "")
+    Digest::MD5.hexdigest(relative_path)[0, 6]
+  end
+
+  private_constant :SPEC_HASH
+
   class << self
-    # Generates a unique topic name with an +it-+ prefix and a random UUID.
+    # Returns the per-file spec hash for embedding in topic/group names.
+    #
+    # @return [String] 6-character hex hash
+    def spec_hash
+      SPEC_HASH
+    end
+
+    # Generates a unique topic name with an +it-+ prefix, spec hash, and a random UUID.
     #
     # @return [String] unique topic name
     def unique
-      "it-#{SecureRandom.uuid}"
+      "it-#{SPEC_HASH}-#{SecureRandom.uuid}"
     end
 
     # Returns a cached example topic name, generating it once on first access.

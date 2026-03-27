@@ -14,7 +14,7 @@ RSpec.describe Rdkafka::Metadata do
 
   context "passing in a topic name" do
     context "that is non-existent topic" do
-      let(:topic_name) { SecureRandom.uuid.to_s }
+      let(:topic_name) { TestTopics.unique }
 
       it "raises an appropriate exception" do
         expect {
@@ -66,7 +66,7 @@ RSpec.describe Rdkafka::Metadata do
   end
 
   context "when a non-zero error code is returned" do
-    let(:topic_name) { SecureRandom.uuid.to_s }
+    let(:topic_name) { TestTopics.unique }
 
     before do
       allow(Rdkafka::Bindings).to receive(:rd_kafka_metadata).and_return(-165)

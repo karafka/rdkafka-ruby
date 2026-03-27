@@ -373,7 +373,7 @@ RSpec.describe Rdkafka::Producer do
   end
 
   it "produces a message to a non-existing topic with key and partition key" do
-    new_topic = "it-#{SecureRandom.uuid}"
+    new_topic = TestTopics.unique
 
     handle = producer.produce(
       # Needs to be a new topic each time
@@ -705,7 +705,7 @@ RSpec.describe Rdkafka::Producer do
     end
 
     it "contains the error in the response when not deliverable" do
-      handler = producer.produce(topic: "it-#{SecureRandom.uuid}", payload: nil, label: "na")
+      handler = producer.produce(topic: TestTopics.unique, payload: nil, label: "na")
       # Wait for the async callbacks and delivery registry to update
       sleep(2)
       expect(handler.create_result.error).to be_a(Rdkafka::RdkafkaError)

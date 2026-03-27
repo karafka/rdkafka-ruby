@@ -26,7 +26,6 @@ require "rspec"
 require "rdkafka"
 require "timeout"
 require "securerandom"
-require "digest"
 
 # Load support modules
 require_relative "support/kafka_config_helpers"

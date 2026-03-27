@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "digest"
-
 # Module to hold dynamically generated test topics with UUIDs.
 # Topics are generated once when first accessed and then cached.
 module TestTopics

@@ -373,7 +373,7 @@ RSpec.describe Rdkafka::Producer do
   end
 
   it "produces a message with key and partition key" do
-    new_topic = TestTopics.create
+    new_topic = TestTopics.create(partitions: 1)
 
     handle = producer.produce(
       # Needs to be a new topic each time

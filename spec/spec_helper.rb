@@ -55,7 +55,8 @@ RSpec.configure do |config|
   config.before(:suite) do
     admin = KafkaConfigHelpers.rdkafka_config.admin
     {
-      TestTopics.example_topic => 1
+      TestTopics.example_topic => 1,
+      "test" => 1
     }.each do |topic, partitions|
       create_topic_handle = admin.create_topic(topic, partitions, 1)
       begin

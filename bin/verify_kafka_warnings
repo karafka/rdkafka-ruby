@@ -13,7 +13,7 @@ allowed_patterns=(
   "Unloaded transaction metadata"
   "closing connection"
   "sent a heartbeat request but received error REQUEST_TIMED_OUT"
-  "Auto topic creation failed for it-ne-"
+  "Topic '__consumer_offsets' already exists"
 )
 
 # Get all warnings

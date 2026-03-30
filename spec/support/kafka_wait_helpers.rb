@@ -16,7 +16,7 @@ module KafkaWaitHelpers
   # @raise [RuntimeError] if the timeout is reached without finding the message
   def wait_for_message(topic:, delivery_report:, timeout_in_seconds: 30, consumer: nil)
     new_consumer = consumer.nil?
-    consumer ||= rdkafka_consumer_config("allow.auto.create.topics": true).consumer
+    consumer ||= rdkafka_consumer_config.consumer
 
     if new_consumer
       # Use direct partition assignment to avoid group coordination delays

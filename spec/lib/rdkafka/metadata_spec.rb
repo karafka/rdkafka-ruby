@@ -14,7 +14,7 @@ RSpec.describe Rdkafka::Metadata do
 
   context "passing in a topic name" do
     context "that is non-existent topic" do
-      let(:topic_name) { TestTopics.unique }
+      let(:topic_name) { TestTopics.non_existing }
 
       it "raises an appropriate exception" do
         expect {

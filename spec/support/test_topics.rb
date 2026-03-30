@@ -30,6 +30,15 @@ module TestTopics
       "it-#{SPEC_HASH}-#{SecureRandom.uuid}"
     end
 
+    # Generates a unique topic name for tests that intentionally operate on non-existing topics.
+    # Uses an +it-ne-+ prefix so Kafka auto-creation warnings for these topics can be
+    # distinguished from unexpected warnings in the warning verification script.
+    #
+    # @return [String] unique non-existing topic name
+    def non_existing
+      "it-ne-#{SPEC_HASH}-#{SecureRandom.uuid}"
+    end
+
     # Returns a cached example topic name, generating it once on first access.
     #
     # @return [String] the example topic name

@@ -860,7 +860,7 @@ RSpec.describe Rdkafka::Consumer do
     end
 
     it "returns a message if there is one" do
-      topic = TestTopics.unique
+      topic = TestTopics.create
 
       producer.produce(
         topic: topic,
@@ -905,7 +905,7 @@ RSpec.describe Rdkafka::Consumer do
     end
 
     it "returns a message if there is one" do
-      topic = TestTopics.unique
+      topic = TestTopics.create
 
       producer.produce(
         topic: topic,

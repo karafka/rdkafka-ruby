@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.27.0 (Unreleased)
+- [Enhancement] Bump librdkafka to `2.14.0`
+
 ## 0.26.0 (2026-04-02)
 - [Enhancement] Bump librdkafka to `2.13.2`
 - [Enhancement] Embed a per-file SPEC_HASH in test topic and consumer group names for tracing Kafka warnings back to specific spec files.

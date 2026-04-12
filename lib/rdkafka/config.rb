@@ -288,12 +288,24 @@ module Rdkafka
     # Returns all configuration properties and their current values for this config.
     #
     # Uses `rd_kafka_conf_dump` to retrieve every property (including defaults and
-    # hidden properties like `client.software.name`) as a flat Hash.
+    # internal properties like `client.software.name`) as a flat Hash.
     #
-    # @return [Hash{String => String}] property names mapped to their current values
+    # @note The librdkafka C API does not distinguish between producer-only, consumer-only,
+    #   and global properties at the configuration level. All properties are returned
+    #   regardless of the intended client type.
+    #
+    # @note The returned Hash may include sensitive values such as authentication
+    #   credentials and key passwords. Do not log or serialize the returned data
+    #   unless you have explicitly redacted secret entries.
+    #
+    # @return [Hash{Symbol => String}] property names mapped to their current values
     #
     # @raise [ConfigError] When the configuration contains invalid options
     def describe_properties
+      config = nil
+      dump_ptr = nil
+      count = 0
+
       config = native_config
       count_ptr = Rdkafka::Bindings::SizePtr.new
       dump_ptr = Rdkafka::Bindings.rd_kafka_conf_dump(config, count_ptr)
@@ -304,7 +316,7 @@ module Rdkafka
       (0...count).step(2) do |i|
         key = dump_ptr.get_pointer(i * FFI::Pointer.size).read_string
         value = dump_ptr.get_pointer((i + 1) * FFI::Pointer.size).read_string
-        result[key] = value
+        result[key.to_sym] = value
       end
 
       result

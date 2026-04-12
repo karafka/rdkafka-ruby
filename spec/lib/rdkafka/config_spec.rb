@@ -166,13 +166,13 @@ RSpec.describe Rdkafka::Config do
     it "contains known default properties" do
       config = described_class.new
       properties = config.describe_properties
-      expect(properties).to have_key("client.id")
+      expect(properties).to have_key(:"client.id")
     end
 
     it "reflects user-set values" do
-      config = described_class.new("client.id" => "test-client")
+      config = described_class.new("client.id": "test-client")
       properties = config.describe_properties
-      expect(properties["client.id"]).to eq("test-client")
+      expect(properties[:"client.id"]).to eq("test-client")
     end
   end
 

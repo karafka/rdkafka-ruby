@@ -234,6 +234,9 @@ module Rdkafka
 
     attach_function :rd_kafka_conf_new, [], :pointer
     attach_function :rd_kafka_conf_set, [:pointer, :string, :string, :pointer, :int], :kafka_config_response
+    attach_function :rd_kafka_conf_dump, [:pointer, :pointer], :pointer
+    attach_function :rd_kafka_conf_dump_free, [:pointer, :size_t], :void
+    attach_function :rd_kafka_conf_destroy, [:pointer], :void
     callback :log_cb, [:pointer, :int, :string, :string], :void
     attach_function :rd_kafka_conf_set_log_cb, [:pointer, :log_cb], :void
     attach_function :rd_kafka_conf_set_opaque, [:pointer, :pointer], :void

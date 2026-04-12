@@ -155,6 +155,27 @@ RSpec.describe Rdkafka::Config do
     end
   end
 
+  describe "#describe_properties" do
+    it "returns a Hash of property names to values" do
+      config = described_class.new
+      properties = config.describe_properties
+      expect(properties).to be_a(Hash)
+      expect(properties.size).to be > 0
+    end
+
+    it "contains known default properties" do
+      config = described_class.new
+      properties = config.describe_properties
+      expect(properties).to have_key("client.id")
+    end
+
+    it "reflects user-set values" do
+      config = described_class.new("client.id" => "test-client")
+      properties = config.describe_properties
+      expect(properties["client.id"]).to eq("test-client")
+    end
+  end
+
   context "configuration" do
     it "stores configuration" do
       config = described_class.new

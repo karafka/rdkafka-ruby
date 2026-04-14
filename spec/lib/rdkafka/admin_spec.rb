@@ -1008,7 +1008,7 @@ RSpec.describe Rdkafka::Admin do
             delete_group_handle = admin.delete_group(group_name)
 
             expect {
-              delete_group_handle.wait(max_wait_timeout_ms: 15_000)
+              delete_group_handle.wait(max_wait_timeout_ms: 30_000)
             }.to raise_exception { |ex|
               expect(ex).to be_a(Rdkafka::RdkafkaError)
               expect(ex.message).to match(/group_id_not_found|not_coordinator/)

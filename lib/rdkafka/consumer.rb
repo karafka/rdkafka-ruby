@@ -434,6 +434,8 @@ module Rdkafka
       end
 
       TopicPartitionList.from_native_tpl(tpl)
+    ensure
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl) if tpl
     end
 
     # Query broker for low (oldest/beginning) and high (newest/end) offsets for a partition.

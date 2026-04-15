@@ -404,10 +404,9 @@ module Rdkafka
       end
 
       # Redirect log to handle's queue
-      Rdkafka::Bindings.rd_kafka_set_log_queue(
-        handle,
-        Rdkafka::Bindings.rd_kafka_queue_get_main(handle)
-      )
+      main_queue = Rdkafka::Bindings.rd_kafka_queue_get_main(handle)
+      Rdkafka::Bindings.rd_kafka_set_log_queue(handle, main_queue)
+      Rdkafka::Bindings.rd_kafka_queue_destroy(main_queue)
 
       # Return handle which should be closed using rd_kafka_destroy after usage.
       handle

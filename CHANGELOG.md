@@ -3,6 +3,9 @@
 ## 0.27.0 (Unreleased)
 - [Feature] Add `Config#describe_properties` to dump all librdkafka configuration properties (including defaults and hidden properties) as a Hash via `rd_kafka_conf_dump`.
 - [Enhancement] Bump librdkafka to `2.14.0`
+- [Fix] Fix resource leak in `Admin#describe_configs` and `Admin#incremental_alter_configs` where `admin_options_ptr` and `queue_ptr` were not destroyed in the ensure block.
+- [Fix] Fix leaked queue reference in `Config#native_kafka` where `rd_kafka_queue_get_main` return value was not destroyed after passing to `rd_kafka_set_log_queue`.
+- [Fix] Fix native topic partition list leak in `Consumer#position` where `tpl` was never destroyed.
 
 ## 0.26.0 (2026-04-02)
 - [Enhancement] Bump librdkafka to `2.13.2`

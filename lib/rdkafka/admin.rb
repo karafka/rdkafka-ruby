@@ -777,6 +777,9 @@ module Rdkafka
 
         raise
       ensure
+        Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
+        Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr)
+
         if configs_array_ptr
           Rdkafka::Bindings.rd_kafka_ConfigResource_destroy_array(
             configs_array_ptr,
@@ -865,6 +868,9 @@ module Rdkafka
 
         raise
       ensure
+        Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
+        Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr)
+
         if configs_array_ptr
           Rdkafka::Bindings.rd_kafka_ConfigResource_destroy_array(
             configs_array_ptr,

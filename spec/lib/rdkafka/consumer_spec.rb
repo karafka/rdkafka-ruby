@@ -1618,7 +1618,7 @@ RSpec.describe Rdkafka::Consumer do
       messages.each do |message|
         expect(message).to be_a(Rdkafka::Consumer::Message)
       end
-      expect(messages.map(&:payload)).to match_array(["payload 0", "payload 1", "payload 2"])
+      expect(messages.map(&:payload)).to contain_exactly("payload 0", "payload 1", "payload 2")
     end
 
     it "respects max_items" do

@@ -1585,6 +1585,177 @@ RSpec.describe Rdkafka::Consumer do
     end
   end
 
+  describe "#poll_batch" do
+    it "returns empty array if there is no subscription" do
+      expect(consumer.poll_batch(1000, max_items: 10)).to eq([])
+    end
+
+    it "returns empty array if there are no messages" do
+      consumer.subscribe(topic)
+      expect(consumer.poll_batch(1000, max_items: 10)).to eq([])
+    end
+
+    it "returns messages if there are some" do
+      topic = TestTopics.create
+
+      3.times do |i|
+        producer.produce(
+          topic: topic,
+          payload: "payload #{i}",
+          key: "key #{i}"
+        ).wait
+      end
+
+      consumer.subscribe(topic)
+
+      messages = []
+      deadline = Time.now + 30
+      while messages.size < 3 && Time.now < deadline
+        messages.concat(consumer.poll_batch(1000, max_items: 10))
+      end
+
+      expect(messages.size).to eq(3)
+      messages.each do |message|
+        expect(message).to be_a(Rdkafka::Consumer::Message)
+      end
+      expect(messages.map(&:payload)).to match_array(["payload 0", "payload 1", "payload 2"])
+    end
+
+    it "respects max_items" do
+      topic = TestTopics.create
+
+      10.times do |i|
+        producer.produce(
+          topic: topic,
+          payload: "payload #{i}",
+          key: "key #{i}"
+        ).wait
+      end
+
+      consumer.subscribe(topic)
+
+      # Wait for messages to be fetched
+      deadline = Time.now + 30
+      first = nil
+      while first.nil? && Time.now < deadline
+        first = consumer.poll(1000)
+      end
+      expect(first).not_to be_nil
+
+      sleep 1
+
+      batch = consumer.poll_batch(1000, max_items: 3)
+      expect(batch.size).to be <= 3
+    end
+
+    it "raises an error when a message has an error" do
+      message = Rdkafka::Bindings::Message.new.tap do |msg|
+        msg[:err] = 20
+      end
+      message_pointer = message.to_ptr
+      buffer = FFI::MemoryPointer.new(:pointer, 1)
+      buffer.put_pointer(0, message_pointer)
+
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue).and_return(1)
+      allow(consumer).to receive(:batch_buffer).and_return(buffer)
+      allow(consumer).to receive(:consumer_queue).and_return(FFI::Pointer::NULL)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(message_pointer)
+
+      consumer.subscribe(topic)
+
+      expect {
+        consumer.poll_batch(100, max_items: 1)
+      }.to raise_error(Rdkafka::RdkafkaError)
+    end
+
+    context "when consumer is closed" do
+      before { consumer.close }
+
+      it "raises ClosedConsumerError" do
+        expect {
+          consumer.poll_batch(100, max_items: 10)
+        }.to raise_error(Rdkafka::ClosedConsumerError, /poll_batch/)
+      end
+    end
+  end
+
+  describe "#poll_batch_nb" do
+    it "returns empty array if there is no subscription" do
+      expect(consumer.poll_batch_nb(0, max_items: 10)).to eq([])
+    end
+
+    it "returns empty array if there are no messages" do
+      consumer.subscribe(topic)
+      sleep 0.5
+      expect(consumer.poll_batch_nb(0, max_items: 10)).to eq([])
+    end
+
+    it "defaults to timeout 0" do
+      consumer.subscribe(topic)
+      sleep 0.5
+      expect(consumer.poll_batch_nb(max_items: 10)).to eq([])
+    end
+
+    it "returns messages if there are some" do
+      topic = TestTopics.create
+
+      3.times do |i|
+        producer.produce(
+          topic: topic,
+          payload: "nb payload #{i}",
+          key: "nb key #{i}"
+        ).wait
+      end
+
+      consumer.subscribe(topic)
+
+      # Wait for messages to arrive in the internal queue
+      deadline = Time.now + 30
+      first = nil
+      while first.nil? && Time.now < deadline
+        first = consumer.poll(1000)
+      end
+      expect(first).not_to be_nil
+
+      sleep 1
+
+      messages = consumer.poll_batch_nb(0, max_items: 10)
+      messages.each do |message|
+        expect(message).to be_a(Rdkafka::Consumer::Message)
+      end
+    end
+
+    it "raises an error when a message has an error" do
+      message = Rdkafka::Bindings::Message.new.tap do |msg|
+        msg[:err] = 20
+      end
+      message_pointer = message.to_ptr
+      buffer = FFI::MemoryPointer.new(:pointer, 1)
+      buffer.put_pointer(0, message_pointer)
+
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue_nb).and_return(1)
+      allow(consumer).to receive(:batch_buffer).and_return(buffer)
+      allow(consumer).to receive(:consumer_queue).and_return(FFI::Pointer::NULL)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(message_pointer)
+
+      consumer.subscribe(topic)
+
+      expect {
+        consumer.poll_batch_nb(0, max_items: 1)
+      }.to raise_error(Rdkafka::RdkafkaError)
+    end
+
+    context "when consumer is closed" do
+      before { consumer.close }
+
+      it "raises ClosedConsumerError" do
+        expect {
+          consumer.poll_batch_nb(0, max_items: 10)
+        }.to raise_error(Rdkafka::ClosedConsumerError, /poll_batch_nb/)
+      end
+    end
+  end
+
   describe "file descriptor access for fiber scheduler integration" do
     it "enables IO events on consumer queue" do
       consumer.subscribe(topic)

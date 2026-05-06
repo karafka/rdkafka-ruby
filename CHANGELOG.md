@@ -1,7 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.27.0 (Unreleased)
-- [Feature] Add batch consumer polling via `rd_kafka_consume_batch_queue`. New methods `Consumer#poll_batch(timeout_ms, max_items:)` and `Consumer#poll_batch_nb(timeout_ms, max_items:)` fetch up to N messages in a single FFI call, reducing per-message FFI boundary overhead. The `_nb` variant skips GVL release for use in fiber scheduler / IO-multiplexed architectures.
+- [Feature] Add `Consumer#poll_batch(timeout_ms, max_items:)` and `Consumer#poll_batch_nb(timeout_ms, max_items:)` for batch message polling via `rd_kafka_consume_batch_queue`.
 - [Feature] Add `Config#describe_properties` to dump all librdkafka configuration properties (including defaults and hidden properties) as a Hash via `rd_kafka_conf_dump`.
 - [Enhancement] Bump librdkafka to `2.14.0`
 - [Fix] Fix resource leak in `Admin#describe_configs` and `Admin#incremental_alter_configs` where `admin_options_ptr` and `queue_ptr` were not destroyed in the ensure block.

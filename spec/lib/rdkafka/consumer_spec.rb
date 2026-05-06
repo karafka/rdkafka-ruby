@@ -1657,8 +1657,7 @@ RSpec.describe Rdkafka::Consumer do
       buffer.put_pointer(0, message_pointer)
 
       expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue).and_return(1)
-      allow(consumer).to receive(:batch_buffer).and_return(buffer)
-      allow(consumer).to receive(:consumer_queue).and_return(FFI::Pointer::NULL)
+      allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
       expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(message_pointer)
 
       consumer.subscribe(topic)
@@ -1734,8 +1733,7 @@ RSpec.describe Rdkafka::Consumer do
       buffer.put_pointer(0, message_pointer)
 
       expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue_nb).and_return(1)
-      allow(consumer).to receive(:batch_buffer).and_return(buffer)
-      allow(consumer).to receive(:consumer_queue).and_return(FFI::Pointer::NULL)
+      allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
       expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(message_pointer)
 
       consumer.subscribe(topic)

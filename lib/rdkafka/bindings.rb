@@ -386,6 +386,11 @@ module Rdkafka
     # More efficient for poll(0) calls in fiber schedulers.
     attach_function :rd_kafka_consumer_poll_nb, :rd_kafka_consumer_poll, [:pointer, :int], :pointer, blocking: false
     attach_function :rd_kafka_consumer_close, [:pointer], :void, blocking: true
+    # Batch consumer queue API
+    attach_function :rd_kafka_queue_get_consumer, [:pointer], :pointer
+    attach_function :rd_kafka_consume_batch_queue, [:pointer, :int, :pointer, :size_t], :ssize_t, blocking: true
+    # Non-blocking batch consume variant (does not release GVL)
+    attach_function :rd_kafka_consume_batch_queue_nb, :rd_kafka_consume_batch_queue, [:pointer, :int, :pointer, :size_t], :ssize_t, blocking: false
     attach_function :rd_kafka_offsets_store, [:pointer, :pointer], :int, blocking: true
     attach_function :rd_kafka_pause_partitions, [:pointer, :pointer], :int, blocking: true
     attach_function :rd_kafka_resume_partitions, [:pointer, :pointer], :int, blocking: true

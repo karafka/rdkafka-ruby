@@ -817,10 +817,15 @@ module Rdkafka
 
       return messages if count <= 0
 
+      i = 0
       begin
-        count.times do |i|
+        while i < count
           ptr = buffer.get_pointer(i * FFI::Pointer.size)
-          next if ptr.null?
+
+          if ptr.null?
+            i += 1
+            next
+          end
 
           native_message = Rdkafka::Bindings::Message.new(ptr)
 
@@ -829,11 +834,14 @@ module Rdkafka
           end
 
           messages << Rdkafka::Consumer::Message.new(native_message)
+          Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
+          i += 1
         end
       ensure
-        count.times do |i|
+        while i < count
           ptr = buffer.get_pointer(i * FFI::Pointer.size)
           Rdkafka::Bindings.rd_kafka_message_destroy(ptr) unless ptr.null?
+          i += 1
         end
       end
 
@@ -871,10 +879,15 @@ module Rdkafka
 
       return messages if count <= 0
 
+      i = 0
       begin
-        count.times do |i|
+        while i < count
           ptr = buffer.get_pointer(i * FFI::Pointer.size)
-          next if ptr.null?
+
+          if ptr.null?
+            i += 1
+            next
+          end
 
           native_message = Rdkafka::Bindings::Message.new(ptr)
 
@@ -883,11 +896,14 @@ module Rdkafka
           end
 
           messages << Rdkafka::Consumer::Message.new(native_message)
+          Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
+          i += 1
         end
       ensure
-        count.times do |i|
+        while i < count
           ptr = buffer.get_pointer(i * FFI::Pointer.size)
           Rdkafka::Bindings.rd_kafka_message_destroy(ptr) unless ptr.null?
+          i += 1
         end
       end
 

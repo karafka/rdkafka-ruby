@@ -51,7 +51,11 @@ module Rdkafka
           end
 
           name_ptr = name_ptrptr.read_pointer
-          name = name_ptr.respond_to?(:read_string_to_null) ? name_ptr.read_string_to_null : name_ptr.read_string
+          name = if name_ptr.respond_to?(:read_string_to_null)
+            -name_ptr.read_string_to_null
+          else
+            -name_ptr.read_string
+          end
 
           size = size_ptr[:value]
 

@@ -183,6 +183,11 @@ module Rdkafka
 
       @native_kafka.synchronize do |inner|
         Rdkafka::Bindings.rd_kafka_consumer_close(inner)
+
+        if @consumer_queue
+          Rdkafka::Bindings.rd_kafka_queue_destroy(@consumer_queue)
+          @consumer_queue = nil
+        end
       end
 
       @native_kafka.close
@@ -785,6 +790,130 @@ module Rdkafka
       end
     end
 
+    # Poll for a batch of messages from the consumer queue in a single FFI call.
+    #
+    # This is more efficient than calling {#poll} in a loop because it crosses the FFI
+    # boundary only once to fetch up to `max_items` messages.
+    #
+    # The timeout controls how long to wait for the **first** message. Once any message
+    # is available, librdkafka fills the buffer with whatever is immediately ready and
+    # returns without further waiting.
+    #
+    # @param timeout_ms [Integer] Timeout waiting for the first message (-1 for infinite)
+    # @param max_items [Integer] Maximum number of messages to return per call
+    # @return [Array<Message>] Array of messages (empty if none available within timeout)
+    # @raise [RdkafkaError] When a consumed message contains an error
+    # @raise [ClosedConsumerError] When called on a closed consumer
+    def poll_batch(timeout_ms, max_items: 100)
+      closed_consumer_check(__method__)
+
+      buffer = batch_buffer(max_items)
+      messages = []
+
+      count = @native_kafka.with_inner do |_inner|
+        Rdkafka::Bindings.rd_kafka_consume_batch_queue(
+          consumer_queue,
+          timeout_ms,
+          buffer,
+          max_items
+        )
+      end
+
+      return messages if count <= 0
+
+      i = 0
+      begin
+        while i < count
+          ptr = buffer.get_pointer(i * FFI::Pointer.size)
+
+          if ptr.null?
+            i += 1
+            next
+          end
+
+          native_message = Rdkafka::Bindings::Message.new(ptr)
+
+          if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+            raise Rdkafka::RdkafkaError.new(native_message[:err])
+          end
+
+          messages << Rdkafka::Consumer::Message.new(native_message)
+          Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
+          i += 1
+        end
+      ensure
+        while i < count
+          ptr = buffer.get_pointer(i * FFI::Pointer.size)
+          Rdkafka::Bindings.rd_kafka_message_destroy(ptr) unless ptr.null?
+          i += 1
+        end
+      end
+
+      messages
+    end
+
+    # Poll for a batch of messages without releasing the GVL (Global VM Lock).
+    #
+    # This is more efficient than {#poll_batch} for non-blocking poll(0) calls,
+    # particularly useful in fiber scheduler contexts where GVL release/reacquire
+    # overhead is wasteful since we don't expect to wait.
+    #
+    # @note Since the GVL is not released, a non-zero timeout_ms will block all Ruby
+    #   threads/fibers for the duration. Use {#poll_batch} if you need a blocking wait.
+    #
+    # @param timeout_ms [Integer] Timeout waiting for the first message (default: 0 for non-blocking)
+    # @param max_items [Integer] Maximum number of messages to return per call
+    # @return [Array<Message>] Array of messages (empty if none available within timeout)
+    # @raise [RdkafkaError] When a consumed message contains an error
+    # @raise [ClosedConsumerError] When called on a closed consumer
+    def poll_batch_nb(timeout_ms = 0, max_items: 100)
+      closed_consumer_check(__method__)
+
+      buffer = batch_buffer(max_items)
+      messages = []
+
+      count = @native_kafka.with_inner do |_inner|
+        Rdkafka::Bindings.rd_kafka_consume_batch_queue_nb(
+          consumer_queue,
+          timeout_ms,
+          buffer,
+          max_items
+        )
+      end
+
+      return messages if count <= 0
+
+      i = 0
+      begin
+        while i < count
+          ptr = buffer.get_pointer(i * FFI::Pointer.size)
+
+          if ptr.null?
+            i += 1
+            next
+          end
+
+          native_message = Rdkafka::Bindings::Message.new(ptr)
+
+          if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+            raise Rdkafka::RdkafkaError.new(native_message[:err])
+          end
+
+          messages << Rdkafka::Consumer::Message.new(native_message)
+          Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
+          i += 1
+        end
+      ensure
+        while i < count
+          ptr = buffer.get_pointer(i * FFI::Pointer.size)
+          Rdkafka::Bindings.rd_kafka_message_destroy(ptr) unless ptr.null?
+          i += 1
+        end
+      end
+
+      messages
+    end
+
     # Poll for new messages and yield for each received one. Iteration
     # will end when the consumer is closed.
     #
@@ -856,6 +985,25 @@ module Rdkafka
     # @raise [ClosedConsumerError] when the consumer is closed
     def closed_consumer_check(method)
       raise Rdkafka::ClosedConsumerError.new(method) if closed?
+    end
+
+    # Returns the consumer queue pointer, lazily initialized
+    # @return [FFI::Pointer] consumer queue handle
+    def consumer_queue
+      @consumer_queue ||= @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_queue_get_consumer(inner)
+      end
+    end
+
+    # Returns a reusable FFI buffer for batch polling, growing if needed
+    # @param max_items [Integer] minimum buffer capacity
+    # @return [FFI::MemoryPointer] pointer buffer
+    def batch_buffer(max_items)
+      if @batch_buffer.nil? || @batch_buffer_size < max_items
+        @batch_buffer = FFI::MemoryPointer.new(:pointer, max_items)
+        @batch_buffer_size = max_items
+      end
+      @batch_buffer
     end
   end
 end

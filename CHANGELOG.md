@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.26.2 (Unreleased)
+- [Feature] Add `Consumer#poll_batch(timeout_ms, max_items:)` and `Consumer#poll_batch_nb(timeout_ms, max_items:)` for batch message polling via `rd_kafka_consume_batch_queue` (from upstream).
 - [Fix] Fix resource leak in `Admin#describe_configs` and `Admin#incremental_alter_configs` where `admin_options_ptr` and `queue_ptr` were not destroyed in the ensure block (from upstream).
 - [Fix] Fix leaked queue reference in `Config#native_kafka` where `rd_kafka_queue_get_main` return value was not destroyed after passing to `rd_kafka_set_log_queue` (from upstream).
 - [Fix] Fix native topic partition list leak in `Consumer#position` where `tpl` was never destroyed (from upstream).

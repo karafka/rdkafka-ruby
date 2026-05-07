@@ -183,11 +183,11 @@ module Rdkafka
 
       @native_kafka.synchronize do |inner|
         Rdkafka::Bindings.rd_kafka_consumer_close(inner)
-      end
 
-      if @consumer_queue
-        Rdkafka::Bindings.rd_kafka_queue_destroy(@consumer_queue)
-        @consumer_queue = nil
+        if @consumer_queue
+          Rdkafka::Bindings.rd_kafka_queue_destroy(@consumer_queue)
+          @consumer_queue = nil
+        end
       end
 
       @native_kafka.close
@@ -845,6 +845,9 @@ module Rdkafka
     # This is more efficient than {#poll_batch} for non-blocking poll(0) calls,
     # particularly useful in fiber scheduler contexts where GVL release/reacquire
     # overhead is wasteful since we don't expect to wait.
+    #
+    # @note Since the GVL is not released, a non-zero timeout_ms will block all Ruby
+    #   threads/fibers for the duration. Use {#poll_batch} if you need a blocking wait.
     #
     # @param timeout_ms [Integer] Timeout waiting for the first message (default: 0 for non-blocking)
     # @param max_items [Integer] Maximum number of messages to return per call

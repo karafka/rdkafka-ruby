@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.27.0 (Unreleased)
+## 0.27.0 (2026-05-08)
 - [Feature] Add `Consumer#poll_batch(timeout_ms, max_items:)` and `Consumer#poll_batch_nb(timeout_ms, max_items:)` for batch message polling via `rd_kafka_consume_batch_queue` (from upstream).
 - [Enhancement] Bump librdkafka to `2.14.1`.
 - [Fix] Fix resource leak in `Admin#describe_configs` and `Admin#incremental_alter_configs` where `admin_options_ptr` and `queue_ptr` were not destroyed in the ensure block (from upstream).

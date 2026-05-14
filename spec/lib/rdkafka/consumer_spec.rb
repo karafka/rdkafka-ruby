@@ -1427,29 +1427,62 @@ RSpec.describe Rdkafka::Consumer do
   describe "when reaching eof on a topic and eof reporting enabled" do
     let(:consumer) { rdkafka_consumer_config("enable.partition.eof": true).consumer }
 
-    it "returns proper details" do
-      (0..2).each do |i|
-        producer.produce(
-          topic: topic,
-          key: "key lag #{i}",
-          partition: i
-        ).wait
-      end
-
-      # Consume to the end
+    def collect_eof_error(consumer, &poll_block)
       consumer.subscribe(topic)
       eof_error = nil
+      deadline = Time.now + 30
 
       loop do
-        consumer.poll(100)
+        break if Time.now > deadline
+        poll_block.call
       rescue Rdkafka::RdkafkaError => error
         if error.is_partition_eof?
           eof_error = error
+          break
         end
-        break if eof_error
       end
 
-      expect(eof_error.code).to eq(:partition_eof)
+      eof_error
+    end
+
+    def expect_eof_details(error, expected_topic)
+      expect(error).not_to be_nil
+      expect(error.code).to eq(:partition_eof)
+      expect(error.details[:topic]).to eq(expected_topic)
+      expect(error.details[:partition]).to be_a(Integer)
+      expect(error.details[:offset]).to be_a(Integer)
+    end
+
+    before do
+      producer.produce(topic: topic, key: "key eof", partition: 0).wait
+    end
+
+    it "raises :partition_eof with topic/partition/offset details via #poll" do
+      error = collect_eof_error(consumer) { consumer.poll(100) }
+      expect_eof_details(error, topic)
+    end
+
+    it "raises :partition_eof with topic/partition/offset details via #poll_nb" do
+      error = collect_eof_error(consumer) { consumer.poll_nb(100) }
+      expect_eof_details(error, topic)
+    end
+
+    it "raises :partition_eof with topic/partition/offset details via #poll_nb_each" do
+      error = collect_eof_error(consumer) do
+        consumer.poll_nb_each { |_| }
+        sleep 0.05
+      end
+      expect_eof_details(error, topic)
+    end
+
+    it "raises :partition_eof with topic/partition/offset details via #poll_batch" do
+      error = collect_eof_error(consumer) { consumer.poll_batch(100, max_items: 10) }
+      expect_eof_details(error, topic)
+    end
+
+    it "raises :partition_eof with topic/partition/offset details via #poll_batch_nb" do
+      error = collect_eof_error(consumer) { consumer.poll_batch_nb(100, max_items: 10) }
+      expect_eof_details(error, topic)
     end
   end
 

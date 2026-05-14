@@ -163,7 +163,7 @@ module Rdkafka
             native_message = Rdkafka::Bindings::Message.new(message_ptr)
 
             if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-              raise Rdkafka::RdkafkaError.new(native_message[:err])
+              Rdkafka::RdkafkaError.validate!(native_message, client_ptr: inner)
             end
 
             result = yield Consumer::Message.new(native_message)
@@ -736,7 +736,9 @@ module Rdkafka
         native_message = Rdkafka::Bindings::Message.new(message_ptr)
         # Raise error if needed
         if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-          raise Rdkafka::RdkafkaError.new(native_message[:err])
+          @native_kafka.with_inner do |inner|
+            Rdkafka::RdkafkaError.validate!(native_message, client_ptr: inner)
+          end
         end
         # Create a message to pass out
         Rdkafka::Consumer::Message.new(native_message)
@@ -834,7 +836,9 @@ module Rdkafka
           native_message = Rdkafka::Bindings::Message.new(ptr)
 
           if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-            raise Rdkafka::RdkafkaError.new(native_message[:err])
+            @native_kafka.with_inner do |inner|
+              Rdkafka::RdkafkaError.validate!(native_message, client_ptr: inner)
+            end
           end
 
           messages << Rdkafka::Consumer::Message.new(native_message)
@@ -896,7 +900,9 @@ module Rdkafka
           native_message = Rdkafka::Bindings::Message.new(ptr)
 
           if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-            raise Rdkafka::RdkafkaError.new(native_message[:err])
+            @native_kafka.with_inner do |inner|
+              Rdkafka::RdkafkaError.validate!(native_message, client_ptr: inner)
+            end
           end
 
           messages << Rdkafka::Consumer::Message.new(native_message)

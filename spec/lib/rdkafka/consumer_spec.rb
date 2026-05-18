@@ -1667,6 +1667,30 @@ RSpec.describe Rdkafka::Consumer do
       }.to raise_error(Rdkafka::RdkafkaError)
     end
 
+    it "yields all errors to the block, continues processing, then raises the first" do
+      msg1 = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 20 }
+      msg2 = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 20 }
+      ptr1 = msg1.to_ptr
+      ptr2 = msg2.to_ptr
+      buffer = FFI::MemoryPointer.new(:pointer, 2)
+      buffer.put_pointer(0, ptr1)
+      buffer.put_pointer(FFI::Pointer.size, ptr2)
+
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue).and_return(2)
+      allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr1)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr2)
+
+      consumer.subscribe(topic)
+
+      yielded = []
+      expect {
+        consumer.poll_batch(100, max_items: 2) { |e| yielded << e }
+      }.to raise_error(Rdkafka::RdkafkaError)
+      expect(yielded.size).to eq(2)
+      expect(yielded).to all(be_a(Rdkafka::RdkafkaError))
+    end
+
     context "when consumer is closed" do
       before { consumer.close }
 
@@ -1741,6 +1765,30 @@ RSpec.describe Rdkafka::Consumer do
       expect {
         consumer.poll_batch_nb(0, max_items: 1)
       }.to raise_error(Rdkafka::RdkafkaError)
+    end
+
+    it "yields all errors to the block, continues processing, then raises the first" do
+      msg1 = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 20 }
+      msg2 = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 20 }
+      ptr1 = msg1.to_ptr
+      ptr2 = msg2.to_ptr
+      buffer = FFI::MemoryPointer.new(:pointer, 2)
+      buffer.put_pointer(0, ptr1)
+      buffer.put_pointer(FFI::Pointer.size, ptr2)
+
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue_nb).and_return(2)
+      allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr1)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr2)
+
+      consumer.subscribe(topic)
+
+      yielded = []
+      expect {
+        consumer.poll_batch_nb(0, max_items: 2) { |e| yielded << e }
+      }.to raise_error(Rdkafka::RdkafkaError)
+      expect(yielded.size).to eq(2)
+      expect(yielded).to all(be_a(Rdkafka::RdkafkaError))
     end
 
     context "when consumer is closed" do

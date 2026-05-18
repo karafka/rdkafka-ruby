@@ -2,6 +2,7 @@
 
 ## 0.28.0 (Unreleased)
 - [Enhancement] Bump librdkafka to `2.14.1`
+- [Feature] `poll_batch` and `poll_batch_nb` now accept an optional block for error handling.
 
 ## 0.27.0 (2026-05-07)
 - [Feature] Add `Consumer#poll_batch(timeout_ms, max_items:)` and `Consumer#poll_batch_nb(timeout_ms, max_items:)` for batch message polling via `rd_kafka_consume_batch_queue`.

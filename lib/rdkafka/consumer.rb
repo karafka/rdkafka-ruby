@@ -797,6 +797,7 @@ module Rdkafka
     #
     # @param timeout_ms [Integer] Timeout waiting for the first message (-1 for infinite)
     # @param max_items [Integer] Maximum number of messages to return per call
+    # @yieldparam error [RdkafkaError] Each error event found in the batch (when block given)
     # @return [Array<Message>] Array of messages (empty if none available within timeout)
     # @raise [RdkafkaError] When a consumed message contains an error
     # @raise [ClosedConsumerError] When called on a closed consumer
@@ -818,6 +819,7 @@ module Rdkafka
       return messages if count <= 0
 
       i = 0
+      first_error = nil
       begin
         while i < count
           ptr = buffer.get_pointer(i * FFI::Pointer.size)
@@ -830,7 +832,17 @@ module Rdkafka
           native_message = Rdkafka::Bindings::Message.new(ptr)
 
           if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-            raise Rdkafka::RdkafkaError.new(native_message[:err])
+            error = Rdkafka::RdkafkaError.new(native_message[:err])
+            Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
+            i += 1
+
+            if block_given?
+              yield error
+              first_error ||= error
+              next
+            end
+
+            raise error
           end
 
           messages << Rdkafka::Consumer::Message.new(native_message)
@@ -845,6 +857,7 @@ module Rdkafka
         end
       end
 
+      raise first_error if first_error
       messages
     end
 
@@ -859,6 +872,7 @@ module Rdkafka
     #
     # @param timeout_ms [Integer] Timeout waiting for the first message (default: 0 for non-blocking)
     # @param max_items [Integer] Maximum number of messages to return per call
+    # @yieldparam error [RdkafkaError] Each error event found in the batch (when block given)
     # @return [Array<Message>] Array of messages (empty if none available within timeout)
     # @raise [RdkafkaError] When a consumed message contains an error
     # @raise [ClosedConsumerError] When called on a closed consumer
@@ -880,6 +894,7 @@ module Rdkafka
       return messages if count <= 0
 
       i = 0
+      first_error = nil
       begin
         while i < count
           ptr = buffer.get_pointer(i * FFI::Pointer.size)
@@ -892,7 +907,17 @@ module Rdkafka
           native_message = Rdkafka::Bindings::Message.new(ptr)
 
           if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-            raise Rdkafka::RdkafkaError.new(native_message[:err])
+            error = Rdkafka::RdkafkaError.new(native_message[:err])
+            Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
+            i += 1
+
+            if block_given?
+              yield error
+              first_error ||= error
+              next
+            end
+
+            raise error
           end
 
           messages << Rdkafka::Consumer::Message.new(native_message)
@@ -907,6 +932,7 @@ module Rdkafka
         end
       end
 
+      raise first_error if first_error
       messages
     end
 

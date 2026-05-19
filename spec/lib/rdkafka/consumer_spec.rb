@@ -1648,10 +1648,8 @@ RSpec.describe Rdkafka::Consumer do
       expect(batch.size).to be <= 3
     end
 
-    it "raises an error when a message has an error" do
-      message = Rdkafka::Bindings::Message.new.tap do |msg|
-        msg[:err] = 20
-      end
+    it "returns error events inline rather than raising" do
+      message = Rdkafka::Bindings::Message.new.tap { |msg| msg[:err] = 20 }
       message_pointer = message.to_ptr
       buffer = FFI::MemoryPointer.new(:pointer, 1)
       buffer.put_pointer(0, message_pointer)
@@ -1662,12 +1660,13 @@ RSpec.describe Rdkafka::Consumer do
 
       consumer.subscribe(topic)
 
-      expect {
-        consumer.poll_batch(100, max_items: 1)
-      }.to raise_error(Rdkafka::RdkafkaError)
+      results = consumer.poll_batch(100, max_items: 1)
+      expect(results.size).to eq(1)
+      expect(results.first).to be_a(Rdkafka::RdkafkaError)
+      expect(results.first.rdkafka_response).to eq(20)
     end
 
-    it "yields all errors to the block, continues processing, then raises the first" do
+    it "returns multiple error events from a batch in order" do
       msg1 = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 20 }
       msg2 = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 10 }
       ptr1 = msg1.to_ptr
@@ -1683,20 +1682,13 @@ RSpec.describe Rdkafka::Consumer do
 
       consumer.subscribe(topic)
 
-      yielded = []
-      raised = nil
-      begin
-        consumer.poll_batch(100, max_items: 2) { |e| yielded << e }
-      rescue Rdkafka::RdkafkaError => e
-        raised = e
-      end
-      expect(yielded.size).to eq(2)
-      expect(yielded).to all(be_a(Rdkafka::RdkafkaError))
-      expect(raised).to be_a(Rdkafka::RdkafkaError)
-      expect(raised.rdkafka_response).to eq(20)
+      results = consumer.poll_batch(100, max_items: 2)
+      expect(results.size).to eq(2)
+      expect(results).to all(be_a(Rdkafka::RdkafkaError))
+      expect(results.map(&:rdkafka_response)).to eq([20, 10])
     end
 
-    it "raises the error and does not return normal messages from a mixed batch" do
+    it "returns messages and errors interleaved in arrival order" do
       err_msg = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 20 }
       ok_msg = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 0 }
       ptr_err = err_msg.to_ptr
@@ -1705,20 +1697,19 @@ RSpec.describe Rdkafka::Consumer do
       buffer.put_pointer(0, ptr_err)
       buffer.put_pointer(FFI::Pointer.size, ptr_ok)
 
+      fake_message = double("message")
       expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue).and_return(2)
       allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
-      # Stub Message.new so we don't call into librdkafka with a fake native struct
-      allow(Rdkafka::Consumer::Message).to receive(:new).and_return(double("message"))
+      allow(Rdkafka::Consumer::Message).to receive(:new).and_return(fake_message)
       expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr_err)
       expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr_ok)
 
       consumer.subscribe(topic)
 
-      yielded = []
-      expect {
-        consumer.poll_batch(100, max_items: 2) { |e| yielded << e }
-      }.to raise_error(Rdkafka::RdkafkaError)
-      expect(yielded.size).to eq(1)
+      results = consumer.poll_batch(100, max_items: 2)
+      expect(results.size).to eq(2)
+      expect(results[0]).to be_a(Rdkafka::RdkafkaError)
+      expect(results[1]).to eq(fake_message)
     end
 
     context "when consumer is closed" do
@@ -1778,10 +1769,8 @@ RSpec.describe Rdkafka::Consumer do
       end
     end
 
-    it "raises an error when a message has an error" do
-      message = Rdkafka::Bindings::Message.new.tap do |msg|
-        msg[:err] = 20
-      end
+    it "returns error events inline rather than raising" do
+      message = Rdkafka::Bindings::Message.new.tap { |msg| msg[:err] = 20 }
       message_pointer = message.to_ptr
       buffer = FFI::MemoryPointer.new(:pointer, 1)
       buffer.put_pointer(0, message_pointer)
@@ -1792,12 +1781,13 @@ RSpec.describe Rdkafka::Consumer do
 
       consumer.subscribe(topic)
 
-      expect {
-        consumer.poll_batch_nb(0, max_items: 1)
-      }.to raise_error(Rdkafka::RdkafkaError)
+      results = consumer.poll_batch_nb(0, max_items: 1)
+      expect(results.size).to eq(1)
+      expect(results.first).to be_a(Rdkafka::RdkafkaError)
+      expect(results.first.rdkafka_response).to eq(20)
     end
 
-    it "yields all errors to the block, continues processing, then raises the first" do
+    it "returns multiple error events from a batch in order" do
       msg1 = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 20 }
       msg2 = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 10 }
       ptr1 = msg1.to_ptr
@@ -1813,20 +1803,13 @@ RSpec.describe Rdkafka::Consumer do
 
       consumer.subscribe(topic)
 
-      yielded = []
-      raised = nil
-      begin
-        consumer.poll_batch_nb(0, max_items: 2) { |e| yielded << e }
-      rescue Rdkafka::RdkafkaError => e
-        raised = e
-      end
-      expect(yielded.size).to eq(2)
-      expect(yielded).to all(be_a(Rdkafka::RdkafkaError))
-      expect(raised).to be_a(Rdkafka::RdkafkaError)
-      expect(raised.rdkafka_response).to eq(20)
+      results = consumer.poll_batch_nb(0, max_items: 2)
+      expect(results.size).to eq(2)
+      expect(results).to all(be_a(Rdkafka::RdkafkaError))
+      expect(results.map(&:rdkafka_response)).to eq([20, 10])
     end
 
-    it "raises the error and does not return normal messages from a mixed batch" do
+    it "returns messages and errors interleaved in arrival order" do
       err_msg = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 20 }
       ok_msg = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 0 }
       ptr_err = err_msg.to_ptr
@@ -1835,20 +1818,19 @@ RSpec.describe Rdkafka::Consumer do
       buffer.put_pointer(0, ptr_err)
       buffer.put_pointer(FFI::Pointer.size, ptr_ok)
 
+      fake_message = double("message")
       expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue_nb).and_return(2)
       allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
-      # Stub Message.new so we don't call into librdkafka with a fake native struct
-      allow(Rdkafka::Consumer::Message).to receive(:new).and_return(double("message"))
+      allow(Rdkafka::Consumer::Message).to receive(:new).and_return(fake_message)
       expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr_err)
       expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr_ok)
 
       consumer.subscribe(topic)
 
-      yielded = []
-      expect {
-        consumer.poll_batch_nb(0, max_items: 2) { |e| yielded << e }
-      }.to raise_error(Rdkafka::RdkafkaError)
-      expect(yielded.size).to eq(1)
+      results = consumer.poll_batch_nb(0, max_items: 2)
+      expect(results.size).to eq(2)
+      expect(results[0]).to be_a(Rdkafka::RdkafkaError)
+      expect(results[1]).to eq(fake_message)
     end
 
     context "when consumer is closed" do

@@ -798,7 +798,8 @@ module Rdkafka
     # @param timeout_ms [Integer] Timeout waiting for the first message (-1 for infinite)
     # @param max_items [Integer] Maximum number of messages to return per call
     # @yieldparam error [RdkafkaError] Each error event found in the batch (when block given)
-    # @return [Array<Message>] Array of messages (empty if none available within timeout)
+    # @return [Array<Message>] Array of messages; empty when any error was encountered (errors
+    #   are raised, not returned — even in block mode where all errors are yielded first)
     # @raise [RdkafkaError] When a consumed message contains an error
     # @raise [ClosedConsumerError] When called on a closed consumer
     def poll_batch(timeout_ms, max_items: 100)
@@ -873,7 +874,8 @@ module Rdkafka
     # @param timeout_ms [Integer] Timeout waiting for the first message (default: 0 for non-blocking)
     # @param max_items [Integer] Maximum number of messages to return per call
     # @yieldparam error [RdkafkaError] Each error event found in the batch (when block given)
-    # @return [Array<Message>] Array of messages (empty if none available within timeout)
+    # @return [Array<Message>] Array of messages; empty when any error was encountered (errors
+    #   are raised, not returned — even in block mode where all errors are yielded first)
     # @raise [RdkafkaError] When a consumed message contains an error
     # @raise [ClosedConsumerError] When called on a closed consumer
     def poll_batch_nb(timeout_ms = 0, max_items: 100)

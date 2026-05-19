@@ -1707,6 +1707,8 @@ RSpec.describe Rdkafka::Consumer do
 
       expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue).and_return(2)
       allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
+      # Stub Message.new so we don't call into librdkafka with a fake native struct
+      allow(Rdkafka::Consumer::Message).to receive(:new).and_return(double("message"))
       expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr_err)
       expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr_ok)
 
@@ -1835,6 +1837,8 @@ RSpec.describe Rdkafka::Consumer do
 
       expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue_nb).and_return(2)
       allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
+      # Stub Message.new so we don't call into librdkafka with a fake native struct
+      allow(Rdkafka::Consumer::Message).to receive(:new).and_return(double("message"))
       expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr_err)
       expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr_ok)
 

@@ -762,16 +762,26 @@ RSpec.describe Rdkafka::Consumer do
         ).wait
       end
 
-      # Consume to the end
+      # Consume to the end. We wait for assignment before polling so that
+      # partition positions are established — on slow CI (e.g. macOS) the EOF
+      # signal can fire before the first fetch completes if we start polling
+      # immediately, leaving no stored offsets and causing commit to fail.
+      # We also require at least one message to be consumed before stopping,
+      # for the same reason.
       consumer.subscribe(topic)
+      wait_for_assignment(consumer)
       eof_count = 0
+      messages_received = 0
+      deadline = Time.now + 30
       loop do
-        consumer.poll(100)
+        break if Time.now > deadline
+        msg = consumer.poll(100)
+        messages_received += 1 if msg
       rescue Rdkafka::RdkafkaError => error
         if error.is_partition_eof?
           eof_count += 1
         end
-        break if eof_count == 3
+        break if eof_count >= 3 && messages_received.positive?
       end
 
       # Commit
@@ -1648,10 +1658,8 @@ RSpec.describe Rdkafka::Consumer do
       expect(batch.size).to be <= 3
     end
 
-    it "raises an error when a message has an error" do
-      message = Rdkafka::Bindings::Message.new.tap do |msg|
-        msg[:err] = 20
-      end
+    it "returns error events inline rather than raising" do
+      message = Rdkafka::Bindings::Message.new.tap { |msg| msg[:err] = 20 }
       message_pointer = message.to_ptr
       buffer = FFI::MemoryPointer.new(:pointer, 1)
       buffer.put_pointer(0, message_pointer)
@@ -1662,9 +1670,56 @@ RSpec.describe Rdkafka::Consumer do
 
       consumer.subscribe(topic)
 
-      expect {
-        consumer.poll_batch(100, max_items: 1)
-      }.to raise_error(Rdkafka::RdkafkaError)
+      results = consumer.poll_batch(100, max_items: 1)
+      expect(results.size).to eq(1)
+      expect(results.first).to be_a(Rdkafka::RdkafkaError)
+      expect(results.first.rdkafka_response).to eq(20)
+    end
+
+    it "returns multiple error events from a batch in order" do
+      msg1 = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 20 }
+      msg2 = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 10 }
+      ptr1 = msg1.to_ptr
+      ptr2 = msg2.to_ptr
+      buffer = FFI::MemoryPointer.new(:pointer, 2)
+      buffer.put_pointer(0, ptr1)
+      buffer.put_pointer(FFI::Pointer.size, ptr2)
+
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue).and_return(2)
+      allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr1)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr2)
+
+      consumer.subscribe(topic)
+
+      results = consumer.poll_batch(100, max_items: 2)
+      expect(results.size).to eq(2)
+      expect(results).to all(be_a(Rdkafka::RdkafkaError))
+      expect(results.map(&:rdkafka_response)).to eq([20, 10])
+    end
+
+    it "returns messages and errors interleaved in arrival order" do
+      err_msg = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 20 }
+      ok_msg = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 0 }
+      ptr_err = err_msg.to_ptr
+      ptr_ok = ok_msg.to_ptr
+      buffer = FFI::MemoryPointer.new(:pointer, 2)
+      buffer.put_pointer(0, ptr_err)
+      buffer.put_pointer(FFI::Pointer.size, ptr_ok)
+
+      fake_message = double("message")
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue).and_return(2)
+      allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
+      allow(Rdkafka::Consumer::Message).to receive(:new).and_return(fake_message)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr_err)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr_ok)
+
+      consumer.subscribe(topic)
+
+      results = consumer.poll_batch(100, max_items: 2)
+      expect(results.size).to eq(2)
+      expect(results[0]).to be_a(Rdkafka::RdkafkaError)
+      expect(results[1]).to eq(fake_message)
     end
 
     context "when consumer is closed" do
@@ -1724,10 +1779,8 @@ RSpec.describe Rdkafka::Consumer do
       end
     end
 
-    it "raises an error when a message has an error" do
-      message = Rdkafka::Bindings::Message.new.tap do |msg|
-        msg[:err] = 20
-      end
+    it "returns error events inline rather than raising" do
+      message = Rdkafka::Bindings::Message.new.tap { |msg| msg[:err] = 20 }
       message_pointer = message.to_ptr
       buffer = FFI::MemoryPointer.new(:pointer, 1)
       buffer.put_pointer(0, message_pointer)
@@ -1738,9 +1791,56 @@ RSpec.describe Rdkafka::Consumer do
 
       consumer.subscribe(topic)
 
-      expect {
-        consumer.poll_batch_nb(0, max_items: 1)
-      }.to raise_error(Rdkafka::RdkafkaError)
+      results = consumer.poll_batch_nb(0, max_items: 1)
+      expect(results.size).to eq(1)
+      expect(results.first).to be_a(Rdkafka::RdkafkaError)
+      expect(results.first.rdkafka_response).to eq(20)
+    end
+
+    it "returns multiple error events from a batch in order" do
+      msg1 = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 20 }
+      msg2 = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 10 }
+      ptr1 = msg1.to_ptr
+      ptr2 = msg2.to_ptr
+      buffer = FFI::MemoryPointer.new(:pointer, 2)
+      buffer.put_pointer(0, ptr1)
+      buffer.put_pointer(FFI::Pointer.size, ptr2)
+
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue_nb).and_return(2)
+      allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr1)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr2)
+
+      consumer.subscribe(topic)
+
+      results = consumer.poll_batch_nb(0, max_items: 2)
+      expect(results.size).to eq(2)
+      expect(results).to all(be_a(Rdkafka::RdkafkaError))
+      expect(results.map(&:rdkafka_response)).to eq([20, 10])
+    end
+
+    it "returns messages and errors interleaved in arrival order" do
+      err_msg = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 20 }
+      ok_msg = Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 0 }
+      ptr_err = err_msg.to_ptr
+      ptr_ok = ok_msg.to_ptr
+      buffer = FFI::MemoryPointer.new(:pointer, 2)
+      buffer.put_pointer(0, ptr_err)
+      buffer.put_pointer(FFI::Pointer.size, ptr_ok)
+
+      fake_message = double("message")
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue_nb).and_return(2)
+      allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
+      allow(Rdkafka::Consumer::Message).to receive(:new).and_return(fake_message)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr_err)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr_ok)
+
+      consumer.subscribe(topic)
+
+      results = consumer.poll_batch_nb(0, max_items: 2)
+      expect(results.size).to eq(2)
+      expect(results[0]).to be_a(Rdkafka::RdkafkaError)
+      expect(results[1]).to eq(fake_message)
     end
 
     context "when consumer is closed" do

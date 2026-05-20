@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.27.2 (Unreleased)
+- [Enhancement] `poll_batch` and `poll_batch_nb` now return error events inline as `RdkafkaError` objects rather than raising on the first error. The return type is `Array<Message, RdkafkaError>` and callers are responsible for handling errors in the result.
+
 ## 0.27.1 (2026-05-14)
 - [Fix] `poll_nb`, `poll_nb_each`, `poll_batch`, and `poll_batch_nb` now raise `RdkafkaError` with `details` populated (`{topic:, partition:, offset:}`) when a message contains an error (e.g. `:partition_eof`). Previously these methods raised via `RdkafkaError.new(code)`, discarding the native message struct context. They now use `RdkafkaError.validate!(native_message, client_ptr: inner)`, consistent with `poll`.
 

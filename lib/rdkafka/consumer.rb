@@ -801,16 +801,21 @@ module Rdkafka
     # is available, librdkafka fills the buffer with whatever is immediately ready and
     # returns without further waiting.
     #
+    # Error events (e.g. `:partition_eof`) are returned inline as {RdkafkaError} objects
+    # rather than raised, so callers receive the complete batch — both messages and errors —
+    # and can decide how to handle each. This is particularly useful when multiple partitions
+    # signal EOF simultaneously: all signals appear in the returned array rather than only
+    # the first one being raised and the rest silently discarded.
+    #
     # @param timeout_ms [Integer] Timeout waiting for the first message (-1 for infinite)
     # @param max_items [Integer] Maximum number of messages to return per call
-    # @return [Array<Message>] Array of messages (empty if none available within timeout)
-    # @raise [RdkafkaError] When a consumed message contains an error
+    # @return [Array<Message, RdkafkaError>] Batch of messages and/or error events in arrival order
     # @raise [ClosedConsumerError] When called on a closed consumer
     def poll_batch(timeout_ms, max_items: 100)
       closed_consumer_check(__method__)
 
       buffer = batch_buffer(max_items)
-      messages = []
+      results = []
 
       count = @native_kafka.with_inner do |_inner|
         Rdkafka::Bindings.rd_kafka_consume_batch_queue(
@@ -821,7 +826,7 @@ module Rdkafka
         )
       end
 
-      return messages if count <= 0
+      return results if count <= 0
 
       i = 0
       begin
@@ -836,12 +841,13 @@ module Rdkafka
           native_message = Rdkafka::Bindings::Message.new(ptr)
 
           if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-            @native_kafka.with_inner do |inner|
-              Rdkafka::RdkafkaError.validate!(native_message, client_ptr: inner)
-            end
+            results << build_batch_error(native_message)
+            Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
+            i += 1
+            next
           end
 
-          messages << Rdkafka::Consumer::Message.new(native_message)
+          results << Rdkafka::Consumer::Message.new(native_message)
           Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
           i += 1
         end
@@ -853,7 +859,7 @@ module Rdkafka
         end
       end
 
-      messages
+      results
     end
 
     # Poll for a batch of messages without releasing the GVL (Global VM Lock).
@@ -865,16 +871,17 @@ module Rdkafka
     # @note Since the GVL is not released, a non-zero timeout_ms will block all Ruby
     #   threads/fibers for the duration. Use {#poll_batch} if you need a blocking wait.
     #
+    # Error events are returned inline as {RdkafkaError} objects; see {#poll_batch} for details.
+    #
     # @param timeout_ms [Integer] Timeout waiting for the first message (default: 0 for non-blocking)
     # @param max_items [Integer] Maximum number of messages to return per call
-    # @return [Array<Message>] Array of messages (empty if none available within timeout)
-    # @raise [RdkafkaError] When a consumed message contains an error
+    # @return [Array<Message, RdkafkaError>] Batch of messages and/or error events in arrival order
     # @raise [ClosedConsumerError] When called on a closed consumer
     def poll_batch_nb(timeout_ms = 0, max_items: 100)
       closed_consumer_check(__method__)
 
       buffer = batch_buffer(max_items)
-      messages = []
+      results = []
 
       count = @native_kafka.with_inner do |_inner|
         Rdkafka::Bindings.rd_kafka_consume_batch_queue_nb(
@@ -885,7 +892,7 @@ module Rdkafka
         )
       end
 
-      return messages if count <= 0
+      return results if count <= 0
 
       i = 0
       begin
@@ -900,12 +907,13 @@ module Rdkafka
           native_message = Rdkafka::Bindings::Message.new(ptr)
 
           if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-            @native_kafka.with_inner do |inner|
-              Rdkafka::RdkafkaError.validate!(native_message, client_ptr: inner)
-            end
+            results << build_batch_error(native_message)
+            Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
+            i += 1
+            next
           end
 
-          messages << Rdkafka::Consumer::Message.new(native_message)
+          results << Rdkafka::Consumer::Message.new(native_message)
           Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
           i += 1
         end
@@ -917,7 +925,7 @@ module Rdkafka
         end
       end
 
-      messages
+      results
     end
 
     # Poll for new messages and yield for each received one. Iteration
@@ -998,6 +1006,21 @@ module Rdkafka
     def consumer_queue
       @consumer_queue ||= @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_queue_get_consumer(inner)
+      end
+    end
+
+    # Builds an RdkafkaError from a native message, promoting to a fatal error when
+    # librdkafka flagged a fatal condition on the underlying client handle.
+    # @param native_message [Rdkafka::Bindings::Message] the errored native message
+    # @return [RdkafkaError]
+    def build_batch_error(native_message)
+      err = Rdkafka::RdkafkaError.build(native_message)
+      if err && err.rdkafka_response == Rdkafka::Bindings::RD_KAFKA_RESP_ERR__FATAL
+        @native_kafka.with_inner do |inner|
+          Rdkafka::RdkafkaError.build_fatal(inner, fallback_error_code: err.rdkafka_response)
+        end
+      else
+        err
       end
     end
 

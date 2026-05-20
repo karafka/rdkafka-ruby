@@ -762,16 +762,26 @@ RSpec.describe Rdkafka::Consumer do
         ).wait
       end
 
-      # Consume to the end
+      # Consume to the end. We wait for assignment before polling so that
+      # partition positions are established — on slow CI (e.g. macOS) the EOF
+      # signal can fire before the first fetch completes if we start polling
+      # immediately, leaving no stored offsets and causing commit to fail.
+      # We also require at least one message to be consumed before stopping,
+      # for the same reason.
       consumer.subscribe(topic)
+      wait_for_assignment(consumer)
       eof_count = 0
+      messages_received = 0
+      deadline = Time.now + 30
       loop do
-        consumer.poll(100)
+        break if Time.now > deadline
+        msg = consumer.poll(100)
+        messages_received += 1 if msg
       rescue Rdkafka::RdkafkaError => error
         if error.is_partition_eof?
           eof_count += 1
         end
-        break if eof_count == 3
+        break if eof_count >= 3 && messages_received.positive?
       end
 
       # Commit

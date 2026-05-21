@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.27.2 (Unreleased)
+## 0.27.2 (2026-05-21)
 - [Enhancement] `poll_batch` and `poll_batch_nb` now return error events inline as `RdkafkaError` objects rather than raising on the first error. The return type is `Array<Message, RdkafkaError>` and callers are responsible for handling errors in the result.
 
 ## 0.27.1 (2026-05-14)

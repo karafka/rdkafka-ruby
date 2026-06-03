@@ -2,6 +2,7 @@
 
 ## 0.28.0 (Unreleased)
 - [Enhancement] Bump librdkafka to `2.14.1`
+- [Enhancement] Replace version-gated `Warning[:performance]` with dynamic `Warning.categories` opt-in in spec helper so new Ruby warning categories are automatically enabled without manual updates.
 - [Enhancement] `poll_batch` and `poll_batch_nb` now return error events inline as `RdkafkaError` objects rather than raising on the first error. The return type is `Array<Message, RdkafkaError>` and callers are responsible for handling errors in the result.
 
 ## 0.27.0 (2026-05-07)

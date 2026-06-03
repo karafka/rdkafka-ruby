@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
-Warning[:performance] = true if RUBY_VERSION >= "3.3"
+if Warning.respond_to?(:categories)
+  (Warning.categories - %i[deprecated experimental]).each { |cat| Warning[cat] = true }
+end
 Warning[:deprecated] = true
 $VERBOSE = true
 

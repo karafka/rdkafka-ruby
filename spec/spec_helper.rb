@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
-(Warning.categories - %i[experimental]).each { |cat| Warning[cat] = true } if Warning.respond_to?(:categories)
+if Warning.respond_to?(:categories)
+  (Warning.categories - %i[experimental]).each do |cat|
+    Warning[cat] = true
+  end
+end
 $VERBOSE = true
 
 require "warning"

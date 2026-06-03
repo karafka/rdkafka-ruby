@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 if Warning.respond_to?(:categories)
-  (Warning.categories - %i[deprecated experimental]).each { |cat| Warning[cat] = true }
+  Warning.categories.each { |cat| Warning[cat] = true }
+else
+  Warning[:deprecated] = true
 end
-Warning[:deprecated] = true
 $VERBOSE = true
 
 require "warning"

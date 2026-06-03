@@ -1742,6 +1742,7 @@ RSpec.describe Rdkafka::Consumer do
       results = consumer.poll_batch(100, max_items: 1)
       expect(results.size).to eq(1)
       expect(results.first).to be_a(Rdkafka::RdkafkaError)
+      expect(results.first.rdkafka_response).to eq(20)
     end
 
     it "returns multiple error events from a batch in order" do
@@ -1764,6 +1765,7 @@ RSpec.describe Rdkafka::Consumer do
       results = consumer.poll_batch(100, max_items: 2)
       expect(results.size).to eq(2)
       expect(results).to all(be_a(Rdkafka::RdkafkaError))
+      expect(results.map(&:rdkafka_response)).to eq([20, 10])
     end
 
     it "returns messages and errors interleaved in arrival order" do
@@ -1863,6 +1865,7 @@ RSpec.describe Rdkafka::Consumer do
       results = consumer.poll_batch_nb(0, max_items: 1)
       expect(results.size).to eq(1)
       expect(results.first).to be_a(Rdkafka::RdkafkaError)
+      expect(results.first.rdkafka_response).to eq(20)
     end
 
     it "returns multiple error events from a batch in order" do
@@ -1885,6 +1888,7 @@ RSpec.describe Rdkafka::Consumer do
       results = consumer.poll_batch_nb(0, max_items: 2)
       expect(results.size).to eq(2)
       expect(results).to all(be_a(Rdkafka::RdkafkaError))
+      expect(results.map(&:rdkafka_response)).to eq([20, 10])
     end
 
     it "returns messages and errors interleaved in arrival order" do

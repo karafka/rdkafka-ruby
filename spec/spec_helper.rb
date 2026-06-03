@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
-if Warning.respond_to?(:categories)
-  Warning.categories.each { |cat| Warning[cat] = true }
-else
-  Warning[:deprecated] = true
-end
+Warning.categories.each { |cat| Warning[cat] = true } if Warning.respond_to?(:categories)
 $VERBOSE = true
 
 require "warning"

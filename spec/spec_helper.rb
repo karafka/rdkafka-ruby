@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
+require "warning"
+
 if Warning.respond_to?(:categories)
   (Warning.categories - %i[experimental]).each do |cat|
     Warning[cat] = true
   end
 end
 $VERBOSE = true
-
-require "warning"
 
 Warning.process do |warning|
   next unless warning.include?(Dir.pwd)

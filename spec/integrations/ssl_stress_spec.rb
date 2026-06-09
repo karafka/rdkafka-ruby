@@ -82,8 +82,7 @@ timeout = 30
 start = Time.now
 
 # Wait for the servers to be available
-# We want to make sure that they are available so we are sure that librdkafka actually hammers
-# them
+# We want to make sure that they are available so we are sure that librdkafka actually hammers them
 loop do
   all_up = PORTS.all? do |port|
     TCPSocket.new("127.0.0.1", port).close

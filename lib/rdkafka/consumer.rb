@@ -490,8 +490,7 @@ module Rdkafka
       out = {}
 
       topic_partition_list.to_h.each do |topic, partitions|
-        # Query high watermarks for this topic's partitions
-        # and compare to the offset in the list.
+        # Query high watermarks for this topic's partitions and compare to the offset in the list.
         topic_out = {}
         partitions.each do |p|
           next if p.offset.nil?
@@ -572,8 +571,7 @@ module Rdkafka
     end
 
     # Seek to a particular message by providing the topic, partition and offset.
-    # The next poll on the topic/partition will return the
-    # message at the given offset.
+    # The next poll on the topic/partition will return the message at the given offset.
     #
     # @param topic [String] The topic in which to seek
     # @param partition [Integer] The partition number to seek
@@ -641,8 +639,7 @@ module Rdkafka
 
     # Manually commit the current offsets of this consumer.
     #
-    # To use this set `enable.auto.commit`to `false` to disable automatic triggering
-    # of commits.
+    # To use this set `enable.auto.commit`to `false` to disable automatic triggering of commits.
     #
     # If `enable.auto.offset.store` is set to `true` the offset of the last consumed
     # message for every partition is used. If set to `false` you can use {store_offset} to

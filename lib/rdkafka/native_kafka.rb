@@ -55,8 +55,7 @@ module Rdkafka
         Rdkafka::Bindings.rd_kafka_poll(@inner, 0)
 
         if @run_polling_thread
-          # Start thread to poll client for delivery callbacks,
-          # not used in consumer.
+          # Start thread to poll client for delivery callbacks, not used in consumer.
           @polling_thread = Thread.new do
             loop do
               @poll_mutex.synchronize do
@@ -197,8 +196,7 @@ module Rdkafka
           # Indicate to polling thread that we're closing
           @polling_thread[:closing] = true
 
-          # Wait for the polling thread to finish up,
-          # this can be aborted in practice if this
+          # Wait for the polling thread to finish up, this can be aborted in practice if this
           # code runs from a finalizer.
           @polling_thread.join
         end

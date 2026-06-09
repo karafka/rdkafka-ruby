@@ -410,8 +410,7 @@ module Rdkafka
       # based on the key when present.
       partition ||= Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
 
-      # If timestamp is nil use 0 and let Kafka set one. If an integer or time
-      # use it.
+      # If timestamp is nil use 0 and let Kafka set one. If an integer or time use it.
       raw_timestamp = if timestamp.nil?
         0
       elsif timestamp.is_a?(Integer)

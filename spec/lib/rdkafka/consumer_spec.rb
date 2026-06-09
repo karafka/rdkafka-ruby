@@ -766,8 +766,7 @@ RSpec.describe Rdkafka::Consumer do
       # partition positions are established — on slow CI (e.g. macOS) the EOF
       # signal can fire before the first fetch completes if we start polling
       # immediately, leaving no stored offsets and causing commit to fail.
-      # We also require at least one message to be consumed before stopping,
-      # for the same reason.
+      # We also require at least one message to be consumed before stopping, for the same reason.
       consumer.subscribe(topic)
       wait_for_assignment(consumer)
       eof_count = 0
@@ -1051,8 +1050,7 @@ RSpec.describe Rdkafka::Consumer do
       handles.each(&:wait)
 
       consumer.subscribe(topic)
-      # Check the first 10 messages. Then close the consumer, which
-      # should break the each loop.
+      # Check the first 10 messages. Then close the consumer, which should break the each loop.
       consumer.each_with_index do |message, i|
         expect(message).to be_a Rdkafka::Consumer::Message
         break if i == 9
@@ -1348,8 +1346,7 @@ RSpec.describe Rdkafka::Consumer do
         handles.each(&:wait)
 
         consumer.subscribe(topic)
-        # Check the first 10 messages. Then close the consumer, which
-        # should break the each loop.
+        # Check the first 10 messages. Then close the consumer, which should break the each loop.
         consumer.each_with_index do |message, i|
           expect(message).to be_a Rdkafka::Consumer::Message
           break if i == 9

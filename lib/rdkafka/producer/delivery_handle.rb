@@ -8,14 +8,14 @@ module Rdkafka
       layout :pending, :bool,
         :response, :int,
         :partition, :int,
-        :offset, :int64,
-        :topic_name, :pointer
+        :offset, :int64
 
       # @return [Object, nil] label set during message production or nil by default
       attr_accessor :label
 
       # @return [String] topic where we are trying to send the message
-      # We use this instead of reading from `topic_name` pointer to save on memory allocations
+      # Set in `#produce`, where the topic is known upfront. Keeping it as a Ruby attribute
+      # spares a per-message native string copy in the delivery callback.
       attr_accessor :topic
 
       # @return [String] the name of the operation (e.g. "delivery")

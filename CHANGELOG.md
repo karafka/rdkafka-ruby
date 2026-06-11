@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## Unreleased
+- [Enhancement] Remove the unused `DeliveryHandle` `:topic_name` struct field and the per-message allocation that populated it. The delivery callback copied the topic name into a native `FFI::MemoryPointer` on every delivered message, retained for the lifetime of the handle, yet nothing ever read it: the topic is already available via `DeliveryHandle#topic` (a Ruby attribute set during `produce`) and `DeliveryReport#topic_name`, both of which work exactly as before.
+
 ## 0.27.2 (2026-05-21)
 - [Enhancement] `poll_batch` and `poll_batch_nb` now return error events inline as `RdkafkaError` objects rather than raising on the first error. The return type is `Array<Message, RdkafkaError>` and callers are responsible for handling errors in the result.
 

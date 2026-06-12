@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## Unreleased
+- [Enhancement] Reuse per-thread scratch pointers in `Consumer::Headers.from_native` instead of allocating them for every consumed message. Previously each message paid one native pointer allocation just to check for headers and three more when headers were present; now the scratch pointers are allocated once per thread/fiber and reused, removing all per-message native scratch allocations from the consumer hot path.
 - [Enhancement] Remove the unused `DeliveryHandle` `:topic_name` struct field and the per-message allocation that populated it. The delivery callback copied the topic name into a native `FFI::MemoryPointer` on every delivered message, retained for the lifetime of the handle, yet nothing ever read it: the topic is already available via `DeliveryHandle#topic` (a Ruby attribute set during `produce`) and `DeliveryReport#topic_name`, both of which work exactly as before.
 
 ## 0.28.0 (2026-06-03)

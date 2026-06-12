@@ -453,7 +453,9 @@ module Rdkafka
           delivery_handle[:response] = message[:err]
           delivery_handle[:partition] = message[:partition]
           delivery_handle[:offset] = message[:offset]
-          delivery_handle[:topic_name] = FFI::MemoryPointer.from_string(topic_name)
+          # The topic is not stored on the handle here: it is already set as the handle's
+          # `topic` Ruby attribute during produce, which spares a native string copy that
+          # would otherwise be allocated and retained for every message.
 
           # Call delivery callback on opaque
           if opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]

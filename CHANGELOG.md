@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## Unreleased
+- [Enhancement] Resolve `RdkafkaError#code` from a frozen lookup table built once at load time from librdkafka's error descriptor table, instead of rebuilding the name string and symbol on every call (4 allocations each). `#code` runs on hot paths such as `flush` timeout checks, partition EOF detection and error comparisons; lookups are now allocation-free and thread-safe. Unknown codes still fall back to the previous per-call resolution.
 - [Enhancement] Remove the unused `DeliveryHandle` `:topic_name` struct field and the per-message allocation that populated it. The delivery callback copied the topic name into a native `FFI::MemoryPointer` on every delivered message, retained for the lifetime of the handle, yet nothing ever read it: the topic is already available via `DeliveryHandle#topic` (a Ruby attribute set during `produce`) and `DeliveryReport#topic_name`, both of which work exactly as before.
 
 ## 0.28.0 (2026-06-03)

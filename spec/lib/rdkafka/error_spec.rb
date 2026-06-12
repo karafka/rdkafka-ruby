@@ -35,6 +35,21 @@ RSpec.describe Rdkafka::RdkafkaError do
     it "strips a leading underscore" do
       expect(described_class.new(-191).code).to eq :partition_eof
     end
+
+    it "resolves known codes from the prebuilt table without calling librdkafka" do
+      expect(Rdkafka::Bindings).not_to receive(:rd_kafka_err2name)
+
+      expect(described_class.new(10).code).to eq :msg_size_too_large
+      expect(described_class.new(-191).code).to eq :partition_eof
+    end
+
+    it "matches the live librdkafka naming for every code in the table" do
+      described_class.const_get(:CODES).each do |response, code|
+        name = Rdkafka::Bindings.rd_kafka_err2name(response).downcase
+
+        expect(code).to eq((name[0] == "_" ? name[1..] : name).to_sym)
+      end
+    end
   end
 
   describe "#to_s" do

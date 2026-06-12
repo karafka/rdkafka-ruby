@@ -6,6 +6,38 @@ module Rdkafka
 
   # Error returned by the underlying rdkafka library.
   class RdkafkaError < BaseError
+    # Mapping of raw librdkafka error codes to their symbolized names, built once at load
+    # time from librdkafka's own error descriptor table. `#code` runs on hot paths (flush
+    # timeout checks, partition EOF detection, error comparisons), so the lookup needs to be
+    # read-only and allocation-free instead of rebuilding the name string and symbol each
+    # time. The table is frozen, making lookups safe across threads and Ruby runtimes.
+    CODES = begin
+      descs_ptr = FFI::MemoryPointer.new(:pointer)
+      count_ptr = FFI::MemoryPointer.new(:size_t)
+
+      Rdkafka::Bindings.rd_kafka_get_err_descs(descs_ptr, count_ptr)
+
+      array_of_descs = FFI::Pointer.new(Rdkafka::Bindings::NativeErrorDesc, descs_ptr.read_pointer)
+
+      codes = {}
+
+      count_ptr.read(:size_t).times do |i|
+        desc = Rdkafka::Bindings::NativeErrorDesc.new(array_of_descs[i])
+
+        next if desc[:name].null?
+
+        # The descriptor table provides the set of known codes while the cached values are
+        # computed through rd_kafka_err2name, the exact same transformation `#code` used per
+        # call. This keeps parity even for sentinel entries the two sources name differently.
+        name = Rdkafka::Bindings.rd_kafka_err2name(desc[:code]).downcase
+        codes[desc[:code]] = (name[0] == "_" ? name[1..] : name).to_sym
+      end
+
+      codes.freeze
+    end
+
+    private_constant :CODES
+
     # The underlying raw error response
     # @return [Integer]
     attr_reader :rdkafka_response
@@ -38,11 +70,15 @@ module Rdkafka
     # This error's code, for example `:partition_eof`, `:msg_size_too_large`.
     # @return [Symbol]
     def code
-      code = Rdkafka::Bindings.rd_kafka_err2name(@rdkafka_response).downcase
-      if code[0] == "_"
-        code[1..].to_sym
-      else
-        code.to_sym
+      # Fallback to the per-call computation for codes unknown to the descriptor table
+      # (e.g. invalid response values), which librdkafka names dynamically
+      CODES[@rdkafka_response] || begin
+        code = Rdkafka::Bindings.rd_kafka_err2name(@rdkafka_response).downcase
+        if code[0] == "_"
+          code[1..].to_sym
+        else
+          code.to_sym
+        end
       end
     end
 

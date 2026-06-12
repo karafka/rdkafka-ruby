@@ -276,6 +276,21 @@ RSpec.describe Rdkafka::Producer do
     expect(message.timestamp).to be_within(10).of(Time.now)
   end
 
+  it "carries the topic name via the handle topic attribute" do
+    handle = producer.produce(
+      topic: topic,
+      payload: "payload",
+      key: "key"
+    )
+
+    report = handle.wait(max_wait_timeout_ms: 5_000)
+
+    # The topic name is carried via the handle's `topic` Ruby attribute set during produce,
+    # so no per-message native copy is allocated on delivery
+    expect(handle.topic).to eq topic
+    expect(report.topic_name).to eq topic
+  end
+
   it "produces a message with a specified partition" do
     # Produce a message
     handle = producer.produce(

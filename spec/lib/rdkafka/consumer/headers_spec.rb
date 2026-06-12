@@ -70,4 +70,48 @@ RSpec.describe Rdkafka::Consumer::Headers do
       expect(headers.key?(:version)).to be(false)
     end
   end
+
+  describe ".from_native scratch pointers reuse" do
+    let(:native_message) { double("native message") }
+
+    before do
+      allow(Rdkafka::Bindings)
+        .to receive(:rd_kafka_message_headers)
+        .and_return(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT)
+    end
+
+    it "does not allocate native scratch pointers after the first call on a thread" do
+      # Warm up the per-thread scratch pointers
+      described_class.from_native(native_message)
+
+      expect(FFI::MemoryPointer).not_to receive(:new)
+      expect(Rdkafka::Bindings::SizePtr).not_to receive(:new)
+
+      expect(described_class.from_native(native_message)).to eq(described_class::EMPTY_HEADERS)
+    end
+
+    it "uses separate scratch pointers per thread" do
+      pointers = Array.new(2) do
+        Thread.new do
+          described_class.from_native(native_message)
+          Thread.current[:rdkafka_headers_scratch]
+        end.value
+      end
+
+      expect(pointers[0]).not_to be_nil
+      expect(pointers[0]).not_to eq(pointers[1])
+    end
+
+    it "uses separate scratch pointers per fiber within the same thread" do
+      pointers = Array.new(2) do
+        Fiber.new do
+          described_class.from_native(native_message)
+          Thread.current[:rdkafka_headers_scratch]
+        end.resume
+      end
+
+      expect(pointers[0]).not_to be_nil
+      expect(pointers[0]).not_to eq(pointers[1])
+    end
+  end
 end

@@ -7,6 +7,11 @@ module Rdkafka
       # Empty frozen hash used when there are no headers
       EMPTY_HEADERS = {}.freeze
 
+      # Key under which reusable scratch pointers are stored on the current thread/fiber
+      SCRATCH_KEY = :rdkafka_headers_scratch
+
+      private_constant :SCRATCH_KEY
+
       # Reads a librdkafka native message's headers and returns them as a Ruby Hash
       # where each key maps to either a String (single value) or Array<String> (multiple values)
       # to support duplicate headers per KIP-82
@@ -17,7 +22,20 @@ module Rdkafka
       # @return [Hash{String => String, Array<String>}] headers Hash for the native_message
       # @raise [Rdkafka::RdkafkaError] when fail to read headers
       def self.from_native(native_message)
-        headers_ptrptr = FFI::MemoryPointer.new(:pointer)
+        # Scratch output pointers for the header FFI calls, reused across messages. They are
+        # stored in fiber-local storage (`Thread.current[]` is fiber-local by design), so each
+        # thread and each fiber gets its own set and reuse is safe with fiber schedulers. They
+        # never escape this method and all data is read out of them before returning.
+        # Allocating them per message would cost several native allocations for every consumed
+        # message.
+        headers_ptrptr, name_ptrptr, value_ptrptr, size_ptr =
+          Thread.current[SCRATCH_KEY] ||= [
+            FFI::MemoryPointer.new(:pointer),
+            FFI::MemoryPointer.new(:pointer),
+            FFI::MemoryPointer.new(:pointer),
+            Rdkafka::Bindings::SizePtr.new
+          ].freeze
+
         err = Rdkafka::Bindings.rd_kafka_message_headers(native_message, headers_ptrptr)
 
         if err == Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT
@@ -27,10 +45,6 @@ module Rdkafka
         end
 
         headers_ptr = headers_ptrptr.read_pointer
-
-        name_ptrptr = FFI::MemoryPointer.new(:pointer)
-        value_ptrptr = FFI::MemoryPointer.new(:pointer)
-        size_ptr = Rdkafka::Bindings::SizePtr.new
 
         headers = {}
 

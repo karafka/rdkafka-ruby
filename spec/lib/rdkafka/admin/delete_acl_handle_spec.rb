@@ -23,9 +23,11 @@ RSpec.describe Rdkafka::Admin::DeleteAclHandle do
     described_class.new.tap do |handle|
       handle[:pending] = pending_handle
       handle[:response] = response
-      handle[:response_string] = FFI::MemoryPointer.from_string("")
-      handle[:matching_acls] = delete_acls_array_ptr
-      handle[:matching_acls_count] = 1
+      handle.broker_message = ""
+      handle.result = Rdkafka::Admin::DeleteAclReport.new(
+        matching_acls: delete_acls_array_ptr,
+        matching_acls_count: 1
+      )
     end
   end
 

@@ -5,22 +5,16 @@ module Rdkafka
     # Handle for describe configs operation
     class DescribeConfigsHandle < AbstractHandle
       layout :pending, :bool,
-        :response, :int,
-        :response_string, :pointer,
-        :config_entries, :pointer,
-        :entry_count, :int
+        :response, :int
 
       # @return [String] the name of the operation.
       def operation_name
         "describe configs"
       end
 
-      # @return [DescribeAclReport] instance with an array of acls that matches the request filters.
+      # @return [DescribeConfigsReport] report prepared by the background event callback
       def create_result
-        DescribeConfigsReport.new(
-          config_entries: self[:config_entries],
-          entry_count: self[:entry_count]
-        )
+        prepared_result
       end
 
       # Raises an error if the operation failed
@@ -28,7 +22,7 @@ module Rdkafka
       def raise_error
         raise RdkafkaError.new(
           self[:response],
-          broker_message: self[:response_string].read_string
+          broker_message: broker_message
         )
       end
     end

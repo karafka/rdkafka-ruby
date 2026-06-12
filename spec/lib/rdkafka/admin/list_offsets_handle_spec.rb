@@ -5,9 +5,11 @@ RSpec.describe Rdkafka::Admin::ListOffsetsHandle do
     described_class.new.tap do |handle|
       handle[:pending] = pending_handle
       handle[:response] = response
-      handle[:response_string] = FFI::MemoryPointer.from_string("")
-      handle[:result_infos] = FFI::Pointer::NULL
-      handle[:result_count] = 0
+      handle.broker_message = ""
+      handle.result = Rdkafka::Admin::ListOffsetsReport.new(
+        result_infos: FFI::Pointer::NULL,
+        result_count: 0
+      )
     end
   end
 

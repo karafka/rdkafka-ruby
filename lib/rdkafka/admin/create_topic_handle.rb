@@ -5,30 +5,16 @@ module Rdkafka
     # Handle for create topic operation
     class CreateTopicHandle < AbstractHandle
       layout :pending, :bool,
-        :response, :int,
-        :error_string, :pointer,
-        :result_name, :pointer
+        :response, :int
 
       # @return [String] the name of the operation
       def operation_name
         "create topic"
       end
 
-      # @return [Boolean] whether the create topic was successful
+      # @return [CreateTopicReport] report prepared by the background event callback
       def create_result
-        CreateTopicReport.new(self[:error_string], self[:result_name])
-      end
-
-      # Raises an error if the operation failed
-      # @raise [RdkafkaError]
-      def raise_error
-        RdkafkaError.validate!(
-          self[:response],
-          broker_message: CreateTopicReport.new(
-            self[:error_string],
-            self[:result_name]
-          ).error_string
-        )
+        prepared_result
       end
     end
   end

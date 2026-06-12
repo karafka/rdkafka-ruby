@@ -606,6 +606,7 @@ module Rdkafka
 
     attach_function :rd_kafka_event_type, [:pointer], :int32
     attach_function :rd_kafka_event_opaque, [:pointer], :pointer
+    attach_function :rd_kafka_event_destroy, [:pointer], :void
 
     # Extracting data from topic results
 

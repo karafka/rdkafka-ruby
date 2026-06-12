@@ -5,30 +5,16 @@ module Rdkafka
     # Handle for delete topic operation
     class DeleteTopicHandle < AbstractHandle
       layout :pending, :bool,
-        :response, :int,
-        :error_string, :pointer,
-        :result_name, :pointer
+        :response, :int
 
       # @return [String] the name of the operation
       def operation_name
         "delete topic"
       end
 
-      # @return [Boolean] whether the delete topic was successful
+      # @return [DeleteTopicReport] report prepared by the background event callback
       def create_result
-        DeleteTopicReport.new(self[:error_string], self[:result_name])
-      end
-
-      # Raises an error if the operation failed
-      # @raise [RdkafkaError]
-      def raise_error
-        RdkafkaError.validate!(
-          self[:response],
-          broker_message: DeleteTopicReport.new(
-            self[:error_string],
-            self[:result_name]
-          ).error_string
-        )
+        prepared_result
       end
     end
   end

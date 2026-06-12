@@ -6,7 +6,10 @@ module Rdkafka
     class IncrementalAlterConfigsReport
       attr_reader :resources
 
-      # @param config_entries [FFI::Pointer] pointer to config entries array
+      # @param config_entries [FFI::Pointer] pointer to the event-owned config entries array.
+      #   It is only read here - the array is destroyed together with the result event by the
+      #   background event callback, so this report must be built while the event is alive and
+      #   must copy everything it needs into Ruby objects.
       # @param entry_count [Integer] number of config entries
       def initialize(config_entries:, entry_count:)
         @resources = []
@@ -32,10 +35,6 @@ module Rdkafka
 
             @resources << config_resource_result
           end
-      ensure
-        return if config_entries == FFI::Pointer::NULL
-
-        Bindings.rd_kafka_ConfigResource_destroy_array(config_entries, entry_count)
       end
 
       private

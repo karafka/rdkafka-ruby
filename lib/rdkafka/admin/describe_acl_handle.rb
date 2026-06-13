@@ -12,12 +12,6 @@ module Rdkafka
         "describe acl"
       end
 
-      # @return [DescribeAclReport] report prepared by the background event callback, with an
-      #   array of acls that matches the request filters.
-      def create_result
-        prepared_result
-      end
-
       # Raises an error if the operation failed
       # @raise [RdkafkaError]
       def raise_error

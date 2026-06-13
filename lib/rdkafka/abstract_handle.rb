@@ -129,8 +129,12 @@ module Rdkafka
     end
 
     # @return [Object] operation-specific result
+    #
+    # Defaults to the result prepared by the background event callback (see
+    # {#prepared_result}). Subclasses backed by a synchronous callback that writes the result
+    # into struct fields (e.g. {Producer::DeliveryHandle}) override this.
     def create_result
-      raise "Must be implemented by subclass!"
+      prepared_result
     end
 
     # Returns the operation result prepared by the background event callback, re-raising an

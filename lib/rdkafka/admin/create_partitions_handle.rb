@@ -9,11 +9,6 @@ module Rdkafka
       def operation_name
         "create partitions"
       end
-
-      # @return [CreatePartitionsReport] report prepared by the background event callback
-      def create_result
-        prepared_result
-      end
     end
   end
 end

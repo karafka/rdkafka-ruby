@@ -12,11 +12,6 @@ module Rdkafka
         "incremental alter configs"
       end
 
-      # @return [IncrementalAlterConfigsReport] report prepared by the background event callback
-      def create_result
-        prepared_result
-      end
-
       # Raises an error if the operation failed
       # @raise [RdkafkaError]
       def raise_error

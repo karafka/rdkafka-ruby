@@ -12,12 +12,6 @@ module Rdkafka
         "delete acl"
       end
 
-      # @return [DeleteAclReport] report prepared by the background event callback, with an
-      #   array of matching_acls
-      def create_result
-        prepared_result
-      end
-
       # Raises an error if the operation failed
       # @raise [RdkafkaError]
       def raise_error

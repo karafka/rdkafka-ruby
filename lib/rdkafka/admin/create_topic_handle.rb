@@ -11,11 +11,6 @@ module Rdkafka
       def operation_name
         "create topic"
       end
-
-      # @return [CreateTopicReport] report prepared by the background event callback
-      def create_result
-        prepared_result
-      end
     end
   end
 end

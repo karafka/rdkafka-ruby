@@ -12,13 +12,6 @@ module Rdkafka
         "create acl"
       end
 
-      # @return [CreateAclReport] report prepared by the background event callback, with
-      #   rdkafka_response value as 0 and rdkafka_response_string value as empty string if the
-      #   acl creation was successful
-      def create_result
-        prepared_result
-      end
-
       # Raises an error if the operation failed
       # @raise [RdkafkaError]
       def raise_error

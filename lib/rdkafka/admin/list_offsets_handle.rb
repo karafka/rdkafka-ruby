@@ -12,12 +12,6 @@ module Rdkafka
         "list offsets"
       end
 
-      # @return [ListOffsetsReport] report prepared by the background event callback, with
-      #   partition offset information.
-      def create_result
-        prepared_result
-      end
-
       # Raises an error if the operation failed
       # @raise [RdkafkaError]
       def raise_error

@@ -337,11 +337,12 @@ RSpec.describe Rdkafka::Admin do
         expect(resources_results.first.type).to eq(2)
         expect(resources_results.first.name).to eq(topic_name)
 
-        sleep(1)
-
-        ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
-          config.name == "delete.retention.ms"
-        end
+        ret_config = wait_for_config_value(
+          admin,
+          resources: resources_with_configs,
+          config_name: "delete.retention.ms",
+          expected: target_retention
+        )
 
         expect(ret_config.value).to eq(target_retention)
       end
@@ -370,11 +371,12 @@ RSpec.describe Rdkafka::Admin do
         expect(resources_results.first.type).to eq(2)
         expect(resources_results.first.name).to eq(topic_name)
 
-        sleep(1)
-
-        ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
-          config.name == "delete.retention.ms"
-        end
+        ret_config = wait_for_config_value(
+          admin,
+          resources: resources_with_configs,
+          config_name: "delete.retention.ms",
+          expected: "86400000"
+        )
 
         expect(ret_config.value).to eq("86400000")
       end
@@ -403,11 +405,12 @@ RSpec.describe Rdkafka::Admin do
         expect(resources_results.first.type).to eq(2)
         expect(resources_results.first.name).to eq(topic_name)
 
-        sleep(1)
-
-        ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
-          config.name == "cleanup.policy"
-        end
+        ret_config = wait_for_config_value(
+          admin,
+          resources: resources_with_configs,
+          config_name: "cleanup.policy",
+          expected: "delete,#{target_policy}"
+        )
 
         expect(ret_config.value).to eq("delete,#{target_policy}")
       end
@@ -436,11 +439,12 @@ RSpec.describe Rdkafka::Admin do
         expect(resources_results.first.type).to eq(2)
         expect(resources_results.first.name).to eq(topic_name)
 
-        sleep(1)
-
-        ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
-          config.name == "cleanup.policy"
-        end
+        ret_config = wait_for_config_value(
+          admin,
+          resources: resources_with_configs,
+          config_name: "cleanup.policy",
+          expected: ""
+        )
 
         expect(ret_config.value).to eq("")
       end

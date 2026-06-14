@@ -160,6 +160,30 @@ RSpec.describe Rdkafka::Admin do
     end
   end
 
+  describe "operation-level failure handling" do
+    # When the brokers are unreachable, librdkafka fails the whole admin operation and delivers
+    # a result event with the error set and an empty results array. The handle must resolve with
+    # the real error instead of the callback crashing and wait blocking until WaitTimeoutError.
+    let(:unreachable_admin) do
+      Rdkafka::Config.new(
+        "bootstrap.servers": "127.0.0.1:65010",
+        "socket.timeout.ms": 1_000
+      ).admin
+    end
+
+    after { unreachable_admin.close }
+
+    it "raises the real RdkafkaError from wait rather than WaitTimeoutError" do
+      handle = unreachable_admin.create_topic("op-error-topic", 1, 1)
+
+      expect do
+        handle.wait(max_wait_timeout_ms: 15_000)
+      end.to raise_error(Rdkafka::RdkafkaError) do |error|
+        expect(error).not_to be_a(Rdkafka::AbstractHandle::WaitTimeoutError)
+      end
+    end
+  end
+
   describe "background event memory management" do
     it "destroys the background event delivered for an admin operation result" do
       destroyed = Queue.new

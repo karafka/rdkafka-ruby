@@ -134,6 +134,36 @@ module Rdkafka
         :replicas, :pointer,
         :in_sync_replica_brokers, :int,
         :isrs, :pointer
+
+      # The base `#to_h` skips FFI pointer members, which would drop the replica and in-sync
+      # replica assignments entirely. We dereference those pointers here so the partition hash
+      # exposes the broker ids backing the partition (needed e.g. to plan replication changes).
+      #
+      # @return [Hash{Symbol => Integer, Array<Integer>}] partition metadata:
+      #   * +:partition_id+ (Integer) - partition id
+      #   * +:leader+ (Integer) - broker id of the partition leader
+      #   * +:replica_count+ (Integer) - number of assigned replicas
+      #   * +:in_sync_replica_brokers+ (Integer) - number of in-sync replicas
+      #   * +:replicas+ (Array<Integer>) - broker ids of the assigned replicas
+      #   * +:isrs+ (Array<Integer>) - broker ids of the in-sync replicas
+      def to_h
+        super.merge(
+          replicas: read_broker_ids(self[:replicas], self[:replica_count]),
+          isrs: read_broker_ids(self[:isrs], self[:in_sync_replica_brokers])
+        )
+      end
+
+      private
+
+      # Reads `count` broker ids (int32) from a replicas/isrs pointer.
+      # @param pointer [FFI::Pointer] pointer to the broker ids array
+      # @param count [Integer] number of broker ids to read
+      # @return [Array<Integer>] broker ids (empty when there are none)
+      def read_broker_ids(pointer, count)
+        return [] if count.zero? || pointer.null?
+
+        pointer.read_array_of_int32(count)
+      end
     end
   end
 end

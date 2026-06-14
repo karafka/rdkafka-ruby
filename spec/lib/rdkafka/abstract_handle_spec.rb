@@ -24,10 +24,8 @@ RSpec.describe Rdkafka::AbstractHandle do
       }.to raise_exception(RuntimeError, /Must be implemented by subclass!/)
     end
 
-    it "raises an exception if create_result is called" do
-      expect {
-        BadTestHandle.new.create_result
-      }.to raise_exception(RuntimeError, /Must be implemented by subclass!/)
+    it "returns the prepared result (nil when unset) from the default create_result" do
+      expect(BadTestHandle.new.create_result).to be_nil
     end
   end
 

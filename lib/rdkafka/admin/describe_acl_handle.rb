@@ -5,19 +5,11 @@ module Rdkafka
     # Handle for describe ACL operation
     class DescribeAclHandle < AbstractHandle
       layout :pending, :bool,
-        :response, :int,
-        :response_string, :pointer,
-        :acls, :pointer,
-        :acls_count, :int
+        :response, :int
 
       # @return [String] the name of the operation.
       def operation_name
         "describe acl"
-      end
-
-      # @return [DescribeAclReport] instance with an array of acls that matches the request filters.
-      def create_result
-        DescribeAclReport.new(acls: self[:acls], acls_count: self[:acls_count])
       end
 
       # Raises an error if the operation failed
@@ -25,7 +17,7 @@ module Rdkafka
       def raise_error
         raise RdkafkaError.new(
           self[:response],
-          broker_message: self[:response_string].read_string
+          broker_message: broker_message
         )
       end
     end

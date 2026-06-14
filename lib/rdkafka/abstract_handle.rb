@@ -36,6 +36,17 @@ module Rdkafka
       end
     end
 
+    # Operation result prepared by the background event callback. Background events are
+    # destroyed as soon as the callback returns, so anything the waiting thread needs has to be
+    # copied out of event-owned memory into Ruby objects and stored here before `#unlock` runs.
+    # When result parsing fails, holds the captured exception so it can be re-raised on the
+    # waiting thread.
+    attr_accessor :result
+
+    # Broker-provided error message copied out of event-owned memory by the background event
+    # callback, used by `#raise_error`
+    attr_accessor :broker_message
+
     def initialize
       @mutex = Thread::Mutex.new
       @resource = Thread::ConditionVariable.new
@@ -118,13 +129,28 @@ module Rdkafka
     end
 
     # @return [Object] operation-specific result
+    #
+    # Defaults to the result prepared by the background event callback (see
+    # {#prepared_result}). Subclasses backed by a synchronous callback that writes the result
+    # into struct fields (e.g. {Producer::DeliveryHandle}) override this.
     def create_result
-      raise "Must be implemented by subclass!"
+      prepared_result
+    end
+
+    # Returns the operation result prepared by the background event callback, re-raising an
+    # exception that was captured while the event memory was still readable
+    #
+    # @return [Object] operation-specific result
+    # @raise [RdkafkaError] when result parsing in the event callback failed
+    def prepared_result
+      raise(result) if result.is_a?(Exception)
+
+      result
     end
 
     # Allow subclasses to override
     def raise_error
-      RdkafkaError.validate!(self[:response])
+      RdkafkaError.validate!(self[:response], broker_message: broker_message)
     end
 
     # Error that is raised when waiting for the handle to complete

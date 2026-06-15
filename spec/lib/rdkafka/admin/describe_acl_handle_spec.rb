@@ -23,9 +23,11 @@ RSpec.describe Rdkafka::Admin::DescribeAclHandle do
     described_class.new.tap do |handle|
       handle[:pending] = pending_handle
       handle[:response] = response
-      handle[:response_string] = FFI::MemoryPointer.from_string("")
-      handle[:acls] = describe_acls_array_ptr
-      handle[:acls_count] = 1
+      handle.broker_message = ""
+      handle.result = Rdkafka::Admin::DescribeAclReport.new(
+        acls: describe_acls_array_ptr,
+        acls_count: 1
+      )
     end
   end
 

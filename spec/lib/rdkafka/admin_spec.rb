@@ -160,6 +160,37 @@ RSpec.describe Rdkafka::Admin do
     end
   end
 
+  describe "background event memory management" do
+    it "destroys the background event delivered for an admin operation result" do
+      destroyed = Queue.new
+
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_event_destroy).and_wrap_original do |original, event_ptr|
+        destroyed << event_ptr
+        original.call(event_ptr)
+      end
+
+      create_topic_handle = admin.create_topic(topic_name, topic_partition_count, topic_replication_factor)
+      create_topic_handle.wait(max_wait_timeout_ms: 15_000)
+
+      # The event is destroyed on the background thread right after the handle unlocks, so give
+      # it a moment to get there
+      Timeout.timeout(5) { destroyed.pop }
+    end
+
+    it "returns reports that remain valid after the event is destroyed, also on repeated waits" do
+      admin.create_topic(topic_name, 2, 1).wait(max_wait_timeout_ms: 15_000)
+
+      handle = admin.describe_configs([{ resource_type: 2, resource_name: topic_name }])
+
+      first_report = handle.wait(max_wait_timeout_ms: 15_000)
+      second_report = handle.wait(max_wait_timeout_ms: 15_000)
+
+      expect(first_report.resources.first.name).to eq(topic_name)
+      expect(second_report).to equal(first_report)
+      expect(second_report.resources.first.configs).not_to be_empty
+    end
+  end
+
   describe "describe_configs" do
     let(:resources_results) { admin.describe_configs(resources).wait.resources }
 

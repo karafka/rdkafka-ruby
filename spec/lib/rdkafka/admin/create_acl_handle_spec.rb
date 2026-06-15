@@ -10,7 +10,11 @@ RSpec.describe Rdkafka::Admin::CreateAclHandle do
       handle[:response] = response
       # If create acl was successful there is no error object and the error_string is set to ""
       # https://github.com/confluentinc/librdkafka/blob/1f9f245ac409f50f724695c628c7a0d54a763b9a/src/rdkafka_error.c#L178
-      handle[:response_string] = FFI::MemoryPointer.from_string("")
+      handle.result = Rdkafka::Admin::CreateAclReport.new(
+        rdkafka_response: response,
+        rdkafka_response_string: FFI::MemoryPointer.from_string("")
+      )
+      handle.broker_message = ""
     end
   end
 

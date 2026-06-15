@@ -19,14 +19,16 @@ module Rdkafka
           create_partitions_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
 
           if create_partitions_handle = Rdkafka::Admin::CreatePartitionsHandle.remove(create_partitions_handle_ptr.address)
-            create_partitions_handle[:response] = create_partitions_results[0].result_error
-            create_partitions_handle.result = Rdkafka::Admin::CreatePartitionsReport.new(
-              create_partitions_results[0].error_string,
-              create_partitions_results[0].result_name
-            )
-            create_partitions_handle.broker_message = create_partitions_handle.result.error_string
+            unless resolve_operation_error(event_ptr, create_partitions_handle)
+              create_partitions_handle[:response] = create_partitions_results[0].result_error
+              create_partitions_handle.result = Rdkafka::Admin::CreatePartitionsReport.new(
+                create_partitions_results[0].error_string,
+                create_partitions_results[0].result_name
+              )
+              create_partitions_handle.broker_message = create_partitions_handle.result.error_string
 
-            create_partitions_handle.unlock
+              create_partitions_handle.unlock
+            end
           end
         end
       end

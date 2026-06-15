@@ -19,19 +19,21 @@ module Rdkafka
           delete_acl_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
 
           if delete_acl_handle = Rdkafka::Admin::DeleteAclHandle.remove(delete_acl_handle_ptr.address)
-            delete_acl_handle[:response] = delete_acl_results[0].result_error
-            delete_acl_handle.broker_message = read_event_string(delete_acl_results[0].error_string)
+            unless resolve_operation_error(event_ptr, delete_acl_handle)
+              delete_acl_handle[:response] = delete_acl_results[0].result_error
+              delete_acl_handle.broker_message = read_event_string(delete_acl_results[0].error_string)
 
-            delete_acl_handle.result = if delete_acl_results[0].result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-              Rdkafka::Admin::DeleteAclReport.new(
-                matching_acls: delete_acl_results[0].matching_acls,
-                matching_acls_count: delete_acl_results[0].matching_acls_count
-              )
-            else
-              Rdkafka::Admin::DeleteAclReport.new(matching_acls: FFI::Pointer::NULL, matching_acls_count: 0)
+              delete_acl_handle.result = if delete_acl_results[0].result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+                Rdkafka::Admin::DeleteAclReport.new(
+                  matching_acls: delete_acl_results[0].matching_acls,
+                  matching_acls_count: delete_acl_results[0].matching_acls_count
+                )
+              else
+                Rdkafka::Admin::DeleteAclReport.new(matching_acls: FFI::Pointer::NULL, matching_acls_count: 0)
+              end
+
+              delete_acl_handle.unlock
             end
-
-            delete_acl_handle.unlock
           end
         end
       end

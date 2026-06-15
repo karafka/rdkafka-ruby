@@ -5,8 +5,10 @@ RSpec.describe Rdkafka::Admin::DeleteTopicHandle do
     described_class.new.tap do |handle|
       handle[:pending] = pending_handle
       handle[:response] = response
-      handle[:error_string] = FFI::Pointer::NULL
-      handle[:result_name] = FFI::MemoryPointer.from_string(topic_name)
+      handle.result = Rdkafka::Admin::DeleteTopicReport.new(
+        FFI::Pointer::NULL,
+        FFI::MemoryPointer.from_string(topic_name)
+      )
     end
   end
 

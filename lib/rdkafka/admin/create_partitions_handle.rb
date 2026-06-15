@@ -3,18 +3,16 @@ module Rdkafka
     # Handle for create partitions operation
     class CreatePartitionsHandle < AbstractHandle
       layout :pending, :bool,
-        :response, :int,
-        :error_string, :pointer,
-        :result_name, :pointer
+        :response, :int
 
       # @return [String] the name of the operation
       def operation_name
         "create partitions"
       end
 
-      # @return [Boolean] whether the create topic was successful
+      # @return [CreatePartitionsReport] report prepared by the background event callback
       def create_result
-        CreatePartitionsReport.new(self[:error_string], self[:result_name])
+        prepared_result
       end
 
       # Raises an error if the operation failed
@@ -22,7 +20,7 @@ module Rdkafka
       def raise_error
         raise RdkafkaError.new(
           self[:response],
-          broker_message: CreateTopicReport.new(self[:error_string], self[:result_name]).error_string
+          broker_message: broker_message
         )
       end
     end

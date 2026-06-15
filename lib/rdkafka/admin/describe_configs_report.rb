@@ -32,10 +32,6 @@ module Rdkafka
 
             @resources << config_resource_result
           end
-      ensure
-        return if config_entries == FFI::Pointer::NULL
-
-        Bindings.rd_kafka_ConfigResource_destroy_array(config_entries, entry_count)
       end
 
       private

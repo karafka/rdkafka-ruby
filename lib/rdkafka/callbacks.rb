@@ -201,6 +201,12 @@ module Rdkafka
       end
     end
 
+    # Dispatches librdkafka admin background events to the matching handler.
+    #
+    # The actual per-operation handling lives in the `Rdkafka::Callbacks::*Handler` classes
+    # (see `lib/rdkafka/callbacks/`); this class only maps the event type to its handler and
+    # guarantees the event is destroyed afterwards.
+    #
     # @private
     class BackgroundEventCallback
       # Handles background events from librdkafka
@@ -208,337 +214,26 @@ module Rdkafka
       # @param event_ptr [FFI::Pointer] pointer to the event
       # @param _opaque_ptr [FFI::Pointer] unused opaque pointer
       def self.call(_client_ptr, event_ptr, _opaque_ptr)
-        case Rdkafka::Bindings.rd_kafka_event_type(event_ptr)
-        when Rdkafka::Bindings::RD_KAFKA_EVENT_CREATETOPICS_RESULT
-          process_create_topic(event_ptr)
-        when Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBECONFIGS_RESULT
-          process_describe_configs(event_ptr)
-        when Rdkafka::Bindings::RD_KAFKA_EVENT_INCREMENTALALTERCONFIGS_RESULT
-          process_incremental_alter_configs(event_ptr)
-        when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETETOPICS_RESULT
-          process_delete_topic(event_ptr)
-        when Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATEPARTITIONS_RESULT
-          process_create_partitions(event_ptr)
-        when Rdkafka::Bindings::RD_KAFKA_EVENT_CREATEACLS_RESULT
-          process_create_acl(event_ptr)
-        when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETEACLS_RESULT
-          process_delete_acl(event_ptr)
-        when Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBEACLS_RESULT
-          process_describe_acl(event_ptr)
-        when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETEGROUPS_RESULT
-          process_delete_groups(event_ptr)
-        when Rdkafka::Bindings::RD_KAFKA_EVENT_LISTOFFSETS_RESULT
-          process_list_offsets(event_ptr)
+        handler = case Rdkafka::Bindings.rd_kafka_event_type(event_ptr)
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_CREATETOPICS_RESULT then CreateTopicHandler
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETETOPICS_RESULT then DeleteTopicHandler
+        when Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATEPARTITIONS_RESULT then CreatePartitionsHandler
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETEGROUPS_RESULT then DeleteGroupsHandler
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_CREATEACLS_RESULT then CreateAclHandler
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETEACLS_RESULT then DeleteAclHandler
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBEACLS_RESULT then DescribeAclHandler
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBECONFIGS_RESULT then DescribeConfigsHandler
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_INCREMENTALALTERCONFIGS_RESULT then IncrementalAlterConfigsHandler
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_LISTOFFSETS_RESULT then ListOffsetsHandler
         end
+
+        handler&.call(event_ptr)
       ensure
         # Background queue events are owned by the application and must be destroyed once
         # served (see rd_kafka_conf_set_background_event_cb). All event-owned memory (result
         # arrays, strings) has to be copied into Ruby objects by the handlers above before this
         # runs - nothing may retain pointers into the event past this point.
         Rdkafka::Bindings.rd_kafka_event_destroy(event_ptr)
-      end
-
-      private
-
-      # Copies an event-owned C string into a Ruby string
-      # @param ptr [FFI::Pointer] pointer to the C string
-      # @return [String, nil] copied string or nil when NULL
-      def self.read_event_string(ptr)
-        ptr.null? ? nil : ptr.read_string
-      end
-
-      # Resolves a handle directly from an operation-level event error and unlocks it.
-      #
-      # librdkafka signals a failure of the whole admin operation (e.g. `_TIMED_OUT` when the
-      # brokers are unreachable, or `_DESTROY` when the client is closed with the request in
-      # flight) by setting the event error and delivering an *empty* results array. The
-      # per-element result handlers must not index into that empty array; they call this first
-      # and skip results parsing when it returns true. Without this, indexing `results[0]` raises
-      # inside the FFI callback, the handle is never unlocked, and the caller's `wait` blocks
-      # until its own timeout and raises `WaitTimeoutError`, losing the real error code.
-      #
-      # @param event_ptr [FFI::Pointer] pointer to the event
-      # @param handle [Rdkafka::AbstractHandle] the handle to resolve
-      # @return [Boolean] true when the event carried an operation-level error and the handle was
-      #   resolved here
-      def self.resolve_operation_error(event_ptr, handle)
-        error_code = Rdkafka::Bindings.rd_kafka_event_error(event_ptr)
-
-        return false if error_code == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-
-        handle[:response] = error_code
-        handle.broker_message = read_event_string(Rdkafka::Bindings.rd_kafka_event_error_string(event_ptr))
-        handle.unlock
-
-        true
-      end
-
-      # Processes create topic result event
-      # @param event_ptr [FFI::Pointer] pointer to the event
-      def self.process_create_topic(event_ptr)
-        create_topics_result = Rdkafka::Bindings.rd_kafka_event_CreateTopics_result(event_ptr)
-
-        # Get the number of create topic results
-        pointer_to_size_t = FFI::MemoryPointer.new(:int32)
-        create_topic_result_array = Rdkafka::Bindings.rd_kafka_CreateTopics_result_topics(create_topics_result, pointer_to_size_t)
-        create_topic_results = TopicResult.create_topic_results_from_array(pointer_to_size_t.read_int, create_topic_result_array)
-        create_topic_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
-
-        if create_topic_handle = Rdkafka::Admin::CreateTopicHandle.remove(create_topic_handle_ptr.address)
-          unless resolve_operation_error(event_ptr, create_topic_handle)
-            create_topic_handle[:response] = create_topic_results[0].result_error
-            create_topic_handle.result = Rdkafka::Admin::CreateTopicReport.new(
-              create_topic_results[0].error_string,
-              create_topic_results[0].result_name
-            )
-            create_topic_handle.broker_message = create_topic_handle.result.error_string
-
-            create_topic_handle.unlock
-          end
-        end
-      end
-
-      # Processes describe configs result event
-      # @param event_ptr [FFI::Pointer] pointer to the event
-      def self.process_describe_configs(event_ptr)
-        describe_configs = DescribeConfigsResult.new(event_ptr)
-        describe_configs_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
-
-        if describe_configs_handle = Rdkafka::Admin::DescribeConfigsHandle.remove(describe_configs_handle_ptr.address)
-          describe_configs_handle[:response] = describe_configs.result_error
-          describe_configs_handle.broker_message = read_event_string(describe_configs.error_string)
-
-          # Parsing can raise on per-resource errors. The exception is captured and re-raised on
-          # the waiting thread, since an exception leaving this callback would unwind through
-          # librdkafka native frames
-          describe_configs_handle.result = begin
-            if describe_configs.result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-              Rdkafka::Admin::DescribeConfigsReport.new(
-                config_entries: describe_configs.results,
-                entry_count: describe_configs.results_count
-              )
-            else
-              Rdkafka::Admin::DescribeConfigsReport.new(config_entries: FFI::Pointer::NULL, entry_count: 0)
-            end
-          rescue => e
-            e
-          end
-
-          describe_configs_handle.unlock
-        end
-      end
-
-      # Processes incremental alter configs result event
-      # @param event_ptr [FFI::Pointer] pointer to the event
-      def self.process_incremental_alter_configs(event_ptr)
-        incremental_alter = IncrementalAlterConfigsResult.new(event_ptr)
-        incremental_alter_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
-
-        if incremental_alter_handle = Rdkafka::Admin::IncrementalAlterConfigsHandle.remove(incremental_alter_handle_ptr.address)
-          incremental_alter_handle[:response] = incremental_alter.result_error
-          incremental_alter_handle.broker_message = read_event_string(incremental_alter.error_string)
-
-          # Parsing can raise on per-resource errors. The exception is captured and re-raised on
-          # the waiting thread, since an exception leaving this callback would unwind through
-          # librdkafka native frames
-          incremental_alter_handle.result = begin
-            if incremental_alter.result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-              Rdkafka::Admin::IncrementalAlterConfigsReport.new(
-                config_entries: incremental_alter.results,
-                entry_count: incremental_alter.results_count
-              )
-            else
-              Rdkafka::Admin::IncrementalAlterConfigsReport.new(config_entries: FFI::Pointer::NULL, entry_count: 0)
-            end
-          rescue => e
-            e
-          end
-
-          incremental_alter_handle.unlock
-        end
-      end
-
-      # Processes delete groups result event
-      # @param event_ptr [FFI::Pointer] pointer to the event
-      def self.process_delete_groups(event_ptr)
-        delete_groups_result = Rdkafka::Bindings.rd_kafka_event_DeleteGroups_result(event_ptr)
-
-        # Get the number of delete group results
-        pointer_to_size_t = FFI::MemoryPointer.new(:size_t)
-        delete_group_result_array = Rdkafka::Bindings.rd_kafka_DeleteGroups_result_groups(delete_groups_result, pointer_to_size_t)
-        delete_group_results = GroupResult.create_group_results_from_array(pointer_to_size_t.read_int, delete_group_result_array) # TODO fix this
-        delete_group_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
-
-        if (delete_group_handle = Rdkafka::Admin::DeleteGroupsHandle.remove(delete_group_handle_ptr.address))
-          unless resolve_operation_error(event_ptr, delete_group_handle)
-            delete_group_handle[:response] = delete_group_results[0].result_error
-            delete_group_handle.result = Rdkafka::Admin::DeleteGroupsReport.new(
-              delete_group_results[0].error_string,
-              delete_group_results[0].result_name
-            )
-            delete_group_handle.broker_message = delete_group_handle.result.error_string
-
-            delete_group_handle.unlock
-          end
-        end
-      end
-
-      # Processes delete topic result event
-      # @param event_ptr [FFI::Pointer] pointer to the event
-      def self.process_delete_topic(event_ptr)
-        delete_topics_result = Rdkafka::Bindings.rd_kafka_event_DeleteTopics_result(event_ptr)
-
-        # Get the number of topic results
-        pointer_to_size_t = FFI::MemoryPointer.new(:int32)
-        delete_topic_result_array = Rdkafka::Bindings.rd_kafka_DeleteTopics_result_topics(delete_topics_result, pointer_to_size_t)
-        delete_topic_results = TopicResult.create_topic_results_from_array(pointer_to_size_t.read_int, delete_topic_result_array)
-        delete_topic_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
-
-        if delete_topic_handle = Rdkafka::Admin::DeleteTopicHandle.remove(delete_topic_handle_ptr.address)
-          unless resolve_operation_error(event_ptr, delete_topic_handle)
-            delete_topic_handle[:response] = delete_topic_results[0].result_error
-            delete_topic_handle.result = Rdkafka::Admin::DeleteTopicReport.new(
-              delete_topic_results[0].error_string,
-              delete_topic_results[0].result_name
-            )
-            delete_topic_handle.broker_message = delete_topic_handle.result.error_string
-
-            delete_topic_handle.unlock
-          end
-        end
-      end
-
-      # Processes create partitions result event
-      # @param event_ptr [FFI::Pointer] pointer to the event
-      def self.process_create_partitions(event_ptr)
-        create_partitionss_result = Rdkafka::Bindings.rd_kafka_event_CreatePartitions_result(event_ptr)
-
-        # Get the number of create topic results
-        pointer_to_size_t = FFI::MemoryPointer.new(:int32)
-        create_partitions_result_array = Rdkafka::Bindings.rd_kafka_CreatePartitions_result_topics(create_partitionss_result, pointer_to_size_t)
-        create_partitions_results = TopicResult.create_topic_results_from_array(pointer_to_size_t.read_int, create_partitions_result_array)
-        create_partitions_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
-
-        if create_partitions_handle = Rdkafka::Admin::CreatePartitionsHandle.remove(create_partitions_handle_ptr.address)
-          unless resolve_operation_error(event_ptr, create_partitions_handle)
-            create_partitions_handle[:response] = create_partitions_results[0].result_error
-            create_partitions_handle.result = Rdkafka::Admin::CreatePartitionsReport.new(
-              create_partitions_results[0].error_string,
-              create_partitions_results[0].result_name
-            )
-            create_partitions_handle.broker_message = create_partitions_handle.result.error_string
-
-            create_partitions_handle.unlock
-          end
-        end
-      end
-
-      # Processes create ACL result event
-      # @param event_ptr [FFI::Pointer] pointer to the event
-      def self.process_create_acl(event_ptr)
-        create_acls_result = Rdkafka::Bindings.rd_kafka_event_CreateAcls_result(event_ptr)
-
-        # Get the number of acl results
-        pointer_to_size_t = FFI::MemoryPointer.new(:int32)
-        create_acl_result_array = Rdkafka::Bindings.rd_kafka_CreateAcls_result_acls(create_acls_result, pointer_to_size_t)
-        create_acl_results = CreateAclResult.create_acl_results_from_array(pointer_to_size_t.read_int, create_acl_result_array)
-        create_acl_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
-
-        if create_acl_handle = Rdkafka::Admin::CreateAclHandle.remove(create_acl_handle_ptr.address)
-          unless resolve_operation_error(event_ptr, create_acl_handle)
-            create_acl_handle[:response] = create_acl_results[0].result_error
-            create_acl_handle.result = Rdkafka::Admin::CreateAclReport.new(
-              rdkafka_response: create_acl_results[0].result_error,
-              rdkafka_response_string: create_acl_results[0].error_string
-            )
-            create_acl_handle.broker_message = create_acl_handle.result.rdkafka_response_string
-
-            create_acl_handle.unlock
-          end
-        end
-      end
-
-      # Processes delete ACL result event
-      # @param event_ptr [FFI::Pointer] pointer to the event
-      def self.process_delete_acl(event_ptr)
-        delete_acls_result = Rdkafka::Bindings.rd_kafka_event_DeleteAcls_result(event_ptr)
-
-        # Get the number of acl results
-        pointer_to_size_t = FFI::MemoryPointer.new(:int32)
-        delete_acl_result_responses = Rdkafka::Bindings.rd_kafka_DeleteAcls_result_responses(delete_acls_result, pointer_to_size_t)
-        delete_acl_results = DeleteAclResult.delete_acl_results_from_array(pointer_to_size_t.read_int, delete_acl_result_responses)
-        delete_acl_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
-
-        if delete_acl_handle = Rdkafka::Admin::DeleteAclHandle.remove(delete_acl_handle_ptr.address)
-          unless resolve_operation_error(event_ptr, delete_acl_handle)
-            delete_acl_handle[:response] = delete_acl_results[0].result_error
-            delete_acl_handle.broker_message = read_event_string(delete_acl_results[0].error_string)
-
-            delete_acl_handle.result = if delete_acl_results[0].result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-              Rdkafka::Admin::DeleteAclReport.new(
-                matching_acls: delete_acl_results[0].matching_acls,
-                matching_acls_count: delete_acl_results[0].matching_acls_count
-              )
-            else
-              Rdkafka::Admin::DeleteAclReport.new(matching_acls: FFI::Pointer::NULL, matching_acls_count: 0)
-            end
-
-            delete_acl_handle.unlock
-          end
-        end
-      end
-
-      # Processes describe ACL result event
-      # @param event_ptr [FFI::Pointer] pointer to the event
-      def self.process_describe_acl(event_ptr)
-        describe_acl = DescribeAclResult.new(event_ptr)
-        describe_acl_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
-
-        if describe_acl_handle = Rdkafka::Admin::DescribeAclHandle.remove(describe_acl_handle_ptr.address)
-          describe_acl_handle[:response] = describe_acl.result_error
-          describe_acl_handle.broker_message = read_event_string(describe_acl.error_string)
-
-          describe_acl_handle.result = if describe_acl.result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-            Rdkafka::Admin::DescribeAclReport.new(
-              acls: describe_acl.matching_acls,
-              acls_count: describe_acl.matching_acls_count
-            )
-          else
-            Rdkafka::Admin::DescribeAclReport.new(acls: FFI::Pointer::NULL, acls_count: 0)
-          end
-
-          describe_acl_handle.unlock
-        end
-      end
-
-      # Processes list offsets result event
-      # @param event_ptr [FFI::Pointer] pointer to the event
-      def self.process_list_offsets(event_ptr)
-        list_offsets = ListOffsetsResult.new(event_ptr)
-        list_offsets_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
-
-        if list_offsets_handle = Rdkafka::Admin::ListOffsetsHandle.remove(list_offsets_handle_ptr.address)
-          list_offsets_handle[:response] = list_offsets.result_error
-          list_offsets_handle.broker_message = read_event_string(list_offsets.error_string)
-
-          # Parsing can raise on per-partition errors. The exception is captured and re-raised
-          # on the waiting thread, since an exception leaving this callback would unwind through
-          # librdkafka native frames
-          list_offsets_handle.result = begin
-            if list_offsets.result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-              Rdkafka::Admin::ListOffsetsReport.new(
-                result_infos: list_offsets.result_infos,
-                result_count: list_offsets.result_count
-              )
-            else
-              Rdkafka::Admin::ListOffsetsReport.new(result_infos: FFI::Pointer::NULL, result_count: 0)
-            end
-          rescue => e
-            e
-          end
-
-          list_offsets_handle.unlock
-        end
       end
     end
 

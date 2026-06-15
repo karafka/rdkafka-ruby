@@ -19,14 +19,16 @@ module Rdkafka
           create_acl_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
 
           if create_acl_handle = Rdkafka::Admin::CreateAclHandle.remove(create_acl_handle_ptr.address)
-            create_acl_handle[:response] = create_acl_results[0].result_error
-            create_acl_handle.result = Rdkafka::Admin::CreateAclReport.new(
-              rdkafka_response: create_acl_results[0].result_error,
-              rdkafka_response_string: create_acl_results[0].error_string
-            )
-            create_acl_handle.broker_message = create_acl_handle.result.rdkafka_response_string
+            unless resolve_operation_error(event_ptr, create_acl_handle)
+              create_acl_handle[:response] = create_acl_results[0].result_error
+              create_acl_handle.result = Rdkafka::Admin::CreateAclReport.new(
+                rdkafka_response: create_acl_results[0].result_error,
+                rdkafka_response_string: create_acl_results[0].error_string
+              )
+              create_acl_handle.broker_message = create_acl_handle.result.rdkafka_response_string
 
-            create_acl_handle.unlock
+              create_acl_handle.unlock
+            end
           end
         end
       end

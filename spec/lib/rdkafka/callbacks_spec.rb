@@ -62,6 +62,7 @@ RSpec.describe Rdkafka::Callbacks do
             topic_result_array_ptr
           end
         allow(Rdkafka::Bindings).to receive_messages(
+          rd_kafka_event_error: Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR,
           rd_kafka_topic_result_error: 0,
           rd_kafka_topic_result_error_string: error_string_ptr,
           rd_kafka_topic_result_name: result_name_ptr
@@ -90,6 +91,67 @@ RSpec.describe Rdkafka::Callbacks do
         report = handle.wait
 
         expect(report.result_name).to eq("example-topic")
+      end
+    end
+
+    context "when an operation fails at the operation level (empty results, event error set)" do
+      # librdkafka signals whole-operation failures (brokers unreachable, client destroyed mid
+      # request) by setting the event error and delivering an empty results array. The handler
+      # must resolve the handle from the event error and never index into the empty array.
+      let(:handle) { Rdkafka::Admin::CreateTopicHandle.new }
+      let(:create_topics_result_ptr) { FFI::MemoryPointer.new(:int) }
+      let(:empty_result_array_ptr) { FFI::MemoryPointer.new(:pointer) }
+      let(:event_error_string_ptr) { FFI::MemoryPointer.from_string("Local: Timed out") }
+      # RD_KAFKA_RESP_ERR__TIMED_OUT
+      let(:timed_out_code) { -185 }
+
+      before do
+        handle[:pending] = true
+        Rdkafka::Admin::CreateTopicHandle.register(handle)
+
+        allow(Rdkafka::Bindings)
+          .to receive(:rd_kafka_event_type)
+          .with(event_ptr)
+          .and_return(Rdkafka::Bindings::RD_KAFKA_EVENT_CREATETOPICS_RESULT)
+        allow(Rdkafka::Bindings)
+          .to receive(:rd_kafka_event_CreateTopics_result)
+          .with(event_ptr)
+          .and_return(create_topics_result_ptr)
+        # Empty results array - this is what makes results[0] nil
+        allow(Rdkafka::Bindings)
+          .to receive(:rd_kafka_CreateTopics_result_topics) do |_result_ptr, count_ptr|
+            count_ptr.write_int(0)
+            empty_result_array_ptr
+          end
+        allow(Rdkafka::Bindings).to receive_messages(
+          rd_kafka_event_error: timed_out_code,
+          rd_kafka_event_error_string: event_error_string_ptr,
+          # Spied so we can assert the empty results array is never indexed
+          rd_kafka_topic_result_error: 0
+        )
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_event_opaque).with(event_ptr).and_return(handle.to_ptr)
+      end
+
+      after { Rdkafka::Admin::CreateTopicHandle.remove(handle.to_ptr.address) }
+
+      it "resolves the handle from the event error without raising or touching the empty results" do
+        expect { described_class.call(nil, event_ptr, nil) }.not_to raise_error
+
+        expect(handle.pending?).to be false
+        expect(handle[:response]).to eq(timed_out_code)
+        expect(handle.broker_message).to eq("Local: Timed out")
+        # Must not have indexed into the empty results array
+        expect(Rdkafka::Bindings).not_to have_received(:rd_kafka_topic_result_error)
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_event_destroy).with(event_ptr)
+      end
+
+      it "makes wait raise the real error instead of WaitTimeoutError" do
+        described_class.call(nil, event_ptr, nil)
+
+        expect { handle.wait }.to raise_error(Rdkafka::RdkafkaError) do |error|
+          expect(error).not_to be_a(Rdkafka::AbstractHandle::WaitTimeoutError)
+          expect(error.code).to eq(:timed_out)
+        end
       end
     end
 
@@ -156,6 +218,7 @@ RSpec.describe Rdkafka::Callbacks do
           topic_result_array_ptr
         end
         allow(Rdkafka::Bindings).to receive_messages(
+          rd_kafka_event_error: Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR,
           rd_kafka_topic_result_error: 0,
           rd_kafka_topic_result_error_string: FFI::Pointer::NULL,
           rd_kafka_topic_result_name: result_name_ptr
@@ -196,6 +259,7 @@ RSpec.describe Rdkafka::Callbacks do
           topic_result_array_ptr
         end
         allow(Rdkafka::Bindings).to receive_messages(
+          rd_kafka_event_error: Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR,
           rd_kafka_topic_result_error: 0,
           rd_kafka_topic_result_error_string: FFI::Pointer::NULL,
           rd_kafka_topic_result_name: result_name_ptr
@@ -238,6 +302,7 @@ RSpec.describe Rdkafka::Callbacks do
           group_result_array_ptr
         end
         allow(Rdkafka::Bindings).to receive_messages(
+          rd_kafka_event_error: Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR,
           rd_kafka_group_result_error: null_native_error,
           rd_kafka_group_result_name: result_name_ptr
         )
@@ -278,6 +343,7 @@ RSpec.describe Rdkafka::Callbacks do
           acl_result_array_ptr
         end
         allow(Rdkafka::Bindings).to receive_messages(
+          rd_kafka_event_error: Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR,
           rd_kafka_acl_result_error: error_ptr,
           rd_kafka_error_code: Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR,
           rd_kafka_error_string: error_string_ptr
@@ -321,6 +387,7 @@ RSpec.describe Rdkafka::Callbacks do
           response_array_ptr
         end
         allow(Rdkafka::Bindings).to receive_messages(
+          rd_kafka_event_error: Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR,
           rd_kafka_DeleteAcls_result_response_error: error_ptr,
           rd_kafka_error_code: result_error,
           rd_kafka_error_string: error_string_ptr

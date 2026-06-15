@@ -203,6 +203,9 @@ RSpec.describe Rdkafka::Admin do
 
     it "returns reports that remain valid after the event is destroyed, also on repeated waits" do
       admin.create_topic(topic_name, 2, 1).wait(max_wait_timeout_ms: 15_000)
+      # Topic creation ack does not guarantee the topic is visible to a subsequent
+      # describe_configs metadata lookup yet, especially on slow CI runners
+      wait_for_topic(admin, topic_name)
 
       handle = admin.describe_configs([{ resource_type: 2, resource_name: topic_name }])
 

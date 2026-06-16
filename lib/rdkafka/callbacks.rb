@@ -257,21 +257,31 @@ module Rdkafka
           # `topic` Ruby attribute during produce, which spares a native string copy that
           # would otherwise be allocated and retained for every message.
 
-          # Call delivery callback on opaque
-          if opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
-            opaque.call_delivery_callback(
-              Rdkafka::Producer::DeliveryReport.new(
-                message[:partition],
-                message[:offset],
-                topic_name,
-                message[:err],
-                delivery_handle.label
-              ),
-              delivery_handle
-            )
+          begin
+            # Call delivery callback on opaque
+            if opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
+              opaque.call_delivery_callback(
+                Rdkafka::Producer::DeliveryReport.new(
+                  message[:partition],
+                  message[:offset],
+                  topic_name,
+                  message[:err],
+                  delivery_handle.label
+                ),
+                delivery_handle
+              )
+            end
+          rescue Exception => err
+            # A user delivery callback that raises must not escape this FFI callback: it runs on
+            # librdkafka's polling thread (abort_on_exception = true), so an escaping exception
+            # would crash the whole process. We log and swallow it, matching the rebalance
+            # callback. The `ensure` below still unlocks the handle, so `wait` returns the
+            # delivery report instead of blocking until its timeout and raising
+            # WaitTimeoutError for a message that was in fact delivered.
+            Rdkafka::Config.logger.error("Unhandled exception: #{err.class} - #{err.message}")
+          ensure
+            delivery_handle.unlock
           end
-
-          delivery_handle.unlock
         end
       end
     end

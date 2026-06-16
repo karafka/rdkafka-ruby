@@ -19,14 +19,16 @@ module Rdkafka
           delete_group_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
 
           if (delete_group_handle = Rdkafka::Admin::DeleteGroupsHandle.remove(delete_group_handle_ptr.address))
-            delete_group_handle[:response] = delete_group_results[0].result_error
-            delete_group_handle.result = Rdkafka::Admin::DeleteGroupsReport.new(
-              delete_group_results[0].error_string,
-              delete_group_results[0].result_name
-            )
-            delete_group_handle.broker_message = delete_group_handle.result.error_string
+            unless resolve_operation_error(event_ptr, delete_group_handle)
+              delete_group_handle[:response] = delete_group_results[0].result_error
+              delete_group_handle.result = Rdkafka::Admin::DeleteGroupsReport.new(
+                delete_group_results[0].error_string,
+                delete_group_results[0].result_name
+              )
+              delete_group_handle.broker_message = delete_group_handle.result.error_string
 
-            delete_group_handle.unlock
+              delete_group_handle.unlock
+            end
           end
         end
       end

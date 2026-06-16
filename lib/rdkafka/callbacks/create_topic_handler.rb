@@ -19,14 +19,16 @@ module Rdkafka
           create_topic_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
 
           if create_topic_handle = Rdkafka::Admin::CreateTopicHandle.remove(create_topic_handle_ptr.address)
-            create_topic_handle[:response] = create_topic_results[0].result_error
-            create_topic_handle.result = Rdkafka::Admin::CreateTopicReport.new(
-              create_topic_results[0].error_string,
-              create_topic_results[0].result_name
-            )
-            create_topic_handle.broker_message = create_topic_handle.result.error_string
+            unless resolve_operation_error(event_ptr, create_topic_handle)
+              create_topic_handle[:response] = create_topic_results[0].result_error
+              create_topic_handle.result = Rdkafka::Admin::CreateTopicReport.new(
+                create_topic_results[0].error_string,
+                create_topic_results[0].result_name
+              )
+              create_topic_handle.broker_message = create_topic_handle.result.error_string
 
-            create_topic_handle.unlock
+              create_topic_handle.unlock
+            end
           end
         end
       end

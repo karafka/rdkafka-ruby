@@ -30,6 +30,32 @@ module Rdkafka
         def read_event_string(ptr)
           ptr.null? ? nil : ptr.read_string
         end
+
+        # Resolves a handle directly from an operation-level event error and unlocks it.
+        #
+        # librdkafka signals a failure of the whole admin operation (e.g. `_TIMED_OUT` when the
+        # brokers are unreachable, or `_DESTROY` when the client is closed with the request in
+        # flight) by setting the event error and delivering an *empty* results array. The
+        # per-element result handlers must not index into that empty array; they call this first
+        # and skip results parsing when it returns true. Without this, indexing `results[0]`
+        # raises inside the FFI callback, the handle is never unlocked, and the caller's `wait`
+        # blocks until its own timeout and raises `WaitTimeoutError`, losing the real error code.
+        #
+        # @param event_ptr [FFI::Pointer] pointer to the event
+        # @param handle [Rdkafka::AbstractHandle] the handle to resolve
+        # @return [Boolean] true when the event carried an operation-level error and the handle
+        #   was resolved here
+        def resolve_operation_error(event_ptr, handle)
+          error_code = Rdkafka::Bindings.rd_kafka_event_error(event_ptr)
+
+          return false if error_code == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+
+          handle[:response] = error_code
+          handle.broker_message = read_event_string(Rdkafka::Bindings.rd_kafka_event_error_string(event_ptr))
+          handle.unlock
+
+          true
+        end
       end
     end
   end

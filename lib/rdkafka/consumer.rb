@@ -494,11 +494,13 @@ module Rdkafka
 
     # Returns the ClusterId as reported in broker metadata.
     #
-    # @return [String, nil]
-    def cluster_id
+    # @param timeout_ms [Integer] how long to block waiting for metadata when the cluster id is
+    #   not already cached (0 for a non-blocking call)
+    # @return [String, nil] the cluster id, or nil if it could not be retrieved in time
+    def cluster_id(timeout_ms = Defaults::CONSUMER_CLUSTER_ID_TIMEOUT_MS)
       closed_consumer_check(__method__)
       @native_kafka.with_inner do |inner|
-        Rdkafka::Bindings.rd_kafka_clusterid(inner)
+        read_and_free_native_string(inner, Rdkafka::Bindings.rd_kafka_clusterid(inner, timeout_ms))
       end
     end
 
@@ -510,7 +512,7 @@ module Rdkafka
     def member_id
       closed_consumer_check(__method__)
       @native_kafka.with_inner do |inner|
-        Rdkafka::Bindings.rd_kafka_memberid(inner)
+        read_and_free_native_string(inner, Rdkafka::Bindings.rd_kafka_memberid(inner))
       end
     end
 
@@ -993,6 +995,22 @@ module Rdkafka
     end
 
     private
+
+    # Copies a librdkafka-allocated C string into a Ruby string and frees the native buffer.
+    #
+    # `rd_kafka_memberid`/`rd_kafka_clusterid` return a string the caller owns and must release
+    # with `rd_kafka_mem_free`; without this the buffer leaks on every call.
+    #
+    # @param inner [FFI::Pointer] the native client handle (needed to free the buffer)
+    # @param ptr [FFI::Pointer] the librdkafka-allocated string, possibly NULL
+    # @return [String, nil] the copied string, or nil when the pointer was NULL
+    def read_and_free_native_string(inner, ptr)
+      return nil if ptr.null?
+
+      ptr.read_string
+    ensure
+      Rdkafka::Bindings.rd_kafka_mem_free(inner, ptr) unless ptr.null?
+    end
 
     # Checks if the consumer is closed and raises an error if so
     # @param method [Symbol] name of the calling method for error context

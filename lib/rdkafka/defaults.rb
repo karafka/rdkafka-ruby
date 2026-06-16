@@ -22,6 +22,10 @@ module Rdkafka
     # @see Consumer#offsets_for_times
     CONSUMER_OFFSETS_FOR_TIMES_TIMEOUT_MS = 1_000
 
+    # Consumer timeout for fetching the cluster id when it is not already cached from metadata
+    # @see Consumer#cluster_id
+    CONSUMER_CLUSTER_ID_TIMEOUT_MS = 1_000
+
     # Consumer timeout for poll operations (used in each iteration)
     # @see Consumer#each
     CONSUMER_POLL_TIMEOUT_MS = 250

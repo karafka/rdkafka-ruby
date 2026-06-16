@@ -304,6 +304,10 @@ RSpec.describe Rdkafka::Config do
 
       before do
         admin.create_topic(big_topic, 1_000, 1).wait(max_wait_timeout_ms: 15_000)
+        # `wait` only confirms the create request was accepted; leader election and metadata
+        # propagation for 1_000 partitions continue afterwards. Give the cluster a moment to
+        # settle so the partition metadata is visible to the consumers/producers below.
+        sleep(1)
       end
 
       after do
@@ -369,7 +373,9 @@ RSpec.describe Rdkafka::Config do
         unfiltered_stats = []
 
         poll_until = ->(consumer, target, &condition) {
-          (30 * 20).times do
+          # Up to ~60s: metadata for a freshly-created 1_000-partition topic can take a while to
+          # propagate into librdkafka's statistics on a loaded CI runner.
+          (60 * 20).times do
             break if condition.call(target)
             begin
               consumer.poll(50)
@@ -408,6 +414,15 @@ RSpec.describe Rdkafka::Config do
         unfiltered_stat = unfiltered_stats.reverse.find do |s|
           (s["topics"][big_topic] || {}).fetch("partitions", {}).size > 100
         end
+
+        # Guard the precondition explicitly: without it a missing snapshot makes
+        # JSON.generate(nil) return "null" and the assertion fails as the cryptic `expected: < 2`.
+        expect(unfiltered_stat).not_to(
+          be_nil,
+          "no statistics snapshot with >100 partitions arrived in time; the 1_000-partition " \
+          "topic metadata likely had not propagated yet"
+        )
+
         unfiltered_json = JSON.generate(unfiltered_stat)
 
         expect(filtered_json.bytesize).to be < (unfiltered_json.bytesize / 2)

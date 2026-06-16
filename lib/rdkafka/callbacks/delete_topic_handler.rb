@@ -19,14 +19,16 @@ module Rdkafka
           delete_topic_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)
 
           if delete_topic_handle = Rdkafka::Admin::DeleteTopicHandle.remove(delete_topic_handle_ptr.address)
-            delete_topic_handle[:response] = delete_topic_results[0].result_error
-            delete_topic_handle.result = Rdkafka::Admin::DeleteTopicReport.new(
-              delete_topic_results[0].error_string,
-              delete_topic_results[0].result_name
-            )
-            delete_topic_handle.broker_message = delete_topic_handle.result.error_string
+            unless resolve_operation_error(event_ptr, delete_topic_handle)
+              delete_topic_handle[:response] = delete_topic_results[0].result_error
+              delete_topic_handle.result = Rdkafka::Admin::DeleteTopicReport.new(
+                delete_topic_results[0].error_string,
+                delete_topic_results[0].result_name
+              )
+              delete_topic_handle.broker_message = delete_topic_handle.result.error_string
 
-            delete_topic_handle.unlock
+              delete_topic_handle.unlock
+            end
           end
         end
       end

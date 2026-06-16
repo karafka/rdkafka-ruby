@@ -41,6 +41,14 @@ RSpec.describe Rdkafka::Metadata do
         expect(metadata.topics[0][:partitions].length).to eq(25)
         expect(metadata.topics[0][:topic_name]).to eq(topic_name)
       end
+
+      it "#topics exposes the replica and in-sync replica broker ids per partition" do
+        metadata.topics[0][:partitions].each do |partition|
+          expect(partition[:replicas]).to eq([1])
+          expect(partition[:isrs]).to eq([1])
+          expect(partition[:replica_count]).to eq(1)
+        end
+      end
     end
   end
 

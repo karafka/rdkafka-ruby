@@ -280,5 +280,34 @@ RSpec.describe Rdkafka::Config do
         config.producer
       }.to raise_error(Rdkafka::Config::ClientCreationError, /ssl.ca.location failed(.*)/)
     end
+
+    it "destroys the native config when an invalid option aborts native_config" do
+      created_conf = nil
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_conf_new).and_wrap_original do |original, *args|
+        created_conf = original.call(*args)
+      end
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_conf_destroy).and_call_original
+
+      config = described_class.new("invalid.key" => "value")
+      expect { config.consumer }.to raise_error(Rdkafka::Config::ConfigError)
+
+      expect(Rdkafka::Bindings).to have_received(:rd_kafka_conf_destroy).with(created_conf)
+    end
+
+    it "destroys the native config when client creation fails" do
+      created_conf = nil
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_conf_new).and_wrap_original do |original, *args|
+        created_conf = original.call(*args)
+      end
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_conf_destroy).and_call_original
+
+      config = described_class.new(
+        "security.protocol" => "SSL",
+        "ssl.ca.location" => "/nonsense"
+      )
+      expect { config.consumer }.to raise_error(Rdkafka::Config::ClientCreationError)
+
+      expect(Rdkafka::Bindings).to have_received(:rd_kafka_conf_destroy).with(created_conf)
+    end
   end
 end

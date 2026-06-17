@@ -860,6 +860,24 @@ RSpec.describe Rdkafka::Consumer do
       wait_for_assignment(consumer)
       expect(consumer.cluster_id).not_to be_empty
     end
+
+    it "passes the timeout through and frees the native string (no leak)" do
+      native_string = FFI::MemoryPointer.from_string("test-cluster-id")
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_clusterid).and_return(native_string)
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_mem_free)
+
+      expect(consumer.cluster_id(1_234)).to eq("test-cluster-id")
+      expect(Rdkafka::Bindings).to have_received(:rd_kafka_clusterid).with(anything, 1_234)
+      expect(Rdkafka::Bindings).to have_received(:rd_kafka_mem_free).with(anything, native_string)
+    end
+
+    it "returns nil and frees nothing when librdkafka returns NULL" do
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_clusterid).and_return(FFI::Pointer::NULL)
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_mem_free)
+
+      expect(consumer.cluster_id).to be_nil
+      expect(Rdkafka::Bindings).not_to have_received(:rd_kafka_mem_free)
+    end
   end
 
   describe "#member_id" do
@@ -867,6 +885,23 @@ RSpec.describe Rdkafka::Consumer do
       consumer.subscribe(topic)
       wait_for_assignment(consumer)
       expect(consumer.member_id).to start_with("rdkafka-")
+    end
+
+    it "frees the native string (no leak)" do
+      native_string = FFI::MemoryPointer.from_string("rdkafka-member-id")
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_memberid).and_return(native_string)
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_mem_free)
+
+      expect(consumer.member_id).to eq("rdkafka-member-id")
+      expect(Rdkafka::Bindings).to have_received(:rd_kafka_mem_free).with(anything, native_string)
+    end
+
+    it "returns nil and frees nothing when librdkafka returns NULL" do
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_memberid).and_return(FFI::Pointer::NULL)
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_mem_free)
+
+      expect(consumer.member_id).to be_nil
+      expect(Rdkafka::Bindings).not_to have_received(:rd_kafka_mem_free)
     end
   end
 

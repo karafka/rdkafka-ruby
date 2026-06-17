@@ -23,12 +23,41 @@ module Rdkafka
     # @param timeout_ms [Integer] timeout in milliseconds
     # @raise [RdkafkaError] when metadata fetch fails
     def initialize(native_client, topic_name = nil, timeout_ms = Defaults::METADATA_TIMEOUT_MS)
-      attempt ||= 0
-      attempt += 1
+      attempt = 0
 
-      native_topic = if topic_name
-        Rdkafka::Bindings.rd_kafka_topic_new(native_client, topic_name, nil)
+      begin
+        attempt += 1
+        fetch_metadata(native_client, topic_name, timeout_ms)
+      rescue ::Rdkafka::RdkafkaError => e
+        raise unless RETRIED_ERRORS.include?(e.code)
+        raise if attempt > Defaults::METADATA_MAX_RETRIES
+
+        backoff_factor = 2**attempt
+        timeout_ms = backoff_factor * Defaults::METADATA_RETRY_BACKOFF_BASE_MS
+
+        sleep(timeout_ms / 1_000.0)
+
+        retry
       end
+    end
+
+    private
+
+    # Performs a single metadata fetch attempt and frees its native resources before returning.
+    #
+    # This is intentionally separate from the retry loop in {#initialize}: `retry` restarts the
+    # `begin` block without running its `ensure`, so cleaning up here (rather than in an `ensure`
+    # around the loop) guarantees every attempt destroys its own native topic handle and metadata
+    # struct instead of leaking all but the last one.
+    #
+    # @param native_client [FFI::Pointer] pointer to the native Kafka client
+    # @param topic_name [String, nil] specific topic to fetch metadata for, or nil for all topics
+    # @param timeout_ms [Integer] timeout in milliseconds
+    def fetch_metadata(native_client, topic_name, timeout_ms)
+      native_topic = nil
+      metadata_ptr = nil
+
+      native_topic = Rdkafka::Bindings.rd_kafka_topic_new(native_client, topic_name, nil) if topic_name
 
       ptr = FFI::MemoryPointer.new(:pointer)
 
@@ -41,23 +70,15 @@ module Rdkafka
 
       Rdkafka::RdkafkaError.validate!(result)
 
-      metadata_from_native(ptr.read_pointer)
-    rescue ::Rdkafka::RdkafkaError => e
-      raise unless RETRIED_ERRORS.include?(e.code)
-      raise if attempt > Defaults::METADATA_MAX_RETRIES
+      # rd_kafka_metadata only allocates the struct on success, so we read the pointer to destroy
+      # only after validate! has confirmed the call succeeded.
+      metadata_ptr = ptr.read_pointer
 
-      backoff_factor = 2**attempt
-      timeout_ms = backoff_factor * Defaults::METADATA_RETRY_BACKOFF_BASE_MS
-
-      sleep(timeout_ms / 1_000.0)
-
-      retry
+      metadata_from_native(metadata_ptr)
     ensure
-      Rdkafka::Bindings.rd_kafka_topic_destroy(native_topic) if topic_name
-      Rdkafka::Bindings.rd_kafka_metadata_destroy(ptr.read_pointer)
+      Rdkafka::Bindings.rd_kafka_topic_destroy(native_topic) if native_topic
+      Rdkafka::Bindings.rd_kafka_metadata_destroy(metadata_ptr) if metadata_ptr && !metadata_ptr.null?
     end
-
-    private
 
     # Extracts metadata from native pointer
     # @param ptr [FFI::Pointer] pointer to native metadata

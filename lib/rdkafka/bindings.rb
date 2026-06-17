@@ -497,7 +497,10 @@ module Rdkafka
 
     # Stats
 
-    attach_function :rd_kafka_query_watermark_offsets, [:pointer, :string, :int, :pointer, :pointer, :int], :int
+    # Synchronous broker round-trip: mark blocking so FFI releases the GVL while it waits, instead
+    # of freezing every Ruby thread (including producer polling threads) for up to timeout_ms. This
+    # matches the neighboring rd_kafka_offsets_for_times binding.
+    attach_function :rd_kafka_query_watermark_offsets, [:pointer, :string, :int, :pointer, :pointer, :int], :int, blocking: true
 
     # Producer
     RD_KAFKA_VTYPE_END = 0

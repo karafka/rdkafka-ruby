@@ -193,20 +193,30 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
         expect(second_result).to eq(higher_partition_count)
       end
 
-      it "preserves higher cached value when new value is lower" do
-        # First update to higher value (convert ms to seconds)
+      it "adopts a lower value once the cached entry has expired (topic recreated smaller)" do
+        # First update to a higher value
         sleep(default_ttl_ms / 1000.0 + 0.1)
         cache.get(topic) { higher_partition_count }
 
-        # Then try to update to lower value (convert ms to seconds)
+        # After the TTL expires, an authoritative refresh returns a lower count and it is adopted
         sleep(default_ttl_ms / 1000.0 + 0.1)
         result = cache.get(topic) { lower_partition_count }
 
-        expect(result).to eq(higher_partition_count)
+        expect(result).to eq(lower_partition_count)
 
-        # and subsequent gets should return the previously cached higher value
+        # and subsequent gets within the TTL return the adopted lower value
         second_result = cache.get(topic) { fail "Should not be called" }
-        expect(second_result).to eq(higher_partition_count)
+        expect(second_result).to eq(lower_partition_count)
+      end
+
+      it "keeps the higher value while the cached entry is still fresh" do
+        sleep(default_ttl_ms / 1000.0 + 0.1)
+        cache.get(topic) { higher_partition_count }
+
+        # Within the TTL window get returns the cached value without invoking the block at all,
+        # so a transient/racy lower read cannot displace the higher count.
+        result = cache.get(topic) { fail "Should not be called" }
+        expect(result).to eq(higher_partition_count)
       end
 
       it "handles multiple topics independently" do
@@ -261,6 +271,15 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
 
         result = cache.get(topic) { fail "Should not be called" }
         expect(result).to eq(partition_count)
+      end
+
+      it "adopts a lower value once the entry has expired" do
+        # Within the TTL the lower value is ignored (above); once expired it is authoritative.
+        sleep(default_ttl_ms / 1000.0 + 0.1)
+        cache.set(topic, lower_partition_count)
+
+        result = cache.get(topic) { fail "Should not be called" }
+        expect(result).to eq(lower_partition_count)
       end
 
       it "updates the timestamp even when keeping original value" do

@@ -496,6 +496,33 @@ RSpec.describe Rdkafka::Admin do
         expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /invalid_config/)
       end
     end
+
+    context "when a config entry is rejected locally (invalid op_type)" do
+      let(:resources_with_configs) do
+        [
+          {
+            resource_type: 2,
+            resource_name: topic_name,
+            configs: [
+              {
+                name: "delete.retention.ms",
+                value: "1000",
+                op_type: 99
+              }
+            ]
+          }
+        ]
+      end
+
+      it "raises instead of silently dropping the entry and reporting success" do
+        # rd_kafka_ConfigResource_add_incremental_config rejects the invalid op_type before the
+        # request is sent, so this raises from the call itself (no #wait needed). Previously the
+        # entry was silently dropped and the alter request reported success.
+        expect do
+          admin.incremental_alter_configs(resources_with_configs)
+        end.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
+      end
+    end
   end
 
   describe "#list_offsets" do

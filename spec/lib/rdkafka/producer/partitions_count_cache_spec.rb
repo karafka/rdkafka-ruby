@@ -373,15 +373,15 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
       result4 = cache.get(topic) { fail "Should not be called" }
       expect(result4).to eq(higher_partition_count)
 
-      # 5. TTL expires, new value provided is lower (convert ms to seconds)
+      # 5. TTL expires, the authoritative value provided is now lower; it is adopted
       sleep(default_ttl_ms / 1000.0 + 0.1)
       result5 = cache.get(topic) { lower_partition_count }
-      # This returns the highest value
-      expect(result5).to eq(higher_partition_count)
+      # After expiry a lower fresh value wins (e.g. the topic was recreated smaller)
+      expect(result5).to eq(lower_partition_count)
 
-      # 6. But subsequent get should return the higher cached value
+      # 6. Subsequent get within the TTL returns the adopted lower value
       result6 = cache.get(topic) { fail "Should not be called" }
-      expect(result6).to eq(higher_partition_count)
+      expect(result6).to eq(lower_partition_count)
 
       # 7. Set new highest value directly
       even_higher = higher_partition_count + 5

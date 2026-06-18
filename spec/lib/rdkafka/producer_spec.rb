@@ -770,10 +770,14 @@ RSpec.describe Rdkafka::Producer do
     end
 
     context "when the topic does not exist" do
-      let(:missing_topic) { TestTopics.non_existing }
+      let(:missing_topic) { "missing-topic-for-negative-cache" }
 
       before do
         ::Rdkafka::Producer.partitions_count_cache = Rdkafka::Producer::PartitionsCountCache.new
+        # Force the metadata lookup to report the topic as missing regardless of broker
+        # auto-create behavior, so we exercise the unknown_topic_or_part path deterministically
+        # (code 3 == unknown_topic_or_part).
+        allow(::Rdkafka::Metadata).to receive(:new).and_raise(Rdkafka::RdkafkaError.new(3))
       end
 
       it "returns RD_KAFKA_PARTITION_UA" do
@@ -782,10 +786,10 @@ RSpec.describe Rdkafka::Producer do
 
       it "caches the negative result so a missing topic is not re-queried on every call" do
         producer.partition_count(missing_topic)
-        allow(::Rdkafka::Metadata).to receive(:new).and_call_original
-
         producer.partition_count(missing_topic)
-        expect(::Rdkafka::Metadata).not_to have_received(:new)
+
+        # With the negative result cached, the metadata lookup runs only once.
+        expect(::Rdkafka::Metadata).to have_received(:new).once
       end
     end
   end

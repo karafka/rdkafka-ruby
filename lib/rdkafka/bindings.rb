@@ -496,6 +496,7 @@ module Rdkafka
     end
 
     # Stats
+
     attach_function :rd_kafka_query_watermark_offsets, [:pointer, :string, :int, :pointer, :pointer, :int], :int, blocking: true
 
     # Producer

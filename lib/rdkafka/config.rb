@@ -342,47 +342,55 @@ module Rdkafka
     # @param opaque [Object, nil] optional opaque pointer for callbacks
     # @return [FFI::Pointer] native rdkafka configuration pointer
     def native_config(opaque = nil)
-      Rdkafka::Bindings.rd_kafka_conf_new.tap do |config|
-        # Create config
-        @config_hash.merge(REQUIRED_CONFIG).each do |key, value|
-          error_buffer = FFI::MemoryPointer.from_string(" " * 256)
-          result = Rdkafka::Bindings.rd_kafka_conf_set(
-            config,
-            key.to_s,
-            value.to_s,
-            error_buffer,
-            256
-          )
-          unless result == :config_ok
-            raise ConfigError.new(error_buffer.read_string)
-          end
-        end
+      config = Rdkafka::Bindings.rd_kafka_conf_new
 
-        # Set opaque pointer that's used as a proxy for callbacks
-        if opaque
-          pointer = ::FFI::Pointer.new(:pointer, opaque.object_id)
-          Rdkafka::Bindings.rd_kafka_conf_set_opaque(config, pointer)
-
-          # Store opaque with the pointer as key. We use this approach instead
-          # of trying to convert the pointer to a Ruby object because there is
-          # no risk of a segfault this way.
-          Rdkafka::Config.opaques[pointer.to_i] = opaque
-        end
-
-        # Set log callback
-        Rdkafka::Bindings.rd_kafka_conf_set_log_cb(config, Rdkafka::Bindings::LogCallback)
-
-        # Set stats callback
-        Rdkafka::Bindings.rd_kafka_conf_set_stats_cb(config, Rdkafka::Bindings::StatsCallback)
-
-        # Set error callback
-        Rdkafka::Bindings.rd_kafka_conf_set_error_cb(config, Rdkafka::Bindings::ErrorCallback)
-
-        # Set oauth callback
-        if Rdkafka::Config.oauthbearer_token_refresh_callback
-          Rdkafka::Bindings.rd_kafka_conf_set_oauthbearer_token_refresh_cb(config, Rdkafka::Bindings::OAuthbearerTokenRefreshCallback)
+      # Create config
+      @config_hash.merge(REQUIRED_CONFIG).each do |key, value|
+        error_buffer = FFI::MemoryPointer.from_string(" " * 256)
+        result = Rdkafka::Bindings.rd_kafka_conf_set(
+          config,
+          key.to_s,
+          value.to_s,
+          error_buffer,
+          256
+        )
+        unless result == :config_ok
+          raise ConfigError.new(error_buffer.read_string)
         end
       end
+
+      # Set opaque pointer that's used as a proxy for callbacks
+      if opaque
+        pointer = ::FFI::Pointer.new(:pointer, opaque.object_id)
+        Rdkafka::Bindings.rd_kafka_conf_set_opaque(config, pointer)
+
+        # Store opaque with the pointer as key. We use this approach instead
+        # of trying to convert the pointer to a Ruby object because there is
+        # no risk of a segfault this way.
+        Rdkafka::Config.opaques[pointer.to_i] = opaque
+      end
+
+      # Set log callback
+      Rdkafka::Bindings.rd_kafka_conf_set_log_cb(config, Rdkafka::Bindings::LogCallback)
+
+      # Set stats callback
+      Rdkafka::Bindings.rd_kafka_conf_set_stats_cb(config, Rdkafka::Bindings::StatsCallback)
+
+      # Set error callback
+      Rdkafka::Bindings.rd_kafka_conf_set_error_cb(config, Rdkafka::Bindings::ErrorCallback)
+
+      # Set oauth callback
+      if Rdkafka::Config.oauthbearer_token_refresh_callback
+        Rdkafka::Bindings.rd_kafka_conf_set_oauthbearer_token_refresh_cb(config, Rdkafka::Bindings::OAuthbearerTokenRefreshCallback)
+      end
+
+      config
+    rescue Exception
+      # rd_kafka_conf_new allocates a conf the caller owns until it is handed to rd_kafka_new. If
+      # we raise before returning it (e.g. an invalid option in the loop above), destroy it here
+      # so the native config is not leaked.
+      Rdkafka::Bindings.rd_kafka_conf_destroy(config) if config
+      raise
     end
 
     # Creates a native Kafka handle
@@ -400,6 +408,10 @@ module Rdkafka
       )
 
       if handle.null?
+        # On success rd_kafka_new takes ownership of the conf and frees it itself; on failure
+        # librdkafka keeps application ownership (see rdkafka.c), so we must destroy it here to
+        # avoid leaking the conf on every failed client creation.
+        Rdkafka::Bindings.rd_kafka_conf_destroy(config)
         raise ClientCreationError.new(error_buffer.read_string)
       end
 

@@ -828,7 +828,8 @@ module Rdkafka
       IncrementalAlterConfigsHandle.register(handle)
       Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
 
-      # Tu poprawnie tworzyc
+      add_error = nil
+
       pointer_array = resources_with_configs.map do |resource_details|
         # First build the appropriate resource representation
         resource_ptr = Rdkafka::Bindings.rd_kafka_ConfigResource_new(
@@ -839,12 +840,24 @@ module Rdkafka
         )
 
         resource_details.fetch(:configs).each do |config|
-          Bindings.rd_kafka_ConfigResource_add_incremental_config(
+          # rd_kafka_ConfigResource_add_incremental_config returns a non-NULL rd_kafka_error_t for
+          # an invalid op_type, an empty/nil name, or a nil value on a non-delete op. The result
+          # used to be ignored: the entry was silently dropped, the alter request still reported
+          # success, and the error object leaked. Capture the first error (build_from_c also
+          # destroys the native error object) and raise it below, before the request is sent.
+          error_ptr = Bindings.rd_kafka_ConfigResource_add_incremental_config(
             resource_ptr,
             config.fetch(:name),
             config.fetch(:op_type),
             config.fetch(:value)
           )
+
+          error = Rdkafka::RdkafkaError.build_from_c(
+            error_ptr,
+            "rd_kafka_ConfigResource_add_incremental_config"
+          )
+
+          add_error ||= error if error
         end
 
         resource_ptr
@@ -854,6 +867,10 @@ module Rdkafka
       configs_array_ptr.write_array_of_pointer(pointer_array)
 
       begin
+        # Raise only after the full array is built so the ensure below frees every ConfigResource
+        # we created, and before the request is sent so a rejected entry can't report success.
+        raise add_error if add_error
+
         @native_kafka.with_inner do |inner|
           Rdkafka::Bindings.rd_kafka_IncrementalAlterConfigs(
             inner,

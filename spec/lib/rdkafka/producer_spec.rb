@@ -768,6 +768,26 @@ RSpec.describe Rdkafka::Producer do
         expect(::Rdkafka::Metadata).not_to have_received(:new)
       end
     end
+
+    context "when the topic does not exist" do
+      let(:missing_topic) { TestTopics.non_existing }
+
+      before do
+        ::Rdkafka::Producer.partitions_count_cache = Rdkafka::Producer::PartitionsCountCache.new
+      end
+
+      it "returns RD_KAFKA_PARTITION_UA" do
+        expect(producer.partition_count(missing_topic)).to eq(Rdkafka::Bindings::RD_KAFKA_PARTITION_UA)
+      end
+
+      it "caches the negative result so a missing topic is not re-queried on every call" do
+        producer.partition_count(missing_topic)
+        allow(::Rdkafka::Metadata).to receive(:new).and_call_original
+
+        producer.partition_count(missing_topic)
+        expect(::Rdkafka::Metadata).not_to have_received(:new)
+      end
+    end
   end
 
   describe "metadata fetch request recovery" do

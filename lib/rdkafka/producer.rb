@@ -388,9 +388,11 @@ module Rdkafka
     # @note We cache the partition count for a given topic for given time. If statistics are
     #   enabled for any producer or consumer, it will take precedence over per instance fetching.
     #
-    #   This prevents us in case someone uses `partition_key` from querying for the count with
-    #   each message. Instead we query at most once every 30 seconds at most if we have a valid
-    #   partition count or every 5 seconds in case we were not able to obtain number of partitions.
+    #   This prevents us, in case someone uses `partition_key`, from querying for the count with
+    #   each message. A missing topic (`unknown_topic_or_part`) is cached as
+    #   `RD_KAFKA_PARTITION_UA` too, so producing to a not-yet-created topic does not run a
+    #   blocking metadata query on every message; the cache TTL still bounds how long that result
+    #   is reused before we look again.
     def partition_count(topic)
       closed_producer_check(__method__)
 
@@ -402,14 +404,15 @@ module Rdkafka
         end
 
         topic_metadata ? topic_metadata[:partition_count] : Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
-      end
-    rescue Rdkafka::RdkafkaError => e
-      # If the topic does not exist, it will be created or if not allowed another error will be
-      # raised. We here return RD_KAFKA_PARTITION_UA so this can happen without early error
-      # happening on metadata discovery.
-      return Rdkafka::Bindings::RD_KAFKA_PARTITION_UA if e.code == :unknown_topic_or_part
+      rescue Rdkafka::RdkafkaError => e
+        # A missing topic is an expected, cacheable outcome (the topic may be auto-created on
+        # produce, or simply not exist yet). Returning RD_KAFKA_PARTITION_UA from inside the block
+        # caches it, so we don't re-run a blocking metadata query on every produce(partition_key:)
+        # to that topic. Anything else is a real error and is re-raised.
+        raise(e) unless e.code == :unknown_topic_or_part
 
-      raise(e)
+        Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
+      end
     end
 
     # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.

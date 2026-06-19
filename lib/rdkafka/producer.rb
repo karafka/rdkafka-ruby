@@ -511,24 +511,39 @@ module Rdkafka
       delivery_handle[:offset] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
       DeliveryHandle.register(delivery_handle)
 
-      args = [
-        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_RKT, :pointer, topic_ref,
-        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_MSGFLAGS, :int, Rdkafka::Bindings::RD_KAFKA_MSG_F_COPY,
-        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_VALUE, :buffer_in, payload, :size_t, payload_size,
-        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_KEY, :buffer_in, key, :size_t, key_size,
-        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_PARTITION, :int32, partition,
-        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_TIMESTAMP, :int64, raw_timestamp,
-        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_OPAQUE, :pointer, delivery_handle
-      ]
+      # Everything between registration and the successful return must remove the handle from the
+      # process-global registry if it raises. Otherwise a failure after registration (a concurrent
+      # close making `with_inner` raise `ClosedInnerError`, or a header value whose `#to_s` raises)
+      # would orphan the handle in the registry forever, since nothing else will ever resolve it.
+      begin
+        args = [
+          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_RKT, :pointer, topic_ref,
+          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_MSGFLAGS, :int, Rdkafka::Bindings::RD_KAFKA_MSG_F_COPY,
+          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_VALUE, :buffer_in, payload, :size_t, payload_size,
+          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_KEY, :buffer_in, key, :size_t, key_size,
+          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_PARTITION, :int32, partition,
+          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_TIMESTAMP, :int64, raw_timestamp,
+          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_OPAQUE, :pointer, delivery_handle
+        ]
 
-      if headers && !headers.empty?
-        headers.each do |key0, value0|
-          key = key0.to_s
-          case value0
-          when Array
-            # Handle array of values per KIP-82
-            value0.each do |v|
-              value = v.to_s
+        if headers && !headers.empty?
+          headers.each do |key0, value0|
+            key = key0.to_s
+            case value0
+            when Array
+              # Handle array of values per KIP-82
+              value0.each do |v|
+                value = v.to_s
+                args.push(
+                  :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER,
+                  :string, key,
+                  :pointer, value,
+                  :size_t, value.bytesize
+                )
+              end
+            else
+              # Handle single value
+              value = value0.to_s
               args.push(
                 :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER,
                 :string, key,
@@ -536,36 +551,31 @@ module Rdkafka
                 :size_t, value.bytesize
               )
             end
-          else
-            # Handle single value
-            value = value0.to_s
-            args.push(
-              :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER,
-              :string, key,
-              :pointer, value,
-              :size_t, value.bytesize
-            )
           end
         end
-      end
 
-      args.push(:int, Rdkafka::Bindings::RD_KAFKA_VTYPE_END)
+        args.push(:int, Rdkafka::Bindings::RD_KAFKA_VTYPE_END)
 
-      # Produce the message
-      response = @native_kafka.with_inner do |inner|
-        Rdkafka::Bindings.rd_kafka_producev(
-          inner,
-          *args
-        )
-      end
+        # Produce the message
+        response = @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_producev(
+            inner,
+            *args
+          )
+        end
 
-      # Raise error if the produce call was not successful
-      if response != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+        # Raise error if the produce call was not successful. On a successful enqueue the handle
+        # stays registered on purpose: the delivery callback resolves and removes it once librdkafka
+        # reports the delivery.
+        if response != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+          @native_kafka.with_inner do |inner|
+            Rdkafka::RdkafkaError.validate!(response, client_ptr: inner)
+          end
+        end
+      rescue Exception
         DeliveryHandle.remove(delivery_handle.to_ptr.address)
 
-        @native_kafka.with_inner do |inner|
-          Rdkafka::RdkafkaError.validate!(response, client_ptr: inner)
-        end
+        raise
       end
 
       delivery_handle

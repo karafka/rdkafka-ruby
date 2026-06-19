@@ -66,6 +66,7 @@ Lint/RescueException:
     - lib/rdkafka/bindings.rb
     - lib/rdkafka/callbacks.rb
     - lib/rdkafka/config.rb
+    - lib/rdkafka/producer.rb
 
 # Security
 Security/Open:

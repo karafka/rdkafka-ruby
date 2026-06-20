@@ -449,6 +449,45 @@ RSpec.describe Rdkafka::Consumer do
     end
   end
 
+  describe ".finalizer" do
+    let(:native_kafka) { instance_double(Rdkafka::NativeKafka) }
+    let(:inner) { double("inner native handle") }
+
+    before do
+      allow(native_kafka).to receive(:closed?).and_return(false)
+      allow(native_kafka).to receive(:synchronize).and_yield(inner)
+      allow(native_kafka).to receive(:close)
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_consumer_close)
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_destroy)
+    end
+
+    it "closes the consumer, destroys the consumer queue, then closes the native client" do
+      queue = FFI::MemoryPointer.new(:int)
+
+      described_class.finalizer(native_kafka, [queue]).call
+
+      expect(Rdkafka::Bindings).to have_received(:rd_kafka_consumer_close).with(inner)
+      expect(Rdkafka::Bindings).to have_received(:rd_kafka_queue_destroy).with(queue)
+      expect(native_kafka).to have_received(:close)
+    end
+
+    it "does not destroy a queue that was never created" do
+      described_class.finalizer(native_kafka, []).call
+
+      expect(Rdkafka::Bindings).not_to have_received(:rd_kafka_queue_destroy)
+      expect(native_kafka).to have_received(:close)
+    end
+
+    it "does nothing when the native client is already closed" do
+      allow(native_kafka).to receive(:closed?).and_return(true)
+
+      described_class.finalizer(native_kafka, [FFI::MemoryPointer.new(:int)]).call
+
+      expect(native_kafka).not_to have_received(:synchronize)
+      expect(native_kafka).not_to have_received(:close)
+    end
+  end
+
   describe "#close" do
     it "closes a consumer" do
       consumer.subscribe(topic)

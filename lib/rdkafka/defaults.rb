@@ -67,6 +67,11 @@ module Rdkafka
     # @see Metadata#initialize
     METADATA_RETRY_BACKOFF_BASE_MS = 100
 
+    # Maximum backoff time between metadata retries. Caps the exponential backoff so a long retry
+    # sequence against an unhealthy cluster cannot block the calling thread for minutes.
+    # @see Metadata#initialize
+    METADATA_RETRY_BACKOFF_MAX_MS = 1_000
+
     # Default wait timeout for operation handles
     # @see AbstractHandle#wait
     HANDLE_WAIT_TIMEOUT_MS = 60_000

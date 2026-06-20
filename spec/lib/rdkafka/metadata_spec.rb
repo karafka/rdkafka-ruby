@@ -148,5 +148,35 @@ RSpec.describe Rdkafka::Metadata do
 
       expect(Rdkafka::Bindings).not_to have_received(:rd_kafka_metadata_destroy)
     end
+
+    it "keeps the request timeout constant across retries instead of clobbering it with the backoff" do
+      timeouts = []
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_metadata) do |_client, _flag, _topic, _ptr, timeout|
+        timeouts << timeout
+        -185 # timed_out => retried until MAX_RETRIES
+      end
+
+      expect { described_class.new(native_kafka, topic_name, 2_000) }.to raise_error(Rdkafka::RdkafkaError)
+
+      # Every attempt uses the configured request timeout. Before the fix the timeout was
+      # overwritten with the backoff (which, with the zeroed base above, would be 0 after attempt 1).
+      expect(timeouts.size).to eq(Rdkafka::Defaults::METADATA_MAX_RETRIES + 1)
+      expect(timeouts).to all(eq(2_000))
+    end
+
+    it "caps the retry backoff so a long retry sequence cannot block for minutes" do
+      stub_const("Rdkafka::Defaults::METADATA_RETRY_BACKOFF_BASE_MS", 100)
+      stub_const("Rdkafka::Defaults::METADATA_RETRY_BACKOFF_MAX_MS", 30)
+      stub_const("Rdkafka::Defaults::METADATA_MAX_RETRIES", 5)
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_metadata).and_return(-185)
+
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      expect { described_class.new(native_kafka, topic_name, 10) }.to raise_error(Rdkafka::RdkafkaError)
+      elapsed_ms = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1_000
+
+      # 5 retries capped at 30ms => ~150ms. Uncapped (100 * 2**attempt) would be 200+400+800+1600+
+      # 3200 = 6.2s, so a 1s ceiling cleanly separates capped from uncapped.
+      expect(elapsed_ms).to be < 1_000
+    end
   end
 end

@@ -32,10 +32,16 @@ module Rdkafka
         raise unless RETRIED_ERRORS.include?(e.code)
         raise if attempt > Defaults::METADATA_MAX_RETRIES
 
-        backoff_factor = 2**attempt
-        timeout_ms = backoff_factor * Defaults::METADATA_RETRY_BACKOFF_BASE_MS
+        # Exponential backoff between attempts, capped so a long retry sequence cannot block for
+        # minutes. The request timeout (`timeout_ms`) is intentionally left unchanged: it used to be
+        # overwritten with the backoff value, which shrank the first retries below the configured
+        # timeout (near-guaranteeing another timeout) and then inflated later ones to ~100s.
+        backoff_ms = [
+          (2**attempt) * Defaults::METADATA_RETRY_BACKOFF_BASE_MS,
+          Defaults::METADATA_RETRY_BACKOFF_MAX_MS
+        ].min
 
-        sleep(timeout_ms / 1_000.0)
+        sleep(backoff_ms / 1_000.0)
 
         retry
       end

@@ -849,8 +849,17 @@ module Rdkafka
             next
           end
 
-          results << Rdkafka::Consumer::Message.new(native_message)
-          Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
+          begin
+            results << Rdkafka::Consumer::Message.new(native_message)
+          rescue Rdkafka::RdkafkaError => e
+            # A message that fails to build (e.g. a header read error) is surfaced inline as an
+            # error event rather than discarding the whole batch - including the messages already
+            # built - and raising, which silently lost them once their offsets had been stored.
+            results << e
+          ensure
+            Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
+          end
+
           i += 1
         end
       ensure
@@ -915,8 +924,17 @@ module Rdkafka
             next
           end
 
-          results << Rdkafka::Consumer::Message.new(native_message)
-          Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
+          begin
+            results << Rdkafka::Consumer::Message.new(native_message)
+          rescue Rdkafka::RdkafkaError => e
+            # A message that fails to build (e.g. a header read error) is surfaced inline as an
+            # error event rather than discarding the whole batch - including the messages already
+            # built - and raising, which silently lost them once their offsets had been stored.
+            results << e
+          ensure
+            Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
+          end
+
           i += 1
         end
       ensure

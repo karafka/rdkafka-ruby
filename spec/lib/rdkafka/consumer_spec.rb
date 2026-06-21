@@ -1735,6 +1735,39 @@ RSpec.describe Rdkafka::Consumer do
       expect(messages.map(&:payload)).to contain_exactly("payload 0", "payload 1", "payload 2")
     end
 
+    it "surfaces a per-message build error inline and keeps the rest of the batch" do
+      topic = TestTopics.create
+
+      3.times do |i|
+        producer.produce(topic: topic, payload: "payload #{i}", key: "key #{i}", partition: 0).wait
+      end
+
+      # Fail building exactly one message (a header read error). Before the fix this raised out of
+      # poll_batch and discarded every message already built; now it is returned inline.
+      call = 0
+      allow(Rdkafka::Consumer::Headers).to receive(:from_native).and_wrap_original do |original, *args|
+        call += 1
+        raise Rdkafka::RdkafkaError.new(-185, "Error reading message headers") if call == 2
+
+        original.call(*args)
+      end
+
+      consumer.subscribe(topic)
+
+      results = []
+      deadline = Time.now + 30
+      while results.size < 3 && Time.now < deadline
+        results.concat(consumer.poll_batch(1000, max_items: 10))
+      end
+
+      built = results.select { |r| r.is_a?(Rdkafka::Consumer::Message) }
+      errors = results.select { |r| r.is_a?(Rdkafka::RdkafkaError) }
+
+      expect(results.size).to eq(3)
+      expect(built.size).to eq(2)
+      expect(errors.size).to eq(1)
+    end
+
     it "respects max_items" do
       topic = TestTopics.create
 

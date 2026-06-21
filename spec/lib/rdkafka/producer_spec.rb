@@ -41,6 +41,29 @@ RSpec.describe Rdkafka::Producer do
     it { expect(producer.name).to include("rdkafka#producer-") }
   end
 
+  describe "#produce when it raises after registering the delivery handle" do
+    # A header value whose #to_s raises makes produce fail after the delivery handle has been
+    # registered but before the message is enqueued.
+    let(:exploding_value) do
+      Class.new do
+        def to_s
+          raise "boom"
+        end
+      end.new
+    end
+
+    it "removes the handle from the registry instead of orphaning it" do
+      registry = Rdkafka::Producer::DeliveryHandle::REGISTRY
+
+      expect do
+        producer.produce(topic: "produce_test_topic", payload: "payload", headers: { "key" => exploding_value })
+      end.to raise_error(RuntimeError, "boom")
+
+      # The shared after hook also asserts this, but make the intent of this example explicit.
+      expect(registry).to be_empty
+    end
+  end
+
   describe "#produce with topic config alterations" do
     context "when config is not valid" do
       it "expect to raise error" do

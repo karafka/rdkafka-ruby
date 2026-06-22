@@ -275,6 +275,7 @@ module Rdkafka
     attach_function :rd_kafka_queue_io_event_enable, [:pointer, :int, :pointer, :size_t], :void
     # Per topic configs
     attach_function :rd_kafka_topic_conf_new, [], :pointer
+    attach_function :rd_kafka_topic_conf_destroy, [:pointer], :void
     attach_function :rd_kafka_topic_conf_set, [:pointer, :string, :string, :pointer, :int], :kafka_config_response
 
     LogCallback = FFI::Function.new(

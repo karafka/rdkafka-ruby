@@ -71,6 +71,21 @@ RSpec.describe Rdkafka::Producer do
           producer.produce(topic: "test", payload: "", topic_config: { invalid: "invalid" })
         end.to raise_error(Rdkafka::Config::ConfigError)
       end
+
+      it "expect to destroy the native topic config rather than leak it" do
+        created_conf = nil
+
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_topic_conf_new).and_wrap_original do |original|
+          created_conf = original.call
+        end
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_topic_conf_destroy).and_call_original
+
+        expect do
+          producer.produce(topic: "test", payload: "", topic_config: { invalid: "invalid" })
+        end.to raise_error(Rdkafka::Config::ConfigError)
+
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_topic_conf_destroy).with(created_conf)
+      end
     end
 
     context "when config is valid" do

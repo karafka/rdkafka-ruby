@@ -172,6 +172,7 @@ jobs:
       - name: Run integration specs (compiled flow)
         run: |
           docker run --rm --platform linux/arm64 \
+            --network host \
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
             ruby:${{ matrix.ruby }}-alpine${{ matrix.alpine_version }} \
@@ -269,6 +270,7 @@ jobs:
           RDKAFKA_PRECOMPILED: "true"
         run: |
           docker run --rm --platform linux/arm64 \
+            --network host \
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
             -e "RDKAFKA_EXT_PATH=/workspace/ext" \

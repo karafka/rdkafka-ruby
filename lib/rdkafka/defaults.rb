@@ -23,6 +23,10 @@ module Rdkafka
     # @see Consumer#committed
     CONSUMER_COMMITTED_TIMEOUT_MS = 2_000
 
+    # Default timeout for fetching the cluster id
+    # @see Consumer#cluster_id
+    CONSUMER_CLUSTER_ID_TIMEOUT_MS = 1_000
+
     # Default timeout for querying watermark offsets
     # @see Consumer#query_watermark_offsets
     CONSUMER_QUERY_WATERMARK_TIMEOUT_MS = 1_000

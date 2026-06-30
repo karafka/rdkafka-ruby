@@ -13,7 +13,7 @@ module Rdkafka
           delete_topics_result = Rdkafka::Bindings.rd_kafka_event_DeleteTopics_result(event_ptr)
 
           # Get the number of topic results
-          pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+          pointer_to_size_t = FFI::MemoryPointer.new(:size_t)
           delete_topic_result_array = Rdkafka::Bindings.rd_kafka_DeleteTopics_result_topics(delete_topics_result, pointer_to_size_t)
           delete_topic_results = TopicResult.create_topic_results_from_array(pointer_to_size_t.read_int, delete_topic_result_array)
           delete_topic_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)

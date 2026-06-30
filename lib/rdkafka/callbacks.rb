@@ -98,7 +98,7 @@ module Rdkafka
         @error_string = Rdkafka::Bindings.rd_kafka_error_string(rd_kafka_error_pointer)
         if @result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
           # Get the number of matching acls
-          pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+          pointer_to_size_t = FFI::MemoryPointer.new(:size_t)
           @matching_acls = Rdkafka::Bindings.rd_kafka_DeleteAcls_result_response_matching_acls(acl_result_pointer, pointer_to_size_t)
           @matching_acls_count = pointer_to_size_t.read_int
         end
@@ -129,7 +129,7 @@ module Rdkafka
         if @result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
           acl_describe_result = Rdkafka::Bindings.rd_kafka_event_DescribeAcls_result(event_ptr)
           # Get the number of matching acls
-          pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+          pointer_to_size_t = FFI::MemoryPointer.new(:size_t)
           @matching_acls = Rdkafka::Bindings.rd_kafka_DescribeAcls_result_acls(acl_describe_result, pointer_to_size_t)
           @matching_acls_count = pointer_to_size_t.read_int
         end
@@ -151,7 +151,7 @@ module Rdkafka
         if @result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
           configs_describe_result = Rdkafka::Bindings.rd_kafka_event_DescribeConfigs_result(event_ptr)
           # Get the number of matching acls
-          pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+          pointer_to_size_t = FFI::MemoryPointer.new(:size_t)
           @results = Rdkafka::Bindings.rd_kafka_DescribeConfigs_result_resources(configs_describe_result, pointer_to_size_t)
           @results_count = pointer_to_size_t.read_int
         end
@@ -173,7 +173,7 @@ module Rdkafka
         if @result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
           incremental_alter_result = Rdkafka::Bindings.rd_kafka_event_IncrementalAlterConfigs_result(event_ptr)
           # Get the number of matching acls
-          pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+          pointer_to_size_t = FFI::MemoryPointer.new(:size_t)
           @results = Rdkafka::Bindings.rd_kafka_IncrementalAlterConfigs_result_resources(incremental_alter_result, pointer_to_size_t)
           @results_count = pointer_to_size_t.read_int
         end
@@ -251,21 +251,31 @@ module Rdkafka
           # `topic` Ruby attribute during produce, which spares a native string copy that
           # would otherwise be allocated and retained for every message.
 
-          # Call delivery callback on opaque
-          if opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
-            opaque.call_delivery_callback(
-              Rdkafka::Producer::DeliveryReport.new(
-                message[:partition],
-                message[:offset],
-                topic_name,
-                message[:err],
-                delivery_handle.label
-              ),
-              delivery_handle
-            )
+          begin
+            # Call delivery callback on opaque
+            if opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
+              opaque.call_delivery_callback(
+                Rdkafka::Producer::DeliveryReport.new(
+                  message[:partition],
+                  message[:offset],
+                  topic_name,
+                  message[:err],
+                  delivery_handle.label
+                ),
+                delivery_handle
+              )
+            end
+          rescue Exception => err
+            # A user delivery callback that raises must not escape this FFI callback: it runs on
+            # librdkafka's polling thread (abort_on_exception = true), so an escaping exception
+            # would crash the whole process. We log and swallow it, matching the rebalance
+            # callback. The `ensure` below still unlocks the handle, so `wait` returns the
+            # delivery report instead of blocking until its timeout and raising
+            # WaitTimeoutError for a message that was in fact delivered.
+            Rdkafka::Config.logger.error("Unhandled exception: #{err.class} - #{err.message}")
+          ensure
+            delivery_handle.unlock
           end
-
-          delivery_handle.unlock
         end
       end
     end

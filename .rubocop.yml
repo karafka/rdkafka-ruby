@@ -157,3 +157,7 @@ ThreadSafety/ClassInstanceVariable:
 
 ThreadSafety/NewThread:
   Enabled: false
+
+RSpec/Output:
+  Exclude:
+    - spec/integrations/**/*

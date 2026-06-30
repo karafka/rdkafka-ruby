@@ -244,6 +244,15 @@ RSpec.describe Rdkafka::Admin do
       end
     end
 
+    context "when a resource is missing a required key" do
+      it "raises KeyError without orphaning the handle (parsed before any native allocation)" do
+        registry = Rdkafka::Admin::DescribeConfigsHandle::REGISTRY
+
+        expect { admin.describe_configs([{ resource_type: 2 }]) }.to raise_error(KeyError)
+        expect(registry).to be_empty
+      end
+    end
+
     context "when describing both existing and non-existing topics" do
       let(:resources) do
         [
@@ -336,6 +345,17 @@ RSpec.describe Rdkafka::Admin do
 
     before do
       admin.create_topic(topic_name, 2, 1).wait
+    end
+
+    context "when a resource is missing a required key" do
+      it "raises KeyError without orphaning the handle (parsed before any native allocation)" do
+        registry = Rdkafka::Admin::IncrementalAlterConfigsHandle::REGISTRY
+
+        expect do
+          admin.incremental_alter_configs([{ resource_type: 2, resource_name: topic_name }])
+        end.to raise_error(KeyError)
+        expect(registry).to be_empty
+      end
     end
 
     context "when altering one topic with one valid config via set" do
@@ -526,6 +546,22 @@ RSpec.describe Rdkafka::Admin do
   end
 
   describe "#list_offsets" do
+    context "when an offset specification is invalid" do
+      it "raises ArgumentError before allocating the native list" do
+        expect do
+          admin.list_offsets({ "t" => [{ partition: 0, offset: :nonsense }] })
+        end.to raise_error(ArgumentError, /Unknown offset specification/)
+      end
+    end
+
+    context "when a partition spec is missing a required key" do
+      it "raises KeyError before allocating the native list" do
+        expect do
+          admin.list_offsets({ "t" => [{ offset: :earliest }] })
+        end.to raise_error(KeyError)
+      end
+    end
+
     context "when querying offsets for an existing topic with messages" do
       let(:topic) { TestTopics.create }
 

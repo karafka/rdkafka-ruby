@@ -94,6 +94,33 @@ RSpec.describe Rdkafka::Callbacks do
       end
     end
 
+    context "count pointer sizing for size_t out-parameters" do
+      # librdkafka's result accessors take a `size_t *cntp` and write a full native
+      # size_t (8 bytes on 64-bit). The count pointer must therefore be allocated as
+      # :size_t, not :int32, otherwise librdkafka overflows the 4-byte buffer.
+      let(:captured_size) { [] }
+
+      before do
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_event_type).with(event_ptr)
+          .and_return(Rdkafka::Bindings::RD_KAFKA_EVENT_CREATETOPICS_RESULT)
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_event_CreateTopics_result)
+          .with(event_ptr).and_return(FFI::MemoryPointer.new(:int))
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_CreateTopics_result_topics) do |_result, count_ptr|
+          captured_size << count_ptr.size
+          count_ptr.write(:size_t, 0)
+          FFI::MemoryPointer.new(:pointer)
+        end
+        # Unregistered opaque address: the handler parses the (empty) results then no-ops
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_event_opaque).with(event_ptr).and_return(FFI::Pointer.new(1))
+      end
+
+      it "allocates a full native size_t for the result count, not a 4-byte int" do
+        described_class.call(nil, event_ptr, nil)
+
+        expect(captured_size.first).to eq(FFI.type_size(:size_t))
+      end
+    end
+
     context "when an operation fails at the operation level (empty results, event error set)" do
       # librdkafka signals whole-operation failures (brokers unreachable, client destroyed mid
       # request) by setting the event error and delivering an empty results array. The handler

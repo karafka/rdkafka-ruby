@@ -1354,6 +1354,56 @@ RSpec.describe Rdkafka::Admin do
     end
   end
 
+  # Regression: the NULL background-queue cleanup branches in delete_group,
+  # delete_acl and describe_acl referenced undefined local variables, so they
+  # raised a NameError (instead of the intended ConfigError) and leaked the
+  # already-allocated native request object.
+  describe "background queue unavailable" do
+    before do
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_get_background).and_return(FFI::Pointer::NULL)
+    end
+
+    describe "#delete_group" do
+      it "raises a ConfigError" do
+        expect {
+          admin.delete_group(group_name)
+        }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
+      end
+    end
+
+    describe "#delete_acl" do
+      it "raises a ConfigError" do
+        expect {
+          admin.delete_acl(
+            resource_type: resource_type,
+            resource_name: resource_name,
+            resource_pattern_type: resource_pattern_type,
+            principal: principal,
+            host: host,
+            operation: operation,
+            permission_type: permission_type
+          )
+        }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
+      end
+    end
+
+    describe "#describe_acl" do
+      it "raises a ConfigError" do
+        expect {
+          admin.describe_acl(
+            resource_type: resource_type,
+            resource_name: resource_name,
+            resource_pattern_type: resource_pattern_type,
+            principal: principal,
+            host: host,
+            operation: operation,
+            permission_type: permission_type
+          )
+        }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
+      end
+    end
+  end
+
   unless RUBY_PLATFORM == "java"
     context "when operating from a fork" do
       # @see https://github.com/ffi/ffi/issues/1114

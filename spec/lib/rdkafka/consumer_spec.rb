@@ -488,6 +488,65 @@ RSpec.describe Rdkafka::Consumer do
     end
   end
 
+  # End-to-end reproduction of the leak this branch fixes, against a real consumer and broker.
+  # A consumer that used poll_batch holds a real consumer-queue reference; the finalizer the
+  # consumer actually registers (what GC runs) must destroy that exact pointer and close the
+  # consumer. On the previous code (generic NativeKafka finalizer) the pointer was never
+  # destroyed and rd_kafka_consumer_close was skipped, so this example fails there.
+  describe "GC finalizer (real consumer-queue reproduction)" do
+    it "destroys the exact consumer-queue pointer poll_batch acquired and closes the consumer" do
+      acquired = []
+      destroyed = []
+      closed = []
+
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_get_consumer).and_wrap_original do |original, *args|
+        queue = original.call(*args)
+        acquired << queue.address
+        queue
+      end
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_destroy).and_wrap_original do |original, ptr, *rest|
+        destroyed << ptr.address
+        original.call(ptr, *rest)
+      end
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_consumer_close).and_wrap_original do |original, inner, *rest|
+        closed << inner.address
+        original.call(inner, *rest)
+      end
+
+      # Capture the finalizer the consumer registers - this is exactly what GC would invoke.
+      registered_finalizer = nil
+      allow(ObjectSpace).to receive(:define_finalizer).and_wrap_original do |original, object, *rest, &block|
+        registered_finalizer = rest.first || block if object.is_a?(described_class)
+        original.call(object, *rest, &block)
+      end
+
+      leaky = rdkafka_consumer_config("group.id": SecureRandom.uuid).consumer
+
+      begin
+        leaky.subscribe(topic)
+        # poll_batch lazily takes the consumer-queue reference via rd_kafka_queue_get_consumer
+        leaky.poll_batch(300, max_items: 1)
+
+        expect(acquired.size).to eq(1)
+        queue_address = acquired.first
+
+        expect(registered_finalizer).not_to be_nil
+        # The acquired queue is still alive: nothing has destroyed it yet
+        expect(destroyed).not_to include(queue_address)
+
+        # Run the finalizer exactly as GC would for a consumer collected without an explicit
+        # close (GC invokes finalizers with the object id)
+        registered_finalizer.call(leaky.object_id)
+
+        # The exact pointer poll_batch acquired must be destroyed, and the consumer closed
+        expect(destroyed).to include(queue_address)
+        expect(closed).not_to be_empty
+      ensure
+        leaky.close unless leaky.closed?
+      end
+    end
+  end
+
   describe "#close" do
     it "closes a consumer" do
       consumer.subscribe(topic)

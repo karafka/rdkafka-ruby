@@ -258,7 +258,7 @@ module Rdkafka
         Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
       end
       if queue_ptr.null?
-        Rdkafka::Bindings.rd_kafka_DeleteTopic_destroy(delete_topic_ptr)
+        Rdkafka::Bindings.rd_kafka_DeleteGroup_destroy(delete_groups_ptr)
         raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
       end
 
@@ -581,7 +581,7 @@ module Rdkafka
       end
 
       if queue_ptr.null?
-        Rdkafka::Bindings.rd_kafka_AclBinding_destroy(new_acl_ptr)
+        Rdkafka::Bindings.rd_kafka_AclBinding_destroy(delete_acl_ptr)
         raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
       end
 
@@ -677,7 +677,7 @@ module Rdkafka
       end
 
       if queue_ptr.null?
-        Rdkafka::Bindings.rd_kafka_AclBinding_destroy(new_acl_ptr)
+        Rdkafka::Bindings.rd_kafka_AclBinding_destroy(describe_acl_ptr)
         raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
       end
 

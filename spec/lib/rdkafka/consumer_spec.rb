@@ -449,6 +449,110 @@ RSpec.describe Rdkafka::Consumer do
     end
   end
 
+  describe ".finalizer" do
+    let(:native_kafka) { instance_double(Rdkafka::NativeKafka) }
+    let(:inner) { double("inner native handle") }
+
+    before do
+      allow(native_kafka).to receive(:closed?).and_return(false)
+      allow(native_kafka).to receive(:synchronize).and_yield(inner)
+      allow(native_kafka).to receive(:close)
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_consumer_close)
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_destroy)
+    end
+
+    it "closes the consumer, destroys the consumer queue, then closes the native client" do
+      queue = FFI::MemoryPointer.new(:int)
+
+      described_class.finalizer(native_kafka, [queue]).call
+
+      expect(Rdkafka::Bindings).to have_received(:rd_kafka_consumer_close).with(inner)
+      expect(Rdkafka::Bindings).to have_received(:rd_kafka_queue_destroy).with(queue)
+      expect(native_kafka).to have_received(:close)
+    end
+
+    it "does not destroy a queue that was never created" do
+      described_class.finalizer(native_kafka, []).call
+
+      expect(Rdkafka::Bindings).not_to have_received(:rd_kafka_queue_destroy)
+      expect(native_kafka).to have_received(:close)
+    end
+
+    it "does nothing when the native client is already closed" do
+      allow(native_kafka).to receive(:closed?).and_return(true)
+
+      described_class.finalizer(native_kafka, [FFI::MemoryPointer.new(:int)]).call
+
+      expect(native_kafka).not_to have_received(:synchronize)
+      expect(native_kafka).not_to have_received(:close)
+    end
+  end
+
+  # End-to-end reproduction of the leak this branch fixes, against a real consumer and broker.
+  # A consumer that used poll_batch holds a real consumer-queue reference; the finalizer the
+  # consumer actually registers (what GC runs) must destroy that exact pointer and close the
+  # consumer. On the previous code (generic NativeKafka finalizer) the pointer was never
+  # destroyed and rd_kafka_consumer_close was skipped, so this example fails there.
+  describe "GC finalizer (real consumer-queue reproduction)" do
+    it "destroys the exact consumer-queue pointer poll_batch acquired and closes the consumer" do
+      acquired = []
+      # Only what the finalizer itself does is recorded. Matching native frees by pointer
+      # address across the whole example would be unreliable: the allocator can recycle an
+      # address from an unrelated queue freed earlier, so a global match is flaky. The
+      # finalizer is the only place a Ruby-level rd_kafka_queue_destroy touches the consumer
+      # queue, so scoping the capture to its invocation is both precise and deterministic.
+      in_finalizer = false
+      destroyed_by_finalizer = []
+      closed_by_finalizer = []
+
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_get_consumer).and_wrap_original do |original, *args|
+        queue = original.call(*args)
+        acquired << queue.address
+        queue
+      end
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_destroy).and_wrap_original do |original, ptr, *rest|
+        destroyed_by_finalizer << ptr.address if in_finalizer
+        original.call(ptr, *rest)
+      end
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_consumer_close).and_wrap_original do |original, inner, *rest|
+        closed_by_finalizer << inner.address if in_finalizer
+        original.call(inner, *rest)
+      end
+
+      # Capture the finalizer the consumer registers - this is exactly what GC would invoke.
+      registered_finalizer = nil
+      allow(ObjectSpace).to receive(:define_finalizer).and_wrap_original do |original, object, *rest, &block|
+        registered_finalizer = rest.first || block if object.is_a?(described_class)
+        original.call(object, *rest, &block)
+      end
+
+      leaky = rdkafka_consumer_config("group.id": SecureRandom.uuid).consumer
+
+      begin
+        leaky.subscribe(topic)
+        # poll_batch lazily takes the consumer-queue reference via rd_kafka_queue_get_consumer
+        leaky.poll_batch(300, max_items: 1)
+
+        expect(acquired.size).to eq(1)
+        queue_address = acquired.first
+        expect(registered_finalizer).not_to be_nil
+
+        # Run the finalizer exactly as GC would for a consumer collected without an explicit
+        # close (GC invokes finalizers with the object id)
+        in_finalizer = true
+        registered_finalizer.call(leaky.object_id)
+        in_finalizer = false
+
+        # The finalizer must destroy the exact pointer poll_batch acquired and close the consumer
+        expect(destroyed_by_finalizer).to include(queue_address)
+        expect(closed_by_finalizer).not_to be_empty
+      ensure
+        in_finalizer = false
+        leaky.close unless leaky.closed?
+      end
+    end
+  end
+
   describe "#close" do
     it "closes a consumer" do
       consumer.subscribe(topic)

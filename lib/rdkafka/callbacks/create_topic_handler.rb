@@ -13,7 +13,7 @@ module Rdkafka
           create_topics_result = Rdkafka::Bindings.rd_kafka_event_CreateTopics_result(event_ptr)
 
           # Get the number of create topic results
-          pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+          pointer_to_size_t = FFI::MemoryPointer.new(:size_t)
           create_topic_result_array = Rdkafka::Bindings.rd_kafka_CreateTopics_result_topics(create_topics_result, pointer_to_size_t)
           create_topic_results = TopicResult.create_topic_results_from_array(pointer_to_size_t.read_int, create_topic_result_array)
           create_topic_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)

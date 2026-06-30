@@ -19,7 +19,7 @@ module Rdkafka
           .each do |config_resource_result_ptr|
             config_resource_result = ConfigResourceBindingResult.new(config_resource_result_ptr)
 
-            pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+            pointer_to_size_t = FFI::MemoryPointer.new(:size_t)
             configs_ptr = Bindings.rd_kafka_ConfigResource_configs(
               config_resource_result_ptr,
               pointer_to_size_t

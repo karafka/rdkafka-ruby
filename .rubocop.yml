@@ -64,6 +64,10 @@ Lint/RescueException:
   Exclude:
     - lib/rdkafka/admin.rb
     - lib/rdkafka/bindings.rb
+    - lib/rdkafka/callbacks.rb
+    - lib/rdkafka/config.rb
+    - lib/rdkafka/producer.rb
+    - lib/rdkafka/consumer/topic_partition_list.rb
 
 # Security
 Security/Open:

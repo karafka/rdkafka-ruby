@@ -137,33 +137,40 @@ module Rdkafka
       def to_native_tpl
         tpl = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(count)
 
-        @data.each do |topic, partitions|
-          if partitions
-            partitions.each do |p|
+        begin
+          @data.each do |topic, partitions|
+            if partitions
+              partitions.each do |p|
+                Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
+                  tpl,
+                  topic,
+                  p.partition
+                )
+
+                if p.offset
+                  offset = p.offset.is_a?(Time) ? p.offset.to_f * 1_000 : p.offset
+
+                  Rdkafka::Bindings.rd_kafka_topic_partition_list_set_offset(
+                    tpl,
+                    topic,
+                    p.partition,
+                    offset
+                  )
+                end
+              end
+            else
               Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
                 tpl,
                 topic,
-                p.partition
+                Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
               )
-
-              if p.offset
-                offset = p.offset.is_a?(Time) ? p.offset.to_f * 1_000 : p.offset
-
-                Rdkafka::Bindings.rd_kafka_topic_partition_list_set_offset(
-                  tpl,
-                  topic,
-                  p.partition,
-                  offset
-                )
-              end
             end
-          else
-            Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
-              tpl,
-              topic,
-              Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
-            )
           end
+        rescue Exception
+          # The native list is caller-owned until it is handed to librdkafka. If population raises
+          # partway (e.g. an invalid partition), destroy it here so it is not leaked.
+          Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl)
+          raise
         end
 
         tpl

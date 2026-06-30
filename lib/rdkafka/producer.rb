@@ -430,51 +430,55 @@ module Rdkafka
       delivery_handle[:offset] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
       DeliveryHandle.register(delivery_handle)
 
-      args = [
-        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_RKT, :pointer, topic_ref,
-        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_MSGFLAGS, :int, Rdkafka::Bindings::RD_KAFKA_MSG_F_COPY,
-        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_VALUE, :buffer_in, payload, :size_t, payload_size,
-        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_KEY, :buffer_in, key, :size_t, key_size,
-        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_PARTITION, :int32, partition,
-        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_TIMESTAMP, :int64, raw_timestamp,
-        :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_OPAQUE, :pointer, delivery_handle
-      ]
+      begin
+        args = [
+          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_RKT, :pointer, topic_ref,
+          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_MSGFLAGS, :int, Rdkafka::Bindings::RD_KAFKA_MSG_F_COPY,
+          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_VALUE, :buffer_in, payload, :size_t, payload_size,
+          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_KEY, :buffer_in, key, :size_t, key_size,
+          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_PARTITION, :int32, partition,
+          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_TIMESTAMP, :int64, raw_timestamp,
+          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_OPAQUE, :pointer, delivery_handle
+        ]
 
-      headers&.each do |key0, value0|
-        key = key0.to_s
-        if value0.is_a?(Array)
-          # Handle array of values per KIP-82
-          value0.each do |value|
-            value = value.to_s
+        headers&.each do |key0, value0|
+          key = key0.to_s
+          if value0.is_a?(Array)
+            # Handle array of values per KIP-82
+            value0.each do |value|
+              value = value.to_s
+              args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
+              args << :string << key
+              args << :pointer << value
+              args << :size_t << value.bytesize
+            end
+          else
+            # Handle single value
+            value = value0.to_s
             args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
             args << :string << key
             args << :pointer << value
             args << :size_t << value.bytesize
           end
-        else
-          # Handle single value
-          value = value0.to_s
-          args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
-          args << :string << key
-          args << :pointer << value
-          args << :size_t << value.bytesize
         end
-      end
 
-      args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_END
+        args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_END
 
-      # Produce the message
-      response = @native_kafka.with_inner do |inner|
-        Rdkafka::Bindings.rd_kafka_producev(
-          inner,
-          *args
-        )
-      end
+        # Produce the message
+        response = @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_producev(
+            inner,
+            *args
+          )
+        end
 
-      # Raise error if the produce call was not successful
-      if response != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+        # Raise error if the produce call was not successful
+        if response != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+          raise RdkafkaError.new(response)
+        end
+      rescue Exception
         DeliveryHandle.remove(delivery_handle.to_ptr.address)
-        raise RdkafkaError.new(response)
+        raise
       end
 
       delivery_handle

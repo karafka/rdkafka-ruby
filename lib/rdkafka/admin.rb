@@ -728,6 +728,14 @@ module Rdkafka
     def describe_configs(resources)
       closed_admin_check(__method__)
 
+      # Parse user input before allocating any native resources or registering the handle, so a
+      # missing :resource_type / :resource_name key raises with nothing to clean up. Previously the
+      # KeyError leaked the background queue, the AdminOptions, the registered handle and any
+      # ConfigResources already built.
+      parsed_resources = resources.map do |resource_details|
+        [resource_details.fetch(:resource_type), resource_details.fetch(:resource_name)]
+      end
+
       handle = DescribeConfigsHandle.new
       handle[:pending] = true
       handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
@@ -750,12 +758,10 @@ module Rdkafka
       DescribeConfigsHandle.register(handle)
       Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
 
-      pointer_array = resources.map do |resource_details|
+      pointer_array = parsed_resources.map do |resource_type, resource_name|
         Rdkafka::Bindings.rd_kafka_ConfigResource_new(
-          resource_details.fetch(:resource_type),
-          FFI::MemoryPointer.from_string(
-            resource_details.fetch(:resource_name)
-          )
+          resource_type,
+          FFI::MemoryPointer.from_string(resource_name)
         )
       end
 
@@ -806,6 +812,19 @@ module Rdkafka
     def incremental_alter_configs(resources_with_configs)
       closed_admin_check(__method__)
 
+      # Parse user input before allocating native resources or registering the handle, so a missing
+      # key raises with nothing to clean up. Previously the KeyError leaked the background queue,
+      # the AdminOptions, the registered handle and any ConfigResources already built.
+      parsed_resources = resources_with_configs.map do |resource_details|
+        [
+          resource_details.fetch(:resource_type),
+          resource_details.fetch(:resource_name),
+          resource_details.fetch(:configs).map do |config|
+            [config.fetch(:name), config.fetch(:op_type), config.fetch(:value)]
+          end
+        ]
+      end
+
       handle = IncrementalAlterConfigsHandle.new
       handle[:pending] = true
       handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
@@ -828,23 +847,39 @@ module Rdkafka
       IncrementalAlterConfigsHandle.register(handle)
       Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
 
-      # Tu poprawnie tworzyc
-      pointer_array = resources_with_configs.map do |resource_details|
+      add_error = nil
+
+      pointer_array = parsed_resources.map do |resource_type, resource_name, configs|
         # First build the appropriate resource representation
         resource_ptr = Rdkafka::Bindings.rd_kafka_ConfigResource_new(
-          resource_details.fetch(:resource_type),
-          FFI::MemoryPointer.from_string(
-            resource_details.fetch(:resource_name)
-          )
+          resource_type,
+          FFI::MemoryPointer.from_string(resource_name)
         )
 
-        resource_details.fetch(:configs).each do |config|
-          Bindings.rd_kafka_ConfigResource_add_incremental_config(
+        configs.each do |name, op_type, value|
+          # rd_kafka_ConfigResource_add_incremental_config returns a non-NULL rd_kafka_error_t for
+          # an invalid op_type, an empty/nil name, or a nil value on a non-delete op. The result
+          # used to be ignored: the entry was silently dropped, the alter request still reported
+          # success, and the error object leaked. Capture the first error (always destroying the
+          # native error object) and raise it below, before the request is sent.
+          error_ptr = Bindings.rd_kafka_ConfigResource_add_incremental_config(
             resource_ptr,
-            config.fetch(:name),
-            config.fetch(:op_type),
-            config.fetch(:value)
+            name,
+            op_type,
+            value
           )
+
+          unless error_ptr.null?
+            code = Rdkafka::Bindings.rd_kafka_error_code(error_ptr)
+            Rdkafka::Bindings.rd_kafka_error_destroy(error_ptr)
+
+            unless code == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+              add_error ||= Rdkafka::RdkafkaError.new(
+                code,
+                "rd_kafka_ConfigResource_add_incremental_config"
+              )
+            end
+          end
         end
 
         resource_ptr
@@ -854,6 +889,10 @@ module Rdkafka
       configs_array_ptr.write_array_of_pointer(pointer_array)
 
       begin
+        # Raise only after the full array is built so the ensure below frees every ConfigResource
+        # we created, and before the request is sent so a rejected entry can't report success.
+        raise add_error if add_error
+
         @native_kafka.with_inner do |inner|
           Rdkafka::Bindings.rd_kafka_IncrementalAlterConfigs(
             inner,
@@ -912,15 +951,12 @@ module Rdkafka
     def list_offsets(topic_partition_offsets, isolation_level: nil)
       closed_admin_check(__method__)
 
-      # Count total partitions for pre-allocation
-      total = topic_partition_offsets.sum { |_, partitions| partitions.size }
-
-      # Build native topic partition list
-      tpl = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(total)
-
-      topic_partition_offsets.each do |topic, partitions|
-        partitions.each do |spec|
-          partition = spec.fetch(:partition)
+      # Parse and validate every offset spec before allocating the native list, so a missing key or
+      # an unknown offset specification raises with nothing to clean up. Previously the
+      # ArgumentError (or KeyError) was raised after `rd_kafka_topic_partition_list_new`, leaking
+      # the native list.
+      parsed = topic_partition_offsets.flat_map do |topic, partitions|
+        partitions.map do |spec|
           offset = spec.fetch(:offset)
 
           native_offset = case offset
@@ -932,9 +968,16 @@ module Rdkafka
             raise ArgumentError, "Unknown offset specification: #{offset.inspect}"
           end
 
-          Rdkafka::Bindings.rd_kafka_topic_partition_list_add(tpl, topic, partition)
-          Rdkafka::Bindings.rd_kafka_topic_partition_list_set_offset(tpl, topic, partition, native_offset)
+          [topic, spec.fetch(:partition), native_offset]
         end
+      end
+
+      # Build native topic partition list
+      tpl = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(parsed.size)
+
+      parsed.each do |topic, partition, native_offset|
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_add(tpl, topic, partition)
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_set_offset(tpl, topic, partition, native_offset)
       end
 
       # Get a pointer to the queue that our request will be enqueued on

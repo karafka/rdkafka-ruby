@@ -496,8 +496,14 @@ RSpec.describe Rdkafka::Consumer do
   describe "GC finalizer (real consumer-queue reproduction)" do
     it "destroys the exact consumer-queue pointer poll_batch acquired and closes the consumer" do
       acquired = []
-      destroyed = []
-      closed = []
+      # Only what the finalizer itself does is recorded. Matching native frees by pointer
+      # address across the whole example would be unreliable: the allocator can recycle an
+      # address from an unrelated queue freed earlier, so a global match is flaky. The
+      # finalizer is the only place a Ruby-level rd_kafka_queue_destroy touches the consumer
+      # queue, so scoping the capture to its invocation is both precise and deterministic.
+      in_finalizer = false
+      destroyed_by_finalizer = []
+      closed_by_finalizer = []
 
       allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_get_consumer).and_wrap_original do |original, *args|
         queue = original.call(*args)
@@ -505,11 +511,11 @@ RSpec.describe Rdkafka::Consumer do
         queue
       end
       allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_destroy).and_wrap_original do |original, ptr, *rest|
-        destroyed << ptr.address
+        destroyed_by_finalizer << ptr.address if in_finalizer
         original.call(ptr, *rest)
       end
       allow(Rdkafka::Bindings).to receive(:rd_kafka_consumer_close).and_wrap_original do |original, inner, *rest|
-        closed << inner.address
+        closed_by_finalizer << inner.address if in_finalizer
         original.call(inner, *rest)
       end
 
@@ -529,19 +535,19 @@ RSpec.describe Rdkafka::Consumer do
 
         expect(acquired.size).to eq(1)
         queue_address = acquired.first
-
         expect(registered_finalizer).not_to be_nil
-        # The acquired queue is still alive: nothing has destroyed it yet
-        expect(destroyed).not_to include(queue_address)
 
         # Run the finalizer exactly as GC would for a consumer collected without an explicit
         # close (GC invokes finalizers with the object id)
+        in_finalizer = true
         registered_finalizer.call(leaky.object_id)
+        in_finalizer = false
 
-        # The exact pointer poll_batch acquired must be destroyed, and the consumer closed
-        expect(destroyed).to include(queue_address)
-        expect(closed).not_to be_empty
+        # The finalizer must destroy the exact pointer poll_batch acquired and close the consumer
+        expect(destroyed_by_finalizer).to include(queue_address)
+        expect(closed_by_finalizer).not_to be_empty
       ensure
+        in_finalizer = false
         leaky.close unless leaky.closed?
       end
     end

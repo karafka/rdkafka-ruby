@@ -864,7 +864,10 @@ RSpec.describe Rdkafka::Consumer do
   end
 
   describe "#lag" do
-    let(:consumer) { rdkafka_consumer_config("enable.partition.eof": true).consumer }
+    # auto.commit.interval.ms is raised so the default 5s background auto-commit cannot
+    # commit our stored offsets before the manual #commit below runs, which would leave
+    # nothing to commit and raise no_offset (flaky on overloaded CI).
+    let(:consumer) { rdkafka_consumer_config("enable.partition.eof": true, "auto.commit.interval.ms": 60_000).consumer }
 
     it "calculates the consumer lag" do
       # Make sure there's a message in every partition and
@@ -898,6 +901,11 @@ RSpec.describe Rdkafka::Consumer do
         end
         break if eof_count >= 3 && messages_received.positive?
       end
+
+      # enable.auto.offset.store is true, but on overloaded CI the offset store lags
+      # behind poll. Give it a moment so the offsets are actually stored before
+      # committing, otherwise commit raises no_offset.
+      sleep(1)
 
       # Commit
       consumer.commit

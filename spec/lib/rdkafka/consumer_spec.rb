@@ -1456,6 +1456,7 @@ RSpec.describe Rdkafka::Consumer do
       assign: [nil],
       assignment: nil,
       committed: [],
+      position: [],
       query_watermark_offsets: [nil, nil],
       assignment_lost?: [],
       poll_nb: []

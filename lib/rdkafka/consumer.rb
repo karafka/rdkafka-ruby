@@ -443,6 +443,8 @@ module Rdkafka
     #
     # @raise [RdkafkaError] When getting the positions fails.
     def position(list = nil)
+      closed_consumer_check(__method__)
+
       if list.nil?
         list = assignment
       elsif !list.is_a?(TopicPartitionList)

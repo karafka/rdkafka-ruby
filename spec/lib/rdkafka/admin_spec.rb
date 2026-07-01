@@ -244,6 +244,15 @@ RSpec.describe Rdkafka::Admin do
       end
     end
 
+    context "when a resource is missing a required key" do
+      it "raises KeyError without orphaning the handle (parsed before any native allocation)" do
+        registry = Rdkafka::Admin::DescribeConfigsHandle::REGISTRY
+
+        expect { admin.describe_configs([{ resource_type: 2 }]) }.to raise_error(KeyError)
+        expect(registry).to be_empty
+      end
+    end
+
     context "when describing both existing and non-existing topics" do
       let(:resources) do
         [
@@ -336,6 +345,17 @@ RSpec.describe Rdkafka::Admin do
 
     before do
       admin.create_topic(topic_name, 2, 1).wait
+    end
+
+    context "when a resource is missing a required key" do
+      it "raises KeyError without orphaning the handle (parsed before any native allocation)" do
+        registry = Rdkafka::Admin::IncrementalAlterConfigsHandle::REGISTRY
+
+        expect do
+          admin.incremental_alter_configs([{ resource_type: 2, resource_name: topic_name }])
+        end.to raise_error(KeyError)
+        expect(registry).to be_empty
+      end
     end
 
     context "when altering one topic with one valid config via set" do
@@ -526,6 +546,22 @@ RSpec.describe Rdkafka::Admin do
   end
 
   describe "#list_offsets" do
+    context "when an offset specification is invalid" do
+      it "raises ArgumentError before allocating the native list" do
+        expect do
+          admin.list_offsets({ "t" => [{ partition: 0, offset: :nonsense }] })
+        end.to raise_error(ArgumentError, /Unknown offset specification/)
+      end
+    end
+
+    context "when a partition spec is missing a required key" do
+      it "raises KeyError before allocating the native list" do
+        expect do
+          admin.list_offsets({ "t" => [{ offset: :earliest }] })
+        end.to raise_error(KeyError)
+      end
+    end
+
     context "when querying offsets for an existing topic with messages" do
       let(:topic) { TestTopics.create }
 
@@ -1314,6 +1350,56 @@ RSpec.describe Rdkafka::Admin do
         expect { admin.enable_background_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
         signal_r.close
         signal_w.close
+      end
+    end
+  end
+
+  # Regression: the NULL background-queue cleanup branches in delete_group,
+  # delete_acl and describe_acl referenced undefined local variables, so they
+  # raised a NameError (instead of the intended ConfigError) and leaked the
+  # already-allocated native request object.
+  describe "background queue unavailable" do
+    before do
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_get_background).and_return(FFI::Pointer::NULL)
+    end
+
+    describe "#delete_group" do
+      it "raises a ConfigError" do
+        expect {
+          admin.delete_group(group_name)
+        }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
+      end
+    end
+
+    describe "#delete_acl" do
+      it "raises a ConfigError" do
+        expect {
+          admin.delete_acl(
+            resource_type: resource_type,
+            resource_name: resource_name,
+            resource_pattern_type: resource_pattern_type,
+            principal: principal,
+            host: host,
+            operation: operation,
+            permission_type: permission_type
+          )
+        }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
+      end
+    end
+
+    describe "#describe_acl" do
+      it "raises a ConfigError" do
+        expect {
+          admin.describe_acl(
+            resource_type: resource_type,
+            resource_name: resource_name,
+            resource_pattern_type: resource_pattern_type,
+            principal: principal,
+            host: host,
+            operation: operation,
+            permission_type: permission_type
+          )
+        }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
       end
     end
   end

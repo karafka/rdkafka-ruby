@@ -98,7 +98,7 @@ module Rdkafka
         @error_string = Rdkafka::Bindings.rd_kafka_error_string(rd_kafka_error_pointer)
         if @result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
           # Get the number of matching acls
-          pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+          pointer_to_size_t = FFI::MemoryPointer.new(:size_t)
           @matching_acls = Rdkafka::Bindings.rd_kafka_DeleteAcls_result_response_matching_acls(acl_result_pointer, pointer_to_size_t)
           @matching_acls_count = pointer_to_size_t.read_int
         end
@@ -129,7 +129,7 @@ module Rdkafka
         if @result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
           acl_describe_result = Rdkafka::Bindings.rd_kafka_event_DescribeAcls_result(event_ptr)
           # Get the number of matching acls
-          pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+          pointer_to_size_t = FFI::MemoryPointer.new(:size_t)
           @matching_acls = Rdkafka::Bindings.rd_kafka_DescribeAcls_result_acls(acl_describe_result, pointer_to_size_t)
           @matching_acls_count = pointer_to_size_t.read_int
         end
@@ -151,7 +151,7 @@ module Rdkafka
         if @result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
           configs_describe_result = Rdkafka::Bindings.rd_kafka_event_DescribeConfigs_result(event_ptr)
           # Get the number of matching acls
-          pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+          pointer_to_size_t = FFI::MemoryPointer.new(:size_t)
           @results = Rdkafka::Bindings.rd_kafka_DescribeConfigs_result_resources(configs_describe_result, pointer_to_size_t)
           @results_count = pointer_to_size_t.read_int
         end
@@ -173,7 +173,7 @@ module Rdkafka
         if @result_error == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
           incremental_alter_result = Rdkafka::Bindings.rd_kafka_event_IncrementalAlterConfigs_result(event_ptr)
           # Get the number of matching acls
-          pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+          pointer_to_size_t = FFI::MemoryPointer.new(:size_t)
           @results = Rdkafka::Bindings.rd_kafka_IncrementalAlterConfigs_result_resources(incremental_alter_result, pointer_to_size_t)
           @results_count = pointer_to_size_t.read_int
         end

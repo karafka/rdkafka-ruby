@@ -19,9 +19,39 @@ module Rdkafka
     # @param native_kafka [NativeKafka] wrapper around the native Kafka consumer handle
     def initialize(native_kafka)
       @native_kafka = native_kafka
+      # Single-element holder shared with the GC finalizer so it can destroy the lazily created
+      # consumer queue without capturing `self` (capturing the consumer in its own finalizer would
+      # pin it and prevent it from ever being collected).
+      @consumer_queue_holder = []
 
-      # Makes sure, that native kafka gets closed before it gets GCed by Ruby
-      ObjectSpace.define_finalizer(self, native_kafka.finalizer)
+      # Makes sure the consumer is closed (consumer queue destroyed and native client destroyed)
+      # before it gets GCed by Ruby.
+      ObjectSpace.define_finalizer(self, self.class.finalizer(native_kafka, @consumer_queue_holder))
+    end
+
+    # Builds the GC finalizer for a consumer. It mirrors {#close}: close the consumer, destroy the
+    # consumer-queue reference, then destroy the native client. The default `NativeKafka#finalizer`
+    # went straight to `rd_kafka_destroy`, leaving the consumer-queue reference (from
+    # `rd_kafka_queue_get_consumer`, taken by `poll_batch`) dangling - which can make
+    # `rd_kafka_destroy` block inside the finalizer (process hang at GC/shutdown) or leak the handle.
+    #
+    # @private
+    # @param native_kafka [NativeKafka] the wrapped native client
+    # @param queue_holder [Array] single-element holder carrying the consumer queue pointer (or empty)
+    # @return [Proc] finalizer proc that must not reference the consumer instance
+    def self.finalizer(native_kafka, queue_holder)
+      proc do
+        next if native_kafka.closed?
+
+        native_kafka.synchronize do |inner|
+          Rdkafka::Bindings.rd_kafka_consumer_close(inner)
+
+          queue = queue_holder[0]
+          Rdkafka::Bindings.rd_kafka_queue_destroy(queue) if queue
+        end
+
+        native_kafka.close
+      end
     end
 
     # Starts the native Kafka polling thread and kicks off the init polling
@@ -187,6 +217,7 @@ module Rdkafka
         if @consumer_queue
           Rdkafka::Bindings.rd_kafka_queue_destroy(@consumer_queue)
           @consumer_queue = nil
+          @consumer_queue_holder[0] = nil
         end
       end
 
@@ -1025,7 +1056,11 @@ module Rdkafka
     # @return [FFI::Pointer] consumer queue handle
     def consumer_queue
       @consumer_queue ||= @native_kafka.with_inner do |inner|
-        Rdkafka::Bindings.rd_kafka_queue_get_consumer(inner)
+        queue = Rdkafka::Bindings.rd_kafka_queue_get_consumer(inner)
+        # Share the pointer with the finalizer so it is destroyed even if the consumer is GC'd
+        # without an explicit close.
+        @consumer_queue_holder[0] = queue
+        queue
       end
     end
 

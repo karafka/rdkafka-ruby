@@ -168,6 +168,43 @@ RSpec.describe Rdkafka::RdkafkaError do
     end
   end
 
+  describe ".build" do
+    context "with a rd_kafka_error_t pointer" do
+      let(:pointer) { FFI::Pointer.new(1) }
+
+      before do
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_error_code).with(pointer).and_return(10)
+        allow(Rdkafka::Bindings).to receive_messages(
+          rd_kafka_error_is_fatal: 0,
+          rd_kafka_error_is_retriable: 0,
+          rd_kafka_error_txn_requires_abort: 0
+        )
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_error_destroy)
+      end
+
+      it "forwards broker_message to the built error" do
+        error = described_class.build(pointer, broker_message: "broker said no")
+        expect(error.broker_message).to eq("broker said no")
+      end
+
+      it "forwards instance_name to the built error" do
+        error = described_class.build(pointer, instance_name: "rdkafka#producer-1")
+        expect(error.instance_name).to eq("rdkafka#producer-1")
+      end
+    end
+
+    context "with a Bindings::Message struct" do
+      let(:message) do
+        Rdkafka::Bindings::Message.new.tap { |m| m[:err] = 10 }
+      end
+
+      it "forwards instance_name to the built error" do
+        error = described_class.build(message, instance_name: "rdkafka#consumer-1")
+        expect(error.instance_name).to eq("rdkafka#consumer-1")
+      end
+    end
+  end
+
   describe ".build_fatal" do
     let(:config) { rdkafka_producer_config("enable.idempotence" => true) }
     let(:producer) { config.producer }

@@ -18,7 +18,7 @@ jobs:
       - name: Disable needrestart
         run: sudo apt-get autopurge -y needrestart
 
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
 
@@ -60,13 +60,13 @@ jobs:
       - name: Disable needrestart
         run: sudo apt-get autopurge -y needrestart
 
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
 
       # Vendor the attestation patch from rubygems/release-gem (no action execution)
       - name: Vendor release-gem patch
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: rubygems/release-gem
           ref: a25424ba2ba8b387abc8ef40807c2c85b96cbe32 # v1.1.1
@@ -79,7 +79,7 @@ jobs:
           path: ext/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@89f90524b88a01fe6e0b732220432cc6142926af # v1.313.0
+        uses: ruby/setup-ruby@9eb537ca036ebaed86729dcb9309076e4c5c3b74 # v1.314.0
         with:
           ruby-version: '4.0.5'
           bundler-cache: false

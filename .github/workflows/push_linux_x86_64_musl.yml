@@ -16,7 +16,7 @@ jobs:
     environment: deployment
     container:
       # Same as CI, we build on the oldest possible for ABI compatibility
-      image: alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11 # renovate: ignore
+      image: alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b # renovate: ignore
     steps:
       - name: Install dependencies
         run: |
@@ -25,13 +25,13 @@ jobs:
             openssl-dev cyrus-sasl-dev cyrus-sasl cyrus-sasl-login \
             cyrus-sasl-crammd5 cyrus-sasl-digestmd5 cyrus-sasl-gssapiv2 cyrus-sasl-scram \
             krb5-libs openssl zlib zlib-dev zstd-libs
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
       - name: Configure git safe directory
         run: git config --global --add safe.directory /__w/karafka-rdkafka/karafka-rdkafka
       - name: Cache build-tmp directory
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
         with:
           path: ext/build-tmp-musl
           key: build-tmp-musl-${{ runner.os }}-${{ hashFiles('ext/*.sh', 'ext/Rakefile') }}-v2
@@ -56,13 +56,13 @@ jobs:
       contents: write
       id-token: write
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
 
       # Vendor the attestation patch from rubygems/release-gem (no action execution)
       - name: Vendor release-gem patch
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: rubygems/release-gem
           ref: a25424ba2ba8b387abc8ef40807c2c85b96cbe32 # v1.1.1
@@ -74,7 +74,7 @@ jobs:
           path: ext/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@89f90524b88a01fe6e0b732220432cc6142926af # v1.313.0
+        uses: ruby/setup-ruby@9eb537ca036ebaed86729dcb9309076e4c5c3b74 # v1.314.0
         with:
           ruby-version: '4.0.5'
           bundler-cache: false

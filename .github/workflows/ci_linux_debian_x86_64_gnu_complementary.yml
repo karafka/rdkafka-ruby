@@ -80,7 +80,7 @@ jobs:
           - 'trixie'
     runs-on: ubuntu-22.04 # renovate: ignore
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
       - name: Install build dependencies
@@ -113,7 +113,7 @@ jobs:
             perl \
             binutils-dev
       - name: Cache build-tmp directory
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
         with:
           path: ext/build-tmp
           key: build-tmp-complementary-${{ runner.os }}-${{ matrix.debian }}-${{ hashFiles('ext/*.sh', 'ext/Rakefile') }}-v2
@@ -142,7 +142,7 @@ jobs:
           - 'trixie'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
 
@@ -265,7 +265,7 @@ jobs:
           - 'trixie'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
       - name: Download precompiled library

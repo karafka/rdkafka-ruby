@@ -13,7 +13,7 @@ module Rdkafka
           delete_acls_result = Rdkafka::Bindings.rd_kafka_event_DeleteAcls_result(event_ptr)
 
           # Get the number of acl results
-          pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+          pointer_to_size_t = FFI::MemoryPointer.new(:size_t)
           delete_acl_result_responses = Rdkafka::Bindings.rd_kafka_DeleteAcls_result_responses(delete_acls_result, pointer_to_size_t)
           delete_acl_results = DeleteAclResult.delete_acl_results_from_array(pointer_to_size_t.read_int, delete_acl_result_responses)
           delete_acl_handle_ptr = Rdkafka::Bindings.rd_kafka_event_opaque(event_ptr)

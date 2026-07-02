@@ -94,6 +94,12 @@ module Rdkafka
               )
 
               unless result == :config_ok
+                # rd_kafka_topic_new has not been called yet, so librdkafka has not taken
+                # ownership of the config. Destroy it ourselves before raising, otherwise the
+                # partially built rd_kafka_topic_conf_t leaks. (On the rd_kafka_topic_new path
+                # librdkafka frees the conf on both success and failure, so we never destroy it
+                # there.)
+                Rdkafka::Bindings.rd_kafka_topic_conf_destroy(topic_config)
                 raise Config::ConfigError.new(error_buffer.read_string)
               end
             end

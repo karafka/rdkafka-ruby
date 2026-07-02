@@ -37,12 +37,11 @@ module Rdkafka
     #    contention in multi-threaded environments while ensuring data consistency.
     #
     # 6. Topic recreation handling
-    #    If a topic is deleted and recreated with fewer partitions, the cache will continue to
-    #    report the higher count until either the TTL expires or the process is restarted. This
-    #    design choice simplifies the implementation while relying on librdkafka's error handling
-    #    for edge cases. In production environments, topic recreation with different partition
-    #    counts is typically accompanied by application restarts to handle structural changes.
-    #    This also aligns with the previous cache implementation.
+    #    If a topic is deleted and recreated with fewer partitions, the cache keeps reporting the
+    #    higher count only until the entry's TTL expires. The first refresh after expiry performs
+    #    an authoritative metadata read and adopts the lower count. Within the TTL window a lower
+    #    value is still ignored, so a transient or racy lower read cannot clobber a correct higher
+    #    count.
     class PartitionsCountCache
       include Helpers::Time
 
@@ -91,28 +90,14 @@ module Rdkafka
         current_info = @counts[topic]
 
         if current_info.nil? || expired?(current_info[0])
+          # The cached entry is missing or expired, so the block performs an authoritative metadata
+          # read. We hand it to `set`, which adopts a higher count always and a lower count once the
+          # entry has expired (e.g. the topic was recreated with fewer partitions). We then return
+          # whatever `set` settled on so a concurrent refresh that wrote a higher value still wins.
           new_count = yield
+          set(topic, new_count)
 
-          if current_info.nil?
-            # No existing data, create a new entry with mutex
-            set(topic, new_count)
-
-            return new_count
-          else
-            current_count = current_info[1]
-
-            if new_count > current_count
-              # Higher value needs mutex to update both timestamp and count
-              set(topic, new_count)
-
-              return new_count
-            else
-              # Same or lower value, just update timestamp without mutex
-              refresh_timestamp(topic)
-
-              return current_count
-            end
-          end
+          return @counts[topic][1]
         end
 
         current_info[1]
@@ -133,8 +118,11 @@ module Rdkafka
         # First check outside mutex to avoid unnecessary locking
         current_info = @counts[topic]
 
-        # For lower values, we don't update count but might need to refresh timestamp
-        if current_info && new_count < current_info[1]
+        # Within the TTL window a lower value is treated as a stale/racy read and ignored, since
+        # partition counts only grow during normal operation. Once the entry has expired a lower
+        # value is an authoritative refresh (e.g. the topic was recreated with fewer partitions),
+        # so we fall through and adopt it below.
+        if current_info && new_count < current_info[1] && !expired?(current_info[0])
           refresh_timestamp(topic)
 
           return
@@ -148,17 +136,15 @@ module Rdkafka
           if current_info.nil?
             # Create new entry
             @counts[topic] = [monotonic_now_ms, new_count]
+          elsif new_count > current_info[1] || expired?(current_info[0])
+            # A higher count always wins; a lower count is accepted only when the existing entry
+            # has expired, so a concurrent fresh higher value (which reset the timestamp) is never
+            # clobbered by a stale lower one.
+            current_info[0] = monotonic_now_ms
+            current_info[1] = new_count
           else
-            current_count = current_info[1]
-
-            if new_count > current_count
-              # Update to higher count value
-              current_info[0] = monotonic_now_ms
-              current_info[1] = new_count
-            else
-              # Same or lower count, update timestamp only
-              current_info[0] = monotonic_now_ms
-            end
+            # Same or lower count within the TTL window: refresh the timestamp only
+            current_info[0] = monotonic_now_ms
           end
         end
       end

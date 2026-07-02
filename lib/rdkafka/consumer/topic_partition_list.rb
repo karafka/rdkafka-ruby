@@ -136,51 +136,61 @@ module Rdkafka
 
       # Create a native tpl with the contents of this object added.
       #
-      # The pointer will be cleaned by `rd_kafka_topic_partition_list_destroy` when GC releases it.
+      # The returned pointer is caller-owned and must be released with
+      # `rd_kafka_topic_partition_list_destroy`. It is not cleaned up by GC.
       #
       # @private
       # @return [FFI::Pointer]
       def to_native_tpl
         tpl = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(count)
 
-        @data.each do |topic, partitions|
-          if partitions
-            partitions.each do |p|
-              ref = Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
-                tpl,
-                topic,
-                p.partition
-              )
-
-              # Remove the respond to check after karafka 2.3.0 is released
-              if p.respond_to?(:metadata) && p.metadata
-                part = Rdkafka::Bindings::TopicPartition.new(ref)
-                str_ptr = FFI::MemoryPointer.from_string(p.metadata)
-                # released here:
-                # https://github.com/confluentinc/librdkafka/blob/e03d3bb91ed92a38f38d9806b8d8deffe78a1de5/src/rdkafka_partition.c#L2682C18-L2682C18
-                str_ptr.autorelease = false
-                part[:metadata] = str_ptr
-                part[:metadata_size] = p.metadata.bytesize
-              end
-
-              if p.offset
-                offset = p.offset.is_a?(Time) ? p.offset.to_f * 1_000 : p.offset
-
-                Rdkafka::Bindings.rd_kafka_topic_partition_list_set_offset(
+        begin
+          @data.each do |topic, partitions|
+            if partitions
+              partitions.each do |p|
+                ref = Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
                   tpl,
                   topic,
-                  p.partition,
-                  offset
+                  p.partition
                 )
+
+                # Remove the respond to check after karafka 2.3.0 is released
+                if p.respond_to?(:metadata) && p.metadata
+                  part = Rdkafka::Bindings::TopicPartition.new(ref)
+                  str_ptr = FFI::MemoryPointer.from_string(p.metadata)
+                  # released here:
+                  # https://github.com/confluentinc/librdkafka/blob/e03d3bb91ed92a38f38d9806b8d8deffe78a1de5/src/rdkafka_partition.c#L2682C18-L2682C18
+                  str_ptr.autorelease = false
+                  part[:metadata] = str_ptr
+                  part[:metadata_size] = p.metadata.bytesize
+                end
+
+                if p.offset
+                  offset = p.offset.is_a?(Time) ? p.offset.to_f * 1_000 : p.offset
+
+                  Rdkafka::Bindings.rd_kafka_topic_partition_list_set_offset(
+                    tpl,
+                    topic,
+                    p.partition,
+                    offset
+                  )
+                end
               end
+            else
+              Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
+                tpl,
+                topic,
+                Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
+              )
             end
-          else
-            Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
-              tpl,
-              topic,
-              Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
-            )
           end
+        rescue Exception
+          # The native list is caller-owned and only handed back on success. If population raises
+          # partway (e.g. non-string metadata, or an offset FFI can't coerce to int64) we must
+          # destroy it here, otherwise the half-built list leaks.
+          Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl)
+
+          raise
         end
 
         tpl

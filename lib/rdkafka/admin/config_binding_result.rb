@@ -17,7 +17,7 @@ module Rdkafka
         @synonyms = []
 
         # The code below builds up the config synonyms using same config binding
-        pointer_to_size_t = FFI::MemoryPointer.new(:int32)
+        pointer_to_size_t = FFI::MemoryPointer.new(:size_t)
         synonym_ptr = Bindings.rd_kafka_ConfigEntry_synonyms(config_ptr, pointer_to_size_t)
         synonyms_ptr = synonym_ptr.read_array_of_pointer(pointer_to_size_t.read_int)
 

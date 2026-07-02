@@ -59,13 +59,29 @@ module Rdkafka
     # @see Admin#metadata
     METADATA_TIMEOUT_MS = 2_000
 
-    # Maximum retries for metadata requests on transient errors
+    # Hard ceiling on metadata fetch attempts on transient errors (backstop; the retry budget
+    # normally ends the loop first)
     # @see Metadata#initialize
     METADATA_MAX_RETRIES = 10
+
+    # Minimum metadata fetch attempts before the retry budget may end the loop, so a slow broker
+    # (whose requests each consume the full timeout) still gets a few tries
+    # @see Metadata#initialize
+    METADATA_MIN_ATTEMPTS = 3
+
+    # Soft wall-clock budget for the whole metadata retry loop; past it (and past
+    # METADATA_MIN_ATTEMPTS) the loop stops so a synchronous fetch cannot block the caller for long
+    # @see Metadata#initialize
+    METADATA_RETRY_BUDGET_MS = 5_000
 
     # Base backoff time for metadata retry (100ms = 0.1s)
     # @see Metadata#initialize
     METADATA_RETRY_BACKOFF_BASE_MS = 100
+
+    # Maximum backoff time between metadata retries. Caps the exponential backoff so a long retry
+    # sequence against an unhealthy cluster cannot block the calling thread for minutes.
+    # @see Metadata#initialize
+    METADATA_RETRY_BACKOFF_MAX_MS = 1_000
 
     # Default wait timeout for operation handles
     # @see AbstractHandle#wait

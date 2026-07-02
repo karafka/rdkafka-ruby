@@ -52,6 +52,26 @@ RSpec.describe Rdkafka::AbstractHandle do
       expect(removed).to eq handle
       expect(Rdkafka::AbstractHandle::REGISTRY).to be_empty
     end
+
+    it "registers and removes handles consistently under concurrent access" do
+      # The registry is mutated from producing/consuming threads and the background polling thread
+      # (which removes handles from FFI callbacks). Hammer it from many threads and assert no
+      # registration or removal is lost. On MRI the GVL hides the race; this guards JRuby, where the
+      # plain Hash mutations are not atomic.
+      handles = Array.new(200) { TestHandle.new }
+
+      handles.map do |h|
+        Thread.new do
+          described_class.register(h)
+          described_class.remove(h.to_ptr.address)
+        end
+      end.each(&:join)
+
+      handles.each do |h|
+        expect(Rdkafka::AbstractHandle::REGISTRY).not_to have_key(h.to_ptr.address)
+      end
+      expect(Rdkafka::AbstractHandle::REGISTRY).to be_empty
+    end
   end
 
   describe "#pending?" do

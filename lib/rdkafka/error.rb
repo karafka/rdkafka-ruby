@@ -35,8 +35,9 @@ module Rdkafka
       # @param response_ptr [FFI::Pointer] Pointer to rd_kafka_error_t
       # @param message_prefix [String, nil] Optional prefix for the error message
       # @param broker_message [String, nil] Optional broker error message
+      # @param instance_name [String, nil] Optional name of the rdkafka instance
       # @return [RdkafkaError, false] Error instance or false if no error
-      def build_from_c(response_ptr, message_prefix = nil, broker_message: nil)
+      def build_from_c(response_ptr, message_prefix = nil, broker_message: nil, instance_name: nil)
         code = Rdkafka::Bindings.rd_kafka_error_code(response_ptr)
 
         return false if code == Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
@@ -54,7 +55,8 @@ module Rdkafka
           broker_message: message,
           fatal: fatal,
           retryable: retryable,
-          abortable: abortable
+          abortable: abortable,
+          instance_name: instance_name
         )
       end
 
@@ -92,10 +94,16 @@ module Rdkafka
             response_ptr_or_code[:err],
             message_prefix,
             broker_message: broker_message,
-            details: details
+            details: details,
+            instance_name: instance_name
           )
         else
-          build_from_c(response_ptr_or_code, message_prefix)
+          build_from_c(
+            response_ptr_or_code,
+            message_prefix,
+            broker_message: broker_message,
+            instance_name: instance_name
+          )
         end
       end
 

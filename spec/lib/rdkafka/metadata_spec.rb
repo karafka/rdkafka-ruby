@@ -178,5 +178,21 @@ RSpec.describe Rdkafka::Metadata do
       # 3200 = 6.2s, so a 1s ceiling cleanly separates capped from uncapped.
       expect(elapsed_ms).to be < 1_000
     end
+
+    it "stops after the minimum attempts once the retry budget is exhausted" do
+      stub_const("Rdkafka::Defaults::METADATA_RETRY_BUDGET_MS", 0)
+      calls = 0
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_metadata) do |*|
+        calls += 1
+        -185 # timed_out => retryable, never succeeds
+      end
+
+      expect { described_class.new(native_kafka, topic_name, 10) }.to raise_error(Rdkafka::RdkafkaError)
+
+      # With a zero budget the deadline is immediately past, so the loop ends as soon as the
+      # minimum-attempts floor is met: exactly METADATA_MIN_ATTEMPTS tries, neither fewer (the floor
+      # is honoured) nor up to METADATA_MAX_RETRIES (the budget stops it).
+      expect(calls).to eq(Rdkafka::Defaults::METADATA_MIN_ATTEMPTS)
+    end
   end
 end

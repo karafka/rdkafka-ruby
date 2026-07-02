@@ -24,6 +24,8 @@ module Rdkafka
     # @raise [RdkafkaError] when metadata fetch fails
     def initialize(native_client, topic_name = nil, timeout_ms = Defaults::METADATA_TIMEOUT_MS)
       attempt = 0
+      deadline = ::Process.clock_gettime(::Process::CLOCK_MONOTONIC) +
+        Defaults::METADATA_RETRY_BUDGET_MS / 1_000.0
 
       begin
         attempt += 1
@@ -31,6 +33,12 @@ module Rdkafka
       rescue ::Rdkafka::RdkafkaError => e
         raise unless RETRIED_ERRORS.include?(e.code)
         raise if attempt > Defaults::METADATA_MAX_RETRIES
+
+        # Stop once the wall-clock retry budget is spent, but only after at least
+        # METADATA_MIN_ATTEMPTS tries so a slow broker (whose requests each consume the full
+        # timeout) still gets a few tries rather than being cut off after one or two.
+        raise if attempt >= Defaults::METADATA_MIN_ATTEMPTS &&
+          ::Process.clock_gettime(::Process::CLOCK_MONOTONIC) >= deadline
 
         # Exponential backoff between attempts, capped so a long retry sequence cannot block for
         # minutes. The request timeout (`timeout_ms`) is intentionally left unchanged: it used to be

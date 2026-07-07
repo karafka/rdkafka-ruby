@@ -1603,7 +1603,7 @@ RSpec.describe Rdkafka::Consumer do
     def expect_eof_error(error)
       expect(error).not_to be_nil
       expect(error.code).to eq(:partition_eof)
-      expect(error.is_partition_eof?).to eq(true)
+      expect(error.is_partition_eof?).to be(true)
     end
 
     before do

@@ -244,5 +244,20 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
 
       expect(native_list).to eq compare_list
     end
+
+    it "destroys the native list when population fails partway" do
+      created = nil
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_topic_partition_list_new).and_wrap_original do |original, *args|
+        created = original.call(*args)
+      end
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_topic_partition_list_destroy).and_call_original
+
+      list = described_class.new
+      # A non-integer offset makes set_offset raise after the native list was already allocated.
+      list.add_topic_and_partitions_with_offsets("topic", 0 => "not-an-offset")
+
+      expect { list.to_native_tpl }.to raise_error(TypeError)
+      expect(Rdkafka::Bindings).to have_received(:rd_kafka_topic_partition_list_destroy).with(created)
+    end
   end
 end

@@ -453,6 +453,8 @@ module Rdkafka
     #
     # @raise [RdkafkaError] When getting the positions fails.
     def position(list = nil)
+      closed_consumer_check(__method__)
+
       if list.nil?
         list = assignment
       elsif !list.is_a?(TopicPartitionList)
@@ -565,16 +567,34 @@ module Rdkafka
     # When using this `enable.auto.offset.store` should be set to `false` in the config.
     #
     # @param message [Rdkafka::Consumer::Message] The message which offset will be stored
+    # @param metadata [String, nil] commit metadata string to store alongside the offset
     # @return [nil]
     # @raise [RdkafkaError] When storing the offset fails
-    def store_offset(message)
+    def store_offset(message, metadata = nil)
       closed_consumer_check(__method__)
 
       list = TopicPartitionList.new
-      list.add_topic_and_partitions_with_offsets(
-        message.topic,
-        message.partition => message.offset + 1
-      )
+
+      # For metadata aware commits we build the partition reference directly to save on
+      # objects allocations
+      if metadata
+        list.add_topic_and_partitions_with_offsets(
+          message.topic,
+          [
+            Consumer::Partition.new(
+              message.partition,
+              message.offset + 1,
+              0,
+              metadata
+            )
+          ]
+        )
+      else
+        list.add_topic_and_partitions_with_offsets(
+          message.topic,
+          message.partition => message.offset + 1
+        )
+      end
 
       tpl = list.to_native_tpl
 
@@ -870,8 +890,17 @@ module Rdkafka
             next
           end
 
-          results << Rdkafka::Consumer::Message.new(native_message)
-          Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
+          begin
+            results << Rdkafka::Consumer::Message.new(native_message)
+          rescue Rdkafka::RdkafkaError => e
+            # A message that fails to build (e.g. a header read error) is surfaced inline as an
+            # error event rather than discarding the whole batch - including the messages already
+            # built - and raising, which silently lost them once their offsets had been stored.
+            results << e
+          ensure
+            Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
+          end
+
           i += 1
         end
       ensure
@@ -936,8 +965,17 @@ module Rdkafka
             next
           end
 
-          results << Rdkafka::Consumer::Message.new(native_message)
-          Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
+          begin
+            results << Rdkafka::Consumer::Message.new(native_message)
+          rescue Rdkafka::RdkafkaError => e
+            # A message that fails to build (e.g. a header read error) is surfaced inline as an
+            # error event rather than discarding the whole batch - including the messages already
+            # built - and raising, which silently lost them once their offsets had been stored.
+            results << e
+          ensure
+            Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
+          end
+
           i += 1
         end
       ensure

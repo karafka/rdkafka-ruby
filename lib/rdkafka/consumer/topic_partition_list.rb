@@ -118,7 +118,12 @@ module Rdkafka
             else
               elem[:offset]
             end
-            partition = Partition.new(elem[:partition], offset, elem[:err])
+            partition = Partition.new(
+              elem[:partition],
+              offset,
+              elem[:err],
+              elem[:metadata].null? ? nil : elem[:metadata].read_string(elem[:metadata_size])
+            )
             partitions.push(partition)
             data[elem[:topic]] = partitions
           end
@@ -141,11 +146,21 @@ module Rdkafka
           @data.each do |topic, partitions|
             if partitions
               partitions.each do |p|
-                Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
+                ref = Rdkafka::Bindings.rd_kafka_topic_partition_list_add(
                   tpl,
                   topic,
                   p.partition
                 )
+
+                if p.metadata
+                  part = Rdkafka::Bindings::TopicPartition.new(ref)
+                  str_ptr = FFI::MemoryPointer.from_string(p.metadata)
+                  # The metadata string is owned by librdkafka once handed over and released here:
+                  # https://github.com/confluentinc/librdkafka/blob/e03d3bb91ed92a38f38d9806b8d8deffe78a1de5/src/rdkafka_partition.c#L2682C18-L2682C18
+                  str_ptr.autorelease = false
+                  part[:metadata] = str_ptr
+                  part[:metadata_size] = p.metadata.bytesize
+                end
 
                 if p.offset
                   offset = p.offset.is_a?(Time) ? p.offset.to_f * 1_000 : p.offset

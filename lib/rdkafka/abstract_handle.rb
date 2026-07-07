@@ -14,9 +14,16 @@ module Rdkafka
 
     # Registry for registering all the handles.
     REGISTRY = {}
+    # Guards REGISTRY mutations. The registry is shared across producing/consuming threads and the
+    # background polling thread (which removes handles from FFI callbacks), so the Hash must not be
+    # mutated concurrently. This is effectively safe on MRI under the GVL but not on JRuby, where a
+    # lost write could leave a handle unregistered (never unlocked -> `wait` times out for a
+    # delivered message) or never removed (permanent leak).
+    REGISTRY_MUTEX = Mutex.new
     # Default wait timeout is 31 years
     MAX_WAIT_TIMEOUT_FOREVER = 10_000_000_000
 
+    private_constant :REGISTRY_MUTEX
     private_constant :MAX_WAIT_TIMEOUT_FOREVER
 
     class << self
@@ -25,14 +32,14 @@ module Rdkafka
       # @param handle [AbstractHandle] any handle we want to register
       def register(handle)
         address = handle.to_ptr.address
-        REGISTRY[address] = handle
+        REGISTRY_MUTEX.synchronize { REGISTRY[address] = handle }
       end
 
       # Removes handle from the register based on the handle address
       #
       # @param address [Integer] address of the registered handle we want to remove
       def remove(address)
-        REGISTRY.delete(address)
+        REGISTRY_MUTEX.synchronize { REGISTRY.delete(address) }
       end
     end
 

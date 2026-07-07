@@ -87,6 +87,39 @@ module KafkaWaitHelpers
     retry
   end
 
+  # Polls +describe_configs+ for a resource until the named config reports the
+  # expected value, or the timeout elapses. Broker acknowledgment of an
+  # +incremental_alter_configs+ request does not guarantee the change is
+  # immediately visible to a subsequent +describe_configs+, especially on slow
+  # CI runners, so a fixed sleep is unreliable.
+  #
+  # @param admin [Rdkafka::Admin] admin client to query
+  # @param resources [Array<Hash>] describe_configs resources argument
+  # @param config_name [String] the config entry name to inspect
+  # @param expected [String] the value to wait for
+  # @param timeout_in_seconds [Integer] maximum seconds to wait before raising
+  # @return [Object] the matching config binding result
+  # @raise [RuntimeError] if the timeout is reached without the expected value
+  def wait_for_config_value(admin, resources:, config_name:, expected:, timeout_in_seconds: 30)
+    deadline = Time.now.to_f + timeout_in_seconds
+    last_value = nil
+
+    loop do
+      config = admin.describe_configs(resources).wait.resources.first.configs.find do |c|
+        c.name == config_name
+      end
+      last_value = config&.value
+      return config if last_value == expected
+
+      if Time.now.to_f >= deadline
+        raise "Timeout waiting for #{config_name} to become #{expected.inspect} " \
+          "(last value: #{last_value.inspect})"
+      end
+
+      sleep(0.5)
+    end
+  end
+
   # Subscribes to a topic, polls once, executes the given block, then unsubscribes
   # and closes the consumer. Used to trigger consumer group listener callbacks.
   #

@@ -95,6 +95,16 @@ module Rdkafka
     # @see Metadata#initialize
     METADATA_RETRY_BACKOFF_BASE_MS = 100
 
+    # Maximum backoff time between metadata retries. Caps the exponential backoff so a long retry
+    # sequence against an unhealthy cluster cannot block the calling thread for minutes.
+    # @see Metadata#initialize
+    METADATA_RETRY_BACKOFF_MAX_MS = 1_000
+
+    # Soft wall-clock budget for the whole metadata retry loop; past it (and past
+    # METADATA_MIN_ATTEMPTS) the loop stops so a synchronous fetch cannot block the caller for long
+    # @see Metadata#initialize
+    METADATA_RETRY_BUDGET_MS = 5_000
+
     # Cache settings (in milliseconds)
 
     # Default time-to-live for cached partition counts
@@ -106,5 +116,10 @@ module Rdkafka
     # Maximum number of metadata fetch retry attempts
     # @see Metadata#initialize
     METADATA_MAX_RETRIES = 10
+
+    # Minimum metadata fetch attempts before the retry budget may end the loop, so a slow broker
+    # (whose requests each consume the full timeout) still gets a few tries
+    # @see Metadata#initialize
+    METADATA_MIN_ATTEMPTS = 3
   end
 end

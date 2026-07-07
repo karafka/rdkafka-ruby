@@ -16,14 +16,20 @@ module Rdkafka
       # @return [Integer]
       attr_reader :err
 
+      # Partition metadata in the context of a consumer
+      # @return [String, nil]
+      attr_reader :metadata
+
       # @private
       # @param partition [Integer] partition number
       # @param offset [Integer, nil] partition offset
       # @param err [Integer] error code from librdkafka
-      def initialize(partition, offset, err = Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR)
+      # @param metadata [String, nil] partition metadata
+      def initialize(partition, offset, err = Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR, metadata = nil)
         @partition = partition
         @offset = offset
         @err = err
+        @metadata = metadata
       end
 
       # Human readable representation of this partition.
@@ -32,6 +38,7 @@ module Rdkafka
         message = "<Partition #{partition}"
         message += " offset=#{offset}" if offset
         message += " err=#{err}" if err != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+        message += " metadata=#{metadata}" if !metadata.nil?
         message += ">"
         message
       end

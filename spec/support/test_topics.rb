@@ -56,7 +56,6 @@ module TestTopics
       begin
         handle = admin.create_topic(topic_name, partitions, 1)
         handle.wait(max_wait_timeout_ms: 15_000)
-        wait_for_topic(admin, topic_name)
         topic_name
       ensure
         admin.close

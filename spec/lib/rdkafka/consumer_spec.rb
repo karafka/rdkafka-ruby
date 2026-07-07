@@ -145,7 +145,7 @@ RSpec.describe Rdkafka::Consumer do
     end
 
     it "raises an error when pausing fails" do
-      list = Rdkafka::Consumer::TopicPartitionList.new.tap { |tpl| tpl.add_topic("topic", 0..1) }
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap { |tpl| tpl.add_topic(TestTopics.unique, 0..1) }
 
       expect(Rdkafka::Bindings).to receive(:rd_kafka_pause_partitions).and_return(20)
       expect {
@@ -178,7 +178,6 @@ RSpec.describe Rdkafka::Consumer do
     before do
       admin = rdkafka_producer_config.admin
       admin.create_topic(topic, 1, 1).wait
-      wait_for_topic(admin, topic)
       admin.close
     end
 
@@ -283,7 +282,6 @@ RSpec.describe Rdkafka::Consumer do
     before do
       admin = rdkafka_producer_config.admin
       admin.create_topic(topic, 1, 1).wait
-      wait_for_topic(admin, topic)
       admin.close
     end
 
@@ -960,6 +958,24 @@ RSpec.describe Rdkafka::Consumer do
       wait_for_assignment(consumer)
       expect(consumer.cluster_id).not_to be_empty
     end
+
+    it "passes the timeout through and frees the native string (no leak)" do
+      native_string = FFI::MemoryPointer.from_string("test-cluster-id")
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_clusterid).and_return(native_string)
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_mem_free)
+
+      expect(consumer.cluster_id(1_234)).to eq("test-cluster-id")
+      expect(Rdkafka::Bindings).to have_received(:rd_kafka_clusterid).with(anything, 1_234)
+      expect(Rdkafka::Bindings).to have_received(:rd_kafka_mem_free).with(anything, native_string)
+    end
+
+    it "returns nil and frees nothing when librdkafka returns NULL" do
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_clusterid).and_return(FFI::Pointer::NULL)
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_mem_free)
+
+      expect(consumer.cluster_id).to be_nil
+      expect(Rdkafka::Bindings).not_to have_received(:rd_kafka_mem_free)
+    end
   end
 
   describe "#member_id" do
@@ -967,6 +983,23 @@ RSpec.describe Rdkafka::Consumer do
       consumer.subscribe(topic)
       wait_for_assignment(consumer)
       expect(consumer.member_id).to start_with("rdkafka-")
+    end
+
+    it "frees the native string (no leak)" do
+      native_string = FFI::MemoryPointer.from_string("rdkafka-member-id")
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_memberid).and_return(native_string)
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_mem_free)
+
+      expect(consumer.member_id).to eq("rdkafka-member-id")
+      expect(Rdkafka::Bindings).to have_received(:rd_kafka_mem_free).with(anything, native_string)
+    end
+
+    it "returns nil and frees nothing when librdkafka returns NULL" do
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_memberid).and_return(FFI::Pointer::NULL)
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_mem_free)
+
+      expect(consumer.member_id).to be_nil
+      expect(Rdkafka::Bindings).not_to have_received(:rd_kafka_mem_free)
     end
   end
 
@@ -1006,6 +1039,15 @@ RSpec.describe Rdkafka::Consumer do
       expect {
         consumer.poll(100)
       }.to raise_error Rdkafka::RdkafkaError
+    end
+
+    it "expect to raise error when polling non-existing topic" do
+      missing_topic = SecureRandom.uuid
+      consumer.subscribe(missing_topic)
+
+      expect {
+        5.times { consumer.poll(1_000) }
+      }.to raise_error(Rdkafka::RdkafkaError) { |error| expect(error.code).to eq(:unknown_topic_or_part) }
     end
   end
 
@@ -1399,6 +1441,7 @@ RSpec.describe Rdkafka::Consumer do
       assign: [nil],
       assignment: nil,
       committed: [],
+      position: [],
       query_watermark_offsets: [nil, nil],
       assignment_lost?: [],
       poll_nb: []
@@ -1526,29 +1569,76 @@ RSpec.describe Rdkafka::Consumer do
   describe "when reaching eof on a topic and eof reporting enabled" do
     let(:consumer) { rdkafka_consumer_config("enable.partition.eof": true).consumer }
 
-    it "returns proper details" do
-      (0..2).each do |i|
-        producer.produce(
-          topic: topic,
-          key: "key lag #{i}",
-          partition: i
-        ).wait
-      end
-
-      # Consume to the end
+    def collect_eof_error(consumer, &poll_block)
       consumer.subscribe(topic)
       eof_error = nil
+      deadline = Time.now + 30
 
       loop do
-        consumer.poll(100)
+        break if Time.now > deadline
+        poll_block.call
       rescue Rdkafka::RdkafkaError => error
         if error.is_partition_eof?
           eof_error = error
+          break
         end
-        break if eof_error
       end
 
-      expect(eof_error.code).to eq(:partition_eof)
+      eof_error
+    end
+
+    def expect_eof_error(error)
+      expect(error).not_to be_nil
+      expect(error.code).to eq(:partition_eof)
+      expect(error.is_partition_eof?).to eq(true)
+    end
+
+    before do
+      producer.produce(topic: topic, key: "key eof", partition: 0).wait
+    end
+
+    it "raises :partition_eof via #poll" do
+      error = collect_eof_error(consumer) { consumer.poll(100) }
+      expect_eof_error(error)
+    end
+
+    it "raises :partition_eof via #poll_nb" do
+      error = collect_eof_error(consumer) { consumer.poll_nb(100) }
+      expect_eof_error(error)
+    end
+
+    it "raises :partition_eof via #poll_nb_each" do
+      error = collect_eof_error(consumer) do
+        consumer.poll_nb_each { |_| }
+        sleep 0.05
+      end
+      expect_eof_error(error)
+    end
+
+    it "returns :partition_eof via #poll_batch" do
+      consumer.subscribe(topic)
+      eof_error = nil
+      deadline = Time.now + 30
+      loop do
+        break if Time.now > deadline
+        results = consumer.poll_batch(100, max_items: 10)
+        eof_error = results.find { |r| r.is_a?(Rdkafka::RdkafkaError) && r.is_partition_eof? }
+        break if eof_error
+      end
+      expect_eof_error(eof_error)
+    end
+
+    it "returns :partition_eof via #poll_batch_nb" do
+      consumer.subscribe(topic)
+      eof_error = nil
+      deadline = Time.now + 30
+      loop do
+        break if Time.now > deadline
+        results = consumer.poll_batch_nb(100, max_items: 10)
+        eof_error = results.find { |r| r.is_a?(Rdkafka::RdkafkaError) && r.is_partition_eof? }
+        break if eof_error
+      end
+      expect_eof_error(eof_error)
     end
   end
 
@@ -1738,6 +1828,39 @@ RSpec.describe Rdkafka::Consumer do
         expect(message).to be_a(Rdkafka::Consumer::Message)
       end
       expect(messages.map(&:payload)).to contain_exactly("payload 0", "payload 1", "payload 2")
+    end
+
+    it "surfaces a per-message build error inline and keeps the rest of the batch" do
+      topic = TestTopics.create
+
+      3.times do |i|
+        producer.produce(topic: topic, payload: "payload #{i}", key: "key #{i}", partition: 0).wait
+      end
+
+      # Fail building exactly one message (a header read error). Before the fix this raised out of
+      # poll_batch and discarded every message already built; now it is returned inline.
+      call = 0
+      allow(Rdkafka::Consumer::Headers).to receive(:from_native).and_wrap_original do |original, *args|
+        call += 1
+        raise Rdkafka::RdkafkaError.new(-185, "Error reading message headers") if call == 2
+
+        original.call(*args)
+      end
+
+      consumer.subscribe(topic)
+
+      results = []
+      deadline = Time.now + 30
+      while results.size < 3 && Time.now < deadline
+        results.concat(consumer.poll_batch(1000, max_items: 10))
+      end
+
+      built = results.select { |r| r.is_a?(Rdkafka::Consumer::Message) }
+      errors = results.select { |r| r.is_a?(Rdkafka::RdkafkaError) }
+
+      expect(results.size).to eq(3)
+      expect(built.size).to eq(2)
+      expect(errors.size).to eq(1)
     end
 
     it "respects max_items" do

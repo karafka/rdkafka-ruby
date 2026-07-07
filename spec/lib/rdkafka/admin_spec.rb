@@ -9,7 +9,7 @@ RSpec.describe Rdkafka::Admin do
   let(:topic_replication_factor) { 1 }
   let(:topic_config) { { "cleanup.policy" => "compact", "min.cleanable.dirty.ratio" => 0.8 } }
   let(:invalid_topic_config) { { "cleeeeenup.policee" => "campact" } }
-  let(:group_name) { "test-group-#{TestTopics.spec_hash}-#{SecureRandom.uuid}" }
+  let(:group_name) { TestTopics.unique }
   let(:resource_name) { TestTopics.unique }
   let(:resource_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_TOPIC }
   let(:resource_pattern_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL }
@@ -203,9 +203,6 @@ RSpec.describe Rdkafka::Admin do
 
     it "returns reports that remain valid after the event is destroyed, also on repeated waits" do
       admin.create_topic(topic_name, 2, 1).wait(max_wait_timeout_ms: 15_000)
-      # Topic creation ack does not guarantee the topic is visible to a subsequent
-      # describe_configs metadata lookup yet, especially on slow CI runners
-      wait_for_topic(admin, topic_name)
 
       handle = admin.describe_configs([{ resource_type: 2, resource_name: topic_name }])
 
@@ -223,7 +220,6 @@ RSpec.describe Rdkafka::Admin do
 
     before do
       admin.create_topic(topic_name, 2, 1).wait
-      sleep(1)
     end
 
     context "when describing config of an existing topic" do
@@ -245,6 +241,15 @@ RSpec.describe Rdkafka::Admin do
 
       it "expect to raise error" do
         expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /unknown_topic_or_part/)
+      end
+    end
+
+    context "when a resource is missing a required key" do
+      it "raises KeyError without orphaning the handle (parsed before any native allocation)" do
+        registry = Rdkafka::Admin::DescribeConfigsHandle::REGISTRY
+
+        expect { admin.describe_configs([{ resource_type: 2 }]) }.to raise_error(KeyError)
+        expect(registry).to be_empty
       end
     end
 
@@ -340,7 +345,17 @@ RSpec.describe Rdkafka::Admin do
 
     before do
       admin.create_topic(topic_name, 2, 1).wait
-      sleep(1)
+    end
+
+    context "when a resource is missing a required key" do
+      it "raises KeyError without orphaning the handle (parsed before any native allocation)" do
+        registry = Rdkafka::Admin::IncrementalAlterConfigsHandle::REGISTRY
+
+        expect do
+          admin.incremental_alter_configs([{ resource_type: 2, resource_name: topic_name }])
+        end.to raise_error(KeyError)
+        expect(registry).to be_empty
+      end
     end
 
     context "when altering one topic with one valid config via set" do
@@ -366,11 +381,12 @@ RSpec.describe Rdkafka::Admin do
         expect(resources_results.first.type).to eq(2)
         expect(resources_results.first.name).to eq(topic_name)
 
-        sleep(1)
-
-        ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
-          config.name == "delete.retention.ms"
-        end
+        ret_config = wait_for_config_value(
+          admin,
+          resources: resources_with_configs,
+          config_name: "delete.retention.ms",
+          expected: target_retention
+        )
 
         expect(ret_config.value).to eq(target_retention)
       end
@@ -399,11 +415,12 @@ RSpec.describe Rdkafka::Admin do
         expect(resources_results.first.type).to eq(2)
         expect(resources_results.first.name).to eq(topic_name)
 
-        sleep(1)
-
-        ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
-          config.name == "delete.retention.ms"
-        end
+        ret_config = wait_for_config_value(
+          admin,
+          resources: resources_with_configs,
+          config_name: "delete.retention.ms",
+          expected: "86400000"
+        )
 
         expect(ret_config.value).to eq("86400000")
       end
@@ -432,11 +449,12 @@ RSpec.describe Rdkafka::Admin do
         expect(resources_results.first.type).to eq(2)
         expect(resources_results.first.name).to eq(topic_name)
 
-        sleep(1)
-
-        ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
-          config.name == "cleanup.policy"
-        end
+        ret_config = wait_for_config_value(
+          admin,
+          resources: resources_with_configs,
+          config_name: "cleanup.policy",
+          expected: "delete,#{target_policy}"
+        )
 
         expect(ret_config.value).to eq("delete,#{target_policy}")
       end
@@ -465,11 +483,12 @@ RSpec.describe Rdkafka::Admin do
         expect(resources_results.first.type).to eq(2)
         expect(resources_results.first.name).to eq(topic_name)
 
-        sleep(1)
-
-        ret_config = admin.describe_configs(resources_with_configs).wait.resources.first.configs.find do |config|
-          config.name == "cleanup.policy"
-        end
+        ret_config = wait_for_config_value(
+          admin,
+          resources: resources_with_configs,
+          config_name: "cleanup.policy",
+          expected: ""
+        )
 
         expect(ret_config.value).to eq("")
       end
@@ -497,9 +516,52 @@ RSpec.describe Rdkafka::Admin do
         expect { resources_results }.to raise_error(Rdkafka::RdkafkaError, /invalid_config/)
       end
     end
+
+    context "when a config entry is rejected locally (invalid op_type)" do
+      let(:resources_with_configs) do
+        [
+          {
+            resource_type: 2,
+            resource_name: topic_name,
+            configs: [
+              {
+                name: "delete.retention.ms",
+                value: "1000",
+                op_type: 99
+              }
+            ]
+          }
+        ]
+      end
+
+      it "raises instead of silently dropping the entry and reporting success" do
+        # rd_kafka_ConfigResource_add_incremental_config rejects the invalid op_type before the
+        # request is sent, so this raises from the call itself (no #wait needed). Previously the
+        # entry was silently dropped and the alter request reported success.
+        expect do
+          admin.incremental_alter_configs(resources_with_configs)
+        end.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
+      end
+    end
   end
 
   describe "#list_offsets" do
+    context "when an offset specification is invalid" do
+      it "raises ArgumentError before allocating the native list" do
+        expect do
+          admin.list_offsets({ "t" => [{ partition: 0, offset: :nonsense }] })
+        end.to raise_error(ArgumentError, /Unknown offset specification/)
+      end
+    end
+
+    context "when a partition spec is missing a required key" do
+      it "raises KeyError before allocating the native list" do
+        expect do
+          admin.list_offsets({ "t" => [{ offset: :earliest }] })
+        end.to raise_error(KeyError)
+      end
+    end
+
     context "when querying offsets for an existing topic with messages" do
       let(:topic) { TestTopics.create }
 
@@ -713,7 +775,7 @@ RSpec.describe Rdkafka::Admin do
   end
 
   describe "#ACL tests for topic resource" do
-    let(:non_existing_resource_name) { "non-existing-topic" }
+    let(:non_existing_resource_name) { TestTopics.unique }
 
     before do
       # create topic for testing acl
@@ -773,14 +835,25 @@ RSpec.describe Rdkafka::Admin do
           expect(create_acl_report.rdkafka_response_string).to eq("")
         end
 
-        # Since we create and immediately check, this is slow on loaded CIs, hence we wait
-        sleep(2)
-
-        # describe_acl
-        describe_acl_handle = admin.describe_acl(resource_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_ANY, resource_name: nil, resource_pattern_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_ANY, principal: nil, host: nil, operation: Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_ANY, permission_type: Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ANY)
-        describe_acl_report = describe_acl_handle.wait(max_wait_timeout_ms: 15_000)
-        expect(describe_acl_handle[:response]).to eq(0)
-        expect(describe_acl_report.acls.length).to eq(2)
+        # describe_acl - poll each ACL by its specific name. The broker's
+        # authorizer cache can lag the create_acl ACK by a few seconds on
+        # fast runners, and by much longer on QEMU-emulated aarch64 CI
+        # runners, so a single describe with a shared filter is unreliable.
+        # Polling each name individually is deterministic and robust to
+        # leftover state from other tests running in the same process.
+        acl_names.each do |acl_name|
+          found = false
+          60.times do
+            handle = admin.describe_acl(resource_type: resource_type, resource_name: acl_name, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
+            report = handle.wait(max_wait_timeout_ms: 15_000)
+            if report.acls.any? { |a| a.matching_acl_resource_name == acl_name }
+              found = true
+              break
+            end
+            sleep(1)
+          end
+          expect(found).to be(true), "Expected ACL for #{acl_name} to become visible"
+        end
 
         # Clean up created ACLs to avoid leaking state to other tests
         acl_names.each do |acl_name|
@@ -799,13 +872,25 @@ RSpec.describe Rdkafka::Admin do
       end
 
       it "create an acl and delete the newly created acl" do
+        # Clean up any leftover ACLs from previous runs with matching filters
+        begin
+          cleanup_handle = admin.delete_acl(resource_type: resource_type, resource_name: nil, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
+          cleanup_handle.wait(max_wait_timeout_ms: 15_000)
+        rescue
+          # Ignore errors if no ACLs to clean up
+        end
+
+        # Store resource names so we can verify they were deleted
+        resource_name_1 = TestTopics.unique
+        resource_name_2 = TestTopics.unique
+
         # create_acl
-        create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: "test_acl_topic_1", resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
+        create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: resource_name_1, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
         create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
 
-        create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: "test_acl_topic_2", resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
+        create_acl_handle = admin.create_acl(resource_type: resource_type, resource_name: resource_name_2, resource_pattern_type: resource_pattern_type, principal: principal, host: host, operation: operation, permission_type: permission_type)
         create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
         expect(create_acl_report.rdkafka_response).to eq(0)
         expect(create_acl_report.rdkafka_response_string).to eq("")
@@ -820,8 +905,8 @@ RSpec.describe Rdkafka::Admin do
   end
 
   describe "#ACL tests for transactional_id" do
-    let(:transactional_id_resource_name) { "test-transactional-id" }
-    let(:non_existing_transactional_id) { "non-existing-transactional-id" }
+    let(:transactional_id_resource_name) { TestTopics.unique }
+    let(:non_existing_transactional_id) { TestTopics.unique }
     let(:transactional_id_resource_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_TRANSACTIONAL_ID }
     let(:transactional_id_resource_pattern_type) { Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_LITERAL }
     let(:transactional_id_principal) { "User:test-user" }
@@ -910,50 +995,63 @@ RSpec.describe Rdkafka::Admin do
       end
 
       it "creates acls and describes the newly created transactional_id acls" do
-        # Create first ACL
-        create_acl_handle = admin.create_acl(
-          resource_type: transactional_id_resource_type,
-          resource_name: "test_transactional_id_1",
-          resource_pattern_type: transactional_id_resource_pattern_type,
-          principal: transactional_id_principal,
-          host: transactional_id_host,
-          operation: transactional_id_operation,
-          permission_type: transactional_id_permission_type
-        )
-        create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
-        expect(create_acl_report.rdkafka_response).to eq(0)
-        expect(create_acl_report.rdkafka_response_string).to eq("")
+        acl_names = [TestTopics.unique, TestTopics.unique]
 
-        # Create second ACL
-        create_acl_handle = admin.create_acl(
-          resource_type: transactional_id_resource_type,
-          resource_name: "test_transactional_id_2",
-          resource_pattern_type: transactional_id_resource_pattern_type,
-          principal: transactional_id_principal,
-          host: transactional_id_host,
-          operation: transactional_id_operation,
-          permission_type: transactional_id_permission_type
-        )
-        create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
-        expect(create_acl_report.rdkafka_response).to eq(0)
-        expect(create_acl_report.rdkafka_response_string).to eq("")
+        # Create both ACLs
+        acl_names.each do |acl_name|
+          create_acl_handle = admin.create_acl(
+            resource_type: transactional_id_resource_type,
+            resource_name: acl_name,
+            resource_pattern_type: transactional_id_resource_pattern_type,
+            principal: transactional_id_principal,
+            host: transactional_id_host,
+            operation: transactional_id_operation,
+            permission_type: transactional_id_permission_type
+          )
+          create_acl_report = create_acl_handle.wait(max_wait_timeout_ms: 15_000)
+          expect(create_acl_report.rdkafka_response).to eq(0)
+          expect(create_acl_report.rdkafka_response_string).to eq("")
+        end
 
-        # Since we create and immediately check, this is slow on loaded CIs, hence we wait
-        sleep(2)
+        # describe_acl - poll each ACL by its specific name. The broker's
+        # authorizer cache can lag the create_acl ACK by a few seconds on
+        # fast runners, and by much longer on QEMU-emulated aarch64 CI
+        # runners, so a single describe with a shared filter is unreliable.
+        acl_names.each do |acl_name|
+          found = false
+          60.times do
+            handle = admin.describe_acl(
+              resource_type: transactional_id_resource_type,
+              resource_name: acl_name,
+              resource_pattern_type: transactional_id_resource_pattern_type,
+              principal: transactional_id_principal,
+              host: transactional_id_host,
+              operation: transactional_id_operation,
+              permission_type: transactional_id_permission_type
+            )
+            report = handle.wait(max_wait_timeout_ms: 15_000)
+            if report.acls.any? { |a| a.matching_acl_resource_name == acl_name }
+              found = true
+              break
+            end
+            sleep(1)
+          end
+          expect(found).to be(true), "Expected transactional_id ACL for #{acl_name} to become visible"
+        end
 
-        # Describe ACLs - filter by transactional_id resource type
-        describe_acl_handle = admin.describe_acl(
-          resource_type: transactional_id_resource_type,
-          resource_name: nil,
-          resource_pattern_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_PATTERN_ANY,
-          principal: transactional_id_principal,
-          host: transactional_id_host,
-          operation: transactional_id_operation,
-          permission_type: transactional_id_permission_type
-        )
-        describe_acl_report = describe_acl_handle.wait(max_wait_timeout_ms: 15_000)
-        expect(describe_acl_handle[:response]).to eq(0)
-        expect(describe_acl_report.acls.length).to eq(2)
+        # Clean up created ACLs to avoid leaking state to other tests
+        acl_names.each do |acl_name|
+          delete_acl_handle = admin.delete_acl(
+            resource_type: transactional_id_resource_type,
+            resource_name: acl_name,
+            resource_pattern_type: transactional_id_resource_pattern_type,
+            principal: transactional_id_principal,
+            host: transactional_id_host,
+            operation: transactional_id_operation,
+            permission_type: transactional_id_permission_type
+          )
+          delete_acl_handle.wait(max_wait_timeout_ms: 15_000)
+        end
       end
     end
 
@@ -977,7 +1075,7 @@ RSpec.describe Rdkafka::Admin do
         # Create first ACL
         create_acl_handle = admin.create_acl(
           resource_type: transactional_id_resource_type,
-          resource_name: "test_transactional_id_1",
+          resource_name: TestTopics.unique,
           resource_pattern_type: transactional_id_resource_pattern_type,
           principal: transactional_id_principal,
           host: transactional_id_host,
@@ -991,7 +1089,7 @@ RSpec.describe Rdkafka::Admin do
         # Create second ACL
         create_acl_handle = admin.create_acl(
           resource_type: transactional_id_resource_type,
-          resource_name: "test_transactional_id_2",
+          resource_name: TestTopics.unique,
           resource_pattern_type: transactional_id_resource_pattern_type,
           principal: transactional_id_principal,
           host: transactional_id_host,
@@ -1117,7 +1215,6 @@ RSpec.describe Rdkafka::Admin do
     context "when topic has less then desired number of partitions" do
       before do
         admin.create_topic(topic_name, 1, 1).wait
-        sleep(1)
       end
 
       it "expect to change number of partitions" do
@@ -1253,6 +1350,56 @@ RSpec.describe Rdkafka::Admin do
         expect { admin.enable_background_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
         signal_r.close
         signal_w.close
+      end
+    end
+  end
+
+  # Regression: the NULL background-queue cleanup branches in delete_group,
+  # delete_acl and describe_acl referenced undefined local variables, so they
+  # raised a NameError (instead of the intended ConfigError) and leaked the
+  # already-allocated native request object.
+  describe "background queue unavailable" do
+    before do
+      allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_get_background).and_return(FFI::Pointer::NULL)
+    end
+
+    describe "#delete_group" do
+      it "raises a ConfigError" do
+        expect {
+          admin.delete_group(group_name)
+        }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
+      end
+    end
+
+    describe "#delete_acl" do
+      it "raises a ConfigError" do
+        expect {
+          admin.delete_acl(
+            resource_type: resource_type,
+            resource_name: resource_name,
+            resource_pattern_type: resource_pattern_type,
+            principal: principal,
+            host: host,
+            operation: operation,
+            permission_type: permission_type
+          )
+        }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
+      end
+    end
+
+    describe "#describe_acl" do
+      it "raises a ConfigError" do
+        expect {
+          admin.describe_acl(
+            resource_type: resource_type,
+            resource_name: resource_name,
+            resource_pattern_type: resource_pattern_type,
+            principal: principal,
+            host: host,
+            operation: operation,
+            permission_type: permission_type
+          )
+        }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
       end
     end
   end

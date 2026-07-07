@@ -519,6 +519,42 @@ RSpec.describe Rdkafka::Callbacks do
         expect(Rdkafka::Bindings).to have_received(:rd_kafka_event_destroy).with(event_ptr)
       end
     end
+
+    context "when handling a list offsets result event whose parsing raises" do
+      let(:handle) { Rdkafka::Admin::ListOffsetsHandle.new }
+      let(:list_offsets_result_ptr) { FFI::MemoryPointer.new(:int) }
+      let(:result_infos_ptr) { FFI::MemoryPointer.new(:pointer) }
+      let(:error_string_ptr) { FFI::MemoryPointer.from_string("") }
+      let(:parse_error) { Rdkafka::RdkafkaError.new(1) }
+
+      before do
+        handle[:pending] = true
+        Rdkafka::Admin::ListOffsetsHandle.register(handle)
+
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_event_type).with(event_ptr)
+          .and_return(Rdkafka::Bindings::RD_KAFKA_EVENT_LISTOFFSETS_RESULT)
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_event_error).with(event_ptr).and_return(0)
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_event_error_string).with(event_ptr).and_return(error_string_ptr)
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_event_ListOffsets_result).with(event_ptr).and_return(list_offsets_result_ptr)
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_ListOffsets_result_infos) do |_result, count_ptr|
+          count_ptr.write(:size_t, 1)
+          result_infos_ptr
+        end
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_event_opaque).with(event_ptr).and_return(handle.to_ptr)
+        allow(Rdkafka::Admin::ListOffsetsReport).to receive(:new).and_raise(parse_error)
+      end
+
+      after { Rdkafka::Admin::ListOffsetsHandle.remove(handle.to_ptr.address) }
+
+      it "captures the exception, resolves the handle and re-raises on wait" do
+        described_class.call(nil, event_ptr, nil)
+
+        expect(handle.pending?).to be false
+        expect(handle.result).to eq(parse_error)
+        expect { handle.wait }.to raise_error(Rdkafka::RdkafkaError)
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_event_destroy).with(event_ptr)
+      end
+    end
   end
 
   describe Rdkafka::Callbacks::BaseHandler do

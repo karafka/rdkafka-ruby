@@ -764,6 +764,19 @@ RSpec.describe Rdkafka::Consumer do
           expect(partitions[message.partition].offset).to eq(message.offset + 1)
         end
 
+        it "stores the offset for a message with metadata" do
+          @new_consumer.store_offset(message, metadata)
+          @new_consumer.commit
+          @new_consumer.close
+
+          meta_consumer = rdkafka_consumer_config(base_config).consumer
+          meta_consumer.subscribe(topic)
+          wait_for_assignment(meta_consumer)
+          meta_consumer.poll(1_000)
+          expect(meta_consumer.committed.to_h[message.topic][message.partition].metadata).to eq(metadata)
+          meta_consumer.close
+        end
+
         it "raises an error with invalid input" do
           allow(message).to receive(:partition).and_return(9999)
           expect {

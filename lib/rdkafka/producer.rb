@@ -94,6 +94,12 @@ module Rdkafka
               )
 
               unless result == :config_ok
+                # rd_kafka_topic_new has not been called yet, so librdkafka has not taken
+                # ownership of the config. Destroy it ourselves before raising, otherwise the
+                # partially built rd_kafka_topic_conf_t leaks. (On the rd_kafka_topic_new path
+                # librdkafka frees the conf on both success and failure, so we never destroy it
+                # there.)
+                Rdkafka::Bindings.rd_kafka_topic_conf_destroy(topic_config)
                 raise Config::ConfigError.new(error_buffer.read_string)
               end
             end
@@ -322,14 +328,15 @@ module Rdkafka
         end
 
         topic_metadata ? topic_metadata[:partition_count] : Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
-      end
-    rescue Rdkafka::RdkafkaError => e
-      # If the topic does not exist, it will be created or if not allowed another error will be
-      # raised. We here return RD_KAFKA_PARTITION_UA so this can happen without early error
-      # happening on metadata discovery.
-      return Rdkafka::Bindings::RD_KAFKA_PARTITION_UA if e.code == :unknown_topic_or_part
+      rescue Rdkafka::RdkafkaError => e
+        # A missing topic is an expected, cacheable outcome (the topic may be auto-created on
+        # produce, or simply not exist yet). Returning RD_KAFKA_PARTITION_UA from inside the block
+        # caches it, so we don't re-run a blocking metadata query on every produce(partition_key:)
+        # to that topic. Anything else is a real error and is re-raised.
+        raise(e) unless e.code == :unknown_topic_or_part
 
-      raise(e)
+        Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
+      end
     end
 
     # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.

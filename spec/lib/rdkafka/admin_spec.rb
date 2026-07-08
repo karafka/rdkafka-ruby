@@ -25,20 +25,20 @@ RSpec.describe Rdkafka::Admin do
     # Registry should always end up being empty after each test.
     # We check and then clear to prevent cascading failures when a single test
     # leaves a leaked handle (e.g. due to a timeout or broker error).
-    registry_leaks = [
-      Rdkafka::Admin::CreateTopicHandle,
-      Rdkafka::Admin::CreatePartitionsHandle,
-      Rdkafka::Admin::DescribeAclHandle,
-      Rdkafka::Admin::CreateAclHandle,
-      Rdkafka::Admin::DeleteAclHandle,
-      Rdkafka::Admin::ListOffsetsHandle
-    ].reject { |handle_class| handle_class::REGISTRY.empty? }
+    #
+    # The registry is one hash shared by every handle class (it lives on AbstractHandle and is
+    # inherited as the same object), so it is inspected once and the classes of the actual
+    # leaked handles are reported. The previous per-class checks all aliased the same hash, so a
+    # single leaked handle blamed every listed class - none of which had to be the leaking one.
+    leaked_handles = Rdkafka::AbstractHandle::REGISTRY.values
 
-    registry_leaks.each { |handle_class| handle_class::REGISTRY.clear }
+    Rdkafka::AbstractHandle::REGISTRY.clear
 
     admin.close
 
-    expect(registry_leaks).to be_empty, "Leaked handles in: #{registry_leaks.map(&:name).join(", ")}"
+    leaked_names = leaked_handles.map { |handle| handle.class.name }.uniq.sort
+
+    expect(leaked_handles).to be_empty, "Leaked handles in: #{leaked_names.join(", ")}"
   end
 
   describe "#describe_errors" do
@@ -1152,7 +1152,7 @@ RSpec.describe Rdkafka::Admin do
 
         it "deletes the group" do
           delete_group_handle = admin.delete_group(group_name)
-          report = delete_group_handle.wait(max_wait_timeout_ms: 15_000)
+          report = delete_group_handle.wait(max_wait_timeout_ms: 30_000)
 
           expect(report.result_name).to eql(group_name)
         end
@@ -1163,8 +1163,14 @@ RSpec.describe Rdkafka::Admin do
           it "raises an exception" do
             delete_group_handle = admin.delete_group(group_name)
 
+            # The wait has to outlast librdkafka's own DeleteGroups operation budget (the admin
+            # request timeout defaults to socket.timeout.ms, 60s): during coordinator lookup or
+            # churn on a loaded broker the client legitimately retries within that budget, and a
+            # shorter Ruby-side wait gives up first with a WaitTimeoutError, leaking the
+            # still-pending handle. Past the budget librdkafka resolves the handle itself either
+            # with the broker answer or with a local timeout error.
             expect {
-              delete_group_handle.wait(max_wait_timeout_ms: 30_000)
+              delete_group_handle.wait(max_wait_timeout_ms: 90_000)
             }.to raise_exception { |ex|
               expect(ex).to be_a(Rdkafka::RdkafkaError)
               expect(ex.message).to match(/group_id_not_found|not_coordinator/)

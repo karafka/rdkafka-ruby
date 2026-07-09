@@ -19,7 +19,7 @@ Gem::Specification.new do |gem|
     next true if file.start_with?(".")
     next true if file.start_with?("spec/")
     next true if file.start_with?("ext/README.md")
-    next true if file == "Gemfile.lock"
+    next true if file.start_with?("Gemfile")
 
     false
   end

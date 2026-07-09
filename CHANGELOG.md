@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
-## Unreleased
+## 0.29.0 (Unreleased)
+- [Enhancement] Bump librdkafka to `2.14.2`
 - [Enhancement] Support offset-commit metadata: `Consumer#store_offset(message, metadata)` stores an optional metadata string alongside the offset, `Consumer::Partition#metadata` exposes it, and `TopicPartitionList` marshals it to and from the native list (read back via `Consumer#committed`).
 - [Fix] Cache the partition count for a missing topic. `Producer#partition_count` rescued `unknown_topic_or_part` outside the cache block, so nothing was cached and every `produce(partition_key:)` to a missing topic re-ran a blocking metadata query. The rescue now runs inside the cache block so `RD_KAFKA_PARTITION_UA` is cached like any other count; other errors are still re-raised.
 - [Fix] Let `PartitionsCountCache` adopt a lower partition count once the cached entry has expired. The cache prioritizes higher counts (partition counts only grow during normal operation), but it did so unconditionally: after the TTL expired it fetched the true lower count, discarded it, and re-armed the TTL on the stale higher count - permanently. A topic recreated with fewer partitions then made `produce` (with a partition key) fail with `unknown_partition` for the dropped partitions until process restart. A lower value is now adopted on the first refresh after expiry, while still being ignored within the TTL window so a transient or racy lower read cannot clobber a correct higher count.

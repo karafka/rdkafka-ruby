@@ -980,7 +980,10 @@ RSpec.describe Rdkafka::Consumer do
       expect(consumer).to receive(:list_offsets).once.and_call_original
       expect(consumer).not_to receive(:query_watermark_offsets)
 
-      expect(consumer.lag(list)).to eq(topic => { 0 => 0, 1 => 0, 2 => 0 })
+      # This consumer has never contacted the broker before, so the query pays the full
+      # connection setup. The default 1s watermark timeout abandons the wait on a loaded CI
+      # broker, leaking the still-pending handle into the shared registry (see #921).
+      expect(consumer.lag(list, 30_000)).to eq(topic => { 0 => 0, 1 => 0, 2 => 0 })
     end
 
     it "forwards the consumer isolation level (read_committed by default) to the batched query" do
@@ -995,7 +998,8 @@ RSpec.describe Rdkafka::Consumer do
         isolation_level: Rdkafka::Bindings::RD_KAFKA_ISOLATION_LEVEL_READ_COMMITTED
       ).and_call_original
 
-      expect(consumer.lag(list)).to eq(topic => { 0 => 0 })
+      # 30s instead of the 1s default: cold consumer, see the batched-query spec above.
+      expect(consumer.lag(list, 30_000)).to eq(topic => { 0 => 0 })
     end
 
     context "when the consumer is configured with read_uncommitted" do
@@ -1018,7 +1022,8 @@ RSpec.describe Rdkafka::Consumer do
           isolation_level: Rdkafka::Bindings::RD_KAFKA_ISOLATION_LEVEL_READ_UNCOMMITTED
         ).and_call_original
 
-        expect(consumer.lag(list)).to eq(topic => { 0 => 0 })
+        # 30s instead of the 1s default: cold consumer, see the batched-query spec above.
+        expect(consumer.lag(list, 30_000)).to eq(topic => { 0 => 0 })
       end
     end
 

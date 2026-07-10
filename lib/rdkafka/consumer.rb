@@ -562,6 +562,19 @@ module Rdkafka
       end
     end
 
+    # Performs the metadata request using this consumer
+    #
+    # @param topic_name [String, nil] metadata about particular topic or all if nil
+    # @param timeout_ms [Integer] metadata request timeout
+    # @return [Metadata] requested metadata
+    def metadata(topic_name = nil, timeout_ms = Defaults::METADATA_TIMEOUT_MS)
+      closed_consumer_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        Metadata.new(inner, topic_name, timeout_ms)
+      end
+    end
+
     # Store offset of a message to be used in the next commit of this consumer
     #
     # When using this `enable.auto.offset.store` should be set to `false` in the config.

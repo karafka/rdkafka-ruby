@@ -715,7 +715,8 @@ RSpec.describe Rdkafka::Producer do
       produce: { topic: nil },
       partition_count: nil,
       queue_size: :no_args,
-      events_poll_nb_each: :no_args
+      events_poll_nb_each: :no_args,
+      metadata: nil
     }.each do |method, args|
       it "raises an exception if #{method} is called" do
         expect {
@@ -764,6 +765,20 @@ RSpec.describe Rdkafka::Producer do
       expect(handler.create_result.error).to be_a(Rdkafka::RdkafkaError)
       expect(handler.create_result.error.code).to eq(:msg_timed_out)
       expect(handler.create_result.label).to eq("na")
+    end
+  end
+
+  describe "#metadata" do
+    it "returns metadata for all topics when no topic name is given" do
+      # Force topic creation before querying metadata
+      created_topic = TestTopics.create
+      result = producer.metadata.topics.map { |t| t[:topic_name] }
+      expect(result).to include(created_topic)
+    end
+
+    it "returns metadata for the given topic" do
+      created_topic = TestTopics.create
+      expect(producer.metadata(created_topic).topics.first[:topic_name]).to eq(created_topic)
     end
   end
 

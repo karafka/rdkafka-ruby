@@ -5,6 +5,7 @@ module Rdkafka
   class Producer
     include Helpers::Time
     include Helpers::OAuth
+    include Helpers::Metadata
 
     # @private
     @@partitions_count_cache = PartitionsCountCache.new
@@ -339,19 +340,6 @@ module Rdkafka
       end
     end
 
-    # Performs the metadata request using this producer
-    #
-    # @param topic_name [String, nil] metadata about particular topic or all if nil
-    # @param timeout_ms [Integer] metadata request timeout
-    # @return [Metadata] requested metadata
-    def metadata(topic_name = nil, timeout_ms = Defaults::METADATA_TIMEOUT_MS)
-      closed_producer_check(__method__)
-
-      @native_kafka.with_inner do |inner|
-        Metadata.new(inner, topic_name, timeout_ms)
-      end
-    end
-
     # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.
     #
     # When no partition is specified the underlying Kafka library picks a partition based on the key. If no key is specified, a random partition will be used.
@@ -540,5 +528,6 @@ module Rdkafka
     def closed_producer_check(method)
       raise Rdkafka::ClosedProducerError.new(method) if closed?
     end
+    alias_method :closed_check, :closed_producer_check
   end
 end

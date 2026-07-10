@@ -58,6 +58,7 @@ module Rdkafka
       end
     end
 
+    RD_KAFKA_RESP_ERR__TIMED_OUT = -185
     RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS = -175
     RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS = -174
     RD_KAFKA_RESP_ERR__STATE = -172
@@ -235,6 +236,8 @@ module Rdkafka
 
     attach_function :rd_kafka_conf_new, [], :pointer
     attach_function :rd_kafka_conf_set, [:pointer, :string, :string, :pointer, :int], :kafka_config_response
+    attach_function :rd_kafka_conf_get, [:pointer, :string, :pointer, :pointer], :kafka_config_response
+    attach_function :rd_kafka_conf, [:pointer], :pointer
     attach_function :rd_kafka_conf_dump, [:pointer, :pointer], :pointer
     attach_function :rd_kafka_conf_dump_free, [:pointer, :size_t], :void
     attach_function :rd_kafka_conf_destroy, [:pointer], :void

@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.29.0 (Unreleased)
+## 0.29.0 (2026-07-10)
 - [Enhancement] Bump librdkafka to `2.14.2`
 - [Enhancement] Add `Consumer#metadata` and `Producer#metadata`, mirroring `Admin#metadata`, so cluster/topic metadata can be fetched from an existing consumer or producer handle without opening a dedicated admin connection.
 - [Enhancement] Support offset-commit metadata: `Consumer#store_offset(message, metadata)` stores an optional metadata string alongside the offset, `Consumer::Partition#metadata` exposes it, and `TopicPartitionList` marshals it to and from the native list (read back via `Consumer#committed`).

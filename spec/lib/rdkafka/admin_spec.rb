@@ -1181,6 +1181,27 @@ RSpec.describe Rdkafka::Admin do
     end
   end
 
+  describe "#metadata" do
+    it "returns metadata for all topics when no topic name is given" do
+      # Force topic creation before querying metadata
+      admin.create_topic(topic_name, 1, 1).wait
+      result = admin.metadata.topics.map { |t| t[:topic_name] }
+      expect(result).to include(topic_name)
+    end
+
+    it "returns metadata for the given topic" do
+      admin.create_topic(topic_name, 1, 1).wait
+      expect(admin.metadata(topic_name).topics.first[:topic_name]).to eq(topic_name)
+    end
+
+    context "when admin is closed" do
+      it "raises ClosedAdminError" do
+        admin.close
+        expect { admin.metadata }.to raise_error(Rdkafka::ClosedAdminError, /metadata/)
+      end
+    end
+  end
+
   describe "#create_partitions" do
     let(:metadata) do
       admin.metadata(topic_name).topics.first

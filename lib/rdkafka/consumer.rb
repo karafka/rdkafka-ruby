@@ -14,6 +14,7 @@ module Rdkafka
     include Enumerable
     include Helpers::Time
     include Helpers::OAuth
+    include Helpers::Metadata
 
     # @private
     # @param native_kafka [NativeKafka] wrapper around the native Kafka consumer handle
@@ -1061,6 +1062,7 @@ module Rdkafka
     def closed_consumer_check(method)
       raise Rdkafka::ClosedConsumerError.new(method) if closed?
     end
+    alias_method :closed_check, :closed_consumer_check
 
     # Reads a librdkafka-allocated string and frees the underlying native buffer.
     #

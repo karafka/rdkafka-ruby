@@ -1017,6 +1017,19 @@ RSpec.describe Rdkafka::Consumer do
     end
   end
 
+  describe "#metadata" do
+    it "returns metadata for all topics when no topic name is given" do
+      # Force topic creation before querying metadata
+      topic
+      result = consumer.metadata.topics.map { |t| t[:topic_name] }
+      expect(result).to include(topic)
+    end
+
+    it "returns metadata for the given topic" do
+      expect(consumer.metadata(topic).topics.first[:topic_name]).to eq(topic)
+    end
+  end
+
   describe "#poll" do
     it "returns nil if there is no subscription" do
       expect(consumer.poll(1000)).to be_nil
@@ -1459,7 +1472,8 @@ RSpec.describe Rdkafka::Consumer do
       position: [],
       query_watermark_offsets: [nil, nil],
       assignment_lost?: [],
-      poll_nb: []
+      poll_nb: [],
+      metadata: [nil]
     }.each do |method, args|
       it "raises an exception if #{method} is called" do
         expect {

@@ -4,6 +4,7 @@ module Rdkafka
   # Admin client for Kafka administrative operations
   class Admin
     include Helpers::OAuth
+    include Helpers::Metadata
 
     class << self
       # Allows us to retrieve librdkafka errors with descriptions
@@ -127,19 +128,6 @@ module Rdkafka
           break if count.zero?
           break if yield(count) == :stop
         end
-      end
-    end
-
-    # Performs the metadata request using admin
-    #
-    # @param topic_name [String, nil] metadat about particular topic or all if nil
-    # @param timeout_ms [Integer] metadata request timeout
-    # @return [Metadata] requested metadata
-    def metadata(topic_name = nil, timeout_ms = Defaults::METADATA_TIMEOUT_MS)
-      closed_admin_check(__method__)
-
-      @native_kafka.with_inner do |inner|
-        Metadata.new(inner, topic_name, timeout_ms)
       end
     end
 
@@ -1033,5 +1021,6 @@ module Rdkafka
     def closed_admin_check(method)
       raise Rdkafka::ClosedAdminError.new(method) if closed?
     end
+    alias_method :closed_check, :closed_admin_check
   end
 end

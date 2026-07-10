@@ -5,6 +5,7 @@ module Rdkafka
   class Producer
     include Helpers::Time
     include Helpers::OAuth
+    include Helpers::Metadata
 
     # @private
     @@partitions_count_cache = PartitionsCountCache.new
@@ -626,5 +627,6 @@ module Rdkafka
     def closed_producer_check(method)
       raise Rdkafka::ClosedProducerError.new(method) if closed?
     end
+    alias_method :closed_check, :closed_producer_check
   end
 end

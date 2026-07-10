@@ -78,10 +78,10 @@ begin
   if lag != { TOPIC => { 0 => MESSAGES - 1 } }
     failures << "never-polled consumer: expected lag #{MESSAGES - 1}, got #{lag.inspect}"
   end
-
-  consumer.close
 rescue => e
   failures << "never-polled consumer: #{e.class}: #{e.message}"
+ensure
+  consumer&.close
 end
 
 # Scenario 2: fire and wait from inside a rebalance callback. The callback runs on the
@@ -107,13 +107,14 @@ begin
   consumer.subscribe(TOPIC)
   deadline = Time.now + DEADLINE_S
   consumer.poll(250) while holder[:result] == :not_run && Time.now < deadline
-  consumer.close
 
   if holder[:result] != MESSAGES
     failures << "rebalance callback: expected latest offset #{MESSAGES}, got #{holder[:result].inspect}"
   end
 rescue => e
   failures << "rebalance callback: #{e.class}: #{e.message}"
+ensure
+  consumer&.close
 end
 
 # Scenario 3: fire and wait from inside a statistics callback, which is likewise invoked
@@ -136,7 +137,6 @@ begin
   consumer.subscribe(TOPIC)
   deadline = Time.now + DEADLINE_S
   consumer.poll(250) while holder[:result] == :not_run && Time.now < deadline
-  consumer.close
 
   if holder[:result] != MESSAGES
     failures << "statistics callback: expected latest offset #{MESSAGES}, got #{holder[:result].inspect}"
@@ -145,6 +145,7 @@ rescue => e
   failures << "statistics callback: #{e.class}: #{e.message}"
 ensure
   Rdkafka::Config.statistics_callback = nil
+  consumer&.close
 end
 
 if failures.empty?

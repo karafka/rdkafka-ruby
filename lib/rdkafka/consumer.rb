@@ -532,8 +532,9 @@ module Rdkafka
 
       out = {}
       request = {}
+      partitions_by_topic = topic_partition_list.to_h
 
-      topic_partition_list.to_h.each do |topic, partitions|
+      partitions_by_topic.each do |topic, partitions|
         out[topic] = {}
 
         partitions.each do |p|
@@ -566,7 +567,7 @@ module Rdkafka
         (end_offsets[result[:topic]] ||= {})[result[:partition]] = result[:offset]
       end
 
-      topic_partition_list.to_h.each do |topic, partitions|
+      partitions_by_topic.each do |topic, partitions|
         partitions.each do |p|
           next if p.offset.nil?
 

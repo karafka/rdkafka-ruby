@@ -36,7 +36,7 @@ module Rdkafka
 
       # Validates the partition result and raises an error if invalid
       # @param result_info_ptr [FFI::Pointer] pointer to the result info
-      # @raise [RdkafkaError] when the partition has an error
+      # @raise [RdkafkaError] when the partition has an error, naming the failing partition
       def validate!(result_info_ptr)
         tp_ptr = Bindings.rd_kafka_ListOffsetsResultInfo_topic_partition(result_info_ptr)
         tp = Bindings::TopicPartition.new(tp_ptr)
@@ -44,7 +44,10 @@ module Rdkafka
 
         return if code.zero?
 
-        raise RdkafkaError.new(code)
+        raise RdkafkaError.new(
+          code,
+          "Error querying offsets for partition #{tp[:partition]} of '#{tp[:topic]}'"
+        )
       end
     end
   end

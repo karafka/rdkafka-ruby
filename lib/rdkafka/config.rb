@@ -197,6 +197,11 @@ module Rdkafka
       opaque = Opaque.new
       config = native_config(opaque)
 
+      # Set callback to receive background events, so admin-style operations issued on the
+      # consumer handle (e.g. Consumer#list_offsets) get their results dispatched back to their
+      # handles. librdkafka spawns its internally-managed background thread because of this.
+      Rdkafka::Bindings.rd_kafka_conf_set_background_event_cb(config, Rdkafka::Callbacks::BackgroundEventCallbackFunction)
+
       if @consumer_rebalance_listener
         opaque.consumer_rebalance_listener = @consumer_rebalance_listener
         Rdkafka::Bindings.rd_kafka_conf_set_rebalance_cb(config, Rdkafka::Bindings::RebalanceCallback)

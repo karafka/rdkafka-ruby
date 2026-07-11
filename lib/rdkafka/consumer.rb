@@ -15,6 +15,7 @@ module Rdkafka
     include Helpers::Time
     include Helpers::OAuth
     include Helpers::Metadata
+    include Helpers::ListOffsets
 
     # @private
     # @param native_kafka [NativeKafka] wrapper around the native Kafka consumer handle
@@ -515,28 +516,65 @@ module Rdkafka
     # possible to create one yourself, in this case you have to provide a list that
     # already contains all the partitions you need the lag for.
     #
+    # The end offsets of all requested partitions are fetched in a single batched
+    # {#list_offsets} query - librdkafka fans it out to the involved partition leaders
+    # internally and concurrently - instead of one blocking {#query_watermark_offsets}
+    # broker roundtrip per partition.
+    #
     # @param topic_partition_list [TopicPartitionList] The list to calculate lag for.
-    # @param watermark_timeout_ms [Integer] The timeout for each query watermark call.
+    # @param watermark_timeout_ms [Integer] The timeout for the batched end-offsets query.
     # @return [Hash{String => Hash{Integer => Integer}}] A hash containing all topics with the lag
     #   per partition
+    # @raise [ClosedConsumerError] when the consumer is closed
     # @raise [RdkafkaError] When querying the broker fails.
     def lag(topic_partition_list, watermark_timeout_ms = Defaults::CONSUMER_LAG_TIMEOUT_MS)
-      out = {}
+      closed_consumer_check(__method__)
 
-      topic_partition_list.to_h.each do |topic, partitions|
-        # Query high watermarks for this topic's partitions and compare to the offset in the list.
-        topic_out = {}
+      out = {}
+      request = {}
+      partitions_by_topic = topic_partition_list.to_h
+
+      partitions_by_topic.each do |topic, partitions|
+        out[topic] = {}
+
         partitions.each do |p|
           next if p.offset.nil?
-          _low, high = query_watermark_offsets(
-            topic,
-            p.partition,
-            watermark_timeout_ms
-          )
-          topic_out[p.partition] = high - p.offset
+
+          (request[topic] ||= []) << { partition: p.partition, offset: :latest }
         end
-        out[topic] = topic_out
       end
+
+      return out if request.empty?
+
+      report = begin
+        # The isolation level is forwarded so the end offsets match what the old per-partition
+        # watermark query returned: librdkafka resolves that query with the consumer's configured
+        # `isolation.level` (LSO for the default read_committed), while the admin-style batched
+        # query would otherwise default to read_uncommitted (true high watermark).
+        list_offsets(request, isolation_level: isolation_level)
+          .wait(max_wait_timeout_ms: watermark_timeout_ms)
+      rescue AbstractHandle::WaitTimeoutError
+        # Keep the pre-batching contract: a slow broker surfaced as a timed-out RdkafkaError
+        # from the per-partition watermark query, not as a handle wait timeout.
+        raise RdkafkaError.new(
+          Rdkafka::Bindings::RD_KAFKA_RESP_ERR__TIMED_OUT,
+          "Error querying watermark offsets of '#{request.keys.join(", ")}'"
+        )
+      end
+
+      end_offsets = {}
+      report.offsets.each do |result|
+        (end_offsets[result[:topic]] ||= {})[result[:partition]] = result[:offset]
+      end
+
+      partitions_by_topic.each do |topic, partitions|
+        partitions.each do |p|
+          next if p.offset.nil?
+
+          out[topic][p.partition] = end_offsets.fetch(topic).fetch(p.partition) - p.offset
+        end
+      end
+
       out
     end
 
@@ -1079,6 +1117,35 @@ module Rdkafka
       ptr.read_string
     ensure
       Rdkafka::Bindings.rd_kafka_mem_free(inner, ptr) unless ptr.null?
+    end
+
+    # Reads this consumer's effective `isolation.level` from the live librdkafka configuration
+    # and maps it to the numeric isolation level constant. Memoized: the value cannot change
+    # after client creation.
+    #
+    # @return [Integer] `RD_KAFKA_ISOLATION_LEVEL_READ_COMMITTED` or
+    #   `RD_KAFKA_ISOLATION_LEVEL_READ_UNCOMMITTED`
+    # @raise [Rdkafka::Config::ConfigError] when the property cannot be read
+    def isolation_level
+      @isolation_level ||= @native_kafka.with_inner do |inner|
+        conf = Rdkafka::Bindings.rd_kafka_conf(inner)
+
+        size_ptr = Rdkafka::Bindings::SizePtr.new
+        size_ptr[:value] = 64
+        value_ptr = FFI::MemoryPointer.new(:char, 64)
+
+        result = Rdkafka::Bindings.rd_kafka_conf_get(conf, "isolation.level", value_ptr, size_ptr)
+
+        if result != :config_ok
+          raise Rdkafka::Config::ConfigError.new("Could not read isolation.level: #{result}")
+        end
+
+        if value_ptr.read_string == "read_committed"
+          Rdkafka::Bindings::RD_KAFKA_ISOLATION_LEVEL_READ_COMMITTED
+        else
+          Rdkafka::Bindings::RD_KAFKA_ISOLATION_LEVEL_READ_UNCOMMITTED
+        end
+      end
     end
 
     # Returns the consumer queue pointer, lazily initialized

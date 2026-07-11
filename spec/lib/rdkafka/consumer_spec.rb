@@ -963,6 +963,152 @@ RSpec.describe Rdkafka::Consumer do
       }
       expect(lag).to eq(expected_lag)
     end
+
+    it "fetches the watermarks of all partitions in a single batched query" do
+      (0..2).each do |i|
+        producer.produce(
+          topic: topic,
+          key: "key lag #{i}",
+          partition: i
+        ).wait
+      end
+
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
+        l.add_topic_and_partitions_with_offsets(topic, 0 => 1, 1 => 1, 2 => 1)
+      end
+
+      expect(consumer).to receive(:list_offsets).once.and_call_original
+      expect(consumer).not_to receive(:query_watermark_offsets)
+
+      # This consumer has never contacted the broker before, so the query pays the full
+      # connection setup. The default 1s watermark timeout abandons the wait on a loaded CI
+      # broker, leaking the still-pending handle into the shared registry (see #921).
+      expect(consumer.lag(list, 30_000)).to eq(topic => { 0 => 0, 1 => 0, 2 => 0 })
+    end
+
+    it "forwards the consumer isolation level (read_committed by default) to the batched query" do
+      producer.produce(topic: topic, key: "key lag", partition: 0).wait
+
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
+        l.add_topic_and_partitions_with_offsets(topic, 0 => 1)
+      end
+
+      expect(consumer).to receive(:list_offsets).with(
+        { topic => [{ partition: 0, offset: :latest }] },
+        isolation_level: Rdkafka::Bindings::RD_KAFKA_ISOLATION_LEVEL_READ_COMMITTED
+      ).and_call_original
+
+      # 30s instead of the 1s default: cold consumer, see the batched-query spec above.
+      expect(consumer.lag(list, 30_000)).to eq(topic => { 0 => 0 })
+    end
+
+    context "when the consumer is configured with read_uncommitted" do
+      let(:consumer) do
+        rdkafka_consumer_config(
+          "isolation.level": "read_uncommitted",
+          "auto.commit.interval.ms": 60_000
+        ).consumer
+      end
+
+      it "forwards read_uncommitted to the batched query" do
+        producer.produce(topic: topic, key: "key lag", partition: 0).wait
+
+        list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
+          l.add_topic_and_partitions_with_offsets(topic, 0 => 1)
+        end
+
+        expect(consumer).to receive(:list_offsets).with(
+          { topic => [{ partition: 0, offset: :latest }] },
+          isolation_level: Rdkafka::Bindings::RD_KAFKA_ISOLATION_LEVEL_READ_UNCOMMITTED
+        ).and_call_original
+
+        # 30s instead of the 1s default: cold consumer, see the batched-query spec above.
+        expect(consumer.lag(list, 30_000)).to eq(topic => { 0 => 0 })
+      end
+    end
+
+    it "raises a timed_out RdkafkaError when the batched offsets query times out" do
+      handle = instance_double(Rdkafka::Admin::ListOffsetsHandle)
+      allow(handle).to receive(:wait).and_raise(Rdkafka::AbstractHandle::WaitTimeoutError.new("timed out"))
+      allow(consumer).to receive(:list_offsets).and_return(handle)
+
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
+        l.add_topic_and_partitions_with_offsets("lag-timeout-topic", 0 => 0)
+      end
+
+      expect { consumer.lag(list) }.to raise_error(Rdkafka::RdkafkaError) do |error|
+        expect(error.code).to eq(:timed_out)
+        expect(error.message).to include("lag-timeout-topic")
+      end
+    end
+
+    it "returns empty hashes without issuing the batched query when no partition has an offset" do
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
+        l.add_topic("no-offsets-topic", 0..2)
+      end
+
+      expect(consumer).not_to receive(:list_offsets)
+
+      expect(consumer.lag(list)).to eq("no-offsets-topic" => {})
+    end
+
+    it "reads the isolation level from the native config only once across lag calls" do
+      producer.produce(topic: topic, key: "key lag", partition: 0).wait
+
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
+        l.add_topic_and_partitions_with_offsets(topic, 0 => 1)
+      end
+
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_conf_get).once.and_call_original
+
+      consumer.lag(list, 30_000)
+      consumer.lag(list, 30_000)
+    end
+
+    it "raises ClosedConsumerError on a closed consumer even when no partition has an offset" do
+      # Before the batched rewrite this corner returned { topic => {} } without raising because
+      # no watermark query was ever issued; lag now checks the consumer state up front.
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
+        l.add_topic("closed-lag-topic", 0..2)
+      end
+
+      consumer.close
+
+      expect { consumer.lag(list) }.to raise_error(Rdkafka::ClosedConsumerError, /lag/)
+    end
+  end
+
+  describe "#list_offsets" do
+    it "queries earliest and latest offsets of many partitions in one batched request" do
+      producer.produce(topic: topic, payload: "p0a", partition: 0).wait
+      producer.produce(topic: topic, payload: "p0b", partition: 0).wait
+      producer.produce(topic: topic, payload: "p1a", partition: 1).wait
+
+      report = consumer.list_offsets(
+        {
+          topic => [
+            { partition: 0, offset: :earliest },
+            { partition: 1, offset: :latest }
+          ]
+        }
+      ).wait(max_wait_timeout_ms: 15_000)
+
+      expect(report).to be_a(Rdkafka::Admin::ListOffsetsReport)
+
+      offsets = report.offsets.to_h { |result| [result[:partition], result[:offset]] }
+      expect(offsets).to eq(0 => 0, 1 => 1)
+    end
+
+    it "honors the isolation level" do
+      producer.produce(topic: topic, payload: "p0a", partition: 0).wait
+
+      report = consumer.list_offsets(
+        { topic => [{ partition: 0, offset: :latest }] },
+        isolation_level: Rdkafka::Bindings::RD_KAFKA_ISOLATION_LEVEL_READ_COMMITTED
+      ).wait(max_wait_timeout_ms: 15_000)
+
+      expect(report.offsets.first[:offset]).to eq(1)
+    end
   end
 
   describe "#cluster_id" do
@@ -1471,7 +1617,9 @@ RSpec.describe Rdkafka::Consumer do
       query_watermark_offsets: [nil, nil],
       assignment_lost?: [],
       poll_nb: [],
-      metadata: [nil]
+      metadata: [nil],
+      lag: [nil],
+      list_offsets: [{}]
     }.each do |method, args|
       it "raises an exception if #{method} is called" do
         expect {

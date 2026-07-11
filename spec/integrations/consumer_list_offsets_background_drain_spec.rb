@@ -12,6 +12,9 @@
 #    the query returning to its poll loop.
 # 3. A query fired from inside a statistics callback (also invoked mid-poll on the application
 #    thread) resolves the same way.
+# 4. Queries fired from a separate Ruby thread while another thread actively polls the same
+#    consumer resolve correctly - the batched query neither depends on nor disturbs the poll
+#    loop running concurrently.
 #
 # Requires a running Kafka broker at localhost:9092.
 #
@@ -148,8 +151,38 @@ ensure
   consumer&.close
 end
 
+# Scenario 4: fire from a separate Ruby thread while the application thread is actively
+# polling the same consumer.
+begin
+  consumer = build_config.consumer
+  consumer.subscribe(TOPIC)
+
+  polling = true
+  poller = Thread.new do
+    while polling
+      begin
+        consumer.poll(100)
+      rescue Rdkafka::RdkafkaError
+        # Transient poll errors are irrelevant to the side-thread query under test
+      end
+    end
+  end
+
+  results = Array.new(3) { query_latest(consumer) }
+
+  if results != [MESSAGES] * 3
+    failures << "concurrent thread: expected #{[MESSAGES] * 3}, got #{results.inspect}"
+  end
+rescue => e
+  failures << "concurrent thread: #{e.class}: #{e.message}"
+ensure
+  polling = false
+  poller&.join
+  consumer&.close
+end
+
 if failures.empty?
-  puts "PASS: list_offsets resolved without polling, from a rebalance callback and from a statistics callback"
+  puts "PASS: list_offsets resolved without polling, from rebalance and statistics callbacks, and from a concurrent thread"
   exit(0)
 else
   failures.each { |failure| warn "FAIL: #{failure}" }

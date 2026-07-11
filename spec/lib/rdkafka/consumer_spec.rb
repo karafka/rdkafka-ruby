@@ -1038,7 +1038,43 @@ RSpec.describe Rdkafka::Consumer do
 
       expect { consumer.lag(list) }.to raise_error(Rdkafka::RdkafkaError) do |error|
         expect(error.code).to eq(:timed_out)
+        expect(error.message).to include("lag-timeout-topic")
       end
+    end
+
+    it "returns empty hashes without issuing the batched query when no partition has an offset" do
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
+        l.add_topic("no-offsets-topic", 0..2)
+      end
+
+      expect(consumer).not_to receive(:list_offsets)
+
+      expect(consumer.lag(list)).to eq("no-offsets-topic" => {})
+    end
+
+    it "reads the isolation level from the native config only once across lag calls" do
+      producer.produce(topic: topic, key: "key lag", partition: 0).wait
+
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
+        l.add_topic_and_partitions_with_offsets(topic, 0 => 1)
+      end
+
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_conf_get).once.and_call_original
+
+      consumer.lag(list, 30_000)
+      consumer.lag(list, 30_000)
+    end
+
+    it "raises ClosedConsumerError on a closed consumer even when no partition has an offset" do
+      # Before the batched rewrite this corner returned { topic => {} } without raising because
+      # no watermark query was ever issued; lag now checks the consumer state up front.
+      list = Rdkafka::Consumer::TopicPartitionList.new.tap do |l|
+        l.add_topic("closed-lag-topic", 0..2)
+      end
+
+      consumer.close
+
+      expect { consumer.lag(list) }.to raise_error(Rdkafka::ClosedConsumerError, /lag/)
     end
   end
 

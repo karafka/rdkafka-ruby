@@ -20,7 +20,7 @@ end
 unless ENV["CI"] == "true"
   require "simplecov"
   SimpleCov.start do
-    add_filter "/spec/"
+    skip "/spec/"
   end
 end
 

@@ -87,6 +87,28 @@ module KafkaWaitHelpers
     retry
   end
 
+  # Produces (and waits for) a message to each given partition so their leaders are actually
+  # serving before the test queries them.
+  #
+  # Right after a topic is created, a partition can appear in metadata with an elected leader
+  # before that broker is ready to serve it, so a ListOffsets/fetch request still fails with
+  # +not_leader_for_partition+. A metadata check is therefore not enough. A successful produce is a
+  # full round-trip to the leader - librdkafka retries it internally until leadership settles - so
+  # once it completes the partition is genuinely ready to be queried.
+  #
+  # @param topic [String] the topic to produce to
+  # @param partitions [Array<Integer>] the partitions to warm up
+  # @return [void]
+  def warm_up_partitions(topic, *partitions)
+    producer = rdkafka_config.producer
+
+    partitions.each do |partition|
+      producer.produce(topic: topic, payload: "warmup", partition: partition).wait
+    end
+  ensure
+    producer&.close
+  end
+
   # Polls +describe_configs+ for a resource until the named config reports the
   # expected value, or the timeout elapses. Broker acknowledgment of an
   # +incremental_alter_configs+ request does not guarantee the change is

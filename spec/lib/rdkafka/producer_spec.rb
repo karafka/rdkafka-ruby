@@ -687,7 +687,7 @@ RSpec.describe Rdkafka::Producer do
       # reports closed and its #close leaves it closed without destroying the native handle.
       inherited_reports_closed = producer.closed?
       producer.close
-      exit(inherited_reports_closed && producer.closed? ? 0 : 1)
+      exit((inherited_reports_closed && producer.closed?) ? 0 : 1)
     end
 
     _, status = Process.wait2(pid)

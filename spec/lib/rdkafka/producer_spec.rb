@@ -10,16 +10,9 @@ RSpec.describe Rdkafka::Producer do
   let(:topic) { TestTopics.create }
   let(:topic_25) { TestTopics.create(partitions: 25) }
 
+  # Close the clients after each example. The shared registry-empty check lives in the global hook
+  # in spec_helper.
   after do
-    # Registry should always end up being empty.
-    # Async delivery callbacks may not have fired yet, so poll briefly.
-    registry = Rdkafka::Producer::DeliveryHandle::REGISTRY
-    10.times do
-      break if registry.empty?
-
-      sleep(0.05)
-    end
-    expect(registry).to be_empty, registry.inspect
     producer.close
     consumer.close
   end

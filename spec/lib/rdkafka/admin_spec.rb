@@ -19,27 +19,9 @@ RSpec.describe Rdkafka::Admin do
   let(:permission_type) { Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW }
   let(:admin) { config.admin }
 
-  around do |example|
-    example.run
-  ensure
-    # Registry should always end up being empty after each test.
-    # We check and then clear to prevent cascading failures when a single test
-    # leaves a leaked handle (e.g. due to a timeout or broker error).
-    #
-    # The registry is one hash shared by every handle class (it lives on AbstractHandle and is
-    # inherited as the same object), so it is inspected once and the classes of the actual
-    # leaked handles are reported. The previous per-class checks all aliased the same hash, so a
-    # single leaked handle blamed every listed class - none of which had to be the leaking one.
-    leaked_handles = Rdkafka::AbstractHandle::REGISTRY.values
-
-    Rdkafka::AbstractHandle::REGISTRY.clear
-
-    admin.close
-
-    leaked_names = leaked_handles.map { |handle| handle.class.name }.uniq.sort
-
-    expect(leaked_handles).to be_empty, "Leaked handles in: #{leaked_names.join(", ")}"
-  end
+  # Close the memoized admin after each example so cleanup does not rely on the GC finalizer. The
+  # shared registry-empty check lives in the global hook in spec_helper.
+  after { admin.close }
 
   describe "#describe_errors" do
     let(:errors) { admin.class.describe_errors }

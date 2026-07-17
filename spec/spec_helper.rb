@@ -78,4 +78,31 @@ RSpec.configure do |config|
       example.run
     end
   end
+
+  # The handle registry (`AbstractHandle::REGISTRY`) is one process-global hash shared by every
+  # handle class. After each example it must be empty; a handle left behind - e.g. a
+  # `CreateTopicHandle` orphaned when topic setup times out against a slow broker - is otherwise
+  # visible to every later example, turning a single leak into a cascade of identical failures.
+  #
+  # We capture, CLEAR unconditionally, then assert - so the clear always runs (a raising assertion
+  # must never skip it) and a leak fails only the example that caused it. `append_after` runs this
+  # after each group's own `after` hooks, so the clients that own the handles have already been
+  # closed and only genuinely-orphaned handles remain.
+  config.append_after do
+    registry = Rdkafka::AbstractHandle::REGISTRY
+
+    # Async delivery/background callbacks may not have fired yet; give them a brief moment.
+    10.times do
+      break if registry.empty?
+
+      sleep(0.05)
+    end
+
+    leaked_handles = registry.values
+    registry.clear
+
+    leaked_names = leaked_handles.map { |handle| handle.class.name }.uniq.sort
+
+    expect(leaked_handles).to be_empty, "Leaked handles in: #{leaked_names.join(", ")}"
+  end
 end

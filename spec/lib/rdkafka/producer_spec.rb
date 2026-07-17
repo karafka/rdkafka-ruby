@@ -667,6 +667,33 @@ RSpec.describe Rdkafka::Producer do
     expect(message.key).to eq "key-forked"
   end
 
+  it "treats a producer inherited across fork as closed in the child, leaving teardown to the parent", skip: defined?(JRUBY_VERSION) && "Kernel#fork is not available" do
+    # librdkafka is not fork-safe: `fork` copies only the calling thread, so the background threads
+    # backing this handle do not exist in the child. An inherited handle must therefore report as
+    # closed in the child and `#close` must be a no-op there - never calling `rd_kafka_destroy` on
+    # threads that no longer exist. Otherwise the child crashes (SIGSEGV) when Ruby runs the
+    # inherited producer's GC finalizer on exit. The parent keeps ownership and stays usable.
+    producer # force creation in the parent so the child inherits a live, open handle
+
+    pid = fork do
+      # In the child the inherited handle belongs to another process. Exit 0 only when it both
+      # reports closed and its #close leaves it closed without destroying the native handle.
+      inherited_reports_closed = producer.closed?
+      producer.close
+      exit((inherited_reports_closed && producer.closed?) ? 0 : 1)
+    end
+
+    _, status = Process.wait2(pid)
+
+    expect(status.signaled?).to be(false) # a SIGSEGV here would mean the guard let the child destroy the handle
+    expect(status.exitstatus).to eq(0)
+
+    # The parent created the handle, so it is unaffected: still open and usable (a call that
+    # dereferences the inner handle keeps working).
+    expect(producer.closed?).to be(false)
+    expect(producer.name).to start_with("rdkafka#producer-")
+  end
+
   it "raises an error when producing fails" do
     expect(Rdkafka::Bindings).to receive(:rd_kafka_producev).and_return(20)
 

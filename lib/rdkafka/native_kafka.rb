@@ -13,6 +13,14 @@ module Rdkafka
     def initialize(inner, run_polling_thread:, opaque:, auto_start: true, timeout_ms: Defaults::NATIVE_KAFKA_POLL_TIMEOUT_MS)
       @inner = inner
       @opaque = opaque
+      # Process that owns `@inner`. librdkafka is not fork-safe: `fork` copies only the calling
+      # thread, so the background/broker threads backing this handle do not exist in a child
+      # process. An inherited handle therefore must not be polled or destroyed in the child -
+      # `rd_kafka_destroy` would walk thread state that no longer exists (segfault) and the
+      # inherited mutexes may have been copied in a locked state (deadlock). We record the creator
+      # pid so a forked child can recognise an inherited handle and leave its teardown to the
+      # parent, which still owns the running threads.
+      @creator_pid = Process.pid
       # Lock around external access
       @access_mutex = Mutex.new
       # Lock around internal polling
@@ -115,9 +123,16 @@ module Rdkafka
     end
 
     # Returns whether this native Kafka handle is closed or closing
+    #
+    # A handle inherited across `fork` is reported as closed in the child: it belongs to another
+    # process whose threads back the native client, so it is not usable here and must not be
+    # destroyed here (see the `@creator_pid` note in `#initialize`). This makes every `#close`
+    # path - including the GC finalizers that run during a child's exit - skip the native teardown
+    # for inherited handles, which is what would otherwise segfault the child.
+    #
     # @return [Boolean] true if closed or closing
     def closed?
-      @closing || @inner.nil?
+      @closing || @inner.nil? || @creator_pid != Process.pid
     end
 
     # Enable IO event notifications on the main queue

@@ -46,7 +46,7 @@ GEM
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.13.0)
     rspec-support (3.13.7)
-    simplecov (1.0.0)
+    simplecov (1.0.2)
     warning (1.6.0)
 
 PLATFORMS

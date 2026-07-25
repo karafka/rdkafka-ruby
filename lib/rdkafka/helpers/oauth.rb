@@ -4,10 +4,14 @@ module Rdkafka
     module OAuth
       # Set the OAuthBearer token
       #
-      # @param token [String] the mandatory token value to set, often (but not necessarily) a JWS compact serialization as per https://tools.ietf.org/html/rfc7515#section-3.1.
-      # @param lifetime_ms [Integer] when the token expires, in terms of the number of milliseconds since the epoch. See https://currentmillis.com/.
+      # @param token [String] the mandatory token value to set, often (but not necessarily) a JWS
+      #   compact serialization as per https://tools.ietf.org/html/rfc7515#section-3.1.
+      # @param lifetime_ms [Integer] when the token expires, in terms of the number of milliseconds
+      #   since the epoch. See https://currentmillis.com/.
       # @param principal_name [String] the mandatory Kafka principal name associated with the token.
-      # @param extensions [Hash] optional SASL extensions key-value pairs to be communicated to the broker as additional key-value pairs during the initial client response as per https://tools.ietf.org/html/rfc7628#section-3.1.
+      # @param extensions [Hash] optional SASL extensions key-value pairs to be communicated to the
+      #   broker as additional key-value pairs during the initial client response as per
+      #   https://tools.ietf.org/html/rfc7628#section-3.1.
       # @return [Integer] 0 on success
       def oauthbearer_set_token(token:, lifetime_ms:, principal_name:, extensions: nil)
         error_buffer = FFI::MemoryPointer.from_string(" " * 256)
@@ -49,7 +53,8 @@ module Rdkafka
       # Convert extensions hash to FFI::MemoryPointer (`const char **`).
       #
       # @param extensions [Hash, nil] extension key-value pairs
-      # @return [Array<FFI::MemoryPointer, Array<FFI::MemoryPointer>>] array pointer and string pointers
+      # @return [Array<FFI::MemoryPointer, Array<FFI::MemoryPointer>>] array pointer and string
+      #   pointers
       # @note The returned pointers must be freed manually (autorelease = false).
       def map_extensions(extensions)
         return [nil, nil] if extensions.nil? || extensions.empty?
@@ -80,7 +85,7 @@ module Rdkafka
       #
       # @param extensions [Hash, nil] extension key-value pairs
       # @return [Integer] non-negative even number representing keys + values count
-      # @see https://github.com/confluentinc/librdkafka/blob/master/src/rdkafka_sasl_oauthbearer.c#L327-L347
+      # @see github.com/confluentinc/librdkafka/blob/master/src/rdkafka_sasl_oauthbearer.c#L327-L347
       def extension_size(extensions)
         return 0 unless extensions
         extensions.size * 2

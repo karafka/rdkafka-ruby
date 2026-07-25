@@ -35,11 +35,13 @@ module Rdkafka
     # consumer-queue reference, then destroy the native client. The default `NativeKafka#finalizer`
     # went straight to `rd_kafka_destroy`, leaving the consumer-queue reference (from
     # `rd_kafka_queue_get_consumer`, taken by `poll_batch`) dangling - which can make
-    # `rd_kafka_destroy` block inside the finalizer (process hang at GC/shutdown) or leak the handle.
+    # `rd_kafka_destroy` block inside the finalizer (process hang at GC/shutdown) or leak the
+    # handle.
     #
     # @private
     # @param native_kafka [NativeKafka] the wrapped native client
-    # @param queue_holder [Array] single-element holder carrying the consumer queue pointer (or empty)
+    # @param queue_holder [Array] single-element holder carrying the consumer queue pointer
+    #   (or empty)
     # @return [Proc] finalizer proc that must not reference the consumer instance
     def self.finalizer(native_kafka, queue_holder)
       proc do
@@ -125,11 +127,6 @@ module Rdkafka
     # @return [nil]
     # @raise [Rdkafka::ClosedConsumerError] if called on a closed consumer
     #
-    # @note This method holds the inner lock until the queue is empty or `:stop` is returned.
-    #   Other consumer operations will wait until this method returns.
-    # @note This method is thread-safe as it uses @native_kafka.with_inner synchronization
-    # @note Do NOT use this if `consumer_poll_set` was set to `true`
-    #
     # @example Drain all pending events
     #   consumer.events_poll_nb_each { |_count| }
     #
@@ -138,6 +135,10 @@ module Rdkafka
     #   consumer.events_poll_nb_each do |_count|
     #     :stop if monotonic_now >= deadline
     #   end
+    # @note This method holds the inner lock until the queue is empty or `:stop` is returned.
+    #   Other consumer operations will wait until this method returns.
+    # @note This method is thread-safe as it uses @native_kafka.with_inner synchronization
+    # @note Do NOT use this if `consumer_poll_set` was set to `true`
     def events_poll_nb_each
       closed_consumer_check(__method__)
 
@@ -163,14 +164,6 @@ module Rdkafka
     # @raise [Rdkafka::ClosedConsumerError] if called on a closed consumer
     # @raise [Rdkafka::RdkafkaError] if a Kafka error occurs while polling
     #
-    # @note This method uses `rd_kafka_consumer_poll` to fetch messages, unlike
-    #   `events_poll_nb_each` which uses `rd_kafka_poll` for event callbacks (delivery reports,
-    #   statistics, etc.). For consumers, use this method to receive messages and
-    #   `events_poll_nb_each` for processing background events.
-    # @note This method holds the inner lock for the duration. Other consumer operations
-    #   will wait until this method returns.
-    # @note Timeout/max_messages logic should be implemented by the caller
-    #
     # @example Process messages until queue is empty
     #   consumer.poll_nb_each do |message|
     #     process(message)
@@ -183,6 +176,13 @@ module Rdkafka
     #     count += 1
     #     :stop if count >= 10
     #   end
+    # @note This method uses `rd_kafka_consumer_poll` to fetch messages, unlike
+    #   `events_poll_nb_each` which uses `rd_kafka_poll` for event callbacks (delivery reports,
+    #   statistics, etc.). For consumers, use this method to receive messages and
+    #   `events_poll_nb_each` for processing background events.
+    # @note This method holds the inner lock for the duration. Other consumer operations
+    #   will wait until this method returns.
+    # @note Timeout/max_messages logic should be implemented by the caller
     def poll_nb_each
       closed_consumer_check(__method__)
 
@@ -447,9 +447,11 @@ module Rdkafka
     end
 
     # Return the current positions (offsets) for topics and partitions.
-    # The offset field of each requested partition will be set to the offset of the last consumed message + 1, or nil in case there was no previous message.
+    # The offset field of each requested partition will be set to the offset of the last consumed
+    # message + 1, or nil in case there was no previous message.
     #
-    # @param list [TopicPartitionList, nil] The topic with partitions to get the offsets for or nil to use the current subscription.
+    # @param list [TopicPartitionList, nil] The topic with partitions to get the offsets for or nil
+    #   to use the current subscription.
     #
     # @return [TopicPartitionList]
     #
@@ -884,7 +886,7 @@ module Rdkafka
     # returns without further waiting.
     #
     # Error events (e.g. `:partition_eof`) are returned inline as {RdkafkaError} objects
-    # rather than raised, so callers receive the complete batch — both messages and errors —
+    # rather than raised, so callers receive the complete batch - both messages and errors -
     # and can decide how to handle each. This is particularly useful when multiple partitions
     # signal EOF simultaneously: all signals appear in the returned array rather than only
     # the first one being raised and the rest silently discarded.
@@ -959,15 +961,15 @@ module Rdkafka
     # particularly useful in fiber scheduler contexts where GVL release/reacquire
     # overhead is wasteful since we don't expect to wait.
     #
+    # @param timeout_ms [Integer] Timeout waiting for the first message
+    #   (default: 0 for non-blocking)
+    # @param max_items [Integer] Maximum number of messages to return per call
+    # @return [Array<Message, RdkafkaError>] Batch of messages and/or error events in arrival order
+    # @raise [ClosedConsumerError] When called on a closed consumer
     # @note Since the GVL is not released, a non-zero timeout_ms will block all Ruby
     #   threads/fibers for the duration. Use {#poll_batch} if you need a blocking wait.
     #
     # Error events are returned inline as {RdkafkaError} objects; see {#poll_batch} for details.
-    #
-    # @param timeout_ms [Integer] Timeout waiting for the first message (default: 0 for non-blocking)
-    # @param max_items [Integer] Maximum number of messages to return per call
-    # @return [Array<Message, RdkafkaError>] Batch of messages and/or error events in arrival order
-    # @raise [ClosedConsumerError] When called on a closed consumer
     def poll_batch_nb(timeout_ms = 0, max_items: 100)
       closed_consumer_check(__method__)
 

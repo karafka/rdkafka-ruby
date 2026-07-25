@@ -3,24 +3,24 @@
 module Rdkafka
   # Configuration for a Kafka consumer or producer. You can create an instance and use
   # the consumer and producer methods to create a client. Documentation of the available
-  # configuration options is available on https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md.
+  # configuration options is available on
+  # https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md.
   class Config
-    # @private
+    # @!visibility private
     @@logger = Logger.new($stdout)
-    # @private
+    # @!visibility private
     @@statistics_callback = nil
-    # @private
+    # @!visibility private
     @@error_callback = nil
-    # @private
+    # @!visibility private
     @@opaques = ObjectSpace::WeakMap.new
-    # @private
+    # @!visibility private
     @@log_queue = Queue.new
-    # We memoize thread on the first log flush
-    # This allows us also to restart logger thread on forks
+    # We memoize thread on first log flush. This allows us also to restart logger thread on forks
     @@log_thread = nil
-    # @private
+    # @!visibility private
     @@log_mutex = Mutex.new
-    # @private
+    # @!visibility private
     @@oauthbearer_token_refresh_callback = nil
 
     # Returns the current logger, by default this is a logger to stdout.
@@ -69,7 +69,8 @@ module Rdkafka
 
     # Set a callback that will be called every time the underlying client emits statistics.
     # You can configure if and how often this happens using `statistics.interval.ms`.
-    # The callback is called with a hash that's documented here: https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
+    # The callback is called with a hash that's documented here:
+    # https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
     #
     # @param callback [Proc, #call, nil] callable object or nil to clear
     # @return [nil]
@@ -86,7 +87,8 @@ module Rdkafka
     end
 
     # Set a callback that will be called every time the underlying client emits an error.
-    # If this callback is not set, global errors such as brokers becoming unavailable will only be sent to the logger, as defined by librdkafka.
+    # If this callback is not set, global errors such as brokers becoming unavailable will only be
+    # sent to the logger, as defined by librdkafka.
     # The callback is called with an instance of RdKafka::Error.
     #
     # @param callback [Proc, #call, nil] callable object to handle errors or nil to clear
@@ -295,6 +297,9 @@ module Rdkafka
     # Uses `rd_kafka_conf_dump` to retrieve every property (including defaults and
     # internal properties like `client.software.name`) as a flat Hash.
     #
+    # @return [Hash{Symbol => String}] property names mapped to their current values
+    #
+    # @raise [ConfigError] When the configuration contains invalid options
     # @note The librdkafka C API does not distinguish between producer-only, consumer-only,
     #   and global properties at the configuration level. All properties are returned
     #   regardless of the intended client type.
@@ -302,10 +307,6 @@ module Rdkafka
     # @note The returned Hash may include sensitive values such as authentication
     #   credentials and key passwords. Do not log or serialize the returned data
     #   unless you have explicitly redacted secret entries.
-    #
-    # @return [Hash{Symbol => String}] property names mapped to their current values
-    #
-    # @raise [ConfigError] When the configuration contains invalid options
     def describe_properties
       config = nil
       dump_ptr = nil
@@ -330,7 +331,8 @@ module Rdkafka
       Rdkafka::Bindings.rd_kafka_conf_destroy(config) if config
     end
 
-    # Error that is returned by the underlying rdkafka error if an invalid configuration option is present.
+    # Error that is returned by the underlying rdkafka error if an invalid configuration option is
+    # present.
     class ConfigError < RuntimeError; end
 
     # Error that is returned by the underlying rdkafka library if the client cannot be created.

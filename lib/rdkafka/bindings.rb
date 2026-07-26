@@ -88,7 +88,7 @@ module Rdkafka
 
     # This function comes from our patch on top of librdkafka. It allows os to load all the
     # librdkafka components without initializing the client
-    # @see https://github.com/confluentinc/librdkafka/issues/4590
+    # See: https://github.com/confluentinc/librdkafka/issues/4590
     attach_function :rd_kafka_global_init, [], :void
 
     # Polling
@@ -271,10 +271,11 @@ module Rdkafka
 
     # Queue IO Event Support - for fiber scheduler integration
     # Enables notifications to a custom FD when queue transitions from empty to non-empty
-    # @param queue rd_kafka_queue_t* - the queue to monitor
-    # @param fd int - file descriptor to write to (provide your own pipe/eventfd)
-    # @param payload const void* - data to write to fd
-    # @param size size_t - size of payload
+    # Arguments:
+    # - queue (rd_kafka_queue_t*) - the queue to monitor
+    # - fd (int) - file descriptor to write to (provide your own pipe/eventfd)
+    # - payload (const void*) - data to write to fd
+    # - size (size_t) - size of payload
     attach_function :rd_kafka_queue_io_event_enable, [:pointer, :int, :pointer, :size_t], :void
     # Per topic configs
     attach_function :rd_kafka_topic_conf_new, [], :pointer
@@ -343,7 +344,8 @@ module Rdkafka
     # across different parts of the codebase (callbacks, testing utilities, etc.).
     #
     # @param client_ptr [FFI::Pointer] Native kafka client pointer
-    # @return [Hash, nil] Hash with :error_code and :error_string if fatal error occurred, nil otherwise
+    # @return [Hash, nil] Hash with :error_code and :error_string if fatal error occurred,
+    #   nil otherwise
     #
     # @example
     #   details = Rdkafka::Bindings.extract_fatal_error(client_ptr)
@@ -389,8 +391,9 @@ module Rdkafka
     end
 
     # The OAuth callback is currently global and contextless.
-    # This means that the callback will be called for all instances, and the callback must be able to determine to which instance it is associated.
-    # The instance name will be provided in the callback, allowing the callback to reference the correct instance.
+    # This means that the callback will be called for all instances, and the callback must be able
+    # to determine to which instance it is associated. The instance name will be provided in the
+    # callback, allowing the callback to reference the correct instance.
     #
     # An example of how to use the instance name in the callback is given below.
     # The `refresh_token` is configured as the `oauthbearer_token_refresh_callback`.
@@ -661,21 +664,24 @@ module Rdkafka
     attach_function :rd_kafka_AclBindingFilter_new, [:int32, :pointer, :int32, :pointer, :pointer, :int32, :int32, :pointer, :size_t], :pointer
     attach_function :rd_kafka_AclBinding_destroy, [:pointer], :void
 
-    # rd_kafka_ResourceType_t - https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L7307
+    # rd_kafka_ResourceType_t -
+    # https://github.com/confluentinc/librdkafka/blob/292d2a66b992/src/rdkafka.h#L7307
     RD_KAFKA_RESOURCE_ANY = 1
     RD_KAFKA_RESOURCE_TOPIC = 2
     RD_KAFKA_RESOURCE_GROUP = 3
     RD_KAFKA_RESOURCE_BROKER = 4
     RD_KAFKA_RESOURCE_TRANSACTIONAL_ID = 5
 
-    # rd_kafka_ResourcePatternType_t - https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L7320
+    # rd_kafka_ResourcePatternType_t -
+    # https://github.com/confluentinc/librdkafka/blob/292d2a66b992/src/rdkafka.h#L7320
     RD_KAFKA_RESOURCE_PATTERN_UNKNOWN = 0
     RD_KAFKA_RESOURCE_PATTERN_ANY = 1
     RD_KAFKA_RESOURCE_PATTERN_MATCH = 2
     RD_KAFKA_RESOURCE_PATTERN_LITERAL = 3
     RD_KAFKA_RESOURCE_PATTERN_PREFIXED = 4
 
-    # rd_kafka_AclOperation_t - https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L8403
+    # rd_kafka_AclOperation_t -
+    # https://github.com/confluentinc/librdkafka/blob/292d2a66b992/src/rdkafka.h#L8403
     RD_KAFKA_ACL_OPERATION_ANY = 1
     RD_KAFKA_ACL_OPERATION_ALL = 2
     RD_KAFKA_ACL_OPERATION_READ = 3
@@ -689,7 +695,8 @@ module Rdkafka
     RD_KAFKA_ACL_OPERATION_ALTER_CONFIGS = 11
     RD_KAFKA_ACL_OPERATION_IDEMPOTENT_WRITE = 12
 
-    # rd_kafka_AclPermissionType_t - https://github.com/confluentinc/librdkafka/blob/292d2a66b9921b783f08147807992e603c7af059/src/rdkafka.h#L8435
+    # rd_kafka_AclPermissionType_t -
+    # https://github.com/confluentinc/librdkafka/blob/292d2a66b992/src/rdkafka.h#L8435
     RD_KAFKA_ACL_PERMISSION_TYPE_ANY = 1
     RD_KAFKA_ACL_PERMISSION_TYPE_DENY = 2
     RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW = 3

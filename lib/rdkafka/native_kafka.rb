@@ -139,9 +139,6 @@ module Rdkafka
     # Enable IO event notifications on the main queue
     # Librdkafka will write to your FD when the queue transitions from empty to non-empty
     #
-    # @note This method is incompatible with background polling threads.
-    #   If background polling is enabled, use manual polling instead (e.g., consumer.poll)
-    #
     # @param fd [Integer] your file descriptor (from IO.pipe or eventfd)
     # @param payload [String] data to write to fd when queue has data (default: "\x01")
     # @return [nil]
@@ -158,6 +155,8 @@ module Rdkafka
     #   if readable
     #     consumer.poll(0)  # Get messages
     #   end
+    # @note This method is incompatible with background polling threads.
+    #   If background polling is enabled, use manual polling instead (e.g., consumer.poll)
     def enable_main_queue_io_events(fd, payload = "\x01")
       if @run_polling_thread
         raise "Cannot enable IO events while background polling thread is active. " \
@@ -175,14 +174,13 @@ module Rdkafka
     # Enable IO event notifications on the background queue
     # Librdkafka will write to your FD when the background queue transitions from empty to non-empty
     #
-    # @note This method is incompatible with background polling threads.
-    #   If background polling is enabled, use manual polling instead (e.g., consumer.poll)
-    #
     # @param fd [Integer] your file descriptor (from IO.pipe or eventfd)
     # @param payload [String] data to write to fd when queue has data (default: "\x01")
     # @return [nil]
     # @raise [ClosedInnerError] when the handle is closed
     # @raise [RuntimeError] when background polling thread is active
+    # @note This method is incompatible with background polling threads.
+    #   If background polling is enabled, use manual polling instead (e.g., consumer.poll)
     def enable_background_queue_io_events(fd, payload = "\x01")
       if @run_polling_thread
         raise "Cannot enable IO events while background polling thread is active. " \

@@ -36,7 +36,8 @@ module Rdkafka
     # Checks if a fatal error has occurred and retrieves error details.
     # Calls rd_kafka_fatal_error to get the actual fatal error code and message.
     #
-    # @return [Hash, nil] Hash with :error_code and :error_string if fatal error occurred, nil otherwise
+    # @return [Hash, nil] Hash with :error_code and :error_string if fatal error occurred,
+    #   nil otherwise
     #
     # @example
     #   if fatal_error = producer.fatal_error

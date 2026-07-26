@@ -425,8 +425,8 @@ module Rdkafka
     # {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.
     #
     # When no partition is specified the underlying Kafka library picks a partition based on the
-    # key. If no key is specified, a random partition will be used.
-    # When a timestamp is provided this is used instead of the auto-generated timestamp.
+    # key. If no key is specified, a random partition will be used. When a timestamp is provided
+    # this is used instead of the auto-generated timestamp.
     #
     # @param topic [String] The topic to produce to
     # @param payload [String, nil]

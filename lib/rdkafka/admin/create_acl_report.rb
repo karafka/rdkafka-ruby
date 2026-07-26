@@ -5,7 +5,7 @@ module Rdkafka
     # Report for create ACL operation result
     class CreateAclReport
       # Upon successful creation of Acl RD_KAFKA_RESP_ERR_NO_ERROR - 0 is returned as
-      #   rdkafka_response
+      # rdkafka_response
       # @return [Integer]
       attr_reader :rdkafka_response
 

@@ -3,8 +3,17 @@
 module Rdkafka
   # Provides default timeout and configuration values used throughout the library.
   #
-  # These constants standardize timing values across consumers, producers, and admin clients.
-  # Values are specified in milliseconds (ms) unless otherwise noted.
+  # All timeout values can be overridden per-call via method parameters. These constants provide
+  # a central place to understand and reference the default values used across the library.
+  #
+  # @example Overriding a timeout per-call
+  #   consumer.committed(timeout_ms: 5_000)  # Use 5 seconds instead of default 2 seconds
+  #
+  # @example Checking the default value
+  #   Rdkafka::Defaults::CONSUMER_COMMITTED_TIMEOUT_MS  # => 2000
+  # @note These are rdkafka-ruby defaults, not librdkafka configuration options.
+  #   For librdkafka options, see:
+  #   https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md
   module Defaults
     # Consumer timeout for fetching committed offsets
     # @see Consumer#committed

@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 module Rdkafka
-  # Configuration for a Kafka consumer or producer. You can create an instance and use the
-  # consumer and producer methods to create a client. Documentation of the available configuration
-  # options is available on
-  # https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md
+  # Configuration for a Kafka consumer or producer. You can create an instance and use
+  # the consumer and producer methods to create a client. Documentation of the available
+  # configuration options is available on
+  # https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md.
   class Config
     # @!visibility private
     @@logger = Logger.new($stdout)
@@ -16,7 +16,7 @@ module Rdkafka
     @@opaques = ObjectSpace::WeakMap.new
     # @!visibility private
     @@log_queue = Queue.new
-    # We memoize thread on the first log flush This allows us also to restart logger thread on forks
+    # We memoize thread on first log flush. This allows us also to restart logger thread on forks
     @@log_thread = nil
     # @!visibility private
     @@log_mutex = Mutex.new

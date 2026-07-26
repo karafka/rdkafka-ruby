@@ -40,8 +40,8 @@ module Rdkafka
     #
     # @private
     # @param native_kafka [NativeKafka] the wrapped native client
-    # @param queue_holder [Array] single-element holder carrying the consumer queue pointer (or
-    #   empty)
+    # @param queue_holder [Array] single-element holder carrying the consumer queue pointer
+    #   (or empty)
     # @return [Proc] finalizer proc that must not reference the consumer instance
     def self.finalizer(native_kafka, queue_holder)
       proc do
@@ -594,7 +594,7 @@ module Rdkafka
     # When using this `enable.auto.offset.store` should be set to `false` in the config.
     #
     # @param message [Rdkafka::Consumer::Message] The message which offset will be stored
-    # @param metadata [String, nil] commit metadata string or nil if none
+    # @param metadata [String, nil] commit metadata string to store alongside the offset
     # @return [nil]
     # @raise [RdkafkaError] When storing the offset fails
     def store_offset(message, metadata = nil)
@@ -951,8 +951,8 @@ module Rdkafka
     # particularly useful in fiber scheduler contexts where GVL release/reacquire
     # overhead is wasteful since we don't expect to wait.
     #
-    # @param timeout_ms [Integer] Timeout waiting for the first message (default: 0 for
-    #   non-blocking)
+    # @param timeout_ms [Integer] Timeout waiting for the first message
+    #   (default: 0 for non-blocking)
     # @param max_items [Integer] Maximum number of messages to return per call
     # @return [Array<Message, RdkafkaError>] Batch of messages and/or error events in arrival order
     # @raise [ClosedConsumerError] When called on a closed consumer
@@ -1086,7 +1086,15 @@ module Rdkafka
 
     private
 
-    # Copies a librdkafka-allocated C string into a Ruby string and frees the native buffer.
+    # Checks if the consumer is closed and raises an error if so
+    # @param method [Symbol] name of the calling method for error context
+    # @raise [ClosedConsumerError] when the consumer is closed
+    def closed_consumer_check(method)
+      raise Rdkafka::ClosedConsumerError.new(method) if closed?
+    end
+    alias_method :closed_check, :closed_consumer_check
+
+    # Reads a librdkafka-allocated string and frees the underlying native buffer.
     #
     # `rd_kafka_memberid`/`rd_kafka_clusterid` return a string the caller owns and must release
     # with `rd_kafka_mem_free`; without this the buffer leaks on every call.
@@ -1101,14 +1109,6 @@ module Rdkafka
     ensure
       Rdkafka::Bindings.rd_kafka_mem_free(inner, ptr) unless ptr.null?
     end
-
-    # Checks if the consumer is closed and raises an error if so
-    # @param method [Symbol] name of the calling method for error context
-    # @raise [ClosedConsumerError] when the consumer is closed
-    def closed_consumer_check(method)
-      raise Rdkafka::ClosedConsumerError.new(method) if closed?
-    end
-    alias_method :closed_check, :closed_consumer_check
 
     # Reads this consumer's effective `isolation.level` from the live librdkafka configuration
     # and maps it to the numeric isolation level constant. Memoized: the value cannot change

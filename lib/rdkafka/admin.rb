@@ -344,8 +344,8 @@ module Rdkafka
     #
     # @param topic_name [String] name of the topic
     # @param partition_count [Integer] how many partitions we want to end up with for given topic
-    # @return [CreatePartitionsHandle] Create partitions handle that can be used to wait for
-    #   the result
+    # @return [CreatePartitionsHandle] Create partitions handle that can be used to wait for the
+    #   result
     # @raise [ConfigError] When the partition count or replication factor are out of valid range
     # @raise [RdkafkaError] When the topic name is invalid or the topic already exists
     # @raise [RdkafkaError] When the topic configuration is invalid

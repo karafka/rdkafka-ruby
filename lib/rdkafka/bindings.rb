@@ -390,10 +390,10 @@ module Rdkafka
       end
     end
 
-    # The OAuth callback is currently global and contextless.
-    # This means that the callback will be called for all instances, and the callback must be able
-    # to determine to which instance it is associated. The instance name will be provided in the
-    # callback, allowing the callback to reference the correct instance.
+    # The OAuth callback is currently global and contextless. This means that the callback will be
+    # called for all instances, and the callback must be able to determine to which instance it is
+    # associated. The instance name will be provided in the callback, allowing the callback to
+    # reference the correct instance.
     #
     # An example of how to use the instance name in the callback is given below.
     # The `refresh_token` is configured as the `oauthbearer_token_refresh_callback`.

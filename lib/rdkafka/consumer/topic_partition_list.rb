@@ -68,8 +68,8 @@ module Rdkafka
       # configuraton.
       #
       # @param topic [String] The topic's name
-      # @param partitions_with_offsets [Hash{Integer => Integer}, Array<Consumer::Partition>]
-      #   The topic's partitions and offsets (Hash) or partitions with offsets and metadata (Array)
+      # @param partitions_with_offsets [Hash{Integer => Integer}, Array<Consumer::Partition>] The
+      #   topic's partitions and offsets (Hash) or partitions with offsets and metadata (Array)
       # @return [nil]
       def add_topic_and_partitions_with_offsets(topic, partitions_with_offsets)
         @data[topic.to_s] = partitions_with_offsets.map do |p, o|
@@ -78,7 +78,7 @@ module Rdkafka
       end
 
       # Return a `Hash` with the topics as keys and and an array of partition information as the
-      #   value if present.
+      # value if present.
       #
       # @return [Hash{String => Array<Partition>,nil}]
       def to_h
@@ -124,7 +124,6 @@ module Rdkafka
             else
               elem[:offset]
             end
-
             partition = Partition.new(
               elem[:partition],
               offset,

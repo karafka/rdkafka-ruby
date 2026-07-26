@@ -286,9 +286,9 @@ module Rdkafka
       end
     end
 
-    # @private
+    # @!visibility private
     @@mutex = Mutex.new
-    # @private
+    # @!visibility private
     @@current_pid = nil
 
     class << self

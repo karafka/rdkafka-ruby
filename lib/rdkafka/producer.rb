@@ -1,13 +1,14 @@
 # frozen_string_literal: true
 
 module Rdkafka
-  # A producer for Kafka messages. To create a producer set up a {Config} and call {Config#producer producer} on that.
+  # A producer for Kafka messages. To create a producer set up a {Config} and call
+  # {Config#producer producer} on that.
   class Producer
     include Helpers::Time
     include Helpers::OAuth
     include Helpers::Metadata
 
-    # @private
+    # @!visibility private
     @@partitions_count_cache = PartitionsCountCache.new
 
     # Global (process wide) partitions cache. We use it to store number of topics partitions,
@@ -175,8 +176,7 @@ module Rdkafka
       end
     end
 
-    # Begin a new transaction
-    # Requires {#init_transactions} to have been called first
+    # Begin a new transaction. Requires {#init_transactions} to have been called first
     #
     # @return [true] Returns true on success
     # @raise [RdkafkaError] if beginning the transaction fails
@@ -331,10 +331,9 @@ module Rdkafka
     # @return [Integer] the number of messages in the queue
     # @raise [Rdkafka::ClosedProducerError] if called on a closed producer
     #
-    # @note This method is thread-safe as it uses the @native_kafka.with_inner synchronization
-    #
     # @example
     #   producer.queue_size #=> 42
+    # @note This method is thread-safe as it uses the @native_kafka.with_inner synchronization
     def queue_size
       closed_producer_check(__method__)
 
@@ -360,10 +359,6 @@ module Rdkafka
     # @return [nil]
     # @raise [Rdkafka::ClosedProducerError] if called on a closed producer
     #
-    # @note This method holds the inner lock until the queue is empty or `:stop` is returned.
-    #   Other producer operations (produce, close, etc.) will wait until this method returns.
-    # @note This method is thread-safe as it uses @native_kafka.with_inner synchronization
-    #
     # @example Drain all pending callbacks
     #   producer.events_poll_nb_each { |_count| }
     #
@@ -372,6 +367,9 @@ module Rdkafka
     #   producer.events_poll_nb_each do |_count|
     #     :stop if monotonic_now >= deadline
     #   end
+    # @note This method holds the inner lock until the queue is empty or `:stop` is returned.
+    #   Other producer operations (produce, close, etc.) will wait until this method returns.
+    # @note This method is thread-safe as it uses @native_kafka.with_inner synchronization
     def events_poll_nb_each
       closed_producer_check(__method__)
 
@@ -387,7 +385,8 @@ module Rdkafka
     # Partition count for a given topic.
     #
     # @param topic [String] The topic name.
-    # @return [Integer] partition count for a given topic or `RD_KAFKA_PARTITION_UA (-1)` if it could not be obtained.
+    # @return [Integer] partition count for a given topic or `RD_KAFKA_PARTITION_UA (-1)` if it
+    #   could not be obtained.
     #
     # @note If 'allow.auto.create.topics' is set to true in the broker, the topic will be
     #   auto-created after returning nil.
@@ -422,23 +421,32 @@ module Rdkafka
       end
     end
 
-    # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.
+    # Produces a message to a Kafka topic. The message is added to rdkafka's queue, call
+    # {DeliveryHandle#wait wait} on the returned delivery handle to make sure it is delivered.
     #
-    # When no partition is specified the underlying Kafka library picks a partition based on the key. If no key is specified, a random partition will be used.
+    # When no partition is specified the underlying Kafka library picks a partition based on the
+    # key. If no key is specified, a random partition will be used.
     # When a timestamp is provided this is used instead of the auto-generated timestamp.
     #
     # @param topic [String] The topic to produce to
     # @param payload [String, nil]
     # @param key [String, nil]
     # @param partition [Integer, nil] Optional partition to produce to
-    # @param partition_key [String, nil] Optional partition key based on which partition assignment can happen
-    # @param timestamp [Time, Integer, nil] Optional timestamp of this message. Integer timestamp is in milliseconds since Jan 1 1970.
-    # @param headers [Hash{String => String, Array<String>}] Optional message headers. Values can be either a single string or an array of strings to support duplicate headers per KIP-82
-    # @param label [Object, nil] a label that can be assigned when producing a message that will be part of the delivery handle and the delivery report
-    # @param topic_config [Hash] topic config for given message dispatch. Allows to send messages to topics with different configuration
+    # @param partition_key [String, nil] Optional partition key based on which partition
+    #   assignment can happen
+    # @param timestamp [Time, Integer, nil] Optional timestamp of this message. Integer
+    #   timestamp is in milliseconds since Jan 1 1970.
+    # @param headers [Hash{String => String, Array<String>}] Optional message headers. Values
+    #   can be either a single string or an array of strings to support duplicate headers per
+    #   KIP-82
+    # @param label [Object, nil] a label that can be assigned when producing a message that
+    #   will be part of the delivery handle and the delivery report
+    # @param topic_config [Hash] topic config for given message dispatch. Allows to send
+    #   messages to topics with different configuration
     # @param partitioner [String] name of the partitioner to use
     #
-    # @return [DeliveryHandle] Delivery handle that can be used to wait for the result of producing this message
+    # @return [DeliveryHandle] Delivery handle that can be used to wait for the result of
+    #   producing this message
     #
     # @raise [RdkafkaError] When adding the message to rdkafka's queue failed
     def produce(

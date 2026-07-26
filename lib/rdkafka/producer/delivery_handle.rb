@@ -2,8 +2,7 @@
 
 module Rdkafka
   class Producer
-    # Handle to wait for a delivery report which is returned when
-    # producing a message.
+    # Handle to wait for a delivery report which is returned when producing a message.
     class DeliveryHandle < Rdkafka::AbstractHandle
       layout :pending, :bool,
         :response, :int,

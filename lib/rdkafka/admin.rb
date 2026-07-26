@@ -108,10 +108,6 @@ module Rdkafka
     # @return [nil]
     # @raise [Rdkafka::ClosedAdminError] if called on a closed admin client
     #
-    # @note This method holds the inner lock until the queue is empty or `:stop` is returned.
-    #   Other admin operations will wait until this method returns.
-    # @note This method is thread-safe as it uses @native_kafka.with_inner synchronization
-    #
     # @example Drain all pending events
     #   admin.events_poll_nb_each { |_count| }
     #
@@ -120,6 +116,9 @@ module Rdkafka
     #   admin.events_poll_nb_each do |_count|
     #     :stop if monotonic_now >= deadline
     #   end
+    # @note This method holds the inner lock until the queue is empty or `:stop` is returned.
+    #   Other admin operations will wait until this method returns.
+    # @note This method is thread-safe as it uses @native_kafka.with_inner synchronization
     def events_poll_nb_each
       closed_admin_check(__method__)
 
@@ -345,7 +344,8 @@ module Rdkafka
     #
     # @param topic_name [String] name of the topic
     # @param partition_count [Integer] how many partitions we want to end up with for given topic
-    # @return [CreatePartitionsHandle] Create partitions handle that can be used to wait for the result
+    # @return [CreatePartitionsHandle] Create partitions handle that can be used to wait for the
+    #   result
     # @raise [ConfigError] When the partition count or replication factor are out of valid range
     # @raise [RdkafkaError] When the topic name is invalid or the topic already exists
     # @raise [RdkafkaError] When the topic configuration is invalid
@@ -434,7 +434,8 @@ module Rdkafka
     # @param permission_type [Integer] rd_kafka_AclPermissionType_t value:
     #   - RD_KAFKA_ACL_PERMISSION_TYPE_DENY  = 2
     #   - RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW = 3
-    # @return [CreateAclHandle] Create acl handle that can be used to wait for the result of creating the acl
+    # @return [CreateAclHandle] Create acl handle that can be used to wait for the result of
+    #   creating the acl
     # @raise [RdkafkaError]
     def create_acl(resource_type:, resource_name:, resource_pattern_type:, principal:, host:, operation:, permission_type:)
       closed_admin_check(__method__)
@@ -535,7 +536,8 @@ module Rdkafka
     # @param permission_type [Integer] rd_kafka_AclPermissionType_t value:
     #   - RD_KAFKA_ACL_PERMISSION_TYPE_DENY  = 2
     #   - RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW = 3
-    # @return [DeleteAclHandle] Delete acl handle that can be used to wait for the result of deleting the acl
+    # @return [DeleteAclHandle] Delete acl handle that can be used to wait for the result of
+    #   deleting the acl
     # @raise [RdkafkaError]
     def delete_acl(resource_type:, resource_name:, resource_pattern_type:, principal:, host:, operation:, permission_type:)
       closed_admin_check(__method__)
@@ -638,7 +640,8 @@ module Rdkafka
     # @param permission_type [Integer] rd_kafka_AclPermissionType_t value:
     #   - RD_KAFKA_ACL_PERMISSION_TYPE_DENY  = 2
     #   - RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW = 3
-    # @return [DescribeAclHandle] Describe acl handle that can be used to wait for the result of fetching acls
+    # @return [DescribeAclHandle] Describe acl handle that can be used to wait for the result of
+    #   fetching acls
     # @raise [RdkafkaError]
     def describe_acl(resource_type:, resource_name:, resource_pattern_type:, principal:, host:, operation:, permission_type:)
       closed_admin_check(__method__)

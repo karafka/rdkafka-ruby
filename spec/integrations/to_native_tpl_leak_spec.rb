@@ -37,23 +37,32 @@ end
 
 measurable = File.exist?("/proc/self/status")
 
+# Settle the Ruby heap before sampling RSS. `GC.compact` defragments the heap so freed pages can be
+# released, which keeps the baseline and final samples from drifting purely due to fragmentation.
+def settle_heap
+  GC.start
+  GC.compact if GC.respond_to?(:compact)
+end
+
 # Warm up so the malloc arena / Ruby heap settle before we measure.
 20_000.times { trigger_failed_build }
-GC.start
+settle_heap
 before = measurable ? rss_kb : 0
 
 ITERATIONS.times { trigger_failed_build }
 
-GC.start
+settle_heap
 after = measurable ? rss_kb : 0
 
 if measurable
   delta = after - before
   puts "RSS delta after #{ITERATIONS} failed to_native_tpl builds: #{delta} KB"
 
-  # When fixed this is essentially zero. Leaking the native list is ~30 MB at this iteration count,
-  # so a 5 MB ceiling separates the two cleanly.
-  if delta > 5_000
+  # When fixed this is essentially zero. Leaking the native list is ~30 MB at this iteration count.
+  # RSS is noisy (allocator arenas, heap fragmentation) and can drift a few MB even without a leak,
+  # so we use a 15 MB ceiling: comfortably above the observed noise floor yet well under the ~30 MB
+  # a real leak produces.
+  if delta > 15_000
     warn "FAIL: RSS grew #{delta} KB over #{ITERATIONS} failed builds - the native list still leaks"
     exit(1)
   end

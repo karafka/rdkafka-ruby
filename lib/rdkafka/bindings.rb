@@ -546,6 +546,27 @@ module Rdkafka
     attach_function :rd_kafka_event_DeleteGroups_result, [:pointer], :pointer, blocking: true # rd_kafka_event_t* => rd_kafka_DeleteGroups_result_t*
     attach_function :rd_kafka_DeleteGroups_result_groups, [:pointer, :pointer], :pointer, blocking: true # rd_kafka_DeleteGroups_result_t*, size_t* => rd_kafka_group_result_t**
 
+    # List Consumer Groups
+    RD_KAFKA_ADMIN_OP_LISTCONSUMERGROUPS = 12   # rd_kafka_admin_op_t
+    RD_KAFKA_EVENT_LISTCONSUMERGROUPS_RESULT = 0x2000 # rd_kafka_event_type_t
+
+    # Consumer group states (rd_kafka_consumer_group_state_t)
+    RD_KAFKA_CONSUMER_GROUP_STATE_UNKNOWN = 0
+    RD_KAFKA_CONSUMER_GROUP_STATE_PREPARING_REBALANCE = 1
+    RD_KAFKA_CONSUMER_GROUP_STATE_COMPLETING_REBALANCE = 2
+    RD_KAFKA_CONSUMER_GROUP_STATE_STABLE = 3
+    RD_KAFKA_CONSUMER_GROUP_STATE_DEAD = 4
+    RD_KAFKA_CONSUMER_GROUP_STATE_EMPTY = 5
+
+    attach_function :rd_kafka_ListConsumerGroups, [:pointer, :pointer, :pointer], :void, blocking: true
+    attach_function :rd_kafka_event_ListConsumerGroups_result, [:pointer], :pointer, blocking: true # rd_kafka_event_t* => rd_kafka_ListConsumerGroups_result_t*
+    attach_function :rd_kafka_ListConsumerGroups_result_valid, [:pointer, :pointer], :pointer, blocking: true # result*, size_t* => rd_kafka_ConsumerGroupListing_t**
+    attach_function :rd_kafka_ListConsumerGroups_result_errors, [:pointer, :pointer], :pointer, blocking: true # result*, size_t* => rd_kafka_error_t**
+    attach_function :rd_kafka_ConsumerGroupListing_group_id, [:pointer], :pointer, blocking: true # => const char*
+    attach_function :rd_kafka_ConsumerGroupListing_is_simple_consumer_group, [:pointer], :int, blocking: true
+    attach_function :rd_kafka_ConsumerGroupListing_state, [:pointer], :int, blocking: true
+    attach_function :rd_kafka_consumer_group_state_name, [:int], :pointer, blocking: true # => const char*
+
     # Background Queue and Callback
 
     attach_function :rd_kafka_conf_set_background_event_cb, [:pointer, :pointer], :void

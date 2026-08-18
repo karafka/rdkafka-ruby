@@ -282,6 +282,59 @@ module Rdkafka
       delete_groups_handle
     end
 
+    # Lists consumer groups cluster-wide.
+    #
+    # librdkafka issues a single `ListConsumerGroups` request that is fanned out to every broker
+    # internally, so the result covers all consumer groups in the cluster, not only those
+    # coordinated by the connected broker.
+    #
+    # @return [ListConsumerGroupsHandle] handle that can be used to wait for the result
+    # @raise [RdkafkaError] when listing the consumer groups fails
+    def list_consumer_groups
+      closed_admin_check(__method__)
+
+      # Get a pointer to the queue that our request will be enqueued on
+      queue_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+      end
+
+      if queue_ptr.null?
+        raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
+      end
+
+      # Create and register the handle we will return to the caller
+      handle = ListConsumerGroupsHandle.new
+      handle[:pending] = true
+      handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
+      ListConsumerGroupsHandle.register(handle)
+
+      admin_options_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_AdminOptions_new(
+          inner,
+          Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_LISTCONSUMERGROUPS
+        )
+      end
+      Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
+
+      begin
+        @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_ListConsumerGroups(
+            inner,
+            admin_options_ptr,
+            queue_ptr
+          )
+        end
+      rescue Exception
+        ListConsumerGroupsHandle.remove(handle.to_ptr.address)
+        raise
+      ensure
+        Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
+        Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr)
+      end
+
+      handle
+    end
+
     # Deletes the named topic
     #
     # @param topic_name [String] name of the topic to delete

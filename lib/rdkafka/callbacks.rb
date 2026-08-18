@@ -219,6 +219,7 @@ module Rdkafka
         when Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBECONFIGS_RESULT then DescribeConfigsHandler
         when Rdkafka::Bindings::RD_KAFKA_EVENT_INCREMENTALALTERCONFIGS_RESULT then IncrementalAlterConfigsHandler
         when Rdkafka::Bindings::RD_KAFKA_EVENT_LISTOFFSETS_RESULT then ListOffsetsHandler
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_LISTCONSUMERGROUPS_RESULT then ListConsumerGroupsHandler
         end
 
         handler&.call(event_ptr)

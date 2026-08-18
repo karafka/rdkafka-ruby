@@ -74,7 +74,7 @@ module Rdkafka
 
           @errors << RdkafkaError.new(
             Bindings.rd_kafka_error_code(error_ptr),
-            string_ptr.null? ? nil : string_ptr.read_string
+            broker_message: string_ptr.null? ? nil : string_ptr.read_string
           )
         end
       end

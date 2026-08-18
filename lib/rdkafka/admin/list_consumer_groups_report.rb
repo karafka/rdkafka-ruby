@@ -5,10 +5,19 @@ module Rdkafka
     # Report for list consumer groups operation result
     class ListConsumerGroupsReport
       # Consumer groups listed cluster-wide. Each entry is a hash with:
-      #   - `:group_id` [String]
-      #   - `:is_simple_consumer_group` [Boolean]
-      #   - `:state` [Integer] one of the `Bindings::RD_KAFKA_CONSUMER_GROUP_STATE_*` codes
-      #   - `:state_name` [String] human-readable state name
+      #   - `:group_id` [String] the consumer group id
+      #   - `:is_simple_consumer_group` [Boolean] `true` for a "simple" consumer group - one that
+      #     assigns partitions manually (via `assign`) and uses Kafka only for offset storage,
+      #     rather than joining the group-management protocol and letting Kafka assign partitions
+      #     and rebalance automatically (`subscribe`). Simple groups have no members from the
+      #     broker's point of view, so they never rebalance.
+      #   - `:state` [Integer] the group state as a `Bindings::RD_KAFKA_CONSUMER_GROUP_STATE_*`
+      #     code, one of: `RD_KAFKA_CONSUMER_GROUP_STATE_UNKNOWN`,
+      #     `RD_KAFKA_CONSUMER_GROUP_STATE_PREPARING_REBALANCE`,
+      #     `RD_KAFKA_CONSUMER_GROUP_STATE_COMPLETING_REBALANCE`,
+      #     `RD_KAFKA_CONSUMER_GROUP_STATE_STABLE`, `RD_KAFKA_CONSUMER_GROUP_STATE_DEAD`,
+      #     `RD_KAFKA_CONSUMER_GROUP_STATE_EMPTY`
+      #   - `:state_name` [String] human-readable name of that state (e.g. `"Stable"`, `"Empty"`)
       # @return [Array<Hash>]
       attr_reader :groups
 

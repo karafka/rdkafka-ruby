@@ -290,6 +290,17 @@ module Rdkafka
     #
     # @return [ListConsumerGroupsHandle] handle that can be used to wait for the result
     # @raise [RdkafkaError] when listing the consumer groups fails
+    #
+    # @example List every consumer group in the cluster and print its name and attributes
+    #   report = admin.list_consumer_groups.wait(max_wait_timeout_ms: 15_000)
+    #
+    #   report.groups.each do |group|
+    #     puts "#{group[:group_id]} - #{group[:state_name]} " \
+    #          "(simple: #{group[:is_simple_consumer_group]})"
+    #   end
+    #
+    #   # Any brokers that could not be reached are reported separately
+    #   report.errors.each { |error| warn "partial listing error: #{error.message}" }
     def list_consumer_groups
       closed_admin_check(__method__)
 

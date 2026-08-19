@@ -59,6 +59,10 @@ module Rdkafka
     # @see Producer#purge
     PRODUCER_PURGE_FLUSH_TIMEOUT_MS = 100
 
+    # Default timeout for sending consumer offsets to a transaction
+    # @see Producer#send_offsets_to_transaction
+    PRODUCER_SEND_OFFSETS_TIMEOUT_MS = 5_000
+
     # Metadata timeouts (in milliseconds)
 
     # Default timeout for metadata requests

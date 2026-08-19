@@ -1157,6 +1157,55 @@ RSpec.describe Rdkafka::Admin do
         end
       end
     end
+
+    describe "#list_consumer_groups" do
+      describe "with an existing group" do
+        let(:consumer_config) { rdkafka_consumer_config("group.id": group_name) }
+        let(:producer_config) { rdkafka_producer_config }
+        let(:producer) { producer_config.producer }
+        let(:consumer) { consumer_config.consumer }
+
+        before do
+          # Create a topic, produce a message, consume and commit offsets so that a consumer group
+          # actually exists on the cluster and can be listed.
+          admin.create_topic(topic_name, topic_partition_count, topic_replication_factor).wait(max_wait_timeout_ms: 15_000)
+
+          producer.produce(topic: topic_name, payload: "test", key: "test").wait(max_wait_timeout_ms: 15_000)
+
+          consumer.subscribe(topic_name)
+          wait_for_assignment(consumer)
+          message = nil
+
+          10.times do
+            message ||= consumer.poll(100)
+          end
+
+          expect(message).not_to be_nil
+
+          consumer.commit
+          consumer.close
+        end
+
+        after do
+          producer.close
+          consumer.close
+        end
+
+        it "returns the cluster-wide consumer group in the listing" do
+          report = admin.list_consumer_groups.wait(max_wait_timeout_ms: 30_000)
+
+          expect(report).to be_a(Rdkafka::Admin::ListConsumerGroupsReport)
+          expect(report.errors).to be_empty
+
+          group = report.groups.find { |listed| listed[:group_id] == group_name }
+
+          expect(group).not_to be_nil
+          expect(group[:is_simple_consumer_group]).to be(false)
+          expect(group[:state]).to be_a(Integer)
+          expect(group[:state_name]).to be_a(String)
+        end
+      end
+    end
   end
 
   describe "#metadata" do

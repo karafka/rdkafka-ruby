@@ -12,6 +12,10 @@ module Rdkafka
 
       # @param result_ptr [FFI::Pointer] pointer to the `rd_kafka_DeleteRecords_result_t`
       def initialize(result_ptr)
+        @offsets = Rdkafka::Consumer::TopicPartitionList.new
+
+        return if result_ptr.null?
+
         native_tpl = Bindings.rd_kafka_DeleteRecords_result_offsets(result_ptr)
 
         @offsets = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(native_tpl)

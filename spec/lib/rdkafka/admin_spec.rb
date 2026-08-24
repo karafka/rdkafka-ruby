@@ -1208,6 +1208,62 @@ RSpec.describe Rdkafka::Admin do
     end
   end
 
+  describe "#delete_records" do
+    let(:consumer_config) { rdkafka_consumer_config }
+    let(:producer) { rdkafka_producer_config.producer }
+    let(:consumer) { consumer_config.consumer }
+
+    before do
+      admin.create_topic(topic_name, 1, topic_replication_factor).wait(max_wait_timeout_ms: 15_000)
+
+      5.times { |i| producer.produce(topic: topic_name, payload: "message-#{i}").wait(max_wait_timeout_ms: 15_000) }
+    end
+
+    after do
+      producer.close
+      consumer.close
+    end
+
+    it "deletes messages before the given offset and reports the new low watermark" do
+      report = admin.delete_records(
+        topic_name => [{ partition: 0, offset: 3 }]
+      ).wait(max_wait_timeout_ms: 15_000)
+
+      expect(report).to be_a(Rdkafka::Admin::DeleteRecordsReport)
+
+      partitions = report.offsets.to_h.fetch(topic_name)
+      partition = partitions.find { |p| p.partition == 0 }
+
+      expect(partition).not_to be_nil
+      expect(partition.offset).to eq(3)
+      expect(partition.err).to eq(0)
+
+      low, high = consumer.query_watermark_offsets(topic_name, 0)
+
+      expect(low).to eq(3)
+      expect(high).to eq(5)
+    end
+
+    it "deletes all data in the partition when given :end" do
+      admin.delete_records(
+        topic_name => [{ partition: 0, offset: :end }]
+      ).wait(max_wait_timeout_ms: 15_000)
+
+      low, high = consumer.query_watermark_offsets(topic_name, 0)
+
+      expect(low).to eq(5)
+      expect(high).to eq(5)
+    end
+
+    context "when admin is closed" do
+      it "raises ClosedAdminError" do
+        admin.close
+        expect { admin.delete_records(topic_name => [{ partition: 0, offset: 1 }]) }
+          .to raise_error(Rdkafka::ClosedAdminError, /delete_records/)
+      end
+    end
+  end
+
   describe "#metadata" do
     it "returns metadata for all topics when no topic name is given" do
       # Force topic creation before querying metadata

@@ -282,6 +282,108 @@ module Rdkafka
       delete_groups_handle
     end
 
+    # Deletes all messages in the given partitions up to (but not including) the given offset.
+    #
+    # The programmatic equivalent of `kafka-delete-records.sh`. Useful for GDPR/right-to-erasure
+    # compliance, clearing out poison messages, or retention cleanup outside of the configured
+    # time/size-based retention policy.
+    #
+    # @param topic_partition_offsets [Hash{String => Array<Hash>}] hash mapping topic names to
+    #   arrays of partition delete specifications. Each specification is a hash with:
+    #   - `:partition` [Integer] partition number
+    #   - `:offset` [Symbol, Integer] delete all messages before this offset (exclusive) - an
+    #     integer offset, or `:end` to delete all data currently in the partition
+    #
+    # @return [DeleteRecordsHandle] handle that can be used to wait for the result
+    # @raise [RdkafkaError] when deleting records fails
+    #
+    # @example Delete all messages before offset 100 in one partition, and all data in another
+    #   report = admin.delete_records(
+    #     "my_topic" => [
+    #       { partition: 0, offset: 100 },
+    #       { partition: 1, offset: :end }
+    #     ]
+    #   ).wait(max_wait_timeout_ms: 15_000)
+    #
+    #   report.offsets.to_h
+    #   # => { "my_topic" => [#<Partition @partition=0, @offset=100, @err=0>, ...] }
+    def delete_records(topic_partition_offsets)
+      closed_admin_check(__method__)
+
+      parsed = topic_partition_offsets.flat_map do |topic, partitions|
+        partitions.map do |spec|
+          offset = spec.fetch(:offset)
+
+          native_offset = case offset
+          when :end then Rdkafka::Bindings::RD_KAFKA_OFFSET_END
+          when Integer then offset
+          else
+            raise ArgumentError, "Unknown offset specification: #{offset.inspect}"
+          end
+
+          [topic, spec.fetch(:partition), native_offset]
+        end
+      end
+
+      tpl = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(parsed.size)
+
+      parsed.each do |topic, partition, native_offset|
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_add(tpl, topic, partition)
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_set_offset(tpl, topic, partition, native_offset)
+      end
+
+      # rd_kafka_DeleteRecords_new copies the tpl it is given, so it does not need to (and must
+      # not) outlive this call - it is destroyed below, independently of the wrapping
+      # DeleteRecords_t object.
+      delete_records_ptr = Rdkafka::Bindings.rd_kafka_DeleteRecords_new(tpl)
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(tpl)
+
+      pointer_array = [delete_records_ptr]
+      records_array_ptr = FFI::MemoryPointer.new(:pointer)
+      records_array_ptr.write_array_of_pointer(pointer_array)
+
+      # Get a pointer to the queue that our request will be enqueued on
+      queue_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+      end
+      if queue_ptr.null?
+        Rdkafka::Bindings.rd_kafka_DeleteRecords_destroy(delete_records_ptr)
+        raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
+      end
+
+      # Create and register the handle we will return to the caller
+      handle = DeleteRecordsHandle.new
+      handle[:pending] = true
+      handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
+      DeleteRecordsHandle.register(handle)
+
+      admin_options_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DELETERECORDS)
+      end
+      Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
+
+      begin
+        @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_DeleteRecords(
+            inner,
+            records_array_ptr,
+            1,
+            admin_options_ptr,
+            queue_ptr
+          )
+        end
+      rescue Exception
+        DeleteRecordsHandle.remove(handle.to_ptr.address)
+        raise
+      ensure
+        Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
+        Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr)
+        Rdkafka::Bindings.rd_kafka_DeleteRecords_destroy(delete_records_ptr)
+      end
+
+      handle
+    end
+
     # Lists consumer groups cluster-wide.
     #
     # librdkafka issues a single `ListConsumerGroups` request that is fanned out to every broker

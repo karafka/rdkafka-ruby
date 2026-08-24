@@ -1188,19 +1188,26 @@ RSpec.describe Rdkafka::Producer do
 
     context "when not using partition key" do
       before do
-        # Force topic creation before setting the statistics callback so the admin
+        # Force topic creation before touching the statistics callback so the admin
         # client used inside TestTopics.create closes without the StatsCallback
         # competing for the GVL (which can hang the admin's polling thread join).
         topic
-        Rdkafka::Config.statistics_callback = ->(*) {}
 
-        # This call will make a blocking request to the metadata cache
+        # A keyless produce makes no blocking partition-count lookup, so it must
+        # not populate the cache.
         producer.produce(
           topic: topic,
           payload: "payload headers"
         ).wait
 
+        # Capture the pre-stats value while the callback is still unset: the cache
+        # is only populated from stats once the callback is set, so `pre` is nil
+        # regardless of how long the produce took. Setting the callback earlier is
+        # racy - a stats tick (interval 1s) firing during a slow produce would
+        # populate the cache before `pre` is read.
         pre_statistics_ttl
+
+        Rdkafka::Config.statistics_callback = ->(*) {}
 
         # We wait to make sure that statistics are triggered and that there is a refresh
         sleep(1.5)

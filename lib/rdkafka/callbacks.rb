@@ -213,6 +213,7 @@ module Rdkafka
         when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETETOPICS_RESULT then DeleteTopicHandler
         when Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATEPARTITIONS_RESULT then CreatePartitionsHandler
         when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETEGROUPS_RESULT then DeleteGroupsHandler
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETERECORDS_RESULT then DeleteRecordsHandler
         when Rdkafka::Bindings::RD_KAFKA_EVENT_CREATEACLS_RESULT then CreateAclHandler
         when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETEACLS_RESULT then DeleteAclHandler
         when Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBEACLS_RESULT then DescribeAclHandler

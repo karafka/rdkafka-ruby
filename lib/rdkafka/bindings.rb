@@ -554,6 +554,16 @@ module Rdkafka
     attach_function :rd_kafka_event_DeleteGroups_result, [:pointer], :pointer, blocking: true # rd_kafka_event_t* => rd_kafka_DeleteGroups_result_t*
     attach_function :rd_kafka_DeleteGroups_result_groups, [:pointer, :pointer], :pointer, blocking: true # rd_kafka_DeleteGroups_result_t*, size_t* => rd_kafka_group_result_t**
 
+    # Delete Records
+    RD_KAFKA_ADMIN_OP_DELETERECORDS = 6   # rd_kafka_admin_op_t
+    RD_KAFKA_EVENT_DELETERECORDS_RESULT = 105 # rd_kafka_event_type_t
+
+    attach_function :rd_kafka_DeleteRecords, [:pointer, :pointer, :size_t, :pointer, :pointer], :void, blocking: true
+    attach_function :rd_kafka_DeleteRecords_new, [:pointer], :pointer, blocking: true
+    attach_function :rd_kafka_DeleteRecords_destroy, [:pointer], :void, blocking: true
+    attach_function :rd_kafka_event_DeleteRecords_result, [:pointer], :pointer, blocking: true # rd_kafka_event_t* => rd_kafka_DeleteRecords_result_t*
+    attach_function :rd_kafka_DeleteRecords_result_offsets, [:pointer], :pointer, blocking: true # rd_kafka_DeleteRecords_result_t* => rd_kafka_topic_partition_list_t*
+
     # List Consumer Groups
     RD_KAFKA_ADMIN_OP_LISTCONSUMERGROUPS = 12   # rd_kafka_admin_op_t
     RD_KAFKA_EVENT_LISTCONSUMERGROUPS_RESULT = 0x2000 # rd_kafka_event_type_t

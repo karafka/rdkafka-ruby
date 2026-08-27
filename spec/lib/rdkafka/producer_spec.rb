@@ -1744,7 +1744,12 @@ RSpec.describe Rdkafka::Producer do
       end
 
       it "raises when committing without an active transaction" do
-        expect { producer.commit_transaction }.to raise_error(Rdkafka::RdkafkaError)
+        expect { producer.commit_transaction }.to raise_error(Rdkafka::RdkafkaError) do |error|
+          expect(error.code).to eq :state
+          expect(error.fatal?).to be false
+          expect(error.retryable?).to be false
+          expect(error.abortable?).to be false
+        end
       end
     end
 

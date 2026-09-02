@@ -369,7 +369,7 @@ module Rdkafka
         )
         client = yield(kafka, native_kafka)
         native_kafka.start if auto_start
-        client
+        Rdkafka::Clients.register(client)
       rescue Exception
         owner = client || native_kafka
 

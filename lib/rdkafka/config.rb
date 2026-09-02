@@ -209,21 +209,16 @@ module Rdkafka
         Rdkafka::Bindings.rd_kafka_conf_set_rebalance_cb(config, Rdkafka::Bindings::RebalanceCallback)
       end
 
-      # Create native client
-      kafka = native_kafka(config, :rd_kafka_consumer)
-
-      # Redirect the main queue to the consumer queue
-      Rdkafka::Bindings.rd_kafka_poll_set_consumer(kafka) if @consumer_poll_set
-
-      # Return consumer with Kafka client
-      Rdkafka::Consumer.new(
-        Rdkafka::NativeKafka.new(
-          kafka,
-          run_polling_thread: false,
-          opaque: opaque,
-          auto_start: native_kafka_auto_start
-        )
-      )
+      build_native_client(
+        config,
+        :rd_kafka_consumer,
+        opaque: opaque,
+        run_polling_thread: false,
+        auto_start: native_kafka_auto_start
+      ) do |kafka, native_kafka|
+        Rdkafka::Bindings.rd_kafka_poll_set_consumer(kafka) if @consumer_poll_set
+        Rdkafka::Consumer.new(native_kafka)
+      end
     end
 
     # Create a producer with this configuration.
@@ -247,19 +242,17 @@ module Rdkafka
       # Return producer with Kafka client
       partitioner_name = self[:partitioner] || self["partitioner"]
 
-      kafka = native_kafka(config, :rd_kafka_producer)
-
-      Rdkafka::Producer.new(
-        Rdkafka::NativeKafka.new(
-          kafka,
-          run_polling_thread: run_polling_thread,
-          opaque: opaque,
-          auto_start: native_kafka_auto_start,
-          timeout_ms: native_kafka_poll_timeout_ms
-        ),
-        partitioner_name
-      ).tap do |producer|
-        opaque.producer = producer
+      build_native_client(
+        config,
+        :rd_kafka_producer,
+        opaque: opaque,
+        run_polling_thread: run_polling_thread,
+        auto_start: native_kafka_auto_start,
+        timeout_ms: native_kafka_poll_timeout_ms
+      ) do |_kafka, native_kafka|
+        Rdkafka::Producer.new(native_kafka, partitioner_name).tap do |producer|
+          opaque.producer = producer
+        end
       end
     end
 
@@ -279,17 +272,16 @@ module Rdkafka
       config = native_config(opaque)
       Rdkafka::Bindings.rd_kafka_conf_set_background_event_cb(config, Rdkafka::Callbacks::BackgroundEventCallbackFunction)
 
-      kafka = native_kafka(config, :rd_kafka_producer)
-
-      Rdkafka::Admin.new(
-        Rdkafka::NativeKafka.new(
-          kafka,
-          run_polling_thread: run_polling_thread,
-          opaque: opaque,
-          auto_start: native_kafka_auto_start,
-          timeout_ms: native_kafka_poll_timeout_ms
-        )
-      )
+      build_native_client(
+        config,
+        :rd_kafka_producer,
+        opaque: opaque,
+        run_polling_thread: run_polling_thread,
+        auto_start: native_kafka_auto_start,
+        timeout_ms: native_kafka_poll_timeout_ms
+      ) do |_kafka, native_kafka|
+        Rdkafka::Admin.new(native_kafka)
+      end
     end
 
     # Returns all configuration properties and their current values for this config.
@@ -342,6 +334,56 @@ module Rdkafka
     class NoLoggerError < RuntimeError; end
 
     private
+
+    # Builds a public client around a native Kafka handle, destroying the current owner if setup
+    # fails before ownership is transferred to the caller.
+    # @param config [FFI::Pointer] native rdkafka configuration
+    # @param type [Symbol] native client type
+    # @param opaque [Object] callback context retained for the native client
+    # @param run_polling_thread [Boolean] whether to run a Ruby polling thread
+    # @param auto_start [Boolean] whether to start the polling thread after wrapping the client
+    # @param timeout_ms [Integer] polling timeout in milliseconds
+    # @yieldparam kafka [FFI::Pointer] native Kafka handle
+    # @yieldparam native_kafka [NativeKafka] Ruby owner of the native handle
+    # @return [Consumer, Producer, Admin] the constructed public client
+    # @private
+    def build_native_client(
+      config,
+      type,
+      opaque:,
+      run_polling_thread:,
+      auto_start:,
+      timeout_ms: Defaults::NATIVE_KAFKA_POLL_TIMEOUT_MS
+    )
+      kafka = native_kafka(config, type)
+      native_kafka = nil
+      client = nil
+
+      begin
+        native_kafka = Rdkafka::NativeKafka.new(
+          kafka,
+          run_polling_thread: run_polling_thread,
+          opaque: opaque,
+          auto_start: false,
+          timeout_ms: timeout_ms
+        )
+        client = yield(kafka, native_kafka)
+        native_kafka.start if auto_start
+        client
+      rescue Exception
+        owner = client || native_kafka
+
+        begin
+          owner ? owner.close : Rdkafka::Bindings.rd_kafka_destroy(kafka)
+        rescue Exception => err
+          # Never let a teardown failure replace the error that caused it: that error is what the
+          # caller needs to see, and it is re-raised below regardless.
+          Rdkafka::Config.logger.error("Unhandled exception: #{err.class} - #{err.message}")
+        end
+
+        raise
+      end
+    end
 
     # This method is only intended to be used to create a client,
     # using it in another way will leak memory.
@@ -429,6 +471,9 @@ module Rdkafka
 
       # Return handle which should be closed using rd_kafka_destroy after usage.
       handle
+    rescue Exception
+      Rdkafka::Bindings.rd_kafka_destroy(handle) if handle && !handle.null?
+      raise
     end
   end
 

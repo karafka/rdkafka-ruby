@@ -8,6 +8,7 @@
 - [Fix] Make `NativeKafka#close` fork-aware so a forked child no longer segfaults on exit.
 - [Fix] Stabilize the `to_native_tpl` leak integration spec.
 - [Fix] Stabilize the flaky partitions count cache statistics spec.
+- [Fix] Use global allocator in topic_partition_list for pointer freed by librdkafka.
 
 ## 0.29.0 (2026-07-10)
 - [Enhancement] Bump librdkafka to `2.14.2`

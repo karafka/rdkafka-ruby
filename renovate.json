@@ -27,7 +27,7 @@
       ],
       "depNameTemplate": "openssl/openssl",
       "datasourceTemplate": "github-releases",
-      "extractVersionTemplate": "^OpenSSL_(?<version>.*)$"
+      "extractVersionTemplate": "^openssl-(?<version>.*)$"
     },
     {
       "customType": "regex",

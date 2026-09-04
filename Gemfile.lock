@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    rdkafka (0.29.0)
+    rdkafka (0.29.1)
       ffi (~> 1.17.1)
       json (> 2.0)
       logger

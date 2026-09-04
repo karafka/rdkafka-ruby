@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.29.2 (Unreleased)
+- [Enhancement] Bump librdkafka to `2.15.0`.
+
 ## 0.29.1 (2026-09-04)
 - [Enhancement] Add `Admin#delete_records` to delete all messages in a partition up to a given offset.
 - [Enhancement] Add `Admin#list_consumer_groups` to list the cluster's consumer groups.

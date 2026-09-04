@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    rdkafka (0.29.0)
+    rdkafka (0.29.1)
       ffi (~> 1.17.1)
       json (> 2.0)
       logger
@@ -24,7 +24,7 @@ GEM
     ffi (1.17.4-x86_64-darwin)
     ffi (1.17.4-x86_64-linux-gnu)
     ffi (1.17.4-x86_64-linux-musl)
-    io-console (0.8.2)
+    io-console (0.9.2)
     json (2.21.2)
     logger (1.7.0)
     method_source (1.1.0)

@@ -23,6 +23,42 @@ RSpec.describe Rdkafka::RdkafkaError do
     expect(described_class.new(10).instance_name).to be_nil
   end
 
+  describe "#fatal?" do
+    it "defaults to false" do
+      expect(described_class.new(10).fatal?).to be false
+    end
+
+    it "returns the given value" do
+      expect(described_class.new(10, fatal: true).fatal?).to be true
+    end
+  end
+
+  describe "#retryable?" do
+    it "defaults to false" do
+      expect(described_class.new(10).retryable?).to be false
+    end
+
+    it "returns the given value" do
+      expect(described_class.new(10, retryable: true).retryable?).to be true
+    end
+  end
+
+  describe "#abortable?" do
+    it "defaults to false" do
+      expect(described_class.new(10).abortable?).to be false
+    end
+
+    it "returns the given value" do
+      expect(described_class.new(10, abortable: true).abortable?).to be true
+    end
+  end
+
+  describe ".build_from_c" do
+    it "returns false for a null pointer" do
+      expect(described_class.build_from_c(FFI::Pointer::NULL)).to be false
+    end
+  end
+
   describe "#code" do
     it "handles an invalid response" do
       expect(described_class.new(933975).code).to eq :err_933975?

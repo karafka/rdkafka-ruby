@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## Unreleased
+- [Enhancement] Add transactional producer primitives (`Producer#init_transactions`, `#begin_transaction`, `#commit_transaction`, `#abort_transaction`, `#send_offsets_to_transaction`), with `RdkafkaError` exposing `#fatal?`, `#retryable?` and `#abortable?`.
+
 ## 0.29.1 (2026-09-04)
 - [Enhancement] Add `Admin#delete_records` to delete all messages in a partition up to a given offset.
 - [Enhancement] Add `Admin#list_consumer_groups` to list the cluster's consumer groups.

@@ -1678,4 +1678,103 @@ RSpec.describe Rdkafka::Producer do
       end
     end
   end
+
+  describe "transactions" do
+    let(:producer) do
+      rdkafka_producer_config(
+        "transactional.id": "it-transactions-#{SecureRandom.uuid}",
+        "transaction.timeout.ms": 10_000
+      ).producer
+    end
+
+    describe "#init_transactions" do
+      it "returns true on success" do
+        expect(producer.init_transactions).to be true
+      end
+    end
+
+    describe "#begin_transaction" do
+      it "raises when transactions were not initialized" do
+        expect { producer.begin_transaction }.to raise_error(Rdkafka::RdkafkaError)
+      end
+
+      it "returns true once transactions were initialized" do
+        producer.init_transactions
+        expect(producer.begin_transaction).to be true
+      end
+    end
+
+    describe "#commit_transaction and #abort_transaction" do
+      before { producer.init_transactions }
+
+      it "commits a transaction so the produced message becomes visible" do
+        producer.begin_transaction
+        report = producer.produce(topic: topic, payload: "committed-payload", key: "key").wait
+        expect(producer.commit_transaction).to be true
+
+        message = wait_for_message(topic: topic, delivery_report: report)
+        expect(message.payload).to eq "committed-payload"
+      end
+
+      it "aborts a transaction so a read_committed consumer skips the produced message" do
+        producer.begin_transaction
+        aborted_report = producer.produce(topic: topic, payload: "aborted-payload", key: "key").wait
+        expect(producer.abort_transaction).to be true
+
+        producer.begin_transaction
+        committed_report = producer.produce(topic: topic, payload: "after-abort", key: "key").wait
+        producer.commit_transaction
+
+        read_committed_consumer = rdkafka_consumer_config("isolation.level": "read_committed").consumer
+        tpl = Rdkafka::Consumer::TopicPartitionList.new
+        tpl.add_topic_and_partitions_with_offsets(topic, aborted_report.partition => aborted_report.offset)
+        read_committed_consumer.assign(tpl)
+
+        message = nil
+        deadline = Time.now.to_i + 30
+        until message
+          raise "Timeout waiting for the post-abort message" if Time.now.to_i > deadline
+          message = read_committed_consumer.poll(100)
+        end
+
+        expect(message.offset).to eq committed_report.offset
+        expect(message.payload).to eq "after-abort"
+      ensure
+        read_committed_consumer&.close
+      end
+
+      it "raises when committing without an active transaction" do
+        expect { producer.commit_transaction }.to raise_error(Rdkafka::RdkafkaError) do |error|
+          expect(error.code).to eq :state
+          expect(error.fatal?).to be false
+          expect(error.retryable?).to be false
+          expect(error.abortable?).to be false
+        end
+      end
+    end
+
+    describe "#send_offsets_to_transaction" do
+      let(:consumer) { rdkafka_consumer_config("isolation.level": "read_committed").consumer }
+
+      it "commits the given consumer offsets atomically with the transaction" do
+        consumer.subscribe(topic)
+        wait_for_assignment(consumer)
+
+        producer.init_transactions
+        producer.begin_transaction
+        producer.produce(topic: topic, payload: "payload", key: "key", partition: 0).wait
+
+        tpl = Rdkafka::Consumer::TopicPartitionList.new
+        tpl.add_topic_and_partitions_with_offsets(topic, 0 => 1)
+
+        expect(producer.send_offsets_to_transaction(consumer, tpl)).to be true
+        expect(producer.commit_transaction).to be true
+
+        committed = consumer.committed(
+          Rdkafka::Consumer::TopicPartitionList.new.tap { |list| list.add_topic(topic, [0]) }
+        )
+        expect(committed.to_h[topic].first.offset).to eq 1
+      end
+    end
+  end
 end

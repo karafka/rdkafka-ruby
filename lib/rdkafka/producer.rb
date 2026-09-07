@@ -161,6 +161,95 @@ module Rdkafka
       @delivery_callback_arity = arity(callback)
     end
 
+    # Initializes the transactional producer. Must be called once, before any transaction is
+    # begun, when the producer was configured with `transactional.id`.
+    #
+    # @return [true] returns true on success
+    # @raise [RdkafkaError] when initialization fails
+    def init_transactions
+      closed_producer_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        response_ptr = Rdkafka::Bindings.rd_kafka_init_transactions(inner, -1)
+        Rdkafka::RdkafkaError.build_from_c(response_ptr).tap { |error| raise error if error }
+      end
+
+      true
+    end
+
+    # Begins a new transaction. Requires {#init_transactions} to have been called first.
+    #
+    # @return [true] returns true on success
+    # @raise [RdkafkaError] when beginning the transaction fails
+    def begin_transaction
+      closed_producer_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        response_ptr = Rdkafka::Bindings.rd_kafka_begin_transaction(inner)
+        Rdkafka::RdkafkaError.build_from_c(response_ptr).tap { |error| raise error if error }
+      end
+
+      true
+    end
+
+    # Commits the current transaction.
+    #
+    # @param timeout_ms [Integer] timeout in milliseconds (-1 for infinite)
+    # @return [true] returns true on success
+    # @raise [RdkafkaError] when committing the transaction fails
+    def commit_transaction(timeout_ms = -1)
+      closed_producer_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        response_ptr = Rdkafka::Bindings.rd_kafka_commit_transaction(inner, timeout_ms)
+        Rdkafka::RdkafkaError.build_from_c(response_ptr).tap { |error| raise error if error }
+      end
+
+      true
+    end
+
+    # Aborts the current transaction.
+    #
+    # @param timeout_ms [Integer] timeout in milliseconds (-1 for infinite)
+    # @return [true] returns true on success
+    # @raise [RdkafkaError] when aborting the transaction fails
+    def abort_transaction(timeout_ms = -1)
+      closed_producer_check(__method__)
+
+      @native_kafka.with_inner do |inner|
+        response_ptr = Rdkafka::Bindings.rd_kafka_abort_transaction(inner, timeout_ms)
+        Rdkafka::RdkafkaError.build_from_c(response_ptr).tap { |error| raise error if error }
+      end
+
+      true
+    end
+
+    # Sends the given consumer's offsets to the current transaction, so they are committed
+    # atomically together with the transaction's produced messages.
+    #
+    # @param consumer [Consumer] consumer that owns the given offsets
+    # @param tpl [Consumer::TopicPartitionList] offsets to send
+    # @param timeout_ms [Integer] send timeout in milliseconds
+    # @return [true] returns true on success
+    # @raise [RdkafkaError] when sending the offsets fails
+    # @note Use only in the context of an active transaction, after {#begin_transaction}.
+    def send_offsets_to_transaction(consumer, tpl, timeout_ms = Defaults::PRODUCER_SEND_OFFSETS_TIMEOUT_MS)
+      closed_producer_check(__method__)
+
+      cgmetadata = consumer.consumer_group_metadata_pointer
+      native_tpl = tpl.to_native_tpl
+
+      @native_kafka.with_inner do |inner|
+        response_ptr = Rdkafka::Bindings.rd_kafka_send_offsets_to_transaction(inner, native_tpl, cgmetadata, timeout_ms)
+        Rdkafka::RdkafkaError.build_from_c(response_ptr).tap { |error| raise error if error }
+      end
+
+      true
+    ensure
+      Rdkafka::Bindings.rd_kafka_consumer_group_metadata_destroy(cgmetadata) if cgmetadata && !cgmetadata.null?
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(native_tpl) if native_tpl
+    end
+
     # Close this producer and wait for the internal poll queue to empty.
     def close
       return if closed?

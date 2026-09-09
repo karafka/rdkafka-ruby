@@ -276,6 +276,19 @@ RSpec.describe Rdkafka::Admin do
           .to raise_error(Rdkafka::Config::ConfigError, /ConfigResource_new was NULL/)
         expect(registry).to be_empty
       end
+
+      it "raises a clean error and frees the queue when AdminOptions creation returns NULL" do
+        registry = Rdkafka::Admin::DescribeConfigsHandle::REGISTRY
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_AdminOptions_new).and_return(FFI::Pointer::NULL)
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_destroy).and_call_original
+
+        # Setting the opaque on a NULL AdminOptions would segfault; expect a ConfigError instead.
+        expect { admin.describe_configs([{ resource_type: 2, resource_name: topic_name }]) }
+          .to raise_error(Rdkafka::Config::ConfigError, /AdminOptions_new was NULL/)
+
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_queue_destroy).at_least(:once)
+        expect(registry).to be_empty
+      end
     end
 
     context "when describing both existing and non-existing topics" do
@@ -408,6 +421,22 @@ RSpec.describe Rdkafka::Admin do
         expect do
           admin.incremental_alter_configs([{ resource_type: 2, resource_name: "", configs: [] }])
         end.to raise_error(Rdkafka::Config::ConfigError, /ConfigResource_new was NULL/)
+        expect(registry).to be_empty
+      end
+
+      it "raises a clean error and frees the queue when AdminOptions creation returns NULL" do
+        registry = Rdkafka::Admin::IncrementalAlterConfigsHandle::REGISTRY
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_AdminOptions_new).and_return(FFI::Pointer::NULL)
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_destroy).and_call_original
+
+        # Setting the opaque on a NULL AdminOptions would segfault; expect a ConfigError instead.
+        expect do
+          admin.incremental_alter_configs(
+            [{ resource_type: 2, resource_name: topic_name, configs: [] }]
+          )
+        end.to raise_error(Rdkafka::Config::ConfigError, /AdminOptions_new was NULL/)
+
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_queue_destroy).at_least(:once)
         expect(registry).to be_empty
       end
     end

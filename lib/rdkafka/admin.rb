@@ -923,6 +923,12 @@ module Rdkafka
           )
         end
 
+        # A NULL AdminOptions would segfault the moment we set its opaque pointer, so reject it
+        # before registering the handle (the ensure frees the queue already acquired).
+        if admin_options_ptr.null?
+          raise Rdkafka::Config::ConfigError.new("rd_kafka_AdminOptions_new was NULL")
+        end
+
         DescribeConfigsHandle.register(handle)
         registered = true
         Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
@@ -1036,6 +1042,12 @@ module Rdkafka
             inner,
             Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_INCREMENTALALTERCONFIGS
           )
+        end
+
+        # A NULL AdminOptions would segfault the moment we set its opaque pointer, so reject it
+        # before registering the handle (the ensure frees the queue already acquired).
+        if admin_options_ptr.null?
+          raise Rdkafka::Config::ConfigError.new("rd_kafka_AdminOptions_new was NULL")
         end
 
         IncrementalAlterConfigsHandle.register(handle)

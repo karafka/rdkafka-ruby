@@ -916,18 +916,18 @@ module Rdkafka
       begin
         while i < count
           ptr = buffer.get_pointer(i * FFI::Pointer.size)
+          # Take ownership of this index before touching the pointer: advancing `i` up front means
+          # the cleanup loop in the `ensure` below starts past it, so a raise mid-iteration (where
+          # the inner `ensure` has already destroyed `ptr`) cannot double-free the same message.
+          i += 1
 
-          if ptr.null?
-            i += 1
-            next
-          end
+          next if ptr.null?
 
           native_message = Rdkafka::Bindings::Message.new(ptr)
 
           if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
             results << Rdkafka::RdkafkaError.new(native_message[:err])
             Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
-            i += 1
             next
           end
 
@@ -941,8 +941,6 @@ module Rdkafka
           ensure
             Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
           end
-
-          i += 1
         end
       ensure
         while i < count
@@ -991,18 +989,18 @@ module Rdkafka
       begin
         while i < count
           ptr = buffer.get_pointer(i * FFI::Pointer.size)
+          # Take ownership of this index before touching the pointer: advancing `i` up front means
+          # the cleanup loop in the `ensure` below starts past it, so a raise mid-iteration (where
+          # the inner `ensure` has already destroyed `ptr`) cannot double-free the same message.
+          i += 1
 
-          if ptr.null?
-            i += 1
-            next
-          end
+          next if ptr.null?
 
           native_message = Rdkafka::Bindings::Message.new(ptr)
 
           if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
             results << Rdkafka::RdkafkaError.new(native_message[:err])
             Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
-            i += 1
             next
           end
 
@@ -1016,8 +1014,6 @@ module Rdkafka
           ensure
             Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
           end
-
-          i += 1
         end
       ensure
         while i < count

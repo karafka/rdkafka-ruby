@@ -266,6 +266,16 @@ RSpec.describe Rdkafka::Admin do
         # The first (valid) ConfigResource was built and must be freed rather than orphaned.
         expect(Rdkafka::Bindings).to have_received(:rd_kafka_ConfigResource_destroy).at_least(:once)
       end
+
+      it "raises a clean error instead of segfaulting on an empty resource name" do
+        registry = Rdkafka::Admin::DescribeConfigsHandle::REGISTRY
+
+        # librdkafka returns NULL from rd_kafka_ConfigResource_new for an empty name; passing/freeing
+        # that NULL would segfault, so we expect a ConfigError and full cleanup instead.
+        expect { admin.describe_configs([{ resource_type: 2, resource_name: "" }]) }
+          .to raise_error(Rdkafka::Config::ConfigError, /ConfigResource_new was NULL/)
+        expect(registry).to be_empty
+      end
     end
 
     context "when describing both existing and non-existing topics" do
@@ -387,6 +397,17 @@ RSpec.describe Rdkafka::Admin do
 
         expect(Rdkafka::Bindings).to have_received(:rd_kafka_queue_destroy).at_least(:once)
         expect(Rdkafka::Bindings).to have_received(:rd_kafka_AdminOptions_destroy).at_least(:once)
+        expect(registry).to be_empty
+      end
+
+      it "raises a clean error instead of segfaulting on an empty resource name" do
+        registry = Rdkafka::Admin::IncrementalAlterConfigsHandle::REGISTRY
+
+        # librdkafka returns NULL from rd_kafka_ConfigResource_new for an empty name; passing/freeing
+        # that NULL would segfault, so we expect a ConfigError and full cleanup instead.
+        expect do
+          admin.incremental_alter_configs([{ resource_type: 2, resource_name: "", configs: [] }])
+        end.to raise_error(Rdkafka::Config::ConfigError, /ConfigResource_new was NULL/)
         expect(registry).to be_empty
       end
     end

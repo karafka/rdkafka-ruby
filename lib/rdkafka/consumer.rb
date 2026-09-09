@@ -917,27 +917,31 @@ module Rdkafka
         while i < count
           ptr = buffer.get_pointer(i * FFI::Pointer.size)
           # Take ownership of this index before touching the pointer: advancing `i` up front means
-          # the cleanup loop in the `ensure` below starts past it, so a raise mid-iteration (where
-          # the inner `ensure` has already destroyed `ptr`) cannot double-free the same message.
+          # the cleanup loop in the `ensure` below starts past it, so a raise mid-iteration cannot
+          # double-free the same message.
           i += 1
 
           next if ptr.null?
 
-          native_message = Rdkafka::Bindings::Message.new(ptr)
-
-          if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-            results << Rdkafka::RdkafkaError.new(native_message[:err])
-            Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
-            next
-          end
-
+          # One `ensure` around the whole body guarantees `ptr` is destroyed exactly once on every
+          # path - the error branch, a successful build, a rescued `RdkafkaError`, or any other
+          # exception unwinding through here - so nothing leaks in the window before the build.
           begin
-            results << Rdkafka::Consumer::Message.new(native_message)
-          rescue Rdkafka::RdkafkaError => e
-            # A message that fails to build (e.g. a header read error) is surfaced inline as an
-            # error event rather than discarding the whole batch - including the messages already
-            # built - and raising, which silently lost them once their offsets had been stored.
-            results << e
+            native_message = Rdkafka::Bindings::Message.new(ptr)
+
+            if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+              results << Rdkafka::RdkafkaError.new(native_message[:err])
+              next
+            end
+
+            begin
+              results << Rdkafka::Consumer::Message.new(native_message)
+            rescue Rdkafka::RdkafkaError => e
+              # A message that fails to build (e.g. a header read error) is surfaced inline as an
+              # error event rather than discarding the whole batch - including the messages already
+              # built - and raising, which silently lost them once their offsets had been stored.
+              results << e
+            end
           ensure
             Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
           end
@@ -990,27 +994,31 @@ module Rdkafka
         while i < count
           ptr = buffer.get_pointer(i * FFI::Pointer.size)
           # Take ownership of this index before touching the pointer: advancing `i` up front means
-          # the cleanup loop in the `ensure` below starts past it, so a raise mid-iteration (where
-          # the inner `ensure` has already destroyed `ptr`) cannot double-free the same message.
+          # the cleanup loop in the `ensure` below starts past it, so a raise mid-iteration cannot
+          # double-free the same message.
           i += 1
 
           next if ptr.null?
 
-          native_message = Rdkafka::Bindings::Message.new(ptr)
-
-          if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-            results << Rdkafka::RdkafkaError.new(native_message[:err])
-            Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
-            next
-          end
-
+          # One `ensure` around the whole body guarantees `ptr` is destroyed exactly once on every
+          # path - the error branch, a successful build, a rescued `RdkafkaError`, or any other
+          # exception unwinding through here - so nothing leaks in the window before the build.
           begin
-            results << Rdkafka::Consumer::Message.new(native_message)
-          rescue Rdkafka::RdkafkaError => e
-            # A message that fails to build (e.g. a header read error) is surfaced inline as an
-            # error event rather than discarding the whole batch - including the messages already
-            # built - and raising, which silently lost them once their offsets had been stored.
-            results << e
+            native_message = Rdkafka::Bindings::Message.new(ptr)
+
+            if native_message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+              results << Rdkafka::RdkafkaError.new(native_message[:err])
+              next
+            end
+
+            begin
+              results << Rdkafka::Consumer::Message.new(native_message)
+            rescue Rdkafka::RdkafkaError => e
+              # A message that fails to build (e.g. a header read error) is surfaced inline as an
+              # error event rather than discarding the whole batch - including the messages already
+              # built - and raising, which silently lost them once their offsets had been stored.
+              results << e
+            end
           ensure
             Rdkafka::Bindings.rd_kafka_message_destroy(ptr)
           end

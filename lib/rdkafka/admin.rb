@@ -930,10 +930,21 @@ module Rdkafka
         # Build resources one at a time so a raise on a later element still leaves the earlier ones
         # in pointer_array for the ensure to destroy.
         parsed_resources.each do |resource_type, resource_name|
-          pointer_array << Rdkafka::Bindings.rd_kafka_ConfigResource_new(
+          resource_ptr = Rdkafka::Bindings.rd_kafka_ConfigResource_new(
             resource_type,
             FFI::MemoryPointer.from_string(resource_name)
           )
+
+          # librdkafka returns NULL for an empty resource name or a negative resource type. Passing
+          # NULL on to DescribeConfigs and then destroying it both dereference NULL and segfault, so
+          # reject it here (the ensure frees everything already built).
+          if resource_ptr.null?
+            raise Rdkafka::Config::ConfigError.new(
+              "rd_kafka_ConfigResource_new was NULL for #{resource_name.inspect} (type #{resource_type})"
+            )
+          end
+
+          pointer_array << resource_ptr
         end
 
         configs_array_ptr = FFI::MemoryPointer.new(:pointer, pointer_array.size)
@@ -960,6 +971,8 @@ module Rdkafka
         Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr) if queue_ptr && !queue_ptr.null?
 
         pointer_array.each do |config_resource_ptr|
+          next if config_resource_ptr.null?
+
           Rdkafka::Bindings.rd_kafka_ConfigResource_destroy(config_resource_ptr)
         end
       end
@@ -1035,6 +1048,16 @@ module Rdkafka
             resource_type,
             FFI::MemoryPointer.from_string(resource_name)
           )
+
+          # librdkafka returns NULL for an empty resource name or a negative resource type. Passing
+          # NULL on to add_incremental_config/IncrementalAlterConfigs and then destroying it both
+          # dereference NULL and segfault, so reject it here (the ensure frees everything built).
+          if resource_ptr.null?
+            raise Rdkafka::Config::ConfigError.new(
+              "rd_kafka_ConfigResource_new was NULL for #{resource_name.inspect} (type #{resource_type})"
+            )
+          end
+
           # Track it immediately so a raise while adding its configs still frees it via the ensure.
           pointer_array << resource_ptr
 
@@ -1093,6 +1116,8 @@ module Rdkafka
         Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr) if queue_ptr && !queue_ptr.null?
 
         pointer_array.each do |config_resource_ptr|
+          next if config_resource_ptr.null?
+
           Rdkafka::Bindings.rd_kafka_ConfigResource_destroy(config_resource_ptr)
         end
       end

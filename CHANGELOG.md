@@ -3,8 +3,9 @@
 ## Unreleased
 - [Fix] Close live clients from an `at_exit` hook before Ruby's shutdown finalization, so librdkafka is no longer `dlclose`d while its native threads are still running (which could segfault on exit).
 - [Fix] Make client construction exception-safe and destroy the native handle when setup fails after `rd_kafka_new`, so a later error no longer orphans the native client.
-- [Fix] Fix a native message double-free in `Consumer#poll_batch`/`#poll_batch_nb` when building a message raised a non-`RdkafkaError`, which could abort the process.
+- [Fix] Destroy each polled message exactly once in `Consumer#poll_batch`/`#poll_batch_nb` when building a message raises a non-`RdkafkaError`, fixing a double-free that could abort the process and closing the matching leak window.
 - [Fix] Free the background queue, `AdminOptions` and any already-built `ConfigResource`s (and remove the handle) when `Admin#describe_configs`/`#incremental_alter_configs` raise while building native resources (e.g. a non-String resource name).
+- [Fix] Raise a clear `ConfigError` instead of segfaulting when `Admin#describe_configs`/`#incremental_alter_configs` are given an empty resource name or a negative resource type (`rd_kafka_ConfigResource_new` returns NULL).
 
 ## 0.29.1 (2026-09-04)
 - [Enhancement] Add `Admin#delete_records` to delete all messages in a partition up to a given offset.

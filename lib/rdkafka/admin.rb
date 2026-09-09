@@ -898,35 +898,47 @@ module Rdkafka
       handle[:pending] = true
       handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
 
-      queue_ptr = @native_kafka.with_inner do |inner|
-        Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
-      end
-
-      if queue_ptr.null?
-        raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
-      end
-
-      admin_options_ptr = @native_kafka.with_inner do |inner|
-        Rdkafka::Bindings.rd_kafka_AdminOptions_new(
-          inner,
-          Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DESCRIBECONFIGS
-        )
-      end
-
-      DescribeConfigsHandle.register(handle)
-      Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
-
-      pointer_array = parsed_resources.map do |resource_type, resource_name|
-        Rdkafka::Bindings.rd_kafka_ConfigResource_new(
-          resource_type,
-          FFI::MemoryPointer.from_string(resource_name)
-        )
-      end
-
-      configs_array_ptr = FFI::MemoryPointer.new(:pointer, pointer_array.size)
-      configs_array_ptr.write_array_of_pointer(pointer_array)
+      # All native allocation happens inside the begin so a raise at any point (a null background
+      # queue, a non-String resource name making `from_string` raise mid-build, etc.) is cleaned up
+      # by the ensure rather than leaking the queue, the AdminOptions, the handle and the
+      # ConfigResources already built.
+      queue_ptr = nil
+      admin_options_ptr = nil
+      pointer_array = []
+      registered = false
 
       begin
+        queue_ptr = @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+        end
+
+        if queue_ptr.null?
+          raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
+        end
+
+        admin_options_ptr = @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_AdminOptions_new(
+            inner,
+            Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DESCRIBECONFIGS
+          )
+        end
+
+        DescribeConfigsHandle.register(handle)
+        registered = true
+        Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
+
+        # Build resources one at a time so a raise on a later element still leaves the earlier ones
+        # in pointer_array for the ensure to destroy.
+        parsed_resources.each do |resource_type, resource_name|
+          pointer_array << Rdkafka::Bindings.rd_kafka_ConfigResource_new(
+            resource_type,
+            FFI::MemoryPointer.from_string(resource_name)
+          )
+        end
+
+        configs_array_ptr = FFI::MemoryPointer.new(:pointer, pointer_array.size)
+        configs_array_ptr.write_array_of_pointer(pointer_array)
+
         @native_kafka.with_inner do |inner|
           Rdkafka::Bindings.rd_kafka_DescribeConfigs(
             inner,
@@ -937,18 +949,18 @@ module Rdkafka
           )
         end
       rescue Exception
-        DescribeConfigsHandle.remove(handle.to_ptr.address)
+        DescribeConfigsHandle.remove(handle.to_ptr.address) if registered
 
         raise
       ensure
-        Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
-        Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr)
+        if admin_options_ptr && !admin_options_ptr.null?
+          Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
+        end
 
-        if configs_array_ptr
-          Rdkafka::Bindings.rd_kafka_ConfigResource_destroy_array(
-            configs_array_ptr,
-            pointer_array.size
-          )
+        Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr) if queue_ptr && !queue_ptr.null?
+
+        pointer_array.each do |config_resource_ptr|
+          Rdkafka::Bindings.rd_kafka_ConfigResource_destroy(config_resource_ptr)
         end
       end
 
@@ -987,66 +999,75 @@ module Rdkafka
       handle[:pending] = true
       handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
 
-      queue_ptr = @native_kafka.with_inner do |inner|
-        Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
-      end
-
-      if queue_ptr.null?
-        raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
-      end
-
-      admin_options_ptr = @native_kafka.with_inner do |inner|
-        Rdkafka::Bindings.rd_kafka_AdminOptions_new(
-          inner,
-          Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_INCREMENTALALTERCONFIGS
-        )
-      end
-
-      IncrementalAlterConfigsHandle.register(handle)
-      Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
-
+      # All native allocation happens inside the begin so a raise at any point (a null background
+      # queue, a non-String resource name, or FFI marshaling of a config name/value failing while
+      # adding configs) is cleaned up by the ensure rather than leaking the queue, the AdminOptions,
+      # the handle and the ConfigResources already built.
+      queue_ptr = nil
+      admin_options_ptr = nil
+      pointer_array = []
+      registered = false
       add_error = nil
 
-      pointer_array = parsed_resources.map do |resource_type, resource_name, configs|
-        # First build the appropriate resource representation
-        resource_ptr = Rdkafka::Bindings.rd_kafka_ConfigResource_new(
-          resource_type,
-          FFI::MemoryPointer.from_string(resource_name)
-        )
+      begin
+        queue_ptr = @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+        end
 
-        configs.each do |name, op_type, value|
-          # rd_kafka_ConfigResource_add_incremental_config returns a non-NULL rd_kafka_error_t for
-          # an invalid op_type, an empty/nil name, or a nil value on a non-delete op. The result
-          # used to be ignored: the entry was silently dropped, the alter request still reported
-          # success, and the error object leaked. Capture the first error (always destroying the
-          # native error object) and raise it below, before the request is sent.
-          error_ptr = Bindings.rd_kafka_ConfigResource_add_incremental_config(
-            resource_ptr,
-            name,
-            op_type,
-            value
+        if queue_ptr.null?
+          raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
+        end
+
+        admin_options_ptr = @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_AdminOptions_new(
+            inner,
+            Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_INCREMENTALALTERCONFIGS
           )
+        end
 
-          unless error_ptr.null?
-            code = Rdkafka::Bindings.rd_kafka_error_code(error_ptr)
-            Rdkafka::Bindings.rd_kafka_error_destroy(error_ptr)
+        IncrementalAlterConfigsHandle.register(handle)
+        registered = true
+        Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
 
-            unless code == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-              add_error ||= Rdkafka::RdkafkaError.new(
-                code,
-                "rd_kafka_ConfigResource_add_incremental_config"
-              )
+        parsed_resources.each do |resource_type, resource_name, configs|
+          # First build the appropriate resource representation
+          resource_ptr = Rdkafka::Bindings.rd_kafka_ConfigResource_new(
+            resource_type,
+            FFI::MemoryPointer.from_string(resource_name)
+          )
+          # Track it immediately so a raise while adding its configs still frees it via the ensure.
+          pointer_array << resource_ptr
+
+          configs.each do |name, op_type, value|
+            # rd_kafka_ConfigResource_add_incremental_config returns a non-NULL rd_kafka_error_t for
+            # an invalid op_type, an empty/nil name, or a nil value on a non-delete op. The result
+            # used to be ignored: the entry was silently dropped, the alter request still reported
+            # success, and the error object leaked. Capture the first error (always destroying the
+            # native error object) and raise it below, before the request is sent.
+            error_ptr = Bindings.rd_kafka_ConfigResource_add_incremental_config(
+              resource_ptr,
+              name,
+              op_type,
+              value
+            )
+
+            unless error_ptr.null?
+              code = Rdkafka::Bindings.rd_kafka_error_code(error_ptr)
+              Rdkafka::Bindings.rd_kafka_error_destroy(error_ptr)
+
+              unless code == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+                add_error ||= Rdkafka::RdkafkaError.new(
+                  code,
+                  "rd_kafka_ConfigResource_add_incremental_config"
+                )
+              end
             end
           end
         end
 
-        resource_ptr
-      end
+        configs_array_ptr = FFI::MemoryPointer.new(:pointer, pointer_array.size)
+        configs_array_ptr.write_array_of_pointer(pointer_array)
 
-      configs_array_ptr = FFI::MemoryPointer.new(:pointer, pointer_array.size)
-      configs_array_ptr.write_array_of_pointer(pointer_array)
-
-      begin
         # Raise only after the full array is built so the ensure below frees every ConfigResource
         # we created, and before the request is sent so a rejected entry can't report success.
         raise add_error if add_error
@@ -1061,18 +1082,18 @@ module Rdkafka
           )
         end
       rescue Exception
-        IncrementalAlterConfigsHandle.remove(handle.to_ptr.address)
+        IncrementalAlterConfigsHandle.remove(handle.to_ptr.address) if registered
 
         raise
       ensure
-        Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
-        Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr)
+        if admin_options_ptr && !admin_options_ptr.null?
+          Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
+        end
 
-        if configs_array_ptr
-          Rdkafka::Bindings.rd_kafka_ConfigResource_destroy_array(
-            configs_array_ptr,
-            pointer_array.size
-          )
+        Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr) if queue_ptr && !queue_ptr.null?
+
+        pointer_array.each do |config_resource_ptr|
+          Rdkafka::Bindings.rd_kafka_ConfigResource_destroy(config_resource_ptr)
         end
       end
 

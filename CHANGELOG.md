@@ -1,5 +1,9 @@
 # Rdkafka Changelog
 
+## Unreleased
+- [Fix] Close live clients from an `at_exit` hook before Ruby's shutdown finalization, so librdkafka is no longer `dlclose`d while its native threads are still running (which could segfault on exit).
+- [Fix] Make client construction exception-safe and destroy the native handle when setup fails after `rd_kafka_new`, so a later error no longer orphans the native client.
+
 ## 0.29.1 (2026-09-04)
 - [Enhancement] Add `Admin#delete_records` to delete all messages in a partition up to a given offset.
 - [Enhancement] Add `Admin#list_consumer_groups` to list the cluster's consumer groups.

@@ -2066,11 +2066,13 @@ RSpec.describe Rdkafka::Consumer do
     end
 
     it "destroys each native message exactly once when building one raises a non-RdkafkaError" do
-      pointers = Array.new(2) { Rdkafka::Bindings::Message.new.to_ptr }
-      buffer = FFI::MemoryPointer.new(:pointer, pointers.size)
-      pointers.each_with_index { |ptr, i| buffer.put_pointer(i * FFI::Pointer.size, ptr) }
+      # Retain the Message structs, not just their pointers: an FFI::Pointer from #to_ptr does not
+      # keep the owning struct alive, so GC could free the backing memory before poll_batch reads it.
+      messages = Array.new(2) { Rdkafka::Bindings::Message.new }
+      buffer = FFI::MemoryPointer.new(:pointer, messages.size)
+      messages.each_with_index { |message, i| buffer.put_pointer(i * FFI::Pointer.size, message.to_ptr) }
 
-      expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue).and_return(pointers.size)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue).and_return(messages.size)
       allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
       # Building the message raises something other than RdkafkaError (e.g. a decode/encoding bug).
       allow(Rdkafka::Consumer::Message).to receive(:new).and_raise("boom")
@@ -2078,27 +2080,28 @@ RSpec.describe Rdkafka::Consumer do
       destroyed = []
       allow(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy) { |ptr| destroyed << ptr.address }
 
-      expect { consumer.poll_batch(100, max_items: pointers.size) }.to raise_error(RuntimeError, "boom")
+      expect { consumer.poll_batch(100, max_items: messages.size) }.to raise_error(RuntimeError, "boom")
 
       # Regression: the failing index must not be destroyed twice (double-free) nor leaked.
-      expect(destroyed.sort).to eq(pointers.map(&:address).sort)
+      expect(destroyed.sort).to eq(messages.map { |message| message.to_ptr.address }.sort)
     end
 
     it "destroys each native message exactly once in poll_batch_nb when building one raises" do
-      pointers = Array.new(2) { Rdkafka::Bindings::Message.new.to_ptr }
-      buffer = FFI::MemoryPointer.new(:pointer, pointers.size)
-      pointers.each_with_index { |ptr, i| buffer.put_pointer(i * FFI::Pointer.size, ptr) }
+      # Retain the Message structs, not just their pointers (see the poll_batch spec above).
+      messages = Array.new(2) { Rdkafka::Bindings::Message.new }
+      buffer = FFI::MemoryPointer.new(:pointer, messages.size)
+      messages.each_with_index { |message, i| buffer.put_pointer(i * FFI::Pointer.size, message.to_ptr) }
 
-      expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue_nb).and_return(pointers.size)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue_nb).and_return(messages.size)
       allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
       allow(Rdkafka::Consumer::Message).to receive(:new).and_raise("boom")
 
       destroyed = []
       allow(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy) { |ptr| destroyed << ptr.address }
 
-      expect { consumer.poll_batch_nb(0, max_items: pointers.size) }.to raise_error(RuntimeError, "boom")
+      expect { consumer.poll_batch_nb(0, max_items: messages.size) }.to raise_error(RuntimeError, "boom")
 
-      expect(destroyed.sort).to eq(pointers.map(&:address).sort)
+      expect(destroyed.sort).to eq(messages.map { |message| message.to_ptr.address }.sort)
     end
 
     it "returns error events inline rather than raising" do

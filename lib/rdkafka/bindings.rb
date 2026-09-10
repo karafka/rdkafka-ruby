@@ -161,6 +161,7 @@ module Rdkafka
 
     attach_function :rd_kafka_DescribeConfigs, [:pointer, :pointer, :size_t, :pointer, :pointer], :void, blocking: true
     attach_function :rd_kafka_ConfigResource_new, [:int32, :pointer], :pointer
+    attach_function :rd_kafka_ConfigResource_destroy, [:pointer], :void
     attach_function :rd_kafka_ConfigResource_destroy_array, [:pointer, :int32], :void
     attach_function :rd_kafka_event_DescribeConfigs_result, [:pointer], :pointer
     attach_function :rd_kafka_DescribeConfigs_result_resources, [:pointer, :pointer], :pointer

@@ -235,6 +235,62 @@ RSpec.describe Rdkafka::Admin do
       end
     end
 
+    context "when building the native resources raises after allocation" do
+      it "frees the queue and AdminOptions and removes the handle instead of leaking them" do
+        registry = Rdkafka::Admin::DescribeConfigsHandle::REGISTRY
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_destroy).and_call_original
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_AdminOptions_destroy).and_call_original
+
+        # A non-String resource name makes FFI::MemoryPointer.from_string raise mid-build, after
+        # the queue and AdminOptions have already been allocated and the handle registered.
+        expect { admin.describe_configs([{ resource_type: 2, resource_name: 123 }]) }
+          .to raise_error(TypeError)
+
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_queue_destroy).once
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_AdminOptions_destroy).once
+        expect(registry).to be_empty
+      end
+
+      it "destroys the ConfigResources already built when a later one raises" do
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_ConfigResource_destroy).and_call_original
+
+        expect do
+          admin.describe_configs(
+            [
+              { resource_type: 2, resource_name: topic_name },
+              { resource_type: 2, resource_name: 123 }
+            ]
+          )
+        end.to raise_error(TypeError)
+
+        # The first (valid) ConfigResource was built and must be freed rather than orphaned.
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_ConfigResource_destroy).once
+      end
+
+      it "raises a clean error instead of segfaulting on an empty resource name" do
+        registry = Rdkafka::Admin::DescribeConfigsHandle::REGISTRY
+
+        # librdkafka returns NULL from rd_kafka_ConfigResource_new for an empty name; passing/freeing
+        # that NULL would segfault, so we expect a ConfigError and full cleanup instead.
+        expect { admin.describe_configs([{ resource_type: 2, resource_name: "" }]) }
+          .to raise_error(Rdkafka::Config::ConfigError, /ConfigResource_new was NULL/)
+        expect(registry).to be_empty
+      end
+
+      it "raises a clean error and frees the queue when AdminOptions creation returns NULL" do
+        registry = Rdkafka::Admin::DescribeConfigsHandle::REGISTRY
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_AdminOptions_new).and_return(FFI::Pointer::NULL)
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_destroy).and_call_original
+
+        # Setting the opaque on a NULL AdminOptions would segfault; expect a ConfigError instead.
+        expect { admin.describe_configs([{ resource_type: 2, resource_name: topic_name }]) }
+          .to raise_error(Rdkafka::Config::ConfigError, /AdminOptions_new was NULL/)
+
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_queue_destroy).once
+        expect(registry).to be_empty
+      end
+    end
+
     context "when describing both existing and non-existing topics" do
       let(:resources) do
         [
@@ -336,6 +392,51 @@ RSpec.describe Rdkafka::Admin do
         expect do
           admin.incremental_alter_configs([{ resource_type: 2, resource_name: topic_name }])
         end.to raise_error(KeyError)
+        expect(registry).to be_empty
+      end
+    end
+
+    context "when building the native resources raises after allocation" do
+      it "frees the queue and AdminOptions and removes the handle instead of leaking them" do
+        registry = Rdkafka::Admin::IncrementalAlterConfigsHandle::REGISTRY
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_destroy).and_call_original
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_AdminOptions_destroy).and_call_original
+
+        # A non-String resource name makes FFI::MemoryPointer.from_string raise mid-build, after
+        # the queue and AdminOptions have already been allocated and the handle registered.
+        expect do
+          admin.incremental_alter_configs([{ resource_type: 2, resource_name: 123, configs: [] }])
+        end.to raise_error(TypeError)
+
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_queue_destroy).once
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_AdminOptions_destroy).once
+        expect(registry).to be_empty
+      end
+
+      it "raises a clean error instead of segfaulting on an empty resource name" do
+        registry = Rdkafka::Admin::IncrementalAlterConfigsHandle::REGISTRY
+
+        # librdkafka returns NULL from rd_kafka_ConfigResource_new for an empty name; passing/freeing
+        # that NULL would segfault, so we expect a ConfigError and full cleanup instead.
+        expect do
+          admin.incremental_alter_configs([{ resource_type: 2, resource_name: "", configs: [] }])
+        end.to raise_error(Rdkafka::Config::ConfigError, /ConfigResource_new was NULL/)
+        expect(registry).to be_empty
+      end
+
+      it "raises a clean error and frees the queue when AdminOptions creation returns NULL" do
+        registry = Rdkafka::Admin::IncrementalAlterConfigsHandle::REGISTRY
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_AdminOptions_new).and_return(FFI::Pointer::NULL)
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_queue_destroy).and_call_original
+
+        # Setting the opaque on a NULL AdminOptions would segfault; expect a ConfigError instead.
+        expect do
+          admin.incremental_alter_configs(
+            [{ resource_type: 2, resource_name: topic_name, configs: [] }]
+          )
+        end.to raise_error(Rdkafka::Config::ConfigError, /AdminOptions_new was NULL/)
+
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_queue_destroy).once
         expect(registry).to be_empty
       end
     end

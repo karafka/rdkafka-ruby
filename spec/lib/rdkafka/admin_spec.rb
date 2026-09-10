@@ -246,8 +246,8 @@ RSpec.describe Rdkafka::Admin do
         expect { admin.describe_configs([{ resource_type: 2, resource_name: 123 }]) }
           .to raise_error(TypeError)
 
-        expect(Rdkafka::Bindings).to have_received(:rd_kafka_queue_destroy).at_least(:once)
-        expect(Rdkafka::Bindings).to have_received(:rd_kafka_AdminOptions_destroy).at_least(:once)
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_queue_destroy).once
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_AdminOptions_destroy).once
         expect(registry).to be_empty
       end
 
@@ -264,7 +264,7 @@ RSpec.describe Rdkafka::Admin do
         end.to raise_error(TypeError)
 
         # The first (valid) ConfigResource was built and must be freed rather than orphaned.
-        expect(Rdkafka::Bindings).to have_received(:rd_kafka_ConfigResource_destroy).at_least(:once)
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_ConfigResource_destroy).once
       end
 
       it "raises a clean error instead of segfaulting on an empty resource name" do
@@ -286,7 +286,7 @@ RSpec.describe Rdkafka::Admin do
         expect { admin.describe_configs([{ resource_type: 2, resource_name: topic_name }]) }
           .to raise_error(Rdkafka::Config::ConfigError, /AdminOptions_new was NULL/)
 
-        expect(Rdkafka::Bindings).to have_received(:rd_kafka_queue_destroy).at_least(:once)
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_queue_destroy).once
         expect(registry).to be_empty
       end
     end
@@ -408,8 +408,8 @@ RSpec.describe Rdkafka::Admin do
           admin.incremental_alter_configs([{ resource_type: 2, resource_name: 123, configs: [] }])
         end.to raise_error(TypeError)
 
-        expect(Rdkafka::Bindings).to have_received(:rd_kafka_queue_destroy).at_least(:once)
-        expect(Rdkafka::Bindings).to have_received(:rd_kafka_AdminOptions_destroy).at_least(:once)
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_queue_destroy).once
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_AdminOptions_destroy).once
         expect(registry).to be_empty
       end
 
@@ -436,7 +436,7 @@ RSpec.describe Rdkafka::Admin do
           )
         end.to raise_error(Rdkafka::Config::ConfigError, /AdminOptions_new was NULL/)
 
-        expect(Rdkafka::Bindings).to have_received(:rd_kafka_queue_destroy).at_least(:once)
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_queue_destroy).once
         expect(registry).to be_empty
       end
     end

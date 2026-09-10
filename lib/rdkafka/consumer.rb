@@ -916,7 +916,7 @@ module Rdkafka
       begin
         while i < count
           ptr = buffer.get_pointer(i * FFI::Pointer.size)
-          # Take ownership of this index before touching the pointer: advancing `i` up front means
+          # Take ownership of this index before processing the pointer: advancing `i` up front means
           # the cleanup loop in the `ensure` below starts past it, so a raise mid-iteration cannot
           # double-free the same message.
           i += 1
@@ -993,7 +993,7 @@ module Rdkafka
       begin
         while i < count
           ptr = buffer.get_pointer(i * FFI::Pointer.size)
-          # Take ownership of this index before touching the pointer: advancing `i` up front means
+          # Take ownership of this index before processing the pointer: advancing `i` up front means
           # the cleanup loop in the `ensure` below starts past it, so a raise mid-iteration cannot
           # double-free the same message.
           i += 1

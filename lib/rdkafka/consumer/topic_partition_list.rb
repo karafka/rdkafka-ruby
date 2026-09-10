@@ -160,10 +160,9 @@ module Rdkafka
 
                 if p.metadata
                   part = Rdkafka::Bindings::TopicPartition.new(ref)
-                  str_ptr = FFI::MemoryPointer.from_string(p.metadata)
                   # The metadata string is owned by librdkafka once handed over and released here:
                   # https://github.com/confluentinc/librdkafka/blob/e03d3bb91ed92a38f38d9806b8d8deffe78a1de5/src/rdkafka_partition.c#L2682C18-L2682C18
-                  str_ptr.autorelease = false
+                  str_ptr = Allocator.string_pointer(p.metadata)
                   part[:metadata] = str_ptr
                   part[:metadata_size] = p.metadata.bytesize
                 end

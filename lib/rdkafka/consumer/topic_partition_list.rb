@@ -139,36 +139,6 @@ module Rdkafka
         TopicPartitionList.new(data)
       end
 
-      # Container for creating FFI pointers from the global allocator.
-      module GlobalAllocator
-        extend FFI::Library
-
-        ffi_lib FFI::CURRENT_PROCESS # use process-global malloc not FFI::Library::LIBC
-        attach_function :malloc, [:size_t], :pointer
-
-        # Return an FFI pointer to a string allocated from the global allocator
-        # so that it can be released by another library.
-        #
-        # @private
-        #
-        # @param string [String] Ruby string that will be copied into the new
-        #   string pointer.
-        #
-        # @return FFI::Pointer
-        def self.string_pointer(string)
-          bytes = string.to_s
-          pointer = malloc(bytes.bytesize + 1)
-          Kernel.raise(NoMemoryError, "malloc failed") if pointer.null?
-
-          pointer.put_bytes(0, bytes)
-          pointer.put_char(bytes.bytesize, 0) # NUL terminator
-
-          pointer.autorelease = false
-
-          pointer
-        end
-      end
-
       # Create a native tpl with the contents of this object added.
       #
       # The pointer will be cleaned by `rd_kafka_topic_partition_list_destroy` when GC releases it.
@@ -192,7 +162,7 @@ module Rdkafka
                   part = Rdkafka::Bindings::TopicPartition.new(ref)
                   # The metadata string is owned by librdkafka once handed over and released here:
                   # https://github.com/confluentinc/librdkafka/blob/e03d3bb91ed92a38f38d9806b8d8deffe78a1de5/src/rdkafka_partition.c#L2682C18-L2682C18
-                  str_ptr = GlobalAllocator.string_pointer(p.metadata)
+                  str_ptr = Allocator.string_pointer(p.metadata)
                   part[:metadata] = str_ptr
                   part[:metadata_size] = p.metadata.bytesize
                 end

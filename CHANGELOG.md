@@ -1,7 +1,12 @@
 # Rdkafka Changelog
 
-## 0.29.2 (Unreleased)
+## Unreleased
 - [Enhancement] Bump librdkafka to `2.15.0`.
+- [Fix] Close live clients from an `at_exit` hook before Ruby's shutdown finalization, so librdkafka is no longer `dlclose`d while its native threads are still running (which could segfault on exit).
+- [Fix] Make client construction exception-safe and destroy the native handle when setup fails after `rd_kafka_new`, so a later error no longer orphans the native client.
+- [Fix] Destroy each polled message exactly once in `Consumer#poll_batch`/`#poll_batch_nb` when building a message raises a non-`RdkafkaError`, fixing a double-free that could abort the process and closing the matching leak window.
+- [Fix] Free the background queue, `AdminOptions` and any already-built `ConfigResource`s (and remove the handle) when `Admin#describe_configs`/`#incremental_alter_configs` raise while building native resources (e.g. a non-String resource name).
+- [Fix] Raise a clear `ConfigError` instead of segfaulting when `Admin#describe_configs`/`#incremental_alter_configs` are given an empty resource name or a negative resource type (`rd_kafka_ConfigResource_new` returns NULL), or when `rd_kafka_AdminOptions_new` returns NULL.
 
 ## 0.29.1 (2026-09-04)
 - [Enhancement] Add `Admin#delete_records` to delete all messages in a partition up to a given offset.
@@ -11,6 +16,7 @@
 - [Fix] Make `NativeKafka#close` fork-aware so a forked child no longer segfaults on exit.
 - [Fix] Stabilize the `to_native_tpl` leak integration spec.
 - [Fix] Stabilize the flaky partitions count cache statistics spec.
+- [Fix] Use global allocator in topic_partition_list for pointer freed by librdkafka.
 
 ## 0.29.0 (2026-07-10)
 - [Enhancement] Bump librdkafka to `2.14.2`

@@ -1,5 +1,14 @@
 # Rdkafka Changelog
 
+## Unreleased
+- [Fix] Close live clients from an `at_exit` hook before Ruby's shutdown finalization, so librdkafka is no longer `dlclose`d while its native threads are still running (which could segfault on exit). Ported from rdkafka-ruby (#964, Alex Selesse).
+- [Fix] Make client construction exception-safe and destroy the native handle when setup fails after `rd_kafka_new`, so a later error no longer orphans the native client. Ported from rdkafka-ruby (#964, Alex Selesse).
+- [Fix] Destroy each polled message exactly once in `Consumer#poll_batch`/`#poll_batch_nb` when building a message raises a non-`RdkafkaError`, fixing a double-free that could abort the process and closing the matching leak window. Ported from rdkafka-ruby (#973).
+- [Fix] Free the background queue, `AdminOptions` and any already-built `ConfigResource`s (and remove the handle) when `Admin#describe_configs`/`#incremental_alter_configs` raise while building native resources (e.g. a non-String resource name). Ported from rdkafka-ruby (#973).
+- [Fix] Raise a clear `ConfigError` instead of segfaulting when `Admin#describe_configs`/`#incremental_alter_configs` are given an empty resource name or a negative resource type (`rd_kafka_ConfigResource_new` returns NULL), or when `rd_kafka_AdminOptions_new` returns NULL. Ported from rdkafka-ruby (#973).
+- [Fix] Allocate the topic-partition metadata string with a process-global malloc instead of an autorelease-off `FFI::MemoryPointer`, so the buffer handed to librdkafka is not freed under it. Ported from rdkafka-ruby (#969, Randy Stauner).
+- [Maintenance] Bump the bundled OpenSSL used by the precompiled builds to `3.5.8` (LTS). Ported from rdkafka-ruby (#972, Scott Francis).
+
 ## v0.28.1 (2026-09-04)
 - [Enhancement] Add `Admin#delete_records`, wrapping librdkafka's `DeleteRecords` admin API. Deletes all messages in a partition up to (but not including) a given offset - accepts an integer offset or `:end` to clear all current data. Ported from rdkafka-ruby (#956).
 - [Enhancement] Add `Admin#list_consumer_groups`, wrapping librdkafka's `ListConsumerGroups` admin API. Returns a cluster-wide listing of consumer groups (`group_id`, `is_simple_consumer_group`, state) plus any per-broker errors. Ported from rdkafka-ruby (#955).

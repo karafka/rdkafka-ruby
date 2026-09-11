@@ -60,6 +60,7 @@ require "rdkafka/consumer"
 require "rdkafka/consumer/headers"
 require "rdkafka/consumer/message"
 require "rdkafka/consumer/partition"
+require "rdkafka/consumer/allocator"
 require "rdkafka/consumer/topic_partition_list"
 require "rdkafka/error"
 require "rdkafka/metadata"
@@ -68,9 +69,12 @@ require "rdkafka/producer/partitions_count_cache"
 require "rdkafka/producer"
 require "rdkafka/producer/delivery_handle"
 require "rdkafka/producer/delivery_report"
+require "rdkafka/clients"
 
 # Main Rdkafka namespace of this gem
 module Rdkafka
 end
 
 Rdkafka::Bindings.rd_kafka_global_init
+
+at_exit { Rdkafka::Clients.close_all }

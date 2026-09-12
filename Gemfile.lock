@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    rdkafka (0.29.1)
+    rdkafka (0.29.2)
       ffi (~> 1.17.1)
       json (> 2.0)
       logger
@@ -50,7 +50,7 @@ GEM
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.13.0)
     rspec-support (3.13.7)
-    simplecov (1.1.1)
+    simplecov (1.2.0)
     warning (1.6.0)
 
 PLATFORMS

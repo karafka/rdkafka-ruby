@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.29.0 (2026-09-13)
+## 0.29.0 (2026-09-14)
 - [Enhancement] Bump librdkafka to `2.15.0` (staying on `2.15.0` rather than `2.15.1` so users hitting a regression in `2.15.1` have a stable fallback).
 
 ## 0.28.2 (2026-09-11)

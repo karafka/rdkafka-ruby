@@ -31,7 +31,6 @@ jobs:
           - '4.0'
           - '3.4'
           - '3.3'
-          - '3.2'
         macos-version:
           - 'macos-15' # macOS 15 Sequoia (ARM64)
         include:
@@ -180,7 +179,6 @@ jobs:
           - '4.0'
           - '3.4'
           - '3.3'
-          - '3.2'
         macos-version:
           - 'macos-15'
         include:

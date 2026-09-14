@@ -136,7 +136,6 @@ jobs:
         ruby:
           - '3.4'
           - '3.3'
-          - '3.2'
         debian:
           - 'bookworm'
           - 'trixie'
@@ -259,7 +258,6 @@ jobs:
         ruby:
           - '3.4'
           - '3.3'
-          - '3.2'
         debian:
           - 'bookworm'
           - 'trixie'

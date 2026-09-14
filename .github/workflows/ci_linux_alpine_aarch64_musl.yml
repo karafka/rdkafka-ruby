@@ -48,10 +48,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - ruby: '3.2'
-            alpine_version: '3.21'
-          - ruby: '3.2'
-            alpine_version: '3.22'
           - ruby: '3.3'
             alpine_version: '3.21'
           - ruby: '3.3'
@@ -160,7 +156,6 @@ jobs:
         ruby:
           - '3.4'
           - '3.3'
-          - '3.2'
         include:
           - ruby: '3.4'
             coverage: 'true'

@@ -1,7 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.29.0 (2026-09-13)
-- [Enhancement] Bump librdkafka to `2.15.0` (staying on `2.15.0` rather than `2.15.1` so users hitting a regression in `2.15.1` have a stable fallback). The karafka-only statistics filter patch was rebased onto `2.15.0` (upstream grew the config property index from `64 * 35` to `64 * 36`; the patch keeps extending it to `64 * 40`). Ported from rdkafka-ruby (#970).
+- [Enhancement] Bump librdkafka to `2.15.0` (staying on `2.15.0` rather than `2.15.1` so users hitting a regression in `2.15.1` have a stable fallback).
 
 ## 0.28.2 (2026-09-11)
 - [Fix] Close live clients from an `at_exit` hook before Ruby's shutdown finalization, so librdkafka is no longer `dlclose`d while its native threads are still running (which could segfault on exit). Ported from rdkafka-ruby (#964, Alex Selesse).

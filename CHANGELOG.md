@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## Unreleased
+## 0.30.0 (Unreleased)
 - [Enhancement] Bump librdkafka to `2.15.0`.
 
 ## 0.29.2 (2026-09-11)

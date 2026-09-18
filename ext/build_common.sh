@@ -16,7 +16,7 @@ BUILD_COMMON_SOURCED=1
 # Version constants - update these to upgrade dependencies
 readonly OPENSSL_VERSION="3.5.8"
 readonly CYRUS_SASL_VERSION="2.1.28"
-readonly ZLIB_VERSION="1.3.1"
+readonly ZLIB_VERSION="1.3.2"
 readonly ZSTD_VERSION="1.5.7"
 readonly KRB5_VERSION="1.21.3"
 readonly LIBRDKAFKA_VERSION="2.15.0"
@@ -26,7 +26,7 @@ readonly LIBRDKAFKA_VERSION="2.15.0"
 declare -A CHECKSUMS=(
     ["openssl-${OPENSSL_VERSION}.tar.gz"]="a8f84a39918ec6415ce765d9b429d313ba97b8143169c172e734b9514464f5b2"
     ["cyrus-sasl-${CYRUS_SASL_VERSION}.tar.gz"]="7ccfc6abd01ed67c1a0924b353e526f1b766b21f42d4562ee635a8ebfc5bb38c"
-    ["zlib-1.3.1.tar.gz"]="9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23"
+    ["zlib-${ZLIB_VERSION}.tar.gz"]="bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16"
     ["zstd-${ZSTD_VERSION}.tar.gz"]="eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3"
     ["krb5-${KRB5_VERSION}.tar.gz"]="b7a4cd5ead67fb08b980b21abd150ff7217e85ea320c9ed0c6dadd304840ad35"
     ["librdkafka-${LIBRDKAFKA_VERSION}.tar.gz"]="259015220cdca708afe838b5aa79ebf1a5fb710fb4179cf918d390aed85d5dbc"

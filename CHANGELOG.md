@@ -4,7 +4,7 @@
 - [Enhancement] Bump the bundled zlib to `1.3.2`.
 - [Maintenance] Interpolate the zlib entry in the `CHECKSUMS` map. It was the only one hardcoded to a literal version, so it could silently go stale against `ZLIB_VERSION`.
 - [Maintenance] Drop the stale `dist/openssl-3.0.16.tar.gz` build cache left behind when the bundled OpenSSL moved to the 3.5 LTS line. The pin is `3.5.8`, so that file was never consulted.
-- [Enhancement] Bump librdkafka to `2.15.0`.
+- [Enhancement] Bump librdkafka to `2.15.1`.
 
 ## 0.29.2 (2026-09-11)
 - [Fix] Close live clients from an `at_exit` hook before Ruby's shutdown finalization, so librdkafka is no longer `dlclose`d while its native threads are still running (which could segfault on exit).

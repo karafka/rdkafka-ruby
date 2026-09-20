@@ -1218,8 +1218,10 @@ RSpec.describe Rdkafka::Admin do
         before do
           consumer.subscribe(topic_name)
           wait_for_assignment(consumer)
-          10.times { consumer.poll(100) }
-          consumer.commit
+          # Commit an explicit list rather than the stored offsets: a bare `commit` only has
+          # something to commit if a poll happened to return a message first, which is a race
+          # the slower CI runners lose (`no_offset`).
+          consumer.commit(tpl)
           # The group has to be empty for Kafka to accept an external alter, so the member
           # that created the offsets must be gone before we touch them.
           consumer.close
@@ -1238,8 +1240,7 @@ RSpec.describe Rdkafka::Admin do
         before do
           consumer.subscribe(topic_name)
           wait_for_assignment(consumer)
-          10.times { consumer.poll(100) }
-          consumer.commit
+          consumer.commit(tpl)
         end
 
         after { consumer.close }
@@ -1264,14 +1265,21 @@ RSpec.describe Rdkafka::Admin do
         Rdkafka::Consumer::TopicPartitionList.new.tap { |list| list.add_topic(topic_name, [0]) }
       end
 
+      # The list above deletes by partition and carries no offsets, so seeding needs its own
+      let(:seed_tpl) do
+        Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic_and_partitions_with_offsets(topic_name, 0 => 0)
+        end
+      end
+
       before do
         admin.create_topic(topic_name, topic_partition_count, topic_replication_factor).wait(max_wait_timeout_ms: 15_000)
         producer.produce(topic: topic_name, payload: "test", key: "test").wait(max_wait_timeout_ms: 15_000)
 
         consumer.subscribe(topic_name)
         wait_for_assignment(consumer)
-        10.times { consumer.poll(100) }
-        consumer.commit
+        # See the note above: commit an explicit list so seeding does not depend on a fetch.
+        consumer.commit(seed_tpl)
         consumer.close
       end
 

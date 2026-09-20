@@ -1197,6 +1197,98 @@ RSpec.describe Rdkafka::Admin do
   end
 
   describe("Group tests") do
+    describe "#alter_consumer_group_offsets" do
+      let(:consumer_config) { rdkafka_consumer_config("group.id": group_name) }
+      let(:producer) { rdkafka_producer_config.producer }
+      let(:consumer) { consumer_config.consumer }
+      let(:tpl) do
+        Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic_and_partitions_with_offsets(topic_name, 0 => 0)
+        end
+      end
+
+      before do
+        admin.create_topic(topic_name, topic_partition_count, topic_replication_factor).wait(max_wait_timeout_ms: 15_000)
+        producer.produce(topic: topic_name, payload: "test", key: "test").wait(max_wait_timeout_ms: 15_000)
+      end
+
+      after { producer.close }
+
+      context "when the group is empty" do
+        before do
+          consumer.subscribe(topic_name)
+          wait_for_assignment(consumer)
+          10.times { consumer.poll(100) }
+          consumer.commit
+          # The group has to be empty for Kafka to accept an external alter, so the member
+          # that created the offsets must be gone before we touch them.
+          consumer.close
+        end
+
+        it "sets the committed offsets for the requested partitions" do
+          report = admin.alter_consumer_group_offsets(group_name, tpl).wait(max_wait_timeout_ms: 30_000)
+
+          expect(report.group_name).to eq(group_name)
+          expect(report.partitions.map { |part| part[:error] }).to all(be_nil)
+          expect(report.partitions.first).to include(topic: topic_name, partition: 0)
+        end
+      end
+
+      context "when the group still has active members" do
+        before do
+          consumer.subscribe(topic_name)
+          wait_for_assignment(consumer)
+          10.times { consumer.poll(100) }
+          consumer.commit
+        end
+
+        after { consumer.close }
+
+        # The PM's condition on this binding: a rejected alter must not look like a success.
+        it "raises rather than reporting success" do
+          expect {
+            admin.alter_consumer_group_offsets(group_name, tpl).wait(max_wait_timeout_ms: 60_000)
+          }.to raise_exception { |ex|
+            expect(ex).to be_a(Rdkafka::RdkafkaError)
+            expect(ex.message).to match(/group_not_empty|unknown_member_id|not_coordinator/)
+          }
+        end
+      end
+    end
+
+    describe "#delete_consumer_group_offsets" do
+      let(:consumer_config) { rdkafka_consumer_config("group.id": group_name) }
+      let(:producer) { rdkafka_producer_config.producer }
+      let(:consumer) { consumer_config.consumer }
+      let(:tpl) do
+        Rdkafka::Consumer::TopicPartitionList.new.tap { |list| list.add_topic(topic_name, [0]) }
+      end
+
+      before do
+        admin.create_topic(topic_name, topic_partition_count, topic_replication_factor).wait(max_wait_timeout_ms: 15_000)
+        producer.produce(topic: topic_name, payload: "test", key: "test").wait(max_wait_timeout_ms: 15_000)
+
+        consumer.subscribe(topic_name)
+        wait_for_assignment(consumer)
+        10.times { consumer.poll(100) }
+        consumer.commit
+        consumer.close
+      end
+
+      after { producer.close }
+
+      it "deletes the offsets for the requested partitions only, leaving the group in place" do
+        report = admin.delete_consumer_group_offsets(group_name, tpl).wait(max_wait_timeout_ms: 30_000)
+
+        expect(report.group_name).to eq(group_name)
+        expect(report.partitions.map { |part| part[:error] }).to all(be_nil)
+        expect(report.partitions.map { |part| part[:partition] }).to eq([0])
+
+        # The group itself survives - this is the partition scoped sibling of #delete_group.
+        expect(admin.delete_group(group_name).wait(max_wait_timeout_ms: 30_000).result_name).to eq(group_name)
+      end
+    end
+
     describe "#delete_group" do
       describe("with an existing group") do
         let(:consumer_config) { rdkafka_consumer_config("group.id": group_name) }
@@ -1578,6 +1670,22 @@ RSpec.describe Rdkafka::Admin do
       it "raises a ConfigError" do
         expect {
           admin.delete_group(group_name)
+        }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
+      end
+    end
+
+    describe "#alter_consumer_group_offsets" do
+      it "raises a ConfigError" do
+        expect {
+          admin.alter_consumer_group_offsets(group_name, Rdkafka::Consumer::TopicPartitionList.new)
+        }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
+      end
+    end
+
+    describe "#delete_consumer_group_offsets" do
+      it "raises a ConfigError" do
+        expect {
+          admin.delete_consumer_group_offsets(group_name, Rdkafka::Consumer::TopicPartitionList.new)
         }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
       end
     end

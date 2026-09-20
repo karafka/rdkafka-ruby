@@ -256,8 +256,8 @@ module Rdkafka
         request_ptr: alter_ptr,
         handle: AlterConsumerGroupOffsetsHandle.new,
         admin_op: Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_ALTERCONSUMERGROUPOFFSETS,
-        destroy: :rd_kafka_AlterConsumerGroupOffsets_destroy,
-        enqueue: :rd_kafka_AlterConsumerGroupOffsets
+        destroy: Rdkafka::Bindings.method(:rd_kafka_AlterConsumerGroupOffsets_destroy),
+        enqueue: Rdkafka::Bindings.method(:rd_kafka_AlterConsumerGroupOffsets)
       )
     end
 
@@ -291,8 +291,8 @@ module Rdkafka
         request_ptr: delete_ptr,
         handle: DeleteConsumerGroupOffsetsHandle.new,
         admin_op: Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DELETECONSUMERGROUPOFFSETS,
-        destroy: :rd_kafka_DeleteConsumerGroupOffsets_destroy,
-        enqueue: :rd_kafka_DeleteConsumerGroupOffsets
+        destroy: Rdkafka::Bindings.method(:rd_kafka_DeleteConsumerGroupOffsets_destroy),
+        enqueue: Rdkafka::Bindings.method(:rd_kafka_DeleteConsumerGroupOffsets)
       )
     end
 
@@ -1218,8 +1218,8 @@ module Rdkafka
     # @param request_ptr [FFI::Pointer] the op specific request object
     # @param handle [AbstractHandle] the handle to register and return
     # @param admin_op [Integer] the RD_KAFKA_ADMIN_OP_* constant for this operation
-    # @param destroy [Symbol] binding used to free the request object on failure
-    # @param enqueue [Symbol] binding used to enqueue the request
+    # @param destroy [Method] bound function used to free the request object
+    # @param enqueue [Method] bound function used to enqueue the request
     # @return [AbstractHandle] the registered handle
     def enqueue_group_offsets_op(request_ptr:, handle:, admin_op:, destroy:, enqueue:)
       array_ptr = FFI::MemoryPointer.new(:pointer)
@@ -1230,12 +1230,12 @@ module Rdkafka
       end
 
       if queue_ptr.null?
-        Rdkafka::Bindings.public_send(destroy, request_ptr)
+        destroy.call(request_ptr)
         raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
       end
 
       handle[:pending] = true
-      handle[:response] = Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+      handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
       handle.class.register(handle)
 
       admin_options_ptr = @native_kafka.with_inner do |inner|
@@ -1245,7 +1245,7 @@ module Rdkafka
 
       begin
         @native_kafka.with_inner do |inner|
-          Rdkafka::Bindings.public_send(enqueue, inner, array_ptr, 1, admin_options_ptr, queue_ptr)
+          enqueue.call(inner, array_ptr, 1, admin_options_ptr, queue_ptr)
         end
       rescue Exception
         handle.class.remove(handle.to_ptr.address)
@@ -1253,7 +1253,7 @@ module Rdkafka
       ensure
         Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
         Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr)
-        Rdkafka::Bindings.public_send(destroy, request_ptr)
+        destroy.call(request_ptr)
       end
 
       handle

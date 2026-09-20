@@ -1201,10 +1201,21 @@ RSpec.describe Rdkafka::Admin do
       let(:consumer_config) { rdkafka_consumer_config("group.id": group_name) }
       let(:producer) { rdkafka_producer_config.producer }
       let(:consumer) { consumer_config.consumer }
+      # Seeded offset and target offset differ, so the alter has an observable effect
+      let(:seed_tpl) do
+        Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic_and_partitions_with_offsets(topic_name, 0 => 1)
+        end
+      end
+
       let(:tpl) do
         Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-          list.add_topic_and_partitions_with_offsets(topic_name, 0 => 0)
+          list.add_topic_and_partitions_with_offsets(topic_name, 0 => 4)
         end
+      end
+
+      let(:query_tpl) do
+        Rdkafka::Consumer::TopicPartitionList.new.tap { |list| list.add_topic(topic_name, [0]) }
       end
 
       before do
@@ -1221,7 +1232,7 @@ RSpec.describe Rdkafka::Admin do
           # Commit an explicit list rather than the stored offsets: a bare `commit` only has
           # something to commit if a poll happened to return a message first, which is a race
           # the slower CI runners lose (`no_offset`).
-          consumer.commit(tpl)
+          consumer.commit(seed_tpl)
           # The group has to be empty for Kafka to accept an external alter, so the member
           # that created the offsets must be gone before we touch them.
           consumer.close
@@ -1233,6 +1244,16 @@ RSpec.describe Rdkafka::Admin do
           expect(report.group_name).to eq(group_name)
           expect(report.partitions.map { |part| part[:error] }).to all(be_nil)
           expect(report.partitions.first).to include(topic: topic_name, partition: 0)
+
+          # Read the offset back from the broker: the report saying "no error" is not evidence
+          # that anything moved, and the seed was a different offset on purpose.
+          verifier = consumer_config.consumer
+
+          begin
+            expect(verifier.committed(query_tpl).to_h[topic_name][0].offset).to eq(4)
+          ensure
+            verifier.close
+          end
         end
       end
 
@@ -1240,12 +1261,12 @@ RSpec.describe Rdkafka::Admin do
         before do
           consumer.subscribe(topic_name)
           wait_for_assignment(consumer)
-          consumer.commit(tpl)
+          consumer.commit(seed_tpl)
         end
 
         after { consumer.close }
 
-        # The PM's condition on this binding: a rejected alter must not look like a success.
+        # A rejected alter must not look like a success.
         it "raises rather than reporting success" do
           expect {
             admin.alter_consumer_group_offsets(group_name, tpl).wait(max_wait_timeout_ms: 60_000)
@@ -1261,6 +1282,7 @@ RSpec.describe Rdkafka::Admin do
       let(:consumer_config) { rdkafka_consumer_config("group.id": group_name) }
       let(:producer) { rdkafka_producer_config.producer }
       let(:consumer) { consumer_config.consumer }
+      # Deletes partition 0 only; partition 1 is seeded too so "only" is actually tested
       let(:tpl) do
         Rdkafka::Consumer::TopicPartitionList.new.tap { |list| list.add_topic(topic_name, [0]) }
       end
@@ -1268,8 +1290,12 @@ RSpec.describe Rdkafka::Admin do
       # The list above deletes by partition and carries no offsets, so seeding needs its own
       let(:seed_tpl) do
         Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
-          list.add_topic_and_partitions_with_offsets(topic_name, 0 => 0)
+          list.add_topic_and_partitions_with_offsets(topic_name, 0 => 3, 1 => 5)
         end
+      end
+
+      let(:query_tpl) do
+        Rdkafka::Consumer::TopicPartitionList.new.tap { |list| list.add_topic(topic_name, [0, 1]) }
       end
 
       before do
@@ -1291,6 +1317,20 @@ RSpec.describe Rdkafka::Admin do
         expect(report.group_name).to eq(group_name)
         expect(report.partitions.map { |part| part[:error] }).to all(be_nil)
         expect(report.partitions.map { |part| part[:partition] }).to eq([0])
+
+        # Read back rather than trusting the report: partition 0 loses its offset (the list
+        # surfaces an unset one as nil), partition 1 was not in the request and has to keep the
+        # one it was seeded with - that pair is what "only" in the name claims.
+        verifier = consumer_config.consumer
+
+        begin
+          committed = verifier.committed(query_tpl).to_h[topic_name]
+
+          expect(committed[0].offset).to be_nil
+          expect(committed[1].offset).to eq(5)
+        ensure
+          verifier.close
+        end
 
         # The group itself survives - this is the partition scoped sibling of #delete_group.
         expect(admin.delete_group(group_name).wait(max_wait_timeout_ms: 30_000).result_name).to eq(group_name)

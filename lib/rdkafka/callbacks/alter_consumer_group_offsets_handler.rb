@@ -30,13 +30,29 @@ module Rdkafka
                   FFI::Pointer::NULL
                 )
               else
-                handle[:response] = group_result.result_error
-                handle.result = Rdkafka::Admin::AlterConsumerGroupOffsetsReport.new(
+                report = Rdkafka::Admin::AlterConsumerGroupOffsetsReport.new(
                   group_result.error_string,
                   group_result.result_name,
                   Rdkafka::Bindings.rd_kafka_group_result_partitions(group_result_array.read_pointer)
                 )
-                handle.broker_message = handle.result.error_string
+                handle.result = report
+
+                # Kafka reports a rejected offset change per partition, leaving the group level
+                # error unset - a group with live members comes back with the group error NULL
+                # and `unknown_member_id` on each partition. Resolving on the group error alone
+                # would hand back a report that looks like success, so any failed partition has
+                # to fail the handle too.
+                failed = report.partitions.find { |partition| partition[:error] }
+
+                if !group_result.result_error.zero?
+                  handle[:response] = group_result.result_error
+                  handle.broker_message = report.error_string
+                elsif failed
+                  handle[:response] = failed[:error].rdkafka_response
+                  handle.broker_message = "Failed for partition #{failed[:partition]} of '#{failed[:topic]}'"
+                else
+                  handle[:response] = Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+                end
               end
 
               handle.unlock

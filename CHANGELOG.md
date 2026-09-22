@@ -1,13 +1,13 @@
 # Rdkafka Changelog
 
 ## 0.31.0 (Unreleased)
-- [Fix] Correct `RD_KAFKA_ADMIN_OP_LISTOFFSETS` to `21`. It was `20`, which is `RD_KAFKA_ADMIN_OP_DESCRIBECLUSTER` in librdkafka `2.15.1`, so `Admin#list_offsets` created its `rd_kafka_AdminOptions_new` for the wrong admin operation.
 - [Feature] Bind `AlterConsumerGroupOffsets` and `DeleteConsumerGroupOffsets` via `Admin#alter_consumer_group_offsets` and `Admin#delete_consumer_group_offsets`, so a consumer group's committed offsets can be set or cleared from the admin client instead of by joining the group with a consumer. Kafka requires the group to be empty for an alter; that rejection surfaces as an `RdkafkaError` rather than a silent no-op. The delete is partition scoped and leaves the group in place, unlike `Admin#delete_group`.
 - [Enhancement] Bump the bundled zlib to `1.3.2`.
 - [Maintenance] Interpolate the zlib entry in the `CHECKSUMS` map. It was the only one hardcoded to a literal version, so it could silently go stale against `ZLIB_VERSION`.
 - [Maintenance] Drop the stale `dist/openssl-3.0.16.tar.gz` build cache left behind when the bundled OpenSSL moved to the 3.5 LTS line. The pin is `3.5.8`, so that file was never consulted.
 - [Enhancement] Bump librdkafka to `2.15.1`.
 - [Enhancement] Bump the bundled MIT Kerberos (krb5) to `1.22.2`.
+- [Fix] Correct `RD_KAFKA_ADMIN_OP_LISTOFFSETS` to `21`. It was `20`, which is `RD_KAFKA_ADMIN_OP_DESCRIBECLUSTER` in librdkafka `2.15.1`, so `Admin#list_offsets` built its admin options for the wrong operation and librdkafka left the `isolation_level` option disabled, making `list_offsets(isolation_level:)` silently do nothing.
 
 ## 0.29.2 (2026-09-11)
 - [Fix] Close live clients from an `at_exit` hook before Ruby's shutdown finalization, so librdkafka is no longer `dlclose`d while its native threads are still running (which could segfault on exit).

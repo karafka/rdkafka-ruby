@@ -224,6 +224,78 @@ module Rdkafka
       create_topic_handle
     end
 
+    # Sets the committed offsets of a consumer group from outside the group.
+    #
+    # Kafka requires the group to be empty (no active members) for this to be accepted; when it
+    # is not, the broker rejects the request and the handle raises with `group_not_empty` rather
+    # than reporting success.
+    #
+    # @param group_id [String] the group whose offsets we want to set
+    # @param topic_partition_list [TopicPartitionList] partitions with the offsets to commit
+    # @return [AlterConsumerGroupOffsetsHandle] handle that can be used to wait for the result
+    # @raise [RdkafkaError] when altering the offsets fails
+    def alter_consumer_group_offsets(group_id, topic_partition_list)
+      closed_admin_check(__method__)
+
+      native_tpl = topic_partition_list.to_native_tpl
+
+      begin
+        alter_ptr = Rdkafka::Bindings.rd_kafka_AlterConsumerGroupOffsets_new(
+          FFI::MemoryPointer.from_string(group_id),
+          native_tpl
+        )
+      rescue Exception
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(native_tpl)
+        raise
+      end
+
+      # librdkafka copies the list into the request object, so ours is no longer needed
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(native_tpl)
+
+      enqueue_group_offsets_op(
+        request_ptr: alter_ptr,
+        handle: AlterConsumerGroupOffsetsHandle.new,
+        admin_op: Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_ALTERCONSUMERGROUPOFFSETS,
+        destroy: Rdkafka::Bindings.method(:rd_kafka_AlterConsumerGroupOffsets_destroy),
+        enqueue: Rdkafka::Bindings.method(:rd_kafka_AlterConsumerGroupOffsets)
+      )
+    end
+
+    # Deletes the committed offsets of specific partitions of a consumer group, leaving the
+    # group and its remaining offsets in place.
+    #
+    # This is the partition scoped counterpart of {#delete_group}, which removes the whole group.
+    #
+    # @param group_id [String] the group whose offsets we want to delete
+    # @param topic_partition_list [TopicPartitionList] partitions whose offsets to delete
+    # @return [DeleteConsumerGroupOffsetsHandle] handle that can be used to wait for the result
+    # @raise [RdkafkaError] when deleting the offsets fails
+    def delete_consumer_group_offsets(group_id, topic_partition_list)
+      closed_admin_check(__method__)
+
+      native_tpl = topic_partition_list.to_native_tpl
+
+      begin
+        delete_ptr = Rdkafka::Bindings.rd_kafka_DeleteConsumerGroupOffsets_new(
+          FFI::MemoryPointer.from_string(group_id),
+          native_tpl
+        )
+      rescue Exception
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(native_tpl)
+        raise
+      end
+
+      Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(native_tpl)
+
+      enqueue_group_offsets_op(
+        request_ptr: delete_ptr,
+        handle: DeleteConsumerGroupOffsetsHandle.new,
+        admin_op: Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DELETECONSUMERGROUPOFFSETS,
+        destroy: Rdkafka::Bindings.method(:rd_kafka_DeleteConsumerGroupOffsets_destroy),
+        enqueue: Rdkafka::Bindings.method(:rd_kafka_DeleteConsumerGroupOffsets)
+      )
+    end
+
     # Deletes a consumer group
     #
     # @param group_id [String] the group id to delete
@@ -1138,6 +1210,54 @@ module Rdkafka
     end
 
     private
+
+    # Shared enqueue path for the two consumer group offset admin operations. They differ only
+    # in their C entry points, so keeping one body avoids two near identical copies of the
+    # queue/handle/options dance and its cleanup.
+    #
+    # @param request_ptr [FFI::Pointer] the op specific request object
+    # @param handle [AbstractHandle] the handle to register and return
+    # @param admin_op [Integer] the RD_KAFKA_ADMIN_OP_* constant for this operation
+    # @param destroy [Method] bound function used to free the request object
+    # @param enqueue [Method] bound function used to enqueue the request
+    # @return [AbstractHandle] the registered handle
+    def enqueue_group_offsets_op(request_ptr:, handle:, admin_op:, destroy:, enqueue:)
+      array_ptr = FFI::MemoryPointer.new(:pointer)
+      array_ptr.write_array_of_pointer([request_ptr])
+
+      queue_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+      end
+
+      if queue_ptr.null?
+        destroy.call(request_ptr)
+        raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
+      end
+
+      handle[:pending] = true
+      handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
+      handle.class.register(handle)
+
+      admin_options_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, admin_op)
+      end
+      Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
+
+      begin
+        @native_kafka.with_inner do |inner|
+          enqueue.call(inner, array_ptr, 1, admin_options_ptr, queue_ptr)
+        end
+      rescue Exception
+        handle.class.remove(handle.to_ptr.address)
+        raise
+      ensure
+        Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
+        Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr)
+        destroy.call(request_ptr)
+      end
+
+      handle
+    end
 
     # Checks if the admin is closed and raises an error if so
     # @param method [Symbol] name of the calling method for error context

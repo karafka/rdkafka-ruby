@@ -7,7 +7,7 @@
 - [Maintenance] Drop the stale `dist/openssl-3.0.16.tar.gz` build cache left behind when the bundled OpenSSL moved to the 3.5 LTS line. The pin is `3.5.8`, so that file was never consulted.
 - [Enhancement] Bump librdkafka to `2.15.1`.
 - [Enhancement] Bump the bundled MIT Kerberos (krb5) to `1.22.2`.
-- [Fix] Correct `RD_KAFKA_ADMIN_OP_LISTOFFSETS` to `21`. It was `20`, which is `RD_KAFKA_ADMIN_OP_DESCRIBECLUSTER` in librdkafka `2.15.1`, so `Admin#list_offsets` built its admin options for the wrong operation and librdkafka left the `isolation_level` option disabled, making `list_offsets(isolation_level:)` silently do nothing.
+- [Fix] Honor the `isolation_level:` argument to `Admin#list_offsets`, which was silently ignored.
 
 ## 0.29.2 (2026-09-11)
 - [Fix] Close live clients from an `at_exit` hook before Ruby's shutdown finalization, so librdkafka is no longer `dlclose`d while its native threads are still running (which could segfault on exit).

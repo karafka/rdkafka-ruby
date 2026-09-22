@@ -1,11 +1,13 @@
 # Rdkafka Changelog
 
 ## Unreleased
+- [Feature] Bind `AlterConsumerGroupOffsets` and `DeleteConsumerGroupOffsets` via `Admin#alter_consumer_group_offsets` and `Admin#delete_consumer_group_offsets`, so a consumer group's committed offsets can be set or cleared from the admin client instead of by joining the group with a consumer. Kafka requires the group to be empty for an alter; that rejection surfaces as an `RdkafkaError` rather than a silent no-op. The delete is partition scoped and leaves the group in place, unlike `Admin#delete_group`. Ported from rdkafka-ruby (#983).
 - [Enhancement] Bump librdkafka to `2.15.1`, lifting the hold that kept `0.29.0` on `2.15.0`. It is a maintenance release carrying OpenSSL and libcurl security fixes, and it changes how IPv6 addresses are formatted and validated against broker certificates.
 - [Enhancement] Bump the bundled zlib to `1.3.2`.
 - [Enhancement] Bump the bundled MIT Kerberos (krb5) to `1.22.2`. Ported from rdkafka-ruby (#979).
 - [Maintenance] Interpolate the zlib entry in the `CHECKSUMS` map. It was the only one hardcoded to a literal version, so it could silently go stale against `ZLIB_VERSION`.
 - [Maintenance] Drop the stale `dist/openssl-3.0.16.tar.gz` build cache left behind when the bundled OpenSSL moved to the 3.5 LTS line. The pin is `3.5.8`, so that file was never consulted.
+- [Fix] Honor the `isolation_level:` argument to `Admin#list_offsets`, which was silently ignored. Ported from rdkafka-ruby (#983).
 
 ## 0.29.0 (2026-09-14)
 - [Enhancement] Bump librdkafka to `2.15.0` (staying on `2.15.0` rather than `2.15.1` so users hitting a regression in `2.15.1` have a stable fallback).

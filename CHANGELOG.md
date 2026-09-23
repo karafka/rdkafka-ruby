@@ -8,6 +8,7 @@
 - [Maintenance] Interpolate the zlib entry in the `CHECKSUMS` map. It was the only one hardcoded to a literal version, so it could silently go stale against `ZLIB_VERSION`.
 - [Maintenance] Drop the stale `dist/openssl-3.0.16.tar.gz` build cache left behind when the bundled OpenSSL moved to the 3.5 LTS line. The pin is `3.5.8`, so that file was never consulted.
 - [Fix] Honor the `isolation_level:` argument to `Admin#list_offsets`, which was silently ignored. Ported from rdkafka-ruby (#983).
+- [Enhancement] Add `Rdkafka::Config.partitioner_key_uses_bytesize` to opt into hashing the partition key by its byte length instead of its character length. Multibyte and binary `partition_key`s were hashed by character count, selecting a different partition than other Kafka clients; the flag defaults to `false` to keep the existing assignment and is expected to flip in a future major version. ASCII keys are unaffected. Ported from rdkafka-ruby (#985).
 
 ## 0.29.0 (2026-09-14)
 - [Enhancement] Bump librdkafka to `2.15.0` (staying on `2.15.0` rather than `2.15.1` so users hitting a regression in `2.15.1` have a stable fallback).

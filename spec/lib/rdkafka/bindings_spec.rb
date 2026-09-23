@@ -82,6 +82,47 @@ RSpec.describe Rdkafka::Bindings do
     end
   end
 
+  describe ".partitioner" do
+    let(:partition_count) { 5 }
+    # "smörgås" is 7 characters but 9 bytes in UTF-8 (ö and å are two bytes each)
+    let(:multibyte_key) { "smörgås" }
+
+    # Captures the key length the partitioner passes to librdkafka.
+    def captured_key_length(key)
+      length = nil
+      allow(described_class).to receive(:rd_kafka_msg_partitioner_consistent_random) do |_topic, _ptr, len, *|
+        length = len
+        0
+      end
+      described_class.partitioner(FFI::Pointer::NULL, key, partition_count)
+      length
+    end
+
+    after { Rdkafka::Config.partitioner_key_uses_bytesize = false }
+
+    context "by default (Config.partitioner_key_uses_bytesize is false)" do
+      it "passes the key's character length (legacy behavior, no partition change)" do
+        expect(captured_key_length(multibyte_key)).to eq(multibyte_key.size)
+      end
+    end
+
+    context "when Config.partitioner_key_uses_bytesize is true" do
+      before { Rdkafka::Config.partitioner_key_uses_bytesize = true }
+
+      it "passes the key's byte length (correct, other-client-consistent)" do
+        length = captured_key_length(multibyte_key)
+        expect(length).to eq(multibyte_key.bytesize)
+        expect(length).not_to eq(multibyte_key.size)
+      end
+
+      it "switches back to the character length when disabled again" do
+        Rdkafka::Config.partitioner_key_uses_bytesize = false
+
+        expect(captured_key_length(multibyte_key)).to eq(multibyte_key.size)
+      end
+    end
+  end
+
   describe "log callback" do
     let(:log_queue) { Rdkafka::Config.log_queue }
 

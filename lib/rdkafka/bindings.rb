@@ -503,8 +503,30 @@ module Rdkafka
         raise Rdkafka::Config::ConfigError.new("Unknown partitioner: #{partitioner}")
       end
 
-      public_send(method_name, topic_ptr, str_ptr, str.size, partition_count, nil, nil)
+      public_send(method_name, topic_ptr, str_ptr, partition_key_length(str), partition_count, nil, nil)
     end
+
+    # Partition key length as the character count (legacy default).
+    #
+    # @param str [String] the partition key string
+    # @return [Integer]
+    def self.partition_key_size(str)
+      str.size
+    end
+
+    # Partition key length as the byte count, which is what librdkafka hashes (UTF-8 bytes copied
+    # into the key pointer) and what other Kafka clients use.
+    #
+    # @param str [String] the partition key string
+    # @return [Integer]
+    def self.partition_key_bytesize(str)
+      str.bytesize
+    end
+
+    # Length of the partition key passed to librdkafka. Aliased to one of the methods above by
+    # `Rdkafka::Config.partitioner_key_uses_bytesize=`, so the per-message path does not check the
+    # setting on every call.
+    singleton_class.alias_method :partition_key_length, :partition_key_size
 
     # Create Topics
     RD_KAFKA_ADMIN_OP_CREATETOPICS = 1   # rd_kafka_admin_op_t

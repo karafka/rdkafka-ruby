@@ -8,6 +8,7 @@
 - [Enhancement] Bump librdkafka to `2.15.1`.
 - [Enhancement] Bump the bundled MIT Kerberos (krb5) to `1.22.2`.
 - [Fix] Honor the `isolation_level:` argument to `Admin#list_offsets`, which was silently ignored.
+- [Enhancement] Add `Rdkafka::Config.partitioner_key_uses_bytesize` to opt into hashing the partition key by its byte length instead of its character length. Multibyte and binary `partition_key`s were hashed by character count, selecting a different partition than other Kafka clients; the flag defaults to `false` to keep the existing assignment and is expected to flip in a future major version. ASCII keys are unaffected.
 
 ## 0.29.2 (2026-09-11)
 - [Fix] Close live clients from an `at_exit` hook before Ruby's shutdown finalization, so librdkafka is no longer `dlclose`d while its native threads are still running (which could segfault on exit).

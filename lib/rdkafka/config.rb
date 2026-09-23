@@ -22,6 +22,12 @@ module Rdkafka
     @@log_mutex = Mutex.new
     # @!visibility private
     @@oauthbearer_token_refresh_callback = nil
+    # @!visibility private
+    # Whether the partition key length passed to the partitioner is the byte length (`bytesize`)
+    # rather than the character length (`size`). `false` (character length) is the legacy default
+    # to avoid changing partition assignment for existing multibyte/binary keys; set to `true` to
+    # opt into the correct, other-client-consistent byte-length hashing.
+    @@partitioner_key_uses_bytesize = false
 
     # Returns the current logger, by default this is a logger to stdout.
     #
@@ -120,6 +126,34 @@ module Rdkafka
     # @return [Proc, nil]
     def self.oauthbearer_token_refresh_callback
       @@oauthbearer_token_refresh_callback
+    end
+
+    # Whether the partitioner hashes the partition key by its byte length instead of its character
+    # length. Defaults to `false` (character length) to preserve existing partition assignment for
+    # multibyte/binary keys. Passing the byte length is the correct, other-client-consistent
+    # behavior; enable it (and be aware it can move such keys to a different partition) with
+    # `Rdkafka::Config.partitioner_key_uses_bytesize = true`. This default is expected to change in
+    # a future major version.
+    #
+    # @return [Boolean]
+    def self.partitioner_key_uses_bytesize
+      @@partitioner_key_uses_bytesize
+    end
+
+    # Sets whether the partitioner hashes the partition key by its byte length rather than its
+    # character length. The key length method is resolved here once rather than on every produced
+    # message, and each call re-resolves it, so changing the setting at runtime takes effect
+    # immediately.
+    #
+    # @param value [Boolean] true to hash by byte length, false (default) for character length
+    # @return [void]
+    def self.partitioner_key_uses_bytesize=(value)
+      @@partitioner_key_uses_bytesize = value
+
+      Rdkafka::Bindings.singleton_class.alias_method(
+        :partition_key_length,
+        value ? :partition_key_bytesize : :partition_key_size
+      )
     end
 
     # @private

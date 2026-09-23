@@ -563,4 +563,32 @@ RSpec.describe Rdkafka::Callbacks do
         .to raise_error(NotImplementedError, /must implement \.call/)
     end
   end
+
+  {
+    Rdkafka::Callbacks::TopicResult => :create_topic_results_from_array,
+    Rdkafka::Callbacks::GroupResult => :create_group_results_from_array,
+    Rdkafka::Callbacks::CreateAclResult => :create_acl_results_from_array,
+    Rdkafka::Callbacks::DeleteAclResult => :delete_acl_results_from_array
+  }.each do |result_class, builder|
+    describe "#{result_class}.#{builder}" do
+      let(:addresses) { [0x1000, 0x2000, 0x3000] }
+      let(:array_pointer) do
+        FFI::MemoryPointer.new(:pointer, addresses.size).tap do |array|
+          array.write_array_of_pointer(addresses.map { |address| FFI::Pointer.new(address) })
+        end
+      end
+
+      before { allow(result_class).to receive(:new) { |result_pointer| result_pointer } }
+
+      it "reads every element of the pointer array, not just the first" do
+        results = result_class.public_send(builder, addresses.size, array_pointer)
+
+        expect(results.map(&:address)).to eq(addresses)
+      end
+
+      it "returns no results for an empty array" do
+        expect(result_class.public_send(builder, 0, FFI::Pointer::NULL)).to eq([])
+      end
+    end
+  end
 end

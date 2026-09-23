@@ -17,10 +17,18 @@ module Rdkafka
     include Helpers::Metadata
     include Helpers::ListOffsets
 
+    # Key under which the reusable batch-poll scratch buffer is stored on the current thread/fiber
+    BATCH_BUFFER_KEY = :rdkafka_batch_buffer
+
+    private_constant :BATCH_BUFFER_KEY
+
     # @private
     # @param native_kafka [NativeKafka] wrapper around the native Kafka consumer handle
     def initialize(native_kafka)
       @native_kafka = native_kafka
+      # Guards the lazy initialization of the consumer queue so concurrent first-time callers do
+      # not each acquire a queue reference (all but one would leak).
+      @consumer_queue_mutex = Mutex.new
       # Single-element holder shared with the GC finalizer so it can destroy the lazily created
       # consumer queue without capturing `self` (capturing the consumer in its own finalizer would
       # pin it and prevent it from ever being collected).
@@ -1157,24 +1165,38 @@ module Rdkafka
     # Returns the consumer queue pointer, lazily initialized
     # @return [FFI::Pointer] consumer queue handle
     def consumer_queue
-      @consumer_queue ||= @native_kafka.with_inner do |inner|
-        queue = Rdkafka::Bindings.rd_kafka_queue_get_consumer(inner)
-        # Share the pointer with the finalizer so it is destroyed even if the consumer is GC'd
-        # without an explicit close.
-        @consumer_queue_holder[0] = queue
-        queue
+      return @consumer_queue if @consumer_queue
+
+      @consumer_queue_mutex.synchronize do
+        @consumer_queue ||= @native_kafka.with_inner do |inner|
+          queue = Rdkafka::Bindings.rd_kafka_queue_get_consumer(inner)
+          # Share the pointer with the finalizer so it is destroyed even if the consumer is GC'd
+          # without an explicit close.
+          @consumer_queue_holder[0] = queue
+          queue
+        end
       end
     end
 
-    # Returns a reusable FFI buffer for batch polling, growing if needed
+    # Returns a reusable FFI buffer for batch polling, growing if needed.
+    #
+    # The buffer is fiber-local (`Thread.current[]` is fiber-local by design) rather than per
+    # consumer: threads polling the same consumer concurrently would otherwise overwrite each
+    # other's message pointers mid-iteration (double free / use-after-free, and a leak of the
+    # overwritten ones). It only holds message pointers that are destroyed before `poll_batch`
+    # returns, so it is safe to reuse across consumers and to outlive them.
+    #
     # @param max_items [Integer] minimum buffer capacity
     # @return [FFI::MemoryPointer] pointer buffer
     def batch_buffer(max_items)
-      if @batch_buffer.nil? || @batch_buffer_size < max_items
-        @batch_buffer = FFI::MemoryPointer.new(:pointer, max_items)
-        @batch_buffer_size = max_items
+      state = Thread.current[BATCH_BUFFER_KEY] ||= { buffer: nil, size: 0 }
+
+      if state[:buffer].nil? || state[:size] < max_items
+        state[:buffer] = FFI::MemoryPointer.new(:pointer, max_items)
+        state[:size] = max_items
       end
-      @batch_buffer
+
+      state[:buffer]
     end
   end
 end

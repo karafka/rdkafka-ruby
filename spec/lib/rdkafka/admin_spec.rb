@@ -1197,6 +1197,146 @@ RSpec.describe Rdkafka::Admin do
   end
 
   describe("Group tests") do
+    describe "#alter_consumer_group_offsets" do
+      let(:consumer_config) { rdkafka_consumer_config("group.id": group_name) }
+      let(:producer) { rdkafka_producer_config.producer }
+      let(:consumer) { consumer_config.consumer }
+      # Seeded offset and target offset differ, so the alter has an observable effect
+      let(:seed_tpl) do
+        Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic_and_partitions_with_offsets(topic_name, 0 => 1)
+        end
+      end
+
+      let(:tpl) do
+        Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic_and_partitions_with_offsets(topic_name, 0 => 4)
+        end
+      end
+
+      let(:query_tpl) do
+        Rdkafka::Consumer::TopicPartitionList.new.tap { |list| list.add_topic(topic_name, [0]) }
+      end
+
+      before do
+        admin.create_topic(topic_name, topic_partition_count, topic_replication_factor).wait(max_wait_timeout_ms: 15_000)
+        producer.produce(topic: topic_name, payload: "test", key: "test").wait(max_wait_timeout_ms: 15_000)
+      end
+
+      after { producer.close }
+
+      context "when the group is empty" do
+        before do
+          consumer.subscribe(topic_name)
+          wait_for_assignment(consumer)
+          # Commit an explicit list rather than the stored offsets: a bare `commit` only has
+          # something to commit if a poll happened to return a message first, which is a race
+          # the slower CI runners lose (`no_offset`).
+          consumer.commit(seed_tpl)
+          # The group has to be empty for Kafka to accept an external alter, so the member
+          # that created the offsets must be gone before we touch them.
+          consumer.close
+        end
+
+        it "sets the committed offsets for the requested partitions" do
+          report = admin.alter_consumer_group_offsets(group_name, tpl).wait(max_wait_timeout_ms: 30_000)
+
+          expect(report.group_name).to eq(group_name)
+          expect(report.partitions.map { |part| part[:error] }).to all(be_nil)
+          expect(report.partitions.first).to include(topic: topic_name, partition: 0)
+
+          # Read the offset back from the broker: the report saying "no error" is not evidence
+          # that anything moved, and the seed was a different offset on purpose.
+          verifier = consumer_config.consumer
+
+          begin
+            expect(verifier.committed(query_tpl).to_h[topic_name][0].offset).to eq(4)
+          ensure
+            verifier.close
+          end
+        end
+      end
+
+      context "when the group still has active members" do
+        before do
+          consumer.subscribe(topic_name)
+          wait_for_assignment(consumer)
+          consumer.commit(seed_tpl)
+        end
+
+        after { consumer.close }
+
+        # A rejected alter must not look like a success.
+        it "raises rather than reporting success" do
+          expect {
+            admin.alter_consumer_group_offsets(group_name, tpl).wait(max_wait_timeout_ms: 60_000)
+          }.to raise_exception { |ex|
+            expect(ex).to be_a(Rdkafka::RdkafkaError)
+            expect(ex.message).to match(/group_not_empty|unknown_member_id|not_coordinator/)
+          }
+        end
+      end
+    end
+
+    describe "#delete_consumer_group_offsets" do
+      let(:consumer_config) { rdkafka_consumer_config("group.id": group_name) }
+      let(:producer) { rdkafka_producer_config.producer }
+      let(:consumer) { consumer_config.consumer }
+      # Deletes partition 0 only; partition 1 is seeded too so "only" is actually tested
+      let(:tpl) do
+        Rdkafka::Consumer::TopicPartitionList.new.tap { |list| list.add_topic(topic_name, [0]) }
+      end
+
+      # The list above deletes by partition and carries no offsets, so seeding needs its own
+      let(:seed_tpl) do
+        Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic_and_partitions_with_offsets(topic_name, 0 => 3, 1 => 5)
+        end
+      end
+
+      let(:query_tpl) do
+        Rdkafka::Consumer::TopicPartitionList.new.tap { |list| list.add_topic(topic_name, [0, 1]) }
+      end
+
+      before do
+        admin.create_topic(topic_name, topic_partition_count, topic_replication_factor).wait(max_wait_timeout_ms: 15_000)
+        producer.produce(topic: topic_name, payload: "test", key: "test").wait(max_wait_timeout_ms: 15_000)
+
+        consumer.subscribe(topic_name)
+        wait_for_assignment(consumer)
+        # See the note above: commit an explicit list so seeding does not depend on a fetch.
+        consumer.commit(seed_tpl)
+        consumer.close
+      end
+
+      after { producer.close }
+
+      it "deletes the offsets for the requested partitions only, leaving the group in place" do
+        report = admin.delete_consumer_group_offsets(group_name, tpl).wait(max_wait_timeout_ms: 30_000)
+
+        expect(report.group_name).to eq(group_name)
+        expect(report.partitions.map { |part| part[:error] }).to all(be_nil)
+        expect(report.partitions.map { |part| part[:partition] }).to eq([0])
+
+        # Read back rather than trusting the report: partition 0 loses its offset (the list
+        # surfaces an unset one as nil), partition 1 was not in the request and has to keep the
+        # one it was seeded with - that pair is what "only" in the name claims.
+        verifier = consumer_config.consumer
+
+        begin
+          committed = verifier.committed(query_tpl).to_h[topic_name]
+
+          expect(committed[0].offset).to be_nil
+          expect(committed[1].offset).to eq(5)
+        ensure
+          verifier.close
+        end
+
+        # The group itself survives - this is the partition scoped sibling of #delete_group.
+        expect(admin.delete_group(group_name).wait(max_wait_timeout_ms: 30_000).result_name).to eq(group_name)
+      end
+    end
+
     describe "#delete_group" do
       describe("with an existing group") do
         let(:consumer_config) { rdkafka_consumer_config("group.id": group_name) }
@@ -1578,6 +1718,22 @@ RSpec.describe Rdkafka::Admin do
       it "raises a ConfigError" do
         expect {
           admin.delete_group(group_name)
+        }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
+      end
+    end
+
+    describe "#alter_consumer_group_offsets" do
+      it "raises a ConfigError" do
+        expect {
+          admin.alter_consumer_group_offsets(group_name, Rdkafka::Consumer::TopicPartitionList.new)
+        }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
+      end
+    end
+
+    describe "#delete_consumer_group_offsets" do
+      it "raises a ConfigError" do
+        expect {
+          admin.delete_consumer_group_offsets(group_name, Rdkafka::Consumer::TopicPartitionList.new)
         }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
       end
     end

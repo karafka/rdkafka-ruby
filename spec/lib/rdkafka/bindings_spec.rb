@@ -112,6 +112,12 @@ RSpec.describe Rdkafka::Bindings do
         expect(length).to eq(multibyte_key.bytesize)
         expect(length).not_to eq(multibyte_key.size)
       end
+
+      it "switches back to the character length when disabled again" do
+        Rdkafka::Config.partitioner_key_uses_bytesize = false
+
+        expect(captured_key_length(multibyte_key)).to eq(multibyte_key.size)
+      end
     end
   end
 

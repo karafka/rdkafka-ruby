@@ -141,12 +141,19 @@ module Rdkafka
     end
 
     # Sets whether the partitioner hashes the partition key by its byte length rather than its
-    # character length.
+    # character length. The key length method is resolved here once rather than on every produced
+    # message, and each call re-resolves it, so changing the setting at runtime takes effect
+    # immediately.
     #
     # @param value [Boolean] true to hash by byte length, false (default) for character length
     # @return [void]
     def self.partitioner_key_uses_bytesize=(value)
       @@partitioner_key_uses_bytesize = value
+
+      Rdkafka::Bindings.singleton_class.alias_method(
+        :partition_key_length,
+        value ? :partition_key_bytesize : :partition_key_size
+      )
     end
 
     # @private

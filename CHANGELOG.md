@@ -1,9 +1,9 @@
 # Rdkafka Changelog
 
-## 0.31.0 (Unreleased)
+## 0.30.0 (Unreleased)
 - [Feature] Add `Admin#alter_consumer_group_offsets` and `Admin#delete_consumer_group_offsets` to set or clear a consumer group's committed offsets from the admin client.
 - [Enhancement] Bump the bundled zlib to `1.3.2`.
-- [Enhancement] Bump librdkafka to `2.15.1`.
+- [Enhancement] Bump librdkafka to `2.15.0`.
 - [Enhancement] Bump the bundled MIT Kerberos (krb5) to `1.22.2`.
 - [Enhancement] Add `Rdkafka::Config.partitioner_key_uses_bytesize` to hash partition keys by byte length, matching other Kafka clients for multibyte keys. Defaults to `false`.
 - [Maintenance] Derive the zlib `CHECKSUMS` entry from `ZLIB_VERSION`.

@@ -10,6 +10,7 @@
 - [Maintenance] Drop the unused `dist/openssl-3.0.16.tar.gz` build cache.
 - [Fix] Honor the `isolation_level:` argument to `Admin#list_offsets`, which was silently ignored.
 - [Fix] Return correct results for every item of a multi-item topic, partition, group or ACL admin request, not just the first.
+- [Maintenance] Fix a use-after-free in the multi-item admin integration test that read result-name pointers after librdkafka had destroyed the background event, which made it flaky on newer glibc (e.g. Debian trixie).
 
 ## 0.29.2 (2026-09-11)
 - [Fix] Close live clients from an `at_exit` hook before Ruby's shutdown finalization, so librdkafka is no longer `dlclose`d while its native threads are still running (which could segfault on exit).

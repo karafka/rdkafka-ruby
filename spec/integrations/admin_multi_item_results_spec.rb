@@ -25,16 +25,22 @@ Bindings = Rdkafka::Bindings
 
 captured = {}
 
+# The librdkafka background event (and every string it owns, such as the topic and group names)
+# is destroyed by `BackgroundEventCallback` as soon as the handler returns, so any pointer a
+# result still holds dangles the moment `dispatch` comes back. The builders run inside that
+# handler, while the event is still alive, so we snapshot the value each check compares right
+# here rather than reading the pointers afterwards - which would be a use-after-free that reads
+# freed (and possibly reused) memory.
 {
-  Callbacks::TopicResult => :create_topic_results_from_array,
-  Callbacks::GroupResult => :create_group_results_from_array,
-  Callbacks::CreateAclResult => :create_acl_results_from_array,
-  Callbacks::DeleteAclResult => :delete_acl_results_from_array
-}.each do |result_class, builder|
+  Callbacks::TopicResult => [:create_topic_results_from_array, ->(result) { result.result_name.read_string }],
+  Callbacks::GroupResult => [:create_group_results_from_array, ->(result) { result.result_name.read_string }],
+  Callbacks::CreateAclResult => [:create_acl_results_from_array, ->(result) { result.result_error }],
+  Callbacks::DeleteAclResult => [:delete_acl_results_from_array, ->(result) { result.matching_acls_count }]
+}.each do |result_class, (builder, snapshot)|
   result_class.singleton_class.prepend(
     Module.new do
       define_method(builder) do |count, array_pointer|
-        super(count, array_pointer).tap { |results| captured[builder] = results }
+        super(count, array_pointer).tap { |results| captured[builder] = results.map(&snapshot) }
       end
     end
   )
@@ -109,14 +115,14 @@ dispatch(native_kafka, Rdkafka::Admin::CreateTopicHandle, Bindings::RD_KAFKA_ADM
   Bindings.rd_kafka_CreateTopics(*args)
 end
 new_topics.each { |topic| Bindings.rd_kafka_NewTopic_destroy(topic) }
-check.call("CreateTopics result names", captured[:create_topic_results_from_array]&.map { |result| result.result_name.read_string }, topics)
+check.call("CreateTopics result names", captured[:create_topic_results_from_array], topics)
 
 delete_groups = groups.map { |group| Bindings.rd_kafka_DeleteGroup_new(FFI::MemoryPointer.from_string(group)) }
 dispatch(native_kafka, Rdkafka::Admin::DeleteGroupsHandle, Bindings::RD_KAFKA_ADMIN_OP_DELETEGROUPS, delete_groups) do |*args|
   Bindings.rd_kafka_DeleteGroups(*args)
 end
 delete_groups.each { |group| Bindings.rd_kafka_DeleteGroup_destroy(group) }
-check.call("DeleteGroups result names", captured[:create_group_results_from_array]&.map { |result| result.result_name.read_string }, groups)
+check.call("DeleteGroups result names", captured[:create_group_results_from_array], groups)
 
 bindings = topics.map { |topic| acl_binding(topic) }
 dispatch(native_kafka, Rdkafka::Admin::CreateAclHandle, Bindings::RD_KAFKA_ADMIN_OP_CREATEACLS, bindings) do |*args|
@@ -125,7 +131,7 @@ end
 bindings.each { |binding| Bindings.rd_kafka_AclBinding_destroy(binding) }
 check.call(
   "CreateAcls result errors",
-  captured[:create_acl_results_from_array]&.map(&:result_error),
+  captured[:create_acl_results_from_array],
   [Bindings::RD_KAFKA_RESP_ERR_NO_ERROR] * 2
 )
 
@@ -136,7 +142,7 @@ end
 filters.each { |filter| Bindings.rd_kafka_AclBinding_destroy(filter) }
 check.call(
   "DeleteAcls matches per filter",
-  captured[:delete_acl_results_from_array]&.map(&:matching_acls_count),
+  captured[:delete_acl_results_from_array],
   [1, 1]
 )
 

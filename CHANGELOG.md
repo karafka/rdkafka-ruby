@@ -11,7 +11,7 @@
 - [Fix] Honor the `isolation_level:` argument to `Admin#list_offsets`, which was silently ignored. Ported from rdkafka-ruby (#983).
 - [Fix] Return correct results for every item of a multi-item topic, partition, group or ACL admin request, not just the first. Ported from rdkafka-ruby (#987).
 - [Maintenance] Fix a use-after-free in the multi-item admin integration test that read result-name pointers after librdkafka had destroyed the background event, which made it flaky on newer glibc (e.g. Debian trixie). Ported from rdkafka-ruby (#991).
-- [Maintenance] Stabilize consumer specs on slow CI runners: wait longer for a partition assignment, raise the `TestTopics.create` admin timeout (a timeout there also tripped the leaked-handle guard), and let the long-running consumption spec drain its backlog instead of stopping at a fixed 60s. Tunable via `RDKAFKA_TEST_ASSIGNMENT_TIMEOUT` and `RDKAFKA_TEST_ADMIN_TIMEOUT_MS`. Ported from rdkafka-ruby (#990).
+- [Maintenance] Stabilize consumer specs on slow CI runners: wait longer for a partition assignment, raise the `TestTopics.create` admin timeout (a timeout there also tripped the leaked-handle guard), give the non-blocking `poll_nb` message check a generous retry budget instead of a fixed ~2s, and let the long-running consumption spec drain its backlog instead of stopping at a fixed 60s. Tunable via `RDKAFKA_TEST_ASSIGNMENT_TIMEOUT` and `RDKAFKA_TEST_ADMIN_TIMEOUT_MS`. Ported from rdkafka-ruby (#990).
 
 ## 0.29.0 (2026-09-14)
 - [Enhancement] Bump librdkafka to `2.15.0` (staying on `2.15.0` rather than `2.15.1` so users hitting a regression in `2.15.1` have a stable fallback).

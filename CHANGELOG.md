@@ -11,6 +11,7 @@
 - [Fix] Honor the `isolation_level:` argument to `Admin#list_offsets`, which was silently ignored.
 - [Fix] Return correct results for every item of a multi-item topic, partition, group or ACL admin request, not just the first.
 - [Fix] Stabilize the multi-item admin results integration spec, which read result names after the admin event was freed.
+- [Maintenance] Stabilize consumer specs on slow CI runners: wait longer for a partition assignment, raise the `TestTopics.create` admin timeout (a timeout there also tripped the leaked-handle guard), and let the long-running consumption spec drain its backlog instead of stopping at a fixed 60s. Tunable via `RDKAFKA_TEST_ASSIGNMENT_TIMEOUT` and `RDKAFKA_TEST_ADMIN_TIMEOUT_MS`.
 
 ## 0.29.2 (2026-09-11)
 - [Fix] Close live clients from an `at_exit` hook before Ruby's shutdown finalization, so librdkafka is no longer `dlclose`d while its native threads are still running (which could segfault on exit).

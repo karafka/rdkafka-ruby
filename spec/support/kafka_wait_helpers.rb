@@ -49,14 +49,23 @@ module KafkaWaitHelpers
     consumer.close if new_consumer
   end
 
-  # Polls until the consumer has a non-empty partition assignment, up to 10 seconds.
+  # Polls until the consumer has a non-empty partition assignment.
+  #
+  # The default budget is generous because a group rebalance can take well over ten seconds
+  # on a loaded CI runner, and callers typically assert the assignment right after. Override
+  # +RDKAFKA_TEST_ASSIGNMENT_TIMEOUT+ (seconds) to raise it further on very slow environments.
   #
   # @param consumer [Rdkafka::Consumer] the consumer to check for assignment
+  # @param timeout_in_seconds [Integer] maximum seconds to wait for the assignment
   # @return [void]
-  def wait_for_assignment(consumer)
-    10.times do
+  def wait_for_assignment(consumer, timeout_in_seconds: Integer(ENV.fetch("RDKAFKA_TEST_ASSIGNMENT_TIMEOUT", 30)))
+    deadline = Time.now.to_f + timeout_in_seconds
+
+    loop do
       break if !consumer.assignment.empty?
-      sleep 1
+      break if Time.now.to_f >= deadline
+
+      sleep 0.5
     end
   end
 

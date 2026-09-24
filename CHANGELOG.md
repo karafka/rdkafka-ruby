@@ -1,14 +1,14 @@
 # Rdkafka Changelog
 
 ## 0.31.0 (Unreleased)
-- [Feature] Bind `AlterConsumerGroupOffsets` and `DeleteConsumerGroupOffsets` via `Admin#alter_consumer_group_offsets` and `Admin#delete_consumer_group_offsets`, so a consumer group's committed offsets can be set or cleared from the admin client instead of by joining the group with a consumer. Kafka requires the group to be empty for an alter; that rejection surfaces as an `RdkafkaError` rather than a silent no-op. The delete is partition scoped and leaves the group in place, unlike `Admin#delete_group`.
+- [Feature] Add `Admin#alter_consumer_group_offsets` and `Admin#delete_consumer_group_offsets` to set or clear a consumer group's committed offsets from the admin client.
 - [Enhancement] Bump the bundled zlib to `1.3.2`.
-- [Maintenance] Interpolate the zlib entry in the `CHECKSUMS` map. It was the only one hardcoded to a literal version, so it could silently go stale against `ZLIB_VERSION`.
-- [Maintenance] Drop the stale `dist/openssl-3.0.16.tar.gz` build cache left behind when the bundled OpenSSL moved to the 3.5 LTS line. The pin is `3.5.8`, so that file was never consulted.
 - [Enhancement] Bump librdkafka to `2.15.1`.
 - [Enhancement] Bump the bundled MIT Kerberos (krb5) to `1.22.2`.
+- [Enhancement] Add `Rdkafka::Config.partitioner_key_uses_bytesize` to hash partition keys by byte length, matching other Kafka clients for multibyte keys. Defaults to `false`.
+- [Maintenance] Derive the zlib `CHECKSUMS` entry from `ZLIB_VERSION`.
+- [Maintenance] Drop the unused `dist/openssl-3.0.16.tar.gz` build cache.
 - [Fix] Honor the `isolation_level:` argument to `Admin#list_offsets`, which was silently ignored.
-- [Enhancement] Add `Rdkafka::Config.partitioner_key_uses_bytesize` to opt into hashing the partition key by its byte length instead of its character length. Multibyte and binary `partition_key`s were hashed by character count, selecting a different partition than other Kafka clients; the flag defaults to `false` to keep the existing assignment and is expected to flip in a future major version. ASCII keys are unaffected.
 - [Fix] Return correct results for every item of a multi-item topic, partition, group or ACL admin request, not just the first.
 
 ## 0.29.2 (2026-09-11)

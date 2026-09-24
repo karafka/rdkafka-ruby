@@ -24,6 +24,7 @@ Callbacks = Rdkafka::Callbacks
 Bindings = Rdkafka::Bindings
 
 captured = {}
+names = {}
 
 {
   Callbacks::TopicResult => :create_topic_results_from_array,
@@ -34,7 +35,11 @@ captured = {}
   result_class.singleton_class.prepend(
     Module.new do
       define_method(builder) do |count, array_pointer|
-        super(count, array_pointer).tap { |results| captured[builder] = results }
+        super(count, array_pointer).tap do |results|
+          captured[builder] = results
+          # Names point into the admin event, which is destroyed as soon as the callback returns
+          names[builder] = results.map { |result| result.result_name.read_string } if result_class.method_defined?(:result_name)
+        end
       end
     end
   )
@@ -109,14 +114,14 @@ dispatch(native_kafka, Rdkafka::Admin::CreateTopicHandle, Bindings::RD_KAFKA_ADM
   Bindings.rd_kafka_CreateTopics(*args)
 end
 new_topics.each { |topic| Bindings.rd_kafka_NewTopic_destroy(topic) }
-check.call("CreateTopics result names", captured[:create_topic_results_from_array]&.map { |result| result.result_name.read_string }, topics)
+check.call("CreateTopics result names", names[:create_topic_results_from_array], topics)
 
 delete_groups = groups.map { |group| Bindings.rd_kafka_DeleteGroup_new(FFI::MemoryPointer.from_string(group)) }
 dispatch(native_kafka, Rdkafka::Admin::DeleteGroupsHandle, Bindings::RD_KAFKA_ADMIN_OP_DELETEGROUPS, delete_groups) do |*args|
   Bindings.rd_kafka_DeleteGroups(*args)
 end
 delete_groups.each { |group| Bindings.rd_kafka_DeleteGroup_destroy(group) }
-check.call("DeleteGroups result names", captured[:create_group_results_from_array]&.map { |result| result.result_name.read_string }, groups)
+check.call("DeleteGroups result names", names[:create_group_results_from_array], groups)
 
 bindings = topics.map { |topic| acl_binding(topic) }
 dispatch(native_kafka, Rdkafka::Admin::CreateAclHandle, Bindings::RD_KAFKA_ADMIN_OP_CREATEACLS, bindings) do |*args|

@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.31.0 (Unreleased)
+## 0.30.0 (Unreleased)
 - [Feature] Add `Admin#alter_consumer_group_offsets` and `Admin#delete_consumer_group_offsets` to set or clear a consumer group's committed offsets from the admin client.
 - [Enhancement] Bump the bundled zlib to `1.3.2`.
 - [Enhancement] Bump librdkafka to `2.15.1`.

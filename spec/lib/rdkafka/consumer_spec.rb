@@ -1853,8 +1853,12 @@ RSpec.describe Rdkafka::Consumer do
         end
       end
 
-      # Consumer loop
-      while Time.now - start_time < 60
+      # Consumer loop. Keep polling until the producer is done AND the backlog is drained, so a
+      # slow rebalance or a slow broker does not clip the tail of messages produced near the 60s
+      # mark (which previously landed just under the threshold on loaded runners). Bounded well
+      # above 60s so a genuinely broken consumer still fails fast instead of hanging.
+      drain_deadline = start_time + 90
+      loop do
         message = consumer.poll(1000)
         if message
           expect(message).to be_a Rdkafka::Consumer::Message
@@ -1862,6 +1866,10 @@ RSpec.describe Rdkafka::Consumer do
           messages_consumed += 1
           consumer.commit if messages_consumed % 10 == 0
         end
+
+        break if Time.now >= drain_deadline
+        # Once producing has stopped, a full poll timeout with no message means we are caught up.
+        break if !producer_thread.alive? && message.nil?
       end
 
       producer_thread.join

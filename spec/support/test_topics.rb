@@ -46,6 +46,12 @@ module TestTopics
       @example_topic ||= unique
     end
 
+    # Milliseconds to wait for +create_topic+ to be acknowledged. A loaded CI runner can take
+    # well over the previous 15s to answer; a timeout here both fails the spec and leaves the
+    # unresolved +CreateTopicHandle+ registered, which then trips the leaked-handle guard.
+    # Override +RDKAFKA_TEST_ADMIN_TIMEOUT_MS+ to raise it further on very slow environments.
+    CREATE_TIMEOUT_MS = Integer(ENV.fetch("RDKAFKA_TEST_ADMIN_TIMEOUT_MS", 30_000))
+
     # Creates a new Kafka topic with a unique name and waits until it is available.
     #
     # @param partitions [Integer] the number of partitions for the topic
@@ -55,7 +61,7 @@ module TestTopics
       admin = rdkafka_config.admin
       begin
         handle = admin.create_topic(topic_name, partitions, 1)
-        handle.wait(max_wait_timeout_ms: 15_000)
+        handle.wait(max_wait_timeout_ms: CREATE_TIMEOUT_MS)
         topic_name
       ensure
         admin.close

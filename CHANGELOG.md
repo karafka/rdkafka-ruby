@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## Unreleased
+- [Maintenance] Raise the `TestTopics.create` admin timeout to 30s so a loaded CI runner no longer hits `create topic timed out` (which also tripped the leaked-handle guard).
+
 ## 0.30.0 (2026-09-25)
 - [Feature] Add `Admin#alter_consumer_group_offsets` and `Admin#delete_consumer_group_offsets` to set or clear a consumer group's committed offsets from the admin client.
 - [Enhancement] Bump the bundled zlib to `1.3.2`.

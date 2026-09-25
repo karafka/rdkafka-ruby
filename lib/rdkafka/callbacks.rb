@@ -21,10 +21,9 @@ module Rdkafka
       # @param array_pointer [FFI::Pointer] pointer to the results array
       # @return [Array<TopicResult>] array of topic results
       def self.create_topic_results_from_array(count, array_pointer)
-        (1..count).map do |index|
-          result_pointer = (array_pointer + (index - 1)).read_pointer
-          new(result_pointer)
-        end
+        return [] if count.zero?
+
+        array_pointer.read_array_of_pointer(count).map { |result_pointer| new(result_pointer) }
       end
     end
 
@@ -53,10 +52,9 @@ module Rdkafka
       # @param array_pointer [FFI::Pointer] pointer to the results array
       # @return [Array<GroupResult>] array of group results
       def self.create_group_results_from_array(count, array_pointer)
-        (1..count).map do |index|
-          result_pointer = (array_pointer + (index - 1)).read_pointer
-          new(result_pointer)
-        end
+        return [] if count.zero?
+
+        array_pointer.read_array_of_pointer(count).map { |result_pointer| new(result_pointer) }
       end
     end
 
@@ -77,10 +75,9 @@ module Rdkafka
       # @param array_pointer [FFI::Pointer] pointer to the results array
       # @return [Array<CreateAclResult>] array of ACL results
       def self.create_acl_results_from_array(count, array_pointer)
-        (1..count).map do |index|
-          result_pointer = (array_pointer + (index - 1)).read_pointer
-          new(result_pointer)
-        end
+        return [] if count.zero?
+
+        array_pointer.read_array_of_pointer(count).map { |result_pointer| new(result_pointer) }
       end
     end
 
@@ -108,10 +105,9 @@ module Rdkafka
       # @param array_pointer [FFI::Pointer] pointer to the results array
       # @return [Array<DeleteAclResult>] array of delete ACL results
       def self.delete_acl_results_from_array(count, array_pointer)
-        (1..count).map do |index|
-          result_pointer = (array_pointer + (index - 1)).read_pointer
-          new(result_pointer)
-        end
+        return [] if count.zero?
+
+        array_pointer.read_array_of_pointer(count).map { |result_pointer| new(result_pointer) }
       end
     end
 

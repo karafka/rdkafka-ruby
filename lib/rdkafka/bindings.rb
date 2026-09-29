@@ -517,6 +517,18 @@ module Rdkafka
     # rd_kafka_share_consumer_new instead of rd_kafka_new. It is single-threaded by design and
     # librdkafka itself rejects concurrent access with RD_KAFKA_RESP_ERR__CONFLICT.
 
+    # Minimal mirror of the head of librdkafka's `struct rd_kafka_share_s`, whose first member is
+    # the wrapped `rd_kafka_t` (`rkshare_rk`). `rd_kafka_share_t` has no public accessors of its
+    # own - not even for the client name - but the handle it wraps is a normal `rd_kafka_t` and is
+    # the very handle librdkafka passes to the statistics, error and OAuthBearer callbacks. Reading
+    # it lets a share consumer report a name that matches its statistics `name` field, which
+    # `rd_kafka_name` cannot do when handed the `rd_kafka_share_t` directly (it would read an
+    # unrelated field and return garbage). This mirrors how the gem already maps other librdkafka
+    # structs by layout for the pinned librdkafka version.
+    class NativeShareConsumer < FFI::Struct
+      layout :rkshare_rk, :pointer
+    end
+
     # Acknowledge types for share consumer records
     RD_KAFKA_SHARE_ACKNOWLEDGE_TYPE_ACCEPT = 1
     RD_KAFKA_SHARE_ACKNOWLEDGE_TYPE_RELEASE = 2

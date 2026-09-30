@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.30.2 (2026-09-30)
+- [Feature] Add `ShareConsumer#events_poll` (and `#events_poll_nb`) to service the statistics, error, log and OAuthBearer callbacks without acquiring records.
+
 ## 0.30.1 (2026-09-30)
 - [Fix] Derive `ShareConsumer#name` from the native handle at creation (mirroring `Consumer#name`) instead of leaving it `nil` until an OAuthBearer callback happened to set it. A `nil` name meant downstreams that route the global statistics and error callbacks by client name (e.g. Karafka) silently dropped every share-consumer statistic and background error.
 

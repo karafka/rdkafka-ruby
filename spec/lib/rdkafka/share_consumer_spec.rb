@@ -111,6 +111,47 @@ RSpec.describe Rdkafka::ShareConsumer do
     end
   end
 
+  describe "#events_poll and #events_poll_nb" do
+    it "returns an event count without acquiring records when there is nothing to serve" do
+      # Without a subscription nothing is fetched; events_poll just drains the main queue and
+      # returns the number of events served (0 here), never records.
+      expect(share_consumer.events_poll(0)).to be_a(Integer)
+      expect(share_consumer.events_poll_nb(0)).to be_a(Integer)
+    end
+
+    it "does not raise when called without a subscription (unlike #poll)" do
+      expect { share_consumer.events_poll(0) }.not_to raise_error
+      expect { share_consumer.events_poll_nb(0) }.not_to raise_error
+    end
+
+    it "keeps the statistics callback firing while only events_poll is called (no record polling)" do
+      received = []
+      Rdkafka::Config.statistics_callback = ->(stats) { received << stats }
+
+      # Rebuild with a low statistics interval so a callback is due within the loop below
+      consumer = rdkafka_share_consumer_config("statistics.interval.ms": 100).share_consumer
+      name = consumer.name
+
+      begin
+        consumer.subscribe(TestTopics.non_existing)
+
+        # Never call #poll: only events_poll services the main queue here. If the statistics
+        # callback still fires it proves events_poll drains the callbacks independently of
+        # record acquisition.
+        50.times do
+          consumer.events_poll(100)
+          break if received.any? { |s| s["name"] == name }
+        end
+
+        expect(received).not_to be_empty
+        expect(received.map { |s| s["name"] }).to include(name)
+      ensure
+        consumer.close
+        Rdkafka::Config.statistics_callback = nil
+      end
+    end
+  end
+
   describe "#acknowledge" do
     let(:message) do
       instance_double(
@@ -222,6 +263,8 @@ RSpec.describe Rdkafka::ShareConsumer do
       expect { share_consumer.unsubscribe }.to raise_error(Rdkafka::ClosedConsumerError)
       expect { share_consumer.subscription }.to raise_error(Rdkafka::ClosedConsumerError)
       expect { share_consumer.poll(0) }.to raise_error(Rdkafka::ClosedConsumerError)
+      expect { share_consumer.events_poll(0) }.to raise_error(Rdkafka::ClosedConsumerError)
+      expect { share_consumer.events_poll_nb(0) }.to raise_error(Rdkafka::ClosedConsumerError)
       expect { share_consumer.acknowledge(nil) }.to raise_error(Rdkafka::ClosedConsumerError)
       expect { share_consumer.commit_sync }.to raise_error(Rdkafka::ClosedConsumerError)
       expect { share_consumer.commit_async }.to raise_error(Rdkafka::ClosedConsumerError)

@@ -51,6 +51,10 @@ module Rdkafka
     # @see ShareConsumer#poll
     SHARE_CONSUMER_POLL_TIMEOUT_MS = 250
 
+    # Share consumer timeout for events_poll (0 = non-blocking async)
+    # @see ShareConsumer#events_poll
+    SHARE_CONSUMER_EVENTS_POLL_TIMEOUT_MS = 0
+
     # Share consumer timeout for synchronous acknowledgement commits
     # @see ShareConsumer#commit_sync
     SHARE_CONSUMER_COMMIT_SYNC_TIMEOUT_MS = 5_000

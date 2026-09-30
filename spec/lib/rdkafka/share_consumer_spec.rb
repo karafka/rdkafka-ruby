@@ -59,8 +59,22 @@ RSpec.describe Rdkafka::ShareConsumer do
       consumer.close
     end
 
-    it "has no client name until a callback provides one" do
-      expect(share_consumer.name).to be_nil
+    # Regression test for the bug where ShareConsumer#name was nil for the whole lifetime of a
+    # share consumer unless OAuthBearer happened to be configured, which silently dropped every
+    # share-consumer statistic and background error for downstreams (e.g. Karafka) that route the
+    # global callbacks by matching the client name. The name must be derived from the native
+    # handle like Consumer#name - available immediately, before any poll and without OAuth.
+    it "exposes the librdkafka client name immediately after creation" do
+      # Must be the real client name (e.g. "rdkafka#consumer-1"), matching what the statistics
+      # and error callbacks carry - not the garbage rd_kafka_name returns for a raw share handle.
+      expect(share_consumer.name).to match(/\A\S+#consumer-\d+\z/)
+    end
+
+    it "keeps reporting its name after it is closed" do
+      name = share_consumer.name
+      share_consumer.close
+
+      expect(share_consumer.name).to eq(name)
     end
   end
 

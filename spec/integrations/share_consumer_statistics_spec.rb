@@ -62,6 +62,11 @@ def collect_share_stats(topic, extra_config)
 
   consumer.subscribe(topic)
 
+  # Captured before the first poll on purpose: ShareConsumer#name must be available straight
+  # away (it is used to correlate this consumer with the global statistics/error callbacks) and
+  # not only after some callback has populated it.
+  name_before_poll = consumer.name
+
   consumed = 0
   20.times do
     consumed += consumer.poll(500).size
@@ -71,7 +76,7 @@ def collect_share_stats(topic, extra_config)
   consumer.close
   Rdkafka::Config.statistics_callback = nil
 
-  [stats, consumed]
+  [stats, consumed, name_before_poll]
 end
 
 # Returns the number of partitions visible in the topics section of a stats payload
@@ -93,11 +98,19 @@ handles.each { |handle| handle.wait(max_wait_timeout_ms: 15_000) }
 producer.close
 
 # Unfiltered: default statistics.unassigned.include (true)
-unfiltered_stats, unfiltered_consumed = collect_share_stats(TOPIC, {})
+unfiltered_stats, unfiltered_consumed, unfiltered_name = collect_share_stats(TOPIC, {})
 
 assert(unfiltered_stats.size >= 2, "expected statistics callbacks for a share consumer, got #{unfiltered_stats.size}")
 assert(unfiltered_consumed >= MESSAGES, "expected #{MESSAGES} records consumed, got #{unfiltered_consumed}")
 assert(unfiltered_stats.all? { |s| s["type"] == "consumer" }, "expected consumer-type stats")
+
+# ShareConsumer#name must be usable to correlate this consumer with the statistics it emits.
+# It has to be a real, non-empty name captured before the first poll, and it has to equal the
+# "name" field librdkafka puts in the statistics JSON - otherwise a downstream that filters the
+# global statistics callback by consumer name (e.g. Karafka) drops every share-consumer stat.
+assert(unfiltered_name.is_a?(String) && !unfiltered_name.empty?, "expected ShareConsumer#name to be a non-empty String right after creation, got #{unfiltered_name.inspect}")
+stat_names = unfiltered_stats.map { |s| s["name"] }.compact.uniq
+assert(stat_names.include?(unfiltered_name), "expected ShareConsumer#name (#{unfiltered_name.inspect}) to match the statistics name field #{stat_names.inspect}")
 
 cgrp_stat = unfiltered_stats.reverse.find { |s| s["cgrp"] }
 assert(!cgrp_stat.nil?, "expected the cgrp section in share consumer statistics")

@@ -57,14 +57,17 @@ module Rdkafka
     private_constant :State
 
     # The client name librdkafka reports for this consumer (e.g. "rdkafka#consumer-1"), used to
-    # correlate global callbacks (such as the OAuthBearer token refresh callback) with this
-    # instance. librdkafka exposes no name accessor on the share handle, so this is captured
-    # from the first callback that carries it and is nil until then.
-    # @return [String, nil]
+    # correlate the global callbacks (statistics, error and the OAuthBearer token refresh
+    # callback, all of which carry the client name) with this instance. Captured from the native
+    # handle when the consumer is created, so it is available immediately - before the first
+    # {#poll} and without OAuth configured - and stays readable after the consumer is closed or
+    # inherited by a forked child.
+    # @return [String] the librdkafka client name
     attr_reader :name
 
     # @private
-    # Captures the librdkafka client name once known (from callback context)
+    # Lets the OAuthBearer token refresh callback set the name from its callback context. It
+    # carries the same `rd_kafka_name` value already captured at creation, so both paths agree.
     attr_writer :name
 
     # @private
@@ -80,6 +83,18 @@ module Rdkafka
       # every teardown path can skip the native destroy in a forked child (librdkafka is not
       # fork-safe).
       @state = State.new(native, nil, Process.pid)
+      # Capture the librdkafka client name up front. It is needed to correlate this consumer with
+      # the global statistics and error callbacks (which carry the client name) - the common
+      # downstream pattern (e.g. Karafka) filters those broadcast callbacks by matching `name`.
+      #
+      # `rd_kafka_name` has no `rd_kafka_share_t` overload: handing it the share handle reads an
+      # unrelated field and returns garbage. The share handle's first member is the `rd_kafka_t`
+      # it wraps (`rkshare_rk`), which is the same handle librdkafka passes to those callbacks, so
+      # the name read from it matches the statistics `name` field. Capturing it here (rather than
+      # lazily like the regular consumer) keeps it available before the first poll, without OAuth,
+      # and after close or in a forked child, where the native handle must not be touched.
+      # librdkafka assigns the name at creation, so no broker connection is required.
+      @name = Rdkafka::Bindings.rd_kafka_name(Rdkafka::Bindings::NativeShareConsumer.new(native)[:rkshare_rk])
       # Guards handle teardown against in-flight calls: increments happen under this mutex and
       # close holds it while draining and destroying (mirrors NativeKafka's approach)
       @access_mutex = Mutex.new

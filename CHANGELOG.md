@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.30.1 (Unreleased)
+- [Fix] Derive `ShareConsumer#name` from the native handle at creation (mirroring `Consumer#name`) instead of leaving it `nil` until an OAuthBearer callback happened to set it. A `nil` name meant downstreams that route the global statistics and error callbacks by client name (e.g. Karafka) silently dropped every share-consumer statistic and background error.
+
 ## 0.30.0 (2026-09-25)
 - [Fix] Register share consumers in `Rdkafka::Clients` and destroy the native handle when `Config#share_consumer` fails part-way. Share consumers own the native handle directly rather than a `NativeKafka` wrapper, so they bypass `build_native_client` and were missed by the `at_exit` shutdown hook, leaving librdkafka to be unloaded with a live share handle.
 - [Feature] Add preview support for KIP-932 share groups ("Queues for Kafka") via `Rdkafka::ShareConsumer`, created with `Config#share_consumer`. Members consume the same partitions cooperatively with per-record acknowledgements (`:accept`, `:release`, `:reject`) instead of committed offsets. Like the regular `Consumer`, `ShareConsumer` is a thin binding that exposes the librdkafka share primitives (`#subscribe`/`#unsubscribe`/`#subscription`, batch `#poll`, `#acknowledge`, `#commit_sync`, `#commit_async`, `#acknowledgement_commit_callback=`, `#close`) but drives none of them itself - there is no built-in poll loop, acknowledgement strategy or offset/lifecycle orchestration, leaving that to a higher layer such as Karafka. The handle is single-threaded by design, servicing log, statistics and error callbacks from within `#poll`. Requires a broker with share groups enabled (Apache Kafka 4.2.0+); librdkafka marks the feature as preview and not production-ready.

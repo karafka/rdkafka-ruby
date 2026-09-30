@@ -95,7 +95,7 @@ events_served = 0
   events_served += served
 
   # Stop once we have observed fresh statistics arrive purely through events_poll.
-  break if (stats.count { |s| s["name"] == name }) - stats_before >= 2
+  break if stats.count { |s| s["name"] == name } - stats_before >= 2
 end
 
 stats_after = stats.count { |s| s["name"] == name }

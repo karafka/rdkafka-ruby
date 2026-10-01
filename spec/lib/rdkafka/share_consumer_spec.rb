@@ -316,5 +316,77 @@ RSpec.describe Rdkafka::ShareConsumer do
       expect(messages.none?(&:error?)).to be true
       expect(messages.first.timestamp).to be_a(Time)
     end
+
+    context "when several async commits queue up for the same partition" do
+      let(:topic) { TestTopics.create(partitions: 1) }
+      let(:share_consumer) do
+        rdkafka_share_consumer_config(
+          "group.id": group_id,
+          "share.acknowledgement.mode": "explicit"
+        ).share_consumer
+      end
+
+      it "merges their acknowledgements in ascending offset order so the broker accepts them" do
+        admin = rdkafka_config.admin
+        admin.incremental_alter_configs(
+          [
+            {
+              resource_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_GROUP,
+              resource_name: group_id,
+              configs: [{ name: "share.auto.offset.reset", value: "earliest", op_type: 0 }]
+            }
+          ]
+        ).wait(max_wait_timeout_ms: 15_000)
+        admin.close
+
+        handles = 20.times.map { |i| producer.produce(topic: topic, payload: "payload-#{i}") }
+        handles.each { |handle| handle.wait(max_wait_timeout_ms: 15_000) }
+
+        results = Queue.new
+        share_consumer.acknowledgement_commit_callback = ->(offsets, error) { results << [offsets, error] }
+        share_consumer.subscribe(topic)
+
+        # In explicit mode every delivered record must be acknowledged before the next poll, so
+        # only the first non-empty batch is used
+        messages = []
+        30.times do
+          messages = share_consumer.poll(1_000)
+          break unless messages.empty?
+        end
+
+        expect(messages.size).to be >= 8
+
+        # While the first async commit is in flight, the following ones are merged into the
+        # batch pending for the partition. Acknowledging every fourth record per commit makes
+        # those merged ranges interleave.
+        messages.group_by.with_index { |_, i| i % 4 }.each_value do |slice|
+          slice.each { |message| share_consumer.acknowledge(message, :accept) }
+          share_consumer.commit_async
+        end
+        share_consumer.commit_sync
+
+        acknowledged = []
+        errors = []
+        unsorted = []
+        20.times do
+          share_consumer.poll(500)
+
+          until results.empty?
+            offsets, error = results.pop
+            errors << error if error
+            offsets.each do |partition_offsets|
+              acknowledged.concat(partition_offsets[:offsets])
+              unsorted << partition_offsets[:offsets] unless partition_offsets[:offsets] == partition_offsets[:offsets].sort
+            end
+          end
+
+          break if errors.any? || acknowledged.size >= messages.size
+        end
+
+        expect(errors).to be_empty
+        expect(unsorted).to be_empty
+        expect(acknowledged).to match_array(messages.map(&:offset))
+      end
+    end
   end
 end

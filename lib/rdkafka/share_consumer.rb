@@ -22,9 +22,10 @@ module Rdkafka
   #   share consumer per thread. librdkafka enforces this and calls from a second thread raise
   #   an `RdkafkaError` with code `conflict`. This class is deliberately not built on
   #   {NativeKafka}: there is no background polling thread (statistics, error and log callbacks
-  #   are all serviced from within {#poll}) and the native handle must never be used from a
-  #   polling thread, so only the {#close} interaction is synchronized here. {#close} may be
-  #   called from any thread and waits for in-flight calls to finish before tearing down.
+  #   are all serviced from within {#poll}, or from {#events_poll} when the caller is not polling
+  #   for records) and the native handle must never be used from a polling thread, so only the
+  #   {#close} interaction is synchronized here. {#close} may be called from any thread and waits
+  #   for in-flight calls to finish before tearing down.
   #
   # Preview limitations inherited from librdkafka worth knowing at this layer:
   # - `max.poll.records` (default 500) is a soft bound
@@ -261,6 +262,50 @@ module Rdkafka
           # has been copied into Ruby objects at this point.
           Rdkafka::Bindings.rd_kafka_messages_destroy(batch)
         end
+      end
+    end
+
+    # Polls the main rdkafka queue (not the share one), serving queued global callbacks without
+    # acquiring any records.
+    #
+    # Events will cause application-provided callbacks to be called:
+    #   - error callbacks
+    #   - stats callbacks
+    #   - log and OAuthBearer token refresh callbacks
+    #
+    # Lets a caller keep those callbacks flowing while it is not polling for records (waiting on
+    # in-flight work, quieting, or draining on shutdown). Does **NOT** replace {#poll}, which
+    # drains the same queue while acquiring records; the "one share consumer per thread" rule
+    # means the two never run concurrently.
+    #
+    # @param timeout_ms [Integer] poll timeout. If set to 0 will run async, when set to -1 will
+    #   block until any events available.
+    # @return [Integer] number of events served
+    # @raise [ClosedConsumerError] when the consumer is closed or closing
+    def events_poll(timeout_ms = Defaults::SHARE_CONSUMER_EVENTS_POLL_TIMEOUT_MS)
+      with_native(__method__) do |native|
+        # The main queue lives on the rd_kafka_t the share handle wraps (rkshare_rk), which is the
+        # handle librdkafka hands the callbacks; rd_kafka_poll has to run against it (see #name).
+        inner = Rdkafka::Bindings::NativeShareConsumer.new(native)[:rkshare_rk]
+        Rdkafka::Bindings.rd_kafka_poll(inner, timeout_ms)
+      end
+    end
+
+    # Polls the main rdkafka queue without releasing the GVL (Global VM Lock).
+    #
+    # This is more efficient than {#events_poll} for non-blocking `poll(0)` calls, particularly
+    # useful in fiber scheduler contexts where GVL release/reacquire overhead is wasteful since we
+    # don't expect to wait.
+    #
+    # @param timeout_ms [Integer] poll timeout (default: 0 for non-blocking)
+    # @return [Integer] number of events served
+    # @raise [ClosedConsumerError] when the consumer is closed or closing
+    #
+    # @see #events_poll for more details on when to use this method
+    def events_poll_nb(timeout_ms = 0)
+      with_native(__method__) do |native|
+        inner = Rdkafka::Bindings::NativeShareConsumer.new(native)[:rkshare_rk]
+        Rdkafka::Bindings.rd_kafka_poll_nb(inner, timeout_ms)
       end
     end
 

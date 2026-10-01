@@ -9,9 +9,9 @@
 #   pumps #events_poll, sees its statistics advance without any further records being delivered
 # - events_poll on a closed consumer raises ClosedConsumerError
 #
-# This is the scenario a downstream (e.g. Karafka's share-group listener) hits while waiting on
-# in-flight work, quieting, or draining on shutdown: it must not acquire new records (so it can't
-# call #poll) yet still needs statistics/error/oauth callbacks flowing.
+# This covers a caller that is waiting on in-flight work, quieting, or draining on shutdown: it must
+# not acquire new records (so it can't call #poll) yet still needs statistics/error/oauth callbacks
+# flowing.
 #
 # Requires a running Kafka broker with share groups enabled at 127.0.0.1:9092.
 #

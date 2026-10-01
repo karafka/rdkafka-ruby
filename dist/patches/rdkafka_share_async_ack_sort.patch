@@ -1,5 +1,8 @@
 # This patch is released under the 2-clause BSD license, same as librdkafka
 #
+# Upstream: https://github.com/confluentinc/librdkafka/issues/5620
+# Drop this patch once librdkafka sorts merged async share acknowledgements itself.
+#
 --- librdkafka_2.15.1/src/rdkafka_share_acknowledgement.c
 +++ librdkafka_2.15.1/src/rdkafka_share_acknowledgement.c
 @@ -656,6 +656,10 @@

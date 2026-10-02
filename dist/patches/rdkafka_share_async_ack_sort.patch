@@ -1,0 +1,18 @@
+# This patch is released under the 2-clause BSD license, same as librdkafka
+#
+# Upstream: https://github.com/confluentinc/librdkafka/issues/5620
+# Drop this patch once librdkafka sorts merged async share acknowledgements itself.
+#
+--- librdkafka_2.15.1/src/rdkafka_share_acknowledgement.c
++++ librdkafka_2.15.1/src/rdkafka_share_acknowledgement.c
+@@ -656,6 +656,10 @@
+                                     &existing->entries,
+                                     rd_kafka_share_ack_batch_entry_copy(entry));
+                         }
++                        /* Batches merged from separate commits may interleave,
++                         * while the broker requires ascending ack batches. */
++                        rd_list_sort(&existing->entries,
++                                     rd_kafka_share_ack_entries_sort_cmp_ptr);
+                         rd_kafka_share_ack_batches_destroy(batch);
+                 } else {
+                         rd_list_add(leader_rkb->rkb_share_async_ack_details,

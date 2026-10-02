@@ -32,10 +32,6 @@ module Rdkafka
       # @return [String, nil]
       attr_reader :payload
 
-      # The original key for failed deliveries, copied before the native callback returns.
-      # @return [String, nil]
-      attr_reader :key
-
       # We alias the `#topic_name` under `#topic` to make this consistent with `Consumer::Message`
       # where the topic name is under `#topic` method. That way we have a consistent name that
       # is present in both places
@@ -50,15 +46,13 @@ module Rdkafka
       # @param error [Integer, nil] error code if any
       # @param label [Object, nil] user-defined label
       # @param payload [String, nil] original message payload
-      # @param key [String, nil] original message key
-      def initialize(partition, offset, topic_name = nil, error = nil, label = nil, payload = nil, key = nil)
+      def initialize(partition, offset, topic_name = nil, error = nil, label = nil, payload = nil)
         @partition = partition
         @offset = offset
         @topic_name = topic_name
         @error = error
         @label = label
         @payload = payload
-        @key = key
       end
     end
   end

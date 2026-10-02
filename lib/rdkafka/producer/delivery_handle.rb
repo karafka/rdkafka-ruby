@@ -21,10 +21,6 @@ module Rdkafka
       # @return [String, nil]
       attr_accessor :payload
 
-      # Key bytes copied from the native delivery report before its memory is released.
-      # @return [String, nil]
-      attr_accessor :key
-
       # @return [String] the name of the operation (e.g. "delivery")
       def operation_name
         "delivery"
@@ -40,8 +36,7 @@ module Rdkafka
           topic,
           (self[:response] != 0) ? RdkafkaError.new(self[:response]) : nil,
           label,
-          (self[:response] != 0) ? payload : nil,
-          (self[:response] != 0) ? key : nil
+          payload
         )
       end
     end

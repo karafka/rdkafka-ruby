@@ -29,19 +29,9 @@ RSpec.describe Rdkafka::Producer::DeliveryReport do
     expect(report.payload).to be_nil
   end
 
-  it "defaults the key to nil" do
-    expect(report.key).to be_nil
-  end
-
   it "gets the original payload for a failed delivery" do
     report = described_class.new(2, 100, topic_name, -1, nil, "payload\x00bytes")
 
     expect(report.payload).to eq("payload\x00bytes")
-  end
-
-  it "gets the original key for a failed delivery" do
-    report = described_class.new(2, 100, topic_name, -1, nil, "payload", "key\x00bytes")
-
-    expect(report.key).to eq("key\x00bytes")
   end
 end

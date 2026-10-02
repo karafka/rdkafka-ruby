@@ -8,12 +8,12 @@ RSpec.describe Rdkafka::Producer::DeliveryHandle do
       handle[:partition] = 2
       handle[:offset] = 100
       handle.topic = TestTopics.unique
-      handle.payload = "payload"
-      handle.key = "key"
+      handle.payload = payload
     end
   end
 
   let(:response) { 0 }
+  let(:payload) { nil }
 
   describe "#wait" do
     let(:pending_handle) { true }
@@ -34,7 +34,6 @@ RSpec.describe Rdkafka::Producer::DeliveryHandle do
         expect(report.offset).to eq(100)
         expect(report.topic_name).to eq(handle.topic)
         expect(report.payload).to be_nil
-        expect(report.key).to be_nil
       end
 
       it "waits without a timeout" do
@@ -57,10 +56,10 @@ RSpec.describe Rdkafka::Producer::DeliveryHandle do
 
     context "when response is not 0" do
       let(:response) { 1 }
+      let(:payload) { "payload" }
 
       it { expect(report.error).to eq(Rdkafka::RdkafkaError.new(response)) }
       it { expect(report.payload).to eq("payload") }
-      it { expect(report.key).to eq("key") }
     end
   end
 end

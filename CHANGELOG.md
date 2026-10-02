@@ -1,5 +1,8 @@
 # Rdkafka Changelog
 
+## 0.30.3 (Unreleased)
+- [Enhancement] Bump the bundled OpenSSL to `3.5.9` (LTS) for its security fixes. Ported from rdkafka-ruby (#1007).
+
 ## 0.30.2 (2026-10-01)
 - [Feature] Add `ShareConsumer#events_poll` (and `#events_poll_nb`) to service the statistics, error, log and OAuthBearer callbacks without acquiring records.
 

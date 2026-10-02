@@ -1,8 +1,7 @@
 # This patch is released under the 2-clause BSD license, same as librdkafka
 #
-# Upstream: issue not filed yet (share consumer unsubscribe keeps the records it acquired
-# locked until their acquisition lock expires). Drop this patch once librdkafka closes the
-# share sessions on unsubscribe itself.
+# Upstream: https://github.com/confluentinc/librdkafka/issues/5621
+# Drop this patch once librdkafka releases the records on unsubscribe itself.
 #
 --- librdkafka_2.15.1/src/rdkafka.c
 +++ librdkafka_2.15.1/src/rdkafka.c

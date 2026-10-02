@@ -14,7 +14,7 @@ fi
 BUILD_COMMON_SOURCED=1
 
 # Version constants - update these to upgrade dependencies
-readonly OPENSSL_VERSION="3.5.8"
+readonly OPENSSL_VERSION="3.5.9"
 readonly CYRUS_SASL_VERSION="2.1.28"
 readonly ZLIB_VERSION="1.3.2"
 readonly ZSTD_VERSION="1.5.7"
@@ -24,7 +24,7 @@ readonly LIBRDKAFKA_VERSION="2.15.1"
 # SHA256 checksums for supply chain security
 # Update these when upgrading versions
 declare -A CHECKSUMS=(
-    ["openssl-${OPENSSL_VERSION}.tar.gz"]="a8f84a39918ec6415ce765d9b429d313ba97b8143169c172e734b9514464f5b2"
+    ["openssl-${OPENSSL_VERSION}.tar.gz"]="603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a"
     ["cyrus-sasl-${CYRUS_SASL_VERSION}.tar.gz"]="7ccfc6abd01ed67c1a0924b353e526f1b766b21f42d4562ee635a8ebfc5bb38c"
     ["zlib-${ZLIB_VERSION}.tar.gz"]="bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16"
     ["zstd-${ZSTD_VERSION}.tar.gz"]="eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3"

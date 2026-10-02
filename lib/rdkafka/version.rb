@@ -2,7 +2,7 @@
 
 module Rdkafka
   # Current rdkafka-ruby gem version
-  VERSION = "0.30.2"
+  VERSION = "0.30.3"
   # Target librdkafka version to be used
   LIBRDKAFKA_VERSION = "2.15.1"
   # SHA256 hash of the librdkafka source tarball for verification

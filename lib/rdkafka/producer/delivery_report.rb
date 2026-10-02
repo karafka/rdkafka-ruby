@@ -2,7 +2,7 @@
 
 module Rdkafka
   class Producer
-    # Delivery report for a successfully produced message.
+    # Delivery report for a produced message
     class DeliveryReport
       # The partition this message was produced to.
       # @return [Integer]
@@ -25,6 +25,17 @@ module Rdkafka
       # @return [Object, nil] label set during message production or nil by default
       attr_reader :label
 
+      # The original payload for failed deliveries, copied before the native callback returns.
+      # Successful deliveries leave this nil.
+      # Binary bytes; nil represents a tombstone and "" an empty value.
+      # Retaining a report or its delivery handle also retains these bytes.
+      # @return [String, nil]
+      attr_reader :payload
+
+      # The original key for failed deliveries, copied before the native callback returns.
+      # @return [String, nil]
+      attr_reader :key
+
       # We alias the `#topic_name` under `#topic` to make this consistent with `Consumer::Message`
       # where the topic name is under `#topic` method. That way we have a consistent name that
       # is present in both places
@@ -38,12 +49,16 @@ module Rdkafka
       # @param topic_name [String, nil] topic name
       # @param error [Integer, nil] error code if any
       # @param label [Object, nil] user-defined label
-      def initialize(partition, offset, topic_name = nil, error = nil, label = nil)
+      # @param payload [String, nil] original message payload
+      # @param key [String, nil] original message key
+      def initialize(partition, offset, topic_name = nil, error = nil, label = nil, payload = nil, key = nil)
         @partition = partition
         @offset = offset
         @topic_name = topic_name
         @error = error
         @label = label
+        @payload = payload
+        @key = key
       end
     end
   end

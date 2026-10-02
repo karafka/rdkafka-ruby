@@ -252,6 +252,13 @@ module Rdkafka
           # would otherwise be allocated and retained for every message.
 
           begin
+            # The native payload is released after this callback. Copy it so both
+            # the delivery callback and DeliveryHandle#wait can return the original message.
+            if message[:err] != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+              delivery_handle.payload = message[:payload].read_string(message[:len]) unless message[:payload].null?
+              delivery_handle.key = message[:key].read_string(message[:key_len]) unless message[:key].null?
+            end
+
             # Call delivery callback on opaque
             if opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
               opaque.call_delivery_callback(
@@ -260,7 +267,9 @@ module Rdkafka
                   message[:offset],
                   topic_name,
                   message[:err],
-                  delivery_handle.label
+                  delivery_handle.label,
+                  delivery_handle.payload,
+                  delivery_handle.key
                 ),
                 delivery_handle
               )

@@ -17,6 +17,14 @@ module Rdkafka
       # spares a per-message native string copy in the delivery callback.
       attr_accessor :topic
 
+      # Message bytes copied from the native delivery report before its memory is released.
+      # @return [String, nil]
+      attr_accessor :payload
+
+      # Key bytes copied from the native delivery report before its memory is released.
+      # @return [String, nil]
+      attr_accessor :key
+
       # @return [String] the name of the operation (e.g. "delivery")
       def operation_name
         "delivery"
@@ -31,7 +39,9 @@ module Rdkafka
           # we should not return it
           topic,
           (self[:response] != 0) ? RdkafkaError.new(self[:response]) : nil,
-          label
+          label,
+          (self[:response] != 0) ? payload : nil,
+          (self[:response] != 0) ? key : nil
         )
       end
     end

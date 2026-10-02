@@ -126,6 +126,7 @@ RSpec.describe Rdkafka::Producer do
 
       it "calls the callback when a message is delivered" do
         @callback_called = false
+        payload = "payload\x00bytes".b
 
         producer.delivery_callback = lambda do |report|
           expect(report).not_to be_nil
@@ -133,13 +134,14 @@ RSpec.describe Rdkafka::Producer do
           expect(report.partition).to eq 1
           expect(report.offset).to be >= 0
           expect(report.topic_name).to eq topic
+          expect(report.payload).to be_nil
           @callback_called = true
         end
 
         # Produce a message
         handle = producer.produce(
           topic: topic,
-          payload: "payload",
+          payload: payload,
           key: "key",
           label: "label"
         )
@@ -147,7 +149,8 @@ RSpec.describe Rdkafka::Producer do
         expect(handle.label).to eq "label"
 
         # Wait for it to be delivered
-        handle.wait(max_wait_timeout_ms: 15_000)
+        waited_report = handle.wait(max_wait_timeout_ms: 15_000)
+        expect(waited_report.payload).to be_nil
 
         # Join the producer thread.
         producer.close
@@ -517,6 +520,7 @@ RSpec.describe Rdkafka::Producer do
       payload: "payload no key"
     )
     report = handle.wait(max_wait_timeout_ms: 30_000)
+    expect(report.payload).to be_nil
 
     # Consume message and verify its content
     message = wait_for_message(
@@ -535,6 +539,7 @@ RSpec.describe Rdkafka::Producer do
       key: "key no payload"
     )
     report = handle.wait(max_wait_timeout_ms: 30_000)
+    expect(report.payload).to be_nil
 
     # Consume message and verify its content
     message = wait_for_message(
@@ -545,6 +550,12 @@ RSpec.describe Rdkafka::Producer do
 
     expect(message.key).to eq "key no payload"
     expect(message.payload).to be_nil
+  end
+
+  it "omits payload from successful delivery reports" do
+    report = producer.produce(topic: topic, payload: "", key: "").wait
+
+    expect(report.payload).to be_nil
   end
 
   it "produces a message with headers" do
@@ -761,11 +772,35 @@ RSpec.describe Rdkafka::Producer do
     end
 
     it "contains the error in the response when not deliverable" do
-      handler = producer.produce(topic: topic, payload: nil, label: "na")
-      # Wait for the async callbacks and delivery registry to update
-      sleep(2)
-      expect(handler.create_result.error).to be_a(Rdkafka::RdkafkaError)
-      expect(handler.create_result.label).to eq("na")
+      handler = producer.produce(topic: topic, label: "na")
+      report = handler.wait(raise_response_error: false)
+
+      expect(report.error.code).to eq(:msg_timed_out)
+      expect(report.label).to eq("na")
+    end
+
+    it "keeps the original payload in failed reports after the producer closes" do
+      reports = []
+      producer.delivery_callback = ->(report) { reports << report }
+      payload = "failed\x00payload\xff".b
+      handler = producer.produce(topic: topic, payload: payload)
+
+      # Mutate the caller's string to verify the report contains librdkafka's original bytes.
+      payload.replace("changed")
+      report = handler.wait(raise_response_error: false)
+
+      # Release the native buffers before checking that both reports still own the payload.
+      producer.close
+
+      expect(report.payload).to eq("failed\x00payload\xff".b)
+      expect(reports.fetch(0).payload).to eq(report.payload)
+    end
+
+    it "preserves an empty payload when delivery fails" do
+      report = producer.produce(topic: topic, payload: "").wait(raise_response_error: false)
+
+      expect(report.error.code).to eq(:msg_timed_out)
+      expect(report.payload).to eq("")
     end
   end
 
@@ -785,6 +820,7 @@ RSpec.describe Rdkafka::Producer do
       expect(handler.create_result.error).to be_a(Rdkafka::RdkafkaError)
       expect(handler.create_result.error.code).to eq(:msg_timed_out)
       expect(handler.create_result.label).to eq("na")
+      expect(handler.create_result.payload).to be_nil
     end
   end
 
@@ -1001,6 +1037,7 @@ RSpec.describe Rdkafka::Producer do
           expect(producer.purge).to be(true)
           # queue purge
           expect(delivery_reports[0].error).to eq(-152)
+          expect(delivery_reports[0].payload).to eq("payload headers")
         end
       end
     end

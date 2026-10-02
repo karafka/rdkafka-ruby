@@ -280,10 +280,10 @@ RSpec.describe Rdkafka::ShareConsumer do
 
     after { producer.close }
 
-    it "consumes produced messages with delivery counts" do
-      # share.auto.offset.reset is a broker-side group config (not a client property) and
-      # defaults to latest, so it has to be set before the group first attaches to the
-      # partitions for pre-produced records to be delivered
+    # share.auto.offset.reset is a broker-side group config (not a client property) and
+    # defaults to latest, so it has to be set before the group first attaches to the
+    # partitions for pre-produced records to be delivered
+    def reset_share_group_to_earliest
       admin = rdkafka_config.admin
       admin.incremental_alter_configs(
         [
@@ -295,6 +295,15 @@ RSpec.describe Rdkafka::ShareConsumer do
         ]
       ).wait(max_wait_timeout_ms: 15_000)
       admin.close
+    end
+
+    def produce_and_wait(count, prefix)
+      handles = count.times.map { |i| producer.produce(topic: topic, payload: "#{prefix}-#{i}") }
+      handles.each { |handle| handle.wait(max_wait_timeout_ms: 15_000) }
+    end
+
+    it "consumes produced messages with delivery counts" do
+      reset_share_group_to_earliest
 
       handles = 10.times.map do |i|
         producer.produce(topic: topic, payload: "share-payload-#{i}", key: "share-key-#{i}")
@@ -327,17 +336,7 @@ RSpec.describe Rdkafka::ShareConsumer do
       end
 
       it "merges their acknowledgements in ascending offset order so the broker accepts them" do
-        admin = rdkafka_config.admin
-        admin.incremental_alter_configs(
-          [
-            {
-              resource_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_GROUP,
-              resource_name: group_id,
-              configs: [{ name: "share.auto.offset.reset", value: "earliest", op_type: 0 }]
-            }
-          ]
-        ).wait(max_wait_timeout_ms: 15_000)
-        admin.close
+        reset_share_group_to_earliest
 
         handles = 20.times.map { |i| producer.produce(topic: topic, payload: "payload-#{i}") }
         handles.each { |handle| handle.wait(max_wait_timeout_ms: 15_000) }
@@ -386,6 +385,92 @@ RSpec.describe Rdkafka::ShareConsumer do
         expect(errors).to be_empty
         expect(unsorted).to be_empty
         expect(acknowledged).to match_array(messages.map(&:offset))
+      end
+    end
+
+    context "when unsubscribing while a share fetch is in flight" do
+      let(:topic) { TestTopics.create(partitions: 1) }
+      let(:member_config) { { "group.id": group_id, "share.acknowledgement.mode": "explicit" } }
+      let(:share_consumer) { rdkafka_share_consumer_config(member_config).share_consumer }
+      let(:other_consumer) { rdkafka_share_consumer_config(member_config).share_consumer }
+
+      before { reset_share_group_to_earliest }
+
+      after { other_consumer.close }
+
+      it "releases what the fetch acquires so another member gets every record on its first delivery" do
+        produce_and_wait(1, "first")
+
+        share_consumer.subscribe(topic)
+        first = []
+        30.times do
+          first = share_consumer.poll(500)
+          break unless first.empty?
+        end
+        expect(first.size).to eq(1)
+        first.each { |message| share_consumer.acknowledge(message, :accept) }
+        share_consumer.commit_sync
+        # Nothing is left to fetch, so a long-polling ShareFetch stays in flight
+        2.times { share_consumer.poll(500) }
+
+        other_consumer.subscribe(topic)
+        2.times { other_consumer.poll(300) }
+
+        share_consumer.unsubscribe
+        produce_and_wait(20, "payload")
+
+        started = Time.now
+        delivery_counts = []
+        while delivery_counts.size < 20 && Time.now - started < 25
+          other_consumer.poll(500).each do |message|
+            delivery_counts << message.delivery_count
+            other_consumer.acknowledge(message, :accept)
+          end
+        end
+
+        # Without releasing them, records acquired by the in-flight fetch reach the other member
+        # only once their acquisition lock (30s by default) expires, as redeliveries
+        expect(delivery_counts).to eq([1] * 20)
+        expect(Time.now - started).to be < 10
+      end
+
+      it "keeps fetching and acknowledging records after subscribing again" do
+        produce_and_wait(5, "before")
+
+        share_consumer.subscribe(topic)
+        first = []
+        30.times do
+          first = share_consumer.poll(500)
+          break unless first.empty?
+        end
+        expect(first).not_to be_empty
+        first.each { |message| share_consumer.acknowledge(message, :accept) }
+        share_consumer.commit_sync
+
+        share_consumer.unsubscribe
+        share_consumer.subscribe(topic)
+        produce_and_wait(5, "after")
+
+        callback_errors = []
+        share_consumer.acknowledgement_commit_callback = ->(_offsets, error) { callback_errors << error if error }
+
+        received = []
+        60.times do
+          share_consumer.poll(500).each do |message|
+            received << message
+            share_consumer.acknowledge(message, :accept)
+          end
+          break if received.map(&:payload).count { |payload| payload.start_with?("after") } == 5
+        end
+
+        expect(received.map(&:payload)).to include(*5.times.map { |i| "after-#{i}" })
+        expect(received.map(&:delivery_count)).to all(eq(1))
+
+        results = share_consumer.commit_sync
+        expect((results&.to_h || {}).values.flatten.map(&:err)).to all(eq(Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR))
+
+        5.times { share_consumer.poll(200) }
+        expect(callback_errors).to be_empty
       end
     end
   end

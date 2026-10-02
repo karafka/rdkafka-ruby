@@ -167,6 +167,12 @@ module Rdkafka
 
     # Unsubscribes from all subscribed topics and leaves the share group assignment.
     #
+    # Closes the share sessions like {#close} does: acknowledgements made so far (every delivered
+    # record in implicit mode) are committed, and records that were delivered but not
+    # acknowledged, or acquired by a fetch still in flight, are released to the other members
+    # right away. Blocks until the sessions are closed, which takes up to `fetch.wait.max.ms`
+    # when a fetch is in flight.
+    #
     # @return [nil]
     # @raise [RdkafkaError] When unsubscribing fails
     def unsubscribe

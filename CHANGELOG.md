@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.31.0 (Unreleased)
+- [Feature] Expose the original payload in failed producer delivery reports, copied from librdkafka's [`rd_kafka_message_t`](https://docs.confluent.io/platform/current/clients/librdkafka/html/structrd__kafka__message__t.html) payload field.
 - [Enhancement] Bump librdkafka to `2.15.1` for OpenSSL and libcurl security fixes. It changes how IPv6 addresses are formatted and validated against broker certificates.
 
 ## 0.30.0 (2026-09-25)

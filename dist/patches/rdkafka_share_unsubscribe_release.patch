@@ -1,0 +1,568 @@
+# This patch is released under the 2-clause BSD license, same as librdkafka
+#
+# Upstream: issue not filed yet (share consumer unsubscribe keeps the records it acquired
+# locked until their acquisition lock expires). Drop this patch once librdkafka closes the
+# share sessions on unsubscribe itself.
+#
+--- librdkafka_2.15.1/src/rdkafka.c
++++ librdkafka_2.15.1/src/rdkafka.c
+@@ -3142,6 +3142,7 @@
+         rkshare->rkshare_rk               = rk;
+         rkshare->rkshare_unacked_cnt      = 0;
+         rkshare->rkshare_consumer_closing = rd_false;
++        rd_atomic32_init(&rkshare->rkshare_unsubscribed, 0);
+ 
+         /**
+          * TODO KIP-932: Check for uniform naming structure for all
+@@ -3419,6 +3420,7 @@
+                                                rd_kafka_broker_t *rkb);
+ rd_kafka_op_res_t rd_kafka_share_fetch_reply_op(rd_kafka_t *rk,
+                                                 rd_kafka_op_t *rko_orig);
++static void rd_kafka_share_unsubscribe_leave_replied(rd_kafka_cgrp_t *rkcg);
+ 
+ /**
+  * @brief rko_op_cb wrapper for rd_kafka_share_fetch_reply_op.
+@@ -3504,7 +3506,20 @@
+                 rkcg->rkcg_share.share_should_fetch_ops_in_flight_cnt--;
+ 
+         if (should_leave) {
+-                rkcg->rkcg_share.share_session_leave_remaining_cnt--;
++                reply_rkb->rkb_share_leave_pending = rd_false;
++                if (rkcg->rkcg_flags & RD_KAFKA_CGRP_F_TERMINATE)
++                        rkcg->rkcg_share.share_session_leave_remaining_cnt--;
++                else {
++                        /* Session closed on unsubscribe: allow a new one
++                         * for a later subscription. */
++                        if (!rd_kafka_broker_or_instance_terminating(
++                                reply_rkb))
++                                rd_kafka_q_enq(
++                                    reply_rkb->rkb_ops,
++                                    rd_kafka_op_new(
++                                        RD_KAFKA_OP_SHARE_SESSION_REOPEN));
++                        rd_kafka_share_unsubscribe_leave_replied(rkcg);
++                }
+                 return RD_KAFKA_OP_RES_HANDLED;
+         }
+ 
+@@ -3521,6 +3536,11 @@
+          * enqueue a session leave op on the replying broker thread and return
+          */
+         if (rkcg->rkcg_flags & RD_KAFKA_CGRP_F_TERMINATE) {
++                /* The terminate path closes the session instead */
++                if (reply_rkb->rkb_share_leave_pending) {
++                        reply_rkb->rkb_share_leave_pending = rd_false;
++                        rd_kafka_share_unsubscribe_leave_replied(rkcg);
++                }
+                 if (!rd_kafka_destroy_flags_no_consumer_close(rkcg->rkcg_rk))
+                         rd_kafka_share_enqueue_fetch_op(
+                             rkcg->rkcg_rk, reply_rkb, rd_false, rd_true);
+@@ -3558,6 +3578,27 @@
+         }
+ 
+         /*
++         * Step 5b: The consumer unsubscribed while this request was in
++         * flight: close the share session now, releasing the records the
++         * request acquired. Skipped if the consumer subscribed again.
++         */
++        if (reply_rkb->rkb_share_leave_pending &&
++            !reply_rkb->rkb_share_fetch_enqueued) {
++                reply_rkb->rkb_share_leave_pending = rd_false;
++                if (rd_atomic32_get(&rk->rk_rkshare->rkshare_unsubscribed) &&
++                    !rd_kafka_broker_or_instance_terminating(reply_rkb)) {
++                        rd_kafka_dbg(rk, CGRP, "SHARE",
++                                     "Closing share session on broker %s "
++                                     "after unsubscribe",
++                                     rd_kafka_broker_name(reply_rkb));
++                        rd_kafka_share_enqueue_fetch_op(rk, reply_rkb,
++                                                        rd_false, rd_true);
++                        return RD_KAFKA_OP_RES_HANDLED;
++                }
++                rd_kafka_share_unsubscribe_leave_replied(rkcg);
++        }
++
++        /*
+          * Step 6: If this was the fetch broker but no records were received,
+          * try to select another broker to fetch from.
+          *
+@@ -3809,6 +3850,266 @@
+ }
+ 
+ /**
++ * @brief Main thread handler for a SHARE_FETCH_RESPONSE that arrived
++ *        while the consumer was unsubscribed.
++ *
++ * Drops the response: the unsubscribe closes the share session, which
++ * releases its records. If the consumer subscribed again in the meantime
++ * (or is terminating), the response is handed to rkcg_q as usual.
++ *
++ * @locality main thread
++ */
++static rd_kafka_op_res_t
++rd_kafka_share_fetch_response_unsubscribed_op_cb(rd_kafka_t *rk,
++                                                 rd_kafka_q_t *rkq,
++                                                 rd_kafka_op_t *rko) {
++        rd_kafka_cgrp_t *rkcg = rd_kafka_cgrp_get(rk);
++
++        if (!rd_atomic32_get(&rk->rk_rkshare->rkshare_unsubscribed) ||
++            (rkcg->rkcg_flags & RD_KAFKA_CGRP_F_TERMINATE) ||
++            rd_kafka_terminating(rk)) {
++                rko->rko_type &= ~RD_KAFKA_OP_CB;
++                rko->rko_op_cb = NULL;
++                rd_kafka_q_enq(rkcg->rkcg_q, rko);
++                return RD_KAFKA_OP_RES_KEEP;
++        }
++
++        rd_kafka_dbg(rk, CGRP, "SHARE",
++                     "Dropping share fetch response received while "
++                     "unsubscribed");
++
++        /* The op destructor frees the message ops. */
++        return RD_KAFKA_OP_RES_HANDLED;
++}
++
++/**
++ * @brief Enqueue a share fetch response for the application or, while
++ *        the consumer is unsubscribed, hand it to the main thread to be
++ *        dropped.
++ *
++ * @locality broker thread
++ */
++void rd_kafka_share_fetch_response_enq(rd_kafka_t *rk,
++                                       rd_kafka_op_t *response_rko) {
++        if (rk->rk_rkshare &&
++            rd_atomic32_get(&rk->rk_rkshare->rkshare_unsubscribed) &&
++            !rd_kafka_terminating(rk)) {
++                response_rko->rko_type |= RD_KAFKA_OP_CB;
++                response_rko->rko_op_cb =
++                    rd_kafka_share_fetch_response_unsubscribed_op_cb;
++                rd_kafka_q_enq(rk->rk_ops, response_rko);
++                return;
++        }
++
++        rd_kafka_q_enq(rk->rk_cgrp->rkcg_q, response_rko);
++}
++
++/**
++ * @brief Drop share fetch responses left on rkcg_q after an unsubscribe.
++ *
++ * The app does not consume rkcg_q while unsubscribed and the closed share
++ * sessions released their records, so the responses would otherwise only
++ * hand stale records to the app after a new subscription. Other ops stay
++ * queued.
++ *
++ * @locality app thread
++ */
++void rd_kafka_share_drop_queued_responses(rd_kafka_share_t *rkshare) {
++        rd_kafka_t *rk        = rkshare->rkshare_rk;
++        rd_kafka_cgrp_t *rkcg = rd_kafka_cgrp_get(rk);
++        rd_kafka_q_t *rkq, *fwdq;
++        rd_kafka_op_t *rko, *next;
++        TAILQ_HEAD(, rd_kafka_op_s) responses;
++
++        if (!rkcg || !rd_atomic32_get(&rkshare->rkshare_unsubscribed))
++                return;
++
++        TAILQ_INIT(&responses);
++
++        rkq = rkcg->rkcg_q;
++        if ((fwdq = rd_kafka_q_fwd_get(rkq, 1 /*lock*/)))
++                rkq = fwdq;
++
++        mtx_lock(&rkq->rkq_lock);
++        next = TAILQ_FIRST(&rkq->rkq_q);
++        while ((rko = next)) {
++                next = TAILQ_NEXT(rko, rko_link);
++                if (rko->rko_type != RD_KAFKA_OP_SHARE_FETCH_RESPONSE)
++                        continue;
++                rd_kafka_q_deq0(rkq, rko);
++                TAILQ_INSERT_TAIL(&responses, rko, rko_link);
++        }
++        mtx_unlock(&rkq->rkq_lock);
++
++        if (fwdq)
++                rd_kafka_q_destroy(fwdq);
++
++        while ((rko = TAILQ_FIRST(&responses))) {
++                TAILQ_REMOVE(&responses, rko, rko_link);
++                rd_kafka_op_destroy(rko);
++        }
++}
++
++/**
++ * @brief Wake up the unsubscribe call waiting for the share session
++ *        closes, if any.
++ *
++ * @locality main thread
++ */
++static void rd_kafka_share_unsubscribe_leave_done(rd_kafka_cgrp_t *rkcg) {
++        rkcg->rkcg_share.share_unsubscribe_leave_remaining_cnt = 0;
++
++        if (!rkcg->rkcg_share.share_unsubscribe_replyq)
++                return;
++
++        rd_kafka_q_enq(rkcg->rkcg_share.share_unsubscribe_replyq,
++                       rd_kafka_op_new(RD_KAFKA_OP_SHARE_COMMIT_ASYNC_FANOUT |
++                                       RD_KAFKA_OP_REPLY));
++        rd_kafka_q_destroy(rkcg->rkcg_share.share_unsubscribe_replyq);
++        rkcg->rkcg_share.share_unsubscribe_replyq = NULL;
++}
++
++/**
++ * @brief Account for one session close of an unsubscribe that replied or
++ *        will not be sent.
++ *
++ * @locality main thread
++ */
++static void rd_kafka_share_unsubscribe_leave_replied(rd_kafka_cgrp_t *rkcg) {
++        if (rkcg->rkcg_share.share_unsubscribe_leave_remaining_cnt > 0 &&
++            --rkcg->rkcg_share.share_unsubscribe_leave_remaining_cnt == 0)
++                rd_kafka_share_unsubscribe_leave_done(rkcg);
++}
++
++/**
++ * @brief Main thread handler closing the share sessions after an
++ *        unsubscribe.
++ *
++ * Mirrors the session close of the terminate path: pending
++ * acknowledgements are sent along with the close, and brokers with a
++ * request in flight close their session once it replies (Step 5b of
++ * rd_kafka_share_fetch_reply_op()).
++ *
++ * @locality main thread
++ */
++static rd_kafka_op_res_t
++rd_kafka_share_unsubscribe_close_sessions_op(rd_kafka_t *rk,
++                                             rd_kafka_q_t *rkq,
++                                             rd_kafka_op_t *rko) {
++        rd_kafka_cgrp_t *rkcg = rd_kafka_cgrp_get(rk);
++        rd_list_t *ack_batches =
++            rko->rko_u.share_commit_async_fanout.ack_batches;
++        rd_kafka_broker_t *rkb;
++
++        rko->rko_u.share_commit_async_fanout.ack_batches = NULL;
++
++        /* A previous unsubscribe call that gave up waiting */
++        rd_kafka_share_unsubscribe_leave_done(rkcg);
++
++        /* Take over the reply queue of the waiting unsubscribe call */
++        rkcg->rkcg_share.share_unsubscribe_replyq = rko->rko_replyq.q;
++        rko->rko_replyq.q                         = NULL;
++
++        /* Closing (which closes the sessions itself) or subscribed again:
++         * only flush the acknowledgements. */
++        if ((rkcg->rkcg_flags & RD_KAFKA_CGRP_F_TERMINATE) ||
++            rd_kafka_terminating(rk) ||
++            !rd_atomic32_get(&rk->rk_rkshare->rkshare_unsubscribed)) {
++                if (ack_batches)
++                        rd_kafka_share_segregate_and_dispatch_acks(
++                            rk, ack_batches, NULL);
++                rd_kafka_share_unsubscribe_leave_done(rkcg);
++                return RD_KAFKA_OP_RES_HANDLED;
++        }
++
++        if (ack_batches) {
++                rd_kafka_share_segregate_acks_by_leader(rk, ack_batches);
++                /* Ownership of elements transferred to broker ack_details.
++                 * Destroy the container. */
++                rd_list_destroy(ack_batches);
++        }
++
++        rd_kafka_rdlock(rk);
++        TAILQ_FOREACH(rkb, &rk->rk_brokers, rkb_link) {
++                if (rd_kafka_broker_or_instance_terminating(rkb) ||
++                    RD_KAFKA_BROKER_IS_LOGICAL(rkb))
++                        continue;
++
++                if (rkb->rkb_share_fetch_enqueued) {
++                        rd_kafka_dbg(rk, CGRP, "SHARE",
++                                     "Deferring share session close on "
++                                     "unsubscribe as broker %s has "
++                                     "in-flight request",
++                                     rd_kafka_broker_name(rkb));
++                        rkb->rkb_share_leave_pending = rd_true;
++                        rkcg->rkcg_share
++                            .share_unsubscribe_leave_remaining_cnt++;
++                        continue;
++                }
++
++                rd_kafka_share_enqueue_fetch_op(rk, rkb, rd_false, rd_true);
++                rkcg->rkcg_share.share_unsubscribe_leave_remaining_cnt++;
++        }
++        rd_kafka_rdunlock(rk);
++
++        if (rkcg->rkcg_share.share_unsubscribe_leave_remaining_cnt == 0)
++                rd_kafka_share_unsubscribe_leave_done(rkcg);
++
++        return RD_KAFKA_OP_RES_HANDLED;
++}
++
++/**
++ * @brief Close the share sessions after an unsubscribe.
++ *
++ * Acknowledgements made so far (all delivered records in implicit mode)
++ * are sent along with the session close; delivered records that were not
++ * acknowledged are released by it. The inflight map is cleared since none
++ * of its records can be acknowledged once the sessions are closed.
++ *
++ * Waits (bounded by socket.timeout.ms) until the sessions are closed,
++ * like rd_kafka_share_consumer_close() does, so a share fetch in flight
++ * completes before the call returns and records produced afterwards go
++ * to the other members.
++ *
++ * @locality app thread
++ */
++void rd_kafka_share_unsubscribe_close_sessions(rd_kafka_share_t *rkshare) {
++        rd_kafka_t *rk = rkshare->rkshare_rk;
++        rd_kafka_op_t *rko, *rko_reply;
++        rd_kafka_q_t *tmpq;
++
++        rd_kafka_share_acknowledge_all_if_implicit(rkshare);
++
++        rko = rd_kafka_op_new_cb(rk, RD_KAFKA_OP_SHARE_COMMIT_ASYNC_FANOUT,
++                                 rd_kafka_share_unsubscribe_close_sessions_op);
++        rko->rko_u.share_commit_async_fanout.ack_batches =
++            rd_kafka_share_build_ack_details(rkshare);
++
++        RD_MAP_CLEAR(&rkshare->rkshare_inflight_acks);
++        rkshare->rkshare_unacked_cnt = 0;
++
++        rd_kafka_share_drop_queued_responses(rkshare);
++
++        tmpq            = rd_kafka_q_new(rk);
++        rko->rko_replyq = RD_KAFKA_REPLYQ(tmpq, 0);
++        rd_kafka_q_enq(rk->rk_ops, rko);
++
++        rko_reply = rd_kafka_q_pop(
++            tmpq, rd_timeout_us(rk->rk_conf.socket_timeout_ms), 0);
++        if (rko_reply)
++                rd_kafka_op_destroy(rko_reply);
++        else
++                rd_kafka_dbg(rk, CGRP, "SHARE",
++                             "Timed out waiting for the share sessions to "
++                             "close on unsubscribe");
++
++        rd_kafka_q_destroy_owner(tmpq);
++
++        /* Responses of fetches that were in flight */
++        rd_kafka_share_drop_queued_responses(rkshare);
++}
++
++/**
+  * @brief Return an error if the share consumer is closed or closing.
+  *
+  * @param rkshare Share consumer instance.
+@@ -3966,6 +4267,11 @@
+                      NULL))
+                 goto done;
+ 
++        /* Drop responses that reached rkcg_q around an unsubscribe, which
++         * this call will not consume. */
++        if (unlikely(!rkshare->rkshare_subscribed))
++                rd_kafka_share_drop_queued_responses(rkshare);
++
+         /* Drain rk_rep for all pending callbacks (non-blocking) */
+         rd_kafka_q_serve(rk->rk_rep, RD_POLL_NOWAIT, 0, RD_KAFKA_Q_CB_CALLBACK,
+                          rd_kafka_poll_cb, NULL);
+@@ -4359,6 +4665,9 @@
+ 
+         rd_kafka_dbg(rk, CGRP, "SHARE", "Committing asynchronously");
+ 
++        if (unlikely(!rkshare->rkshare_subscribed))
++                rd_kafka_share_drop_queued_responses(rkshare);
++
+         /* Drain rk_rep for all pending callbacks (non-blocking) */
+         rd_kafka_q_serve(rk->rk_rep, RD_POLL_NOWAIT, 0, RD_KAFKA_Q_CB_CALLBACK,
+                          rd_kafka_poll_cb, NULL);
+@@ -4434,6 +4743,9 @@
+         rd_kafka_dbg(rk, CGRP, "SHARE",
+                      "Committing synchronously with timeout %d ms", timeout_ms);
+ 
++        if (unlikely(!rkshare->rkshare_subscribed))
++                rd_kafka_share_drop_queued_responses(rkshare);
++
+         /* Drain rk_rep for all pending callbacks (non-blocking) */
+         rd_kafka_q_serve(rk->rk_rep, RD_POLL_NOWAIT, 0, RD_KAFKA_Q_CB_CALLBACK,
+                          rd_kafka_poll_cb, NULL);
+--- librdkafka_2.15.1/src/rdkafka_broker.c
++++ librdkafka_2.15.1/src/rdkafka_broker.c
+@@ -3888,6 +3888,28 @@
+                            "Received SHARE_SESSION_CLEAR op");
+                 rd_kafka_broker_share_fetch_session_clear(rkb);
+                 break;
++        case RD_KAFKA_OP_SHARE_SESSION_REOPEN:
++                /* The session was closed on unsubscribe, which pins the
++                 * epoch to -1. Start over at epoch 0 so a later subscription
++                 * opens a fresh session, and re-add the partitions still
++                 * assigned, whose adds were dropped while it was closed. */
++                if (rkb->rkb_share_fetch_session.epoch != -1 ||
++                    rd_kafka_terminating(rkb->rkb_rk) ||
++                    rkb->rkb_source == RD_KAFKA_INTERNAL)
++                        break;
++
++                rd_rkb_dbg(rkb, CGRP, "SHARESESSION",
++                           "Reopening share session closed on unsubscribe");
++                rkb->rkb_share_fetch_session.epoch = 0;
++
++                rd_kafka_broker_lock(rkb);
++                TAILQ_FOREACH(rktp, &rkb->rkb_toppars, rktp_rkblink) {
++                        if (rd_kafka_toppar_is_on_cgrp(rktp, rd_true))
++                                rd_kafka_broker_share_session_toppar_add(rkb,
++                                                                         rktp);
++                }
++                rd_kafka_broker_unlock(rkb);
++                break;
+         default:
+                 rd_kafka_assert(rkb->rkb_rk, !*"unhandled op type");
+                 break;
+--- librdkafka_2.15.1/src/rdkafka_broker.h
++++ librdkafka_2.15.1/src/rdkafka_broker.h
+@@ -464,6 +464,14 @@
+          */
+         rd_bool_t rkb_share_fetch_enqueued;
+ 
++        /**
++         * Close the share session once the in-flight request replies:
++         * set when the consumer unsubscribes while this broker has a
++         * share request in flight.
++         * @locality main thread
++         */
++        rd_bool_t rkb_share_leave_pending;
++
+         rd_list_t
+             *rkb_share_async_ack_details; /**< Pending ack batches for
+                                            *   this broker (as partition
+--- librdkafka_2.15.1/src/rdkafka_cgrp.h
++++ librdkafka_2.15.1/src/rdkafka_cgrp.h
+@@ -431,6 +431,20 @@
+                                                            * a leave request
+                                                            *    @locality main
+                                                            * thread */
++                int share_unsubscribe_leave_remaining_cnt; /**< Number of
++                                                            * session close
++                                                            * requests sent or
++                                                            * deferred on
++                                                            * unsubscribe and
++                                                            * not yet replied.
++                                                            * @locality main
++                                                            * thread */
++                rd_kafka_q_t *share_unsubscribe_replyq; /**< Queue of the
++                                                         * unsubscribe call
++                                                         * waiting for the
++                                                         * session closes.
++                                                         * @locality main
++                                                         * thread */
+                 int64_t commit_sync_request_id_counter; /**< Global counter for
+                                                          *   commit_sync request
+                                                          *   IDs. Starts at 1,
+--- librdkafka_2.15.1/src/rdkafka_fetcher.c
++++ librdkafka_2.15.1/src/rdkafka_fetcher.c
+@@ -2424,7 +2424,7 @@
+          * processes the reply (resetting share_fetch_more_records)
+          * before the app thread wakes up and enqueues a new FANOUT. */
+         if (response_rko)
+-                rd_kafka_q_enq(rkb->rkb_rk->rk_cgrp->rkcg_q, response_rko);
++                rd_kafka_share_fetch_response_enq(rkb->rkb_rk, response_rko);
+ }
+ 
+ /**
+--- librdkafka_2.15.1/src/rdkafka_int.h
++++ librdkafka_2.15.1/src/rdkafka_int.h
+@@ -931,6 +931,15 @@
+          *  read only in consume_batch while the same lock is held.
+          *  @locality app thread */
+         rd_bool_t rkshare_subscribed;
++
++        /** Set after rd_kafka_share_unsubscribe() until the next
++         *  rd_kafka_share_subscribe(). Share fetch responses arriving
++         *  meanwhile are dropped instead of being queued for the app, as
++         *  the unsubscribe closes the share sessions, which releases
++         *  their records.
++         *  Written on the app thread, read on the broker and main
++         *  threads. */
++        rd_atomic32_t rkshare_unsubscribed;
+ };
+ 
+ /**
+@@ -1502,4 +1511,11 @@
+                                      rd_bool_t should_fetch,
+                                      rd_bool_t should_leave);
+ 
++void rd_kafka_share_fetch_response_enq(rd_kafka_t *rk,
++                                       rd_kafka_op_t *response_rko);
++
++void rd_kafka_share_drop_queued_responses(rd_kafka_share_t *rkshare);
++
++void rd_kafka_share_unsubscribe_close_sessions(rd_kafka_share_t *rkshare);
++
+ #endif /* _RDKAFKA_INT_H_ */
+--- librdkafka_2.15.1/src/rdkafka_op.c
++++ librdkafka_2.15.1/src/rdkafka_op.c
+@@ -142,6 +142,7 @@
+             [RD_KAFKA_OP_SHARE_COMMIT_SYNC_FANOUT_REPLY] =
+                 "REPLY:SHARE_COMMIT_SYNC_FANOUT_REPLY",
+             [RD_KAFKA_OP_SHARE_SESSION_CLEAR] = "REPLY:SHARE_SESSION_CLEAR",
++            [RD_KAFKA_OP_SHARE_SESSION_REOPEN] = "REPLY:SHARE_SESSION_REOPEN",
+         };
+ 
+         if (type & RD_KAFKA_OP_REPLY)
+@@ -324,6 +325,7 @@
+             [RD_KAFKA_OP_SHARE_COMMIT_SYNC_FANOUT_REPLY] =
+                 sizeof(rko->rko_u.share_commit_sync_fanout_reply),
+             [RD_KAFKA_OP_SHARE_SESSION_CLEAR] = _RD_KAFKA_OP_EMPTY,
++            [RD_KAFKA_OP_SHARE_SESSION_REOPEN] = _RD_KAFKA_OP_EMPTY,
+         };
+         size_t tsize = op2size[type & ~RD_KAFKA_OP_FLAGMASK];
+ 
+--- librdkafka_2.15.1/src/rdkafka_op.h
++++ librdkafka_2.15.1/src/rdkafka_op.h
+@@ -220,6 +220,10 @@
+         RD_KAFKA_OP_SHARE_SESSION_CLEAR, /**< broker op: Enqueued by main thread
+                                             to clear share session during broker
+                                             decommission */
++        RD_KAFKA_OP_SHARE_SESSION_REOPEN, /**< broker op: Enqueued by main
++                                             thread to allow a new share
++                                             session after the session was
++                                             closed on unsubscribe */
+         RD_KAFKA_OP__END
+ } rd_kafka_op_type_t;
+ 
+--- librdkafka_2.15.1/src/rdkafka_subscription.c
++++ librdkafka_2.15.1/src/rdkafka_subscription.c
+@@ -64,8 +64,16 @@
+                 goto done;
+ 
+         err = rd_kafka_unsubscribe(rkshare->rkshare_rk);
+-        if (!err)
++        if (!err) {
+                 rkshare->rkshare_subscribed = rd_false;
++                /* Leaving the group does not release the records this member
++                 * acquired, including those of a fetch still in flight, which
++                 * the app will not consume now: close the share sessions so
++                 * the broker releases them right away instead of when their
++                 * acquisition lock expires. */
++                rd_atomic32_set(&rkshare->rkshare_unsubscribed, 1);
++                rd_kafka_share_unsubscribe_close_sessions(rkshare);
++        }
+ done:
+         rd_kafka_share_release(rkshare);
+         return err;
+@@ -192,8 +200,19 @@
+         rko                         = rd_kafka_op_new(RD_KAFKA_OP_SUBSCRIBE);
+         rko->rko_u.subscribe.topics = topics_cpy;
+ 
++        /* Hand fetch responses to the app again, before the subscription
++         * takes effect. Responses dropped while unsubscribed never reset
++         * the fetch request guard, so reset it here. */
++        if (!rkshare->rkshare_subscribed) {
++                rd_kafka_share_drop_queued_responses(rkshare);
++                rd_atomic32_set(&rkshare->rkshare_unsubscribed, 0);
++                rkshare->rkshare_fetch_more_records_requested = rd_false;
++        }
++
+         err = rd_kafka_op_err_destroy(
+             rd_kafka_op_req(rkcg->rkcg_ops, rko, RD_POLL_INFINITE));
++        if (err && !rkshare->rkshare_subscribed)
++                rd_atomic32_set(&rkshare->rkshare_unsubscribed, 1);
+         /**
+          * TODO KIP-932: It can only return FATAL error from the main thread.
+          * In which case it unsubscribes. Check if we should change the flag

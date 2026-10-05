@@ -21,6 +21,9 @@ PATCHES_DIR="$DIST_DIR/patches"
 BUILD_DIR="$(pwd)/build-tmp-macos"
 DEPS_PREFIX="/tmp/macos-deps"
 
+# Pin the minimum macOS so the dylib does not inherit the build host's SDK version
+export MACOSX_DEPLOYMENT_TARGET="14.0"
+
 # macOS-specific dependency check
 check_macos_dependencies() {
     log "Checking macOS build dependencies..."
@@ -496,6 +499,14 @@ if [ -n "$EXTERNAL_DEPS" ]; then
     error "Found external dependencies - library is not self-contained: $EXTERNAL_DEPS"
 else
     log "✅ No external dependencies found - library is self-contained!"
+fi
+
+log "Checking minimum macOS version:"
+MIN_MACOS=$(otool -l librdkafka.dylib | awk '/LC_BUILD_VERSION/{found=1} found && $1=="minos"{print $2; exit}')
+if [ "$MIN_MACOS" != "$MACOSX_DEPLOYMENT_TARGET" ]; then
+    error "Expected minimum macOS $MACOSX_DEPLOYMENT_TARGET, got: ${MIN_MACOS:-none}"
+else
+    log "✅ Minimum macOS: $MIN_MACOS"
 fi
 
 log "Checking exported symbols:"

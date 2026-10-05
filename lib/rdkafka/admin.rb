@@ -520,6 +520,150 @@ module Rdkafka
       handle
     end
 
+    # Describes the cluster: its id, the current controller and the broker nodes (with racks).
+    #
+    # Unlike {#metadata}, this does not fetch any topic metadata.
+    #
+    # @param include_authorized_operations [Boolean] when true, also return the operations this
+    #   client is authorized to perform on the cluster
+    # @return [DescribeClusterHandle] handle that can be used to wait for the result
+    # @raise [RdkafkaError] when describing the cluster fails
+    #
+    # @example Print the cluster id, the controller and every broker
+    #   report = admin.describe_cluster.wait(max_wait_timeout_ms: 15_000)
+    #
+    #   puts "cluster: #{report.cluster_id}, controller: #{report.controller[:id]}"
+    #   report.nodes.each { |node| puts "#{node[:id]} #{node[:host]}:#{node[:port]} #{node[:rack]}" }
+    def describe_cluster(include_authorized_operations: false)
+      closed_admin_check(__method__)
+
+      queue_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+      end
+
+      if queue_ptr.null?
+        raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
+      end
+
+      handle = DescribeClusterHandle.new
+      handle[:pending] = true
+      handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
+      DescribeClusterHandle.register(handle)
+
+      admin_options_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_AdminOptions_new(
+          inner,
+          Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DESCRIBECLUSTER
+        )
+      end
+      Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
+
+      begin
+        set_include_authorized_operations(admin_options_ptr) if include_authorized_operations
+
+        @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_DescribeCluster(
+            inner,
+            admin_options_ptr,
+            queue_ptr
+          )
+        end
+      rescue Exception
+        DescribeClusterHandle.remove(handle.to_ptr.address)
+        raise
+      ensure
+        Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
+        Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr)
+      end
+
+      handle
+    end
+
+    # Describes the given topics: their topic ids, partitions (leader, replicas and in-sync
+    # replicas, with racks) and, optionally, the operations this client is authorized to perform.
+    #
+    # A topic that cannot be described (e.g. it does not exist) does not fail the whole request;
+    # its entry in the report carries an `:error` instead.
+    #
+    # @param topic_names [Array<String>] names of the topics to describe
+    # @param include_authorized_operations [Boolean] when true, also return the operations this
+    #   client is authorized to perform on each topic
+    # @return [DescribeTopicsHandle] handle that can be used to wait for the result
+    # @raise [ArgumentError] when topic_names is not an Array of Strings
+    # @raise [RdkafkaError] when describing the topics fails
+    #
+    # @example Print the topic id and partition leaders of a topic
+    #   report = admin.describe_topics(["events"]).wait(max_wait_timeout_ms: 15_000)
+    #
+    #   report.topics.each do |topic|
+    #     next warn("#{topic[:name]}: #{topic[:error].message}") if topic[:error]
+    #
+    #     puts "#{topic[:name]} (#{topic[:topic_id]})"
+    #     topic[:partitions].each { |partition| puts "  #{partition[:partition]} -> #{partition[:leader]&.fetch(:id)}" }
+    #   end
+    def describe_topics(topic_names, include_authorized_operations: false)
+      closed_admin_check(__method__)
+
+      unless topic_names.is_a?(Array) && topic_names.all?(String)
+        raise ArgumentError, "topic_names must be an Array of Strings"
+      end
+
+      queue_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+      end
+
+      if queue_ptr.null?
+        raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
+      end
+
+      handle = DescribeTopicsHandle.new
+      handle[:pending] = true
+      handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
+      DescribeTopicsHandle.register(handle)
+
+      admin_options_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_AdminOptions_new(
+          inner,
+          Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DESCRIBETOPICS
+        )
+      end
+      Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
+
+      topic_collection_ptr = nil
+
+      begin
+        set_include_authorized_operations(admin_options_ptr) if include_authorized_operations
+
+        # librdkafka copies the names, so the Ruby-owned strings only need to outlive this call
+        name_ptrs = topic_names.map { |name| FFI::MemoryPointer.from_string(name) }
+        names_array_ptr = FFI::MemoryPointer.new(:pointer, [name_ptrs.size, 1].max)
+        names_array_ptr.write_array_of_pointer(name_ptrs)
+
+        topic_collection_ptr = Rdkafka::Bindings.rd_kafka_TopicCollection_of_topic_names(
+          names_array_ptr,
+          name_ptrs.size
+        )
+
+        @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_DescribeTopics(
+            inner,
+            topic_collection_ptr,
+            admin_options_ptr,
+            queue_ptr
+          )
+        end
+      rescue Exception
+        DescribeTopicsHandle.remove(handle.to_ptr.address)
+        raise
+      ensure
+        Rdkafka::Bindings.rd_kafka_TopicCollection_destroy(topic_collection_ptr) if topic_collection_ptr
+        Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
+        Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr)
+      end
+
+      handle
+    end
+
     # Deletes the named topic
     #
     # @param topic_name [String] name of the topic to delete
@@ -1262,6 +1406,26 @@ module Rdkafka
     # Checks if the admin is closed and raises an error if so
     # @param method [Symbol] name of the calling method for error context
     # @raise [ClosedAdminError] when the admin is closed
+    # Asks librdkafka to include authorized operations in a describe result
+    # @param admin_options_ptr [FFI::Pointer] the admin options to update
+    # @raise [RdkafkaError] when librdkafka rejects the option
+    def set_include_authorized_operations(admin_options_ptr)
+      error_ptr = Rdkafka::Bindings.rd_kafka_AdminOptions_set_include_authorized_operations(admin_options_ptr, 1)
+
+      return if error_ptr.null?
+
+      begin
+        string_ptr = Rdkafka::Bindings.rd_kafka_error_string(error_ptr)
+
+        raise RdkafkaError.new(
+          Rdkafka::Bindings.rd_kafka_error_code(error_ptr),
+          broker_message: string_ptr.null? ? nil : string_ptr.read_string
+        )
+      ensure
+        Rdkafka::Bindings.rd_kafka_error_destroy(error_ptr)
+      end
+    end
+
     def closed_admin_check(method)
       raise Rdkafka::ClosedAdminError.new(method) if closed?
     end

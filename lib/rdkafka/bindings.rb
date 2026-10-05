@@ -620,6 +620,40 @@ module Rdkafka
     attach_function :rd_kafka_ConsumerGroupListing_state, [:pointer], :int, blocking: true
     attach_function :rd_kafka_consumer_group_state_name, [:int], :pointer, blocking: true # => const char*
 
+    # Describe Topics and Describe Cluster
+    RD_KAFKA_ADMIN_OP_DESCRIBETOPICS = 19   # rd_kafka_admin_op_t
+    RD_KAFKA_EVENT_DESCRIBETOPICS_RESULT = 0x100000 # rd_kafka_event_type_t
+    RD_KAFKA_ADMIN_OP_DESCRIBECLUSTER = 20   # rd_kafka_admin_op_t
+    RD_KAFKA_EVENT_DESCRIBECLUSTER_RESULT = 0x200000 # rd_kafka_event_type_t
+
+    attach_function :rd_kafka_AdminOptions_set_include_authorized_operations, [:pointer, :int], :pointer, blocking: true # => rd_kafka_error_t*
+    attach_function :rd_kafka_TopicCollection_of_topic_names, [:pointer, :size_t], :pointer, blocking: true # const char**, size_t => rd_kafka_TopicCollection_t*
+    attach_function :rd_kafka_TopicCollection_destroy, [:pointer], :void, blocking: true
+    attach_function :rd_kafka_DescribeTopics, [:pointer, :pointer, :pointer, :pointer], :void, blocking: true
+    attach_function :rd_kafka_event_DescribeTopics_result, [:pointer], :pointer, blocking: true # rd_kafka_event_t* => rd_kafka_DescribeTopics_result_t*
+    attach_function :rd_kafka_DescribeTopics_result_topics, [:pointer, :pointer], :pointer, blocking: true # result*, size_t* => rd_kafka_TopicDescription_t**
+    attach_function :rd_kafka_TopicDescription_name, [:pointer], :pointer, blocking: true # => const char*
+    attach_function :rd_kafka_TopicDescription_topic_id, [:pointer], :pointer, blocking: true # => rd_kafka_Uuid_t*
+    attach_function :rd_kafka_TopicDescription_is_internal, [:pointer], :int, blocking: true
+    attach_function :rd_kafka_TopicDescription_partitions, [:pointer, :pointer], :pointer, blocking: true # desc*, size_t* => rd_kafka_TopicPartitionInfo_t**
+    attach_function :rd_kafka_TopicDescription_authorized_operations, [:pointer, :pointer], :pointer, blocking: true # desc*, size_t* => rd_kafka_AclOperation_t*
+    attach_function :rd_kafka_TopicDescription_error, [:pointer], :pointer, blocking: true # => rd_kafka_error_t*
+    attach_function :rd_kafka_TopicPartitionInfo_partition, [:pointer], :int, blocking: true
+    attach_function :rd_kafka_TopicPartitionInfo_leader, [:pointer], :pointer, blocking: true # => rd_kafka_Node_t*
+    attach_function :rd_kafka_TopicPartitionInfo_replicas, [:pointer, :pointer], :pointer, blocking: true # info*, size_t* => rd_kafka_Node_t**
+    attach_function :rd_kafka_TopicPartitionInfo_isr, [:pointer, :pointer], :pointer, blocking: true # info*, size_t* => rd_kafka_Node_t**
+    attach_function :rd_kafka_Uuid_base64str, [:pointer], :pointer, blocking: true # => const char*
+    attach_function :rd_kafka_DescribeCluster, [:pointer, :pointer, :pointer], :void, blocking: true
+    attach_function :rd_kafka_event_DescribeCluster_result, [:pointer], :pointer, blocking: true # rd_kafka_event_t* => rd_kafka_DescribeCluster_result_t*
+    attach_function :rd_kafka_DescribeCluster_result_nodes, [:pointer, :pointer], :pointer, blocking: true # result*, size_t* => rd_kafka_Node_t**
+    attach_function :rd_kafka_DescribeCluster_result_controller, [:pointer], :pointer, blocking: true # => rd_kafka_Node_t*
+    attach_function :rd_kafka_DescribeCluster_result_cluster_id, [:pointer], :pointer, blocking: true # => const char*
+    attach_function :rd_kafka_DescribeCluster_result_authorized_operations, [:pointer, :pointer], :pointer, blocking: true # result*, size_t* => rd_kafka_AclOperation_t*
+    attach_function :rd_kafka_Node_id, [:pointer], :int, blocking: true
+    attach_function :rd_kafka_Node_host, [:pointer], :pointer, blocking: true # => const char*
+    attach_function :rd_kafka_Node_port, [:pointer], :uint16, blocking: true
+    attach_function :rd_kafka_Node_rack, [:pointer], :pointer, blocking: true # => const char*
+
     # Background Queue and Callback
 
     attach_function :rd_kafka_conf_set_background_event_cb, [:pointer, :pointer], :void

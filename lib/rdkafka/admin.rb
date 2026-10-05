@@ -546,7 +546,7 @@ module Rdkafka
       closed_admin_check(__method__)
 
       group_id_ptrs = group_ids.map { |group_id| FFI::MemoryPointer.from_string(group_id) }
-      group_ids_ptr = FFI::MemoryPointer.new(:pointer, [group_id_ptrs.size, 1].max)
+      group_ids_ptr = FFI::MemoryPointer.new(:pointer, group_id_ptrs.size)
       group_ids_ptr.write_array_of_pointer(group_id_ptrs)
 
       # Get a pointer to the queue that our request will be enqueued on

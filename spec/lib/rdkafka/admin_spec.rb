@@ -18,9 +18,14 @@ RSpec.describe Rdkafka::Admin do
   let(:operation) { Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ }
   let(:permission_type) { Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW }
   let(:admin) { config.admin }
-  # Matches the spec broker's PLAINTEXT listener. The rack is read from the broker's own config, as
-  # the compose brokers set `rack-1` and the macOS CI broker sets none.
-  let(:broker_node) { { id: 1, host: "127.0.0.1", port: 9092, rack: broker_rack } }
+  # The broker advertises 127.0.0.1 on the port of the listener the specs bootstrap through (9092
+  # plaintext, 9093 SSL). The rack is read from the broker's own config, as the compose brokers set
+  # `rack-1` and the macOS CI broker sets none.
+  let(:broker_node) do
+    port = Integer(rdkafka_base_config[:"bootstrap.servers"].split(":").last)
+
+    { id: 1, host: "127.0.0.1", port: port, rack: broker_rack }
+  end
   let(:broker_rack) do
     resource = admin
       .describe_configs([{ resource_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_BROKER, resource_name: "1" }])

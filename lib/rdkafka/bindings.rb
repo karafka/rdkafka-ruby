@@ -620,6 +620,31 @@ module Rdkafka
     attach_function :rd_kafka_ConsumerGroupListing_state, [:pointer], :int, blocking: true
     attach_function :rd_kafka_consumer_group_state_name, [:int], :pointer, blocking: true # => const char*
 
+    # Describe Consumer Groups
+    RD_KAFKA_ADMIN_OP_DESCRIBECONSUMERGROUPS = 13   # rd_kafka_admin_op_t
+    RD_KAFKA_EVENT_DESCRIBECONSUMERGROUPS_RESULT = 0x4000 # rd_kafka_event_type_t
+
+    attach_function :rd_kafka_DescribeConsumerGroups, [:pointer, :pointer, :size_t, :pointer, :pointer], :void, blocking: true
+    attach_function :rd_kafka_event_DescribeConsumerGroups_result, [:pointer], :pointer, blocking: true # rd_kafka_event_t* => rd_kafka_DescribeConsumerGroups_result_t*
+    attach_function :rd_kafka_DescribeConsumerGroups_result_groups, [:pointer, :pointer], :pointer, blocking: true # result*, size_t* => rd_kafka_ConsumerGroupDescription_t**
+    attach_function :rd_kafka_ConsumerGroupDescription_group_id, [:pointer], :pointer, blocking: true # => const char*
+    attach_function :rd_kafka_ConsumerGroupDescription_error, [:pointer], :pointer, blocking: true # => const rd_kafka_error_t*
+    attach_function :rd_kafka_ConsumerGroupDescription_is_simple_consumer_group, [:pointer], :int, blocking: true
+    attach_function :rd_kafka_ConsumerGroupDescription_partition_assignor, [:pointer], :pointer, blocking: true # => const char*
+    attach_function :rd_kafka_ConsumerGroupDescription_state, [:pointer], :int, blocking: true
+    attach_function :rd_kafka_ConsumerGroupDescription_coordinator, [:pointer], :pointer, blocking: true # => const rd_kafka_Node_t*
+    attach_function :rd_kafka_ConsumerGroupDescription_member_count, [:pointer], :size_t, blocking: true
+    attach_function :rd_kafka_ConsumerGroupDescription_member, [:pointer, :size_t], :pointer, blocking: true # => const rd_kafka_MemberDescription_t*
+    attach_function :rd_kafka_MemberDescription_client_id, [:pointer], :pointer, blocking: true # => const char*
+    attach_function :rd_kafka_MemberDescription_group_instance_id, [:pointer], :pointer, blocking: true # => const char*
+    attach_function :rd_kafka_MemberDescription_consumer_id, [:pointer], :pointer, blocking: true # => const char*
+    attach_function :rd_kafka_MemberDescription_host, [:pointer], :pointer, blocking: true # => const char*
+    attach_function :rd_kafka_MemberDescription_assignment, [:pointer], :pointer, blocking: true # => const rd_kafka_MemberAssignment_t*
+    attach_function :rd_kafka_MemberAssignment_partitions, [:pointer], :pointer, blocking: true # => const rd_kafka_topic_partition_list_t*
+    attach_function :rd_kafka_Node_id, [:pointer], :int, blocking: true
+    attach_function :rd_kafka_Node_host, [:pointer], :pointer, blocking: true # => const char*
+    attach_function :rd_kafka_Node_port, [:pointer], :uint16, blocking: true
+
     # Background Queue and Callback
 
     attach_function :rd_kafka_conf_set_background_event_cb, [:pointer, :pointer], :void

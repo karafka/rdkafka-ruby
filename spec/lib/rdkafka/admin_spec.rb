@@ -1447,6 +1447,92 @@ RSpec.describe Rdkafka::Admin do
         end
       end
     end
+
+    describe "#describe_consumer_groups" do
+      describe "with an active group" do
+        let(:consumer_config) { rdkafka_consumer_config("group.id": group_name, "client.id": "describe-spec") }
+        let(:consumer) { consumer_config.consumer }
+
+        before do
+          admin.create_topic(topic_name, topic_partition_count, topic_replication_factor).wait(max_wait_timeout_ms: 15_000)
+
+          consumer.subscribe(topic_name)
+          wait_for_assignment(consumer)
+        end
+
+        after { consumer.close }
+
+        it "returns the group state, coordinator and members with their assignment" do
+          report = admin.describe_consumer_groups([group_name]).wait(max_wait_timeout_ms: 30_000)
+
+          expect(report).to be_a(Rdkafka::Admin::DescribeConsumerGroupsReport)
+          expect(report.groups.size).to eq(1)
+
+          group = report.groups.first
+
+          expect(group[:group_id]).to eq(group_name)
+          expect(group[:error]).to be_nil
+          expect(group[:is_simple_consumer_group]).to be(false)
+          expect(group[:state]).to eq(Rdkafka::Bindings::RD_KAFKA_CONSUMER_GROUP_STATE_STABLE)
+          expect(group[:state_name]).to eq("Stable")
+          expect(group[:partition_assignor]).to be_a(String)
+          expect(group[:coordinator]).to include(id: Integer, host: String, port: Integer)
+          expect(group[:members].size).to eq(1)
+
+          member = group[:members].first
+
+          expect(member[:member_id]).to eq(consumer.member_id)
+          expect(member[:client_id]).to eq("describe-spec")
+          expect(member[:group_instance_id]).to be_nil
+          expect(member[:host]).to be_a(String)
+          expect(member[:assignment]).to eq(topic_name => (0...topic_partition_count).to_a)
+        end
+      end
+
+      describe "with a group that does not exist" do
+        it "reports it as dead with no members" do
+          report = admin.describe_consumer_groups([group_name]).wait(max_wait_timeout_ms: 30_000)
+
+          group = report.groups.first
+
+          expect(group[:group_id]).to eq(group_name)
+          expect(group[:error]).to be_nil
+          expect(group[:state]).to eq(Rdkafka::Bindings::RD_KAFKA_CONSUMER_GROUP_STATE_DEAD)
+          expect(group[:members]).to be_empty
+        end
+      end
+
+      describe "with several group ids" do
+        let(:other_group_name) { TestTopics.unique }
+
+        it "reports every requested group in request order" do
+          report = admin
+            .describe_consumer_groups([group_name, other_group_name])
+            .wait(max_wait_timeout_ms: 30_000)
+
+          expect(report.groups.map { |group| group[:group_id] }).to eq([group_name, other_group_name])
+        end
+      end
+
+      describe "with no group ids" do
+        it "raises an invalid argument error" do
+          handle = admin.describe_consumer_groups([])
+
+          expect {
+            handle.wait(max_wait_timeout_ms: 15_000)
+          }.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
+        end
+      end
+
+      context "when admin is closed" do
+        it "raises ClosedAdminError" do
+          admin.close
+
+          expect { admin.describe_consumer_groups([group_name]) }
+            .to raise_error(Rdkafka::ClosedAdminError, /describe_consumer_groups/)
+        end
+      end
+    end
   end
 
   describe "#delete_records" do

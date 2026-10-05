@@ -107,9 +107,11 @@ jobs:
       matrix:
         include:
           - ruby: '3.4'
+            alpine_version: '3.24'
+          - ruby: '3.4'
             alpine_version: '3.22'
           - ruby: '3.3'
-            alpine_version: '3.21'
+            alpine_version: '3.22'
     steps:
       - name: Disable needrestart
         run: sudo apt-get autopurge -y needrestart

@@ -18,8 +18,18 @@ RSpec.describe Rdkafka::Admin do
   let(:operation) { Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ }
   let(:permission_type) { Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW }
   let(:admin) { config.admin }
-  # Matches the broker in docker-compose.yml / docker-compose-ssl.yml (specs use its PLAINTEXT listener)
-  let(:broker_node) { { id: 1, host: "127.0.0.1", port: 9092, rack: "rack-1" } }
+  # Matches the spec broker's PLAINTEXT listener. The rack is read from the broker's own config, as
+  # the compose brokers set `rack-1` and the macOS CI broker sets none.
+  let(:broker_node) { { id: 1, host: "127.0.0.1", port: 9092, rack: broker_rack } }
+  let(:broker_rack) do
+    resource = admin
+      .describe_configs([{ resource_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_BROKER, resource_name: "1" }])
+      .wait(max_wait_timeout_ms: 15_000)
+      .resources
+      .first
+
+    resource.configs.find { |config| config.name == "broker.rack" }&.value
+  end
 
   # Close the memoized admin after each example so cleanup does not rely on the GC finalizer. The
   # shared registry-empty check lives in the global hook in spec_helper.

@@ -8,7 +8,8 @@ module Rdkafka
 
       # Described topics, one per requested topic name. Each entry is a hash with:
       #   - `:name` [String] the topic name
-      #   - `:topic_id` [String, nil] the topic id (KIP-516), base64 encoded
+      #   - `:topic_id` [String, nil] the topic id (KIP-516), base64 encoded, or `nil` when the
+      #     topic could not be described
       #   - `:is_internal` [Boolean] whether the topic is internal (e.g. `__consumer_offsets`)
       #   - `:partitions` [Array<Hash>] each with `:partition` [Integer], `:leader` [Hash, nil] and
       #     `:replicas` / `:isr` [Array<Hash>]; nodes have `:id`, `:host`, `:port` and `:rack`
@@ -56,12 +57,15 @@ module Rdkafka
         }
       end
 
+      # librdkafka reports the zero UUID for a topic it could not describe
       # @param topic_ptr [FFI::Pointer] pointer to a `rd_kafka_TopicDescription_t`
       # @return [String, nil]
       def extract_topic_id(topic_ptr)
         uuid_ptr = Bindings.rd_kafka_TopicDescription_topic_id(topic_ptr)
 
         return nil if uuid_ptr.null?
+        return nil if Bindings.rd_kafka_Uuid_most_significant_bits(uuid_ptr).zero? &&
+          Bindings.rd_kafka_Uuid_least_significant_bits(uuid_ptr).zero?
 
         string_ptr = Bindings.rd_kafka_Uuid_base64str(uuid_ptr)
         string_ptr.null? ? nil : string_ptr.read_string

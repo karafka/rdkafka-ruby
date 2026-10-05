@@ -18,6 +18,8 @@ RSpec.describe Rdkafka::Admin do
   let(:operation) { Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ }
   let(:permission_type) { Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW }
   let(:admin) { config.admin }
+  # Matches the broker in docker-compose.yml / docker-compose-ssl.yml (specs use its PLAINTEXT listener)
+  let(:broker_node) { { id: 1, host: "127.0.0.1", port: 9092, rack: "rack-1" } }
 
   # Close the memoized admin after each example so cleanup does not rely on the GC finalizer. The
   # shared registry-empty check lives in the global hook in spec_helper.
@@ -1456,9 +1458,8 @@ RSpec.describe Rdkafka::Admin do
       expect(report).to be_a(Rdkafka::Admin::DescribeClusterReport)
       expect(report.cluster_id).to be_a(String)
       expect(report.cluster_id).not_to be_empty
-      expect(report.nodes).not_to be_empty
-      expect(report.nodes).to all(include(id: Integer, host: String, port: Integer))
-      expect(report.nodes).to include(report.controller)
+      expect(report.nodes).to eq([broker_node])
+      expect(report.controller).to eq(broker_node)
       expect(report.authorized_operations).to be_nil
     end
 
@@ -1495,9 +1496,7 @@ RSpec.describe Rdkafka::Admin do
       expect(topic[:is_internal]).to be(false)
       expect(topic[:authorized_operations]).to be_nil
       expect(topic[:partitions].map { |partition| partition[:partition] }).to eq([0, 1, 2])
-      expect(topic[:partitions]).to all(include(leader: include(id: Integer, host: String, port: Integer)))
-      expect(topic[:partitions].map { |partition| partition[:replicas].size }).to all(eq(topic_replication_factor))
-      expect(topic[:partitions].map { |partition| partition[:isr].size }).to all(eq(topic_replication_factor))
+      expect(topic[:partitions]).to all(include(leader: broker_node, replicas: [broker_node], isr: [broker_node]))
     end
 
     it "returns the authorized operations when requested" do
@@ -1516,6 +1515,7 @@ RSpec.describe Rdkafka::Admin do
       expect(topics[missing_topic_name][:error]).to be_a(Rdkafka::RdkafkaError)
       expect(topics[missing_topic_name][:error].code).to eq(:unknown_topic_or_part)
       expect(topics[missing_topic_name][:partitions]).to be_empty
+      expect(topics[missing_topic_name][:topic_id]).to be_nil
     end
 
     it "returns no topics for an empty list" do

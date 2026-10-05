@@ -643,6 +643,8 @@ module Rdkafka
     attach_function :rd_kafka_TopicPartitionInfo_replicas, [:pointer, :pointer], :pointer, blocking: true # info*, size_t* => rd_kafka_Node_t**
     attach_function :rd_kafka_TopicPartitionInfo_isr, [:pointer, :pointer], :pointer, blocking: true # info*, size_t* => rd_kafka_Node_t**
     attach_function :rd_kafka_Uuid_base64str, [:pointer], :pointer, blocking: true # => const char*
+    attach_function :rd_kafka_Uuid_most_significant_bits, [:pointer], :int64, blocking: true
+    attach_function :rd_kafka_Uuid_least_significant_bits, [:pointer], :int64, blocking: true
     attach_function :rd_kafka_DescribeCluster, [:pointer, :pointer, :pointer], :void, blocking: true
     attach_function :rd_kafka_event_DescribeCluster_result, [:pointer], :pointer, blocking: true # rd_kafka_event_t* => rd_kafka_DescribeCluster_result_t*
     attach_function :rd_kafka_DescribeCluster_result_nodes, [:pointer, :pointer], :pointer, blocking: true # result*, size_t* => rd_kafka_Node_t**

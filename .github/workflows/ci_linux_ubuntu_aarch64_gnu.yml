@@ -4,7 +4,7 @@
 # strategies across multiple Ubuntu and Ruby versions to ensure broad compatibility and
 # reliability.
 #
-# WHY WE TEST BOTH UBUNTU 24.04 AND 26.04:
+# WHY WE TEST UBUNTU 22.04, 24.04 AND 26.04:
 # - Different system library versions (OpenSSL, zlib, libsasl2, libzstd, etc.)
 # - Different GCC compiler versions that affect native extension compilation
 # - Different glibc versions that can impact binary compatibility
@@ -24,7 +24,7 @@
 # - Verifies that removing build tools doesn't break precompiled binary usage
 #
 # ARTIFACT ISOLATION:
-# - Each Ubuntu version gets separate artifacts (rdkafka-built-gem-24.04, etc.)
+# - Each Ubuntu version gets separate artifacts (rdkafka-built-gem-22.04, etc.)
 # - Prevents cross-contamination of OS-specific compiled extensions
 # - Ensures test accuracy by matching build and test environments
 #
@@ -62,7 +62,7 @@ jobs:
           - '3.4'
           - '3.3'
           - 'jruby-10.0'
-        ubuntu-version: ['24.04', '26.04']
+        ubuntu-version: ['22.04', '24.04', '26.04']
         include:
           - ruby: '3.4'
             coverage: 'true'
@@ -200,7 +200,7 @@ jobs:
           - '4.0'
           - '3.4'
           - '3.3'
-        ubuntu-version: ['24.04', '26.04']
+        ubuntu-version: ['22.04', '24.04', '26.04']
         include:
           - ruby: '3.4'
             ubuntu-version: '24.04'

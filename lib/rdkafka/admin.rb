@@ -533,7 +533,9 @@ module Rdkafka
     #   report = admin.describe_cluster.wait(max_wait_timeout_ms: 15_000)
     #
     #   puts "cluster: #{report.cluster_id}, controller: #{report.controller[:id]}"
-    #   report.nodes.each { |node| puts "#{node[:id]} #{node[:host]}:#{node[:port]} #{node[:rack]}" }
+    #   report.nodes.each do |node|
+    #     puts "#{node[:id]} #{node[:host]}:#{node[:port]} #{node[:rack]}"
+    #   end
     def describe_cluster(include_authorized_operations: false)
       closed_admin_check(__method__)
 
@@ -599,7 +601,9 @@ module Rdkafka
     #     next warn("#{topic[:name]}: #{topic[:error].message}") if topic[:error]
     #
     #     puts "#{topic[:name]} (#{topic[:topic_id]})"
-    #     topic[:partitions].each { |partition| puts "  #{partition[:partition]} -> #{partition[:leader]&.fetch(:id)}" }
+    #     topic[:partitions].each do |partition|
+    #       puts "  #{partition[:partition]} -> #{partition[:leader]&.fetch(:id)}"
+    #     end
     #   end
     def describe_topics(topic_names, include_authorized_operations: false)
       closed_admin_check(__method__)
@@ -1403,9 +1407,6 @@ module Rdkafka
       handle
     end
 
-    # Checks if the admin is closed and raises an error if so
-    # @param method [Symbol] name of the calling method for error context
-    # @raise [ClosedAdminError] when the admin is closed
     # Asks librdkafka to include authorized operations in a describe result
     # @param admin_options_ptr [FFI::Pointer] the admin options to update
     # @raise [RdkafkaError] when librdkafka rejects the option
@@ -1426,6 +1427,9 @@ module Rdkafka
       end
     end
 
+    # Checks if the admin is closed and raises an error if so
+    # @param method [Symbol] name of the calling method for error context
+    # @raise [ClosedAdminError] when the admin is closed
     def closed_admin_check(method)
       raise Rdkafka::ClosedAdminError.new(method) if closed?
     end

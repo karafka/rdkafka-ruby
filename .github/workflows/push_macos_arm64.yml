@@ -16,7 +16,7 @@ jobs:
   push:
     if: github.repository_owner == 'karafka'
     timeout-minutes: 30
-    runs-on: macos-15
+    runs-on: macos-26
     environment: deployment
     permissions:
       contents: write

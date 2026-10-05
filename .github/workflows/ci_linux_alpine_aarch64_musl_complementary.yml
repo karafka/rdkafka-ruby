@@ -80,7 +80,7 @@ jobs:
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
             -e CI=true \
-            alpine:3.23@sha256:865b95f46d98cf867a156fe4a135ad3fe50d2056aa3f25ed31662dff6da4eb62 \
+            alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 \
             sh -c '
               apk add --no-cache git curl ca-certificates build-base linux-headers \
                 pkgconf perl autoconf automake libtool bison flex file bash wget zstd-dev \

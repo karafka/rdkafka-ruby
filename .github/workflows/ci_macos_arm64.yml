@@ -33,9 +33,10 @@ jobs:
           - '3.3'
         macos-version:
           - 'macos-15' # macOS 15 Sequoia (ARM64)
+          - 'macos-26' # macOS 26 Tahoe (ARM64)
         include:
           - ruby: '3.4'
-            macos-version: 'macos-15'
+            macos-version: 'macos-26'
             coverage: 'true'
     runs-on: ${{ matrix.macos-version }}
     steps:
@@ -181,9 +182,10 @@ jobs:
           - '3.3'
         macos-version:
           - 'macos-15'
+          - 'macos-26'
         include:
           - ruby: '3.4'
-            macos-version: 'macos-15'
+            macos-version: 'macos-26'
             coverage: 'true'
     runs-on: ${{ matrix.macos-version }}
     steps:

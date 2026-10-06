@@ -1530,7 +1530,7 @@ RSpec.describe Rdkafka::Admin do
 
       describe "with a group that does not exist" do
         it "reports it as dead with no members" do
-          report = admin.describe_consumer_groups([group_name]).wait(max_wait_timeout_ms: 30_000)
+          report = describe_consumer_groups_settled(admin, [group_name])
 
           group = report.groups.first
 
@@ -1545,9 +1545,7 @@ RSpec.describe Rdkafka::Admin do
         let(:other_group_name) { TestTopics.unique }
 
         it "reports every requested group in request order" do
-          report = admin
-            .describe_consumer_groups([group_name, other_group_name])
-            .wait(max_wait_timeout_ms: 30_000)
+          report = describe_consumer_groups_settled(admin, [group_name, other_group_name])
 
           expect(report.groups.map { |group| group[:group_id] }).to eq([group_name, other_group_name])
         end

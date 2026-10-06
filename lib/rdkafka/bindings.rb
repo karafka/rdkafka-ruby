@@ -129,6 +129,7 @@ module Rdkafka
     RD_KAFKA_MSG_STATUS_NOT_PERSISTED = 0
     RD_KAFKA_MSG_STATUS_POSSIBLY_PERSISTED = 1
     RD_KAFKA_MSG_STATUS_PERSISTED = 2
+
     attach_function :rd_kafka_topic_new, [:pointer, :string, :pointer], :pointer
     attach_function :rd_kafka_topic_destroy, [:pointer], :pointer
     attach_function :rd_kafka_topic_name, [:pointer], :string

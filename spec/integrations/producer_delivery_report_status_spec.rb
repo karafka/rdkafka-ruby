@@ -74,15 +74,14 @@ unreachable = Rdkafka::Config.new("bootstrap.servers": "127.0.0.1:9095", "messag
 begin
   handle = unreachable.produce(topic: topic_name, payload: "payload")
 
-  begin
-    handle.wait(max_wait_timeout_ms: 15_000)
-  rescue Rdkafka::RdkafkaError => e
-    puts "Undeliverable: #{e.code}"
-  end
+  # `raise_response_error: false` returns the report of a failed delivery instead of raising, so
+  # its `error` and `status` can be inspected to decide on a retry
+  report = handle.wait(max_wait_timeout_ms: 15_000, raise_response_error: false)
 
-  report = handle.create_result
+  puts "Undeliverable: error=#{report.error&.code.inspect} status=#{report.status} " \
+       "not_persisted=#{report.not_persisted?} broker_id=#{report.broker_id.inspect}"
 
-  puts "Undeliverable: status=#{report.status} not_persisted=#{report.not_persisted?} broker_id=#{report.broker_id.inspect}"
+  fail!("expected a delivery error") unless report.error.is_a?(Rdkafka::RdkafkaError)
 
   fail!("expected a not persisted message, got status #{report.status}") unless report.not_persisted?
   fail!("expected no broker, got #{report.broker_id}") unless report.broker_id.nil?

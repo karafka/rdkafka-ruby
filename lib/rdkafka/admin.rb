@@ -527,6 +527,8 @@ module Rdkafka
     # does not know is not an error: it is reported in the `Dead` state with no members.
     #
     # @param group_ids [Array<String>] ids of the consumer groups to describe
+    # @param include_authorized_operations [Boolean] whether to also fetch the ACL operations the
+    #   client is authorized to perform on each group (reported as `:authorized_operations`)
     # @return [DescribeConsumerGroupsHandle] handle that can be used to wait for the result
     # @raise [RdkafkaError] when describing the consumer groups fails as a whole
     #
@@ -542,7 +544,7 @@ module Rdkafka
     #       puts "  #{member[:client_id]}@#{member[:host]}: #{member[:assignment]}"
     #     end
     #   end
-    def describe_consumer_groups(group_ids)
+    def describe_consumer_groups(group_ids, include_authorized_operations: false)
       closed_admin_check(__method__)
 
       group_id_ptrs = group_ids.map { |group_id| FFI::MemoryPointer.from_string(group_id) }
@@ -571,6 +573,10 @@ module Rdkafka
         )
       end
       Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
+
+      if include_authorized_operations
+        Rdkafka::Bindings.rd_kafka_AdminOptions_set_include_authorized_operations(admin_options_ptr, 1)
+      end
 
       begin
         @native_kafka.with_inner do |inner|

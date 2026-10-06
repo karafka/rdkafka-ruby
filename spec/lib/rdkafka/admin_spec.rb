@@ -1475,8 +1475,11 @@ RSpec.describe Rdkafka::Admin do
           expect(group[:is_simple_consumer_group]).to be(false)
           expect(group[:state]).to eq(Rdkafka::Bindings::RD_KAFKA_CONSUMER_GROUP_STATE_STABLE)
           expect(group[:state_name]).to eq("Stable")
+          expect(group[:type]).to eq(Rdkafka::Bindings::RD_KAFKA_CONSUMER_GROUP_TYPE_CLASSIC)
+          expect(group[:type_name]).to eq("Classic")
           expect(group[:partition_assignor]).to be_a(String)
           expect(group[:coordinator]).to include(id: Integer, host: String, port: Integer)
+          expect(group[:authorized_operations]).to be_nil
           expect(group[:members].size).to eq(1)
 
           member = group[:members].first
@@ -1486,6 +1489,42 @@ RSpec.describe Rdkafka::Admin do
           expect(member[:group_instance_id]).to be_nil
           expect(member[:host]).to be_a(String)
           expect(member[:assignment]).to eq(topic_name => (0...topic_partition_count).to_a)
+          expect(member[:target_assignment]).to be_nil
+        end
+
+        it "returns the authorized operations when requested" do
+          report = admin
+            .describe_consumer_groups([group_name], include_authorized_operations: true)
+            .wait(max_wait_timeout_ms: 30_000)
+
+          expect(report.groups.first[:authorized_operations])
+            .to include(Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_DESCRIBE)
+        end
+      end
+
+      describe "with an active consumer protocol (KIP-848) group" do
+        let(:consumer_config) { rdkafka_consumer_config("group.id": group_name, "group.protocol": "consumer") }
+        let(:consumer) { consumer_config.consumer }
+
+        before do
+          admin.create_topic(topic_name, topic_partition_count, topic_replication_factor).wait(max_wait_timeout_ms: 15_000)
+
+          consumer.subscribe(topic_name)
+          wait_for_assignment(consumer)
+        end
+
+        after { consumer.close }
+
+        it "returns the group type and the member target assignment" do
+          report = admin.describe_consumer_groups([group_name]).wait(max_wait_timeout_ms: 30_000)
+
+          group = report.groups.first
+
+          expect(group[:error]).to be_nil
+          expect(group[:type]).to eq(Rdkafka::Bindings::RD_KAFKA_CONSUMER_GROUP_TYPE_CONSUMER)
+          expect(group[:type_name]).to eq("Consumer")
+          expect(group[:members].size).to eq(1)
+          expect(group[:members].first[:target_assignment]).to eq(topic_name => (0...topic_partition_count).to_a)
         end
       end
 

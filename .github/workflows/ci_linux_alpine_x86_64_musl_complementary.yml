@@ -111,6 +111,8 @@ jobs:
           - ruby: '3.4'
             alpine_version: '3.24'
           - ruby: '3.4'
+            alpine_version: '3.24'
+          - ruby: '3.4'
             alpine_version: '3.22'
           - ruby: '3.3'
             alpine_version: '3.22'

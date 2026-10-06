@@ -33,15 +33,11 @@ jobs:
           - '3.3'
           - '3.2'
         macos-version:
-          - 'macos-14' # macOS 14 Sonoma (ARM64)
           - 'macos-15' # macOS 15 Sequoia (ARM64)
         include:
           - ruby: '3.4'
             macos-version: 'macos-15'
             coverage: 'true'
-        exclude:
-          - ruby: '4.0'
-            macos-version: 'macos-14'
     runs-on: ${{ matrix.macos-version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -186,15 +182,11 @@ jobs:
           - '3.3'
           - '3.2'
         macos-version:
-          - 'macos-14'
           - 'macos-15'
         include:
           - ruby: '3.4'
             macos-version: 'macos-15'
             coverage: 'true'
-        exclude:
-          - ruby: '4.0'
-            macos-version: 'macos-14'
     runs-on: ${{ matrix.macos-version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

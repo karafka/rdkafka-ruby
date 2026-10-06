@@ -1,7 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.31.0 (Unreleased)
-- [Enhancement] Bump librdkafka to `2.15.1` for OpenSSL and libcurl security fixes. It changes how IPv6 addresses are formatted and validated against broker certificates.
+- [Enhancement] Bump librdkafka to `2.16.0` for OpenSSL and libcurl security fixes. It changes how IPv6 addresses are formatted and validated against broker certificates, and admin requests in flight on a decommissioned broker now fail with a retryable transport error.
 - [Enhancement] Bump the bundled OpenSSL to `3.5.9` (LTS) for its security fixes.
 - [Change] Build the precompiled `macos_arm64` library on macOS 26 with the minimum macOS pinned to 14.0, instead of inheriting it from the build host.
 - [Change] Build the precompiled `aarch64-linux-musl` gem on Alpine `3.24` (was `3.23`), matching `x86_64-linux-musl`.

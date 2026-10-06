@@ -4,6 +4,8 @@ module Rdkafka
   class Admin
     # Report for describe consumer groups operation result
     class DescribeConsumerGroupsReport
+      include DescribeResultParsing
+
       # Described consumer groups, one per requested group id. Each entry is a hash with:
       #   - `:group_id` [String] the consumer group id
       #   - `:error` [RdkafkaError, nil] error describing this group, or `nil` on success. The
@@ -21,7 +23,8 @@ module Rdkafka
       #     `RD_KAFKA_CONSUMER_GROUP_TYPE_UNKNOWN`
       #   - `:type_name` [String] human-readable name of that type (e.g. `"Classic"`, `"Consumer"`)
       #   - `:partition_assignor` [String, nil] partition assignor in use (e.g. `"range"`)
-      #   - `:coordinator` [Hash, nil] the group coordinator broker as `{ id:, host:, port: }`
+      #   - `:coordinator` [Hash, nil] the group coordinator broker as
+      #     `{ id:, host:, port:, rack: }`
       #   - `:authorized_operations` [Array<Integer>, nil] ACL operations the client may perform on
       #     the group, as `Bindings::RD_KAFKA_ACL_OPERATION_*` codes. `nil` unless requested with
       #     `include_authorized_operations: true`.
@@ -72,7 +75,7 @@ module Rdkafka
           type_name: read_string(Bindings.rd_kafka_consumer_group_type_name(type)),
           partition_assignor:
             read_string(Bindings.rd_kafka_ConsumerGroupDescription_partition_assignor(group_ptr)),
-          coordinator: build_node(Bindings.rd_kafka_ConsumerGroupDescription_coordinator(group_ptr)),
+          coordinator: extract_node(Bindings.rd_kafka_ConsumerGroupDescription_coordinator(group_ptr)),
           authorized_operations: build_authorized_operations(group_ptr),
           members: Array.new(Bindings.rd_kafka_ConsumerGroupDescription_member_count(group_ptr)) do |index|
             build_member(Bindings.rd_kafka_ConsumerGroupDescription_member(group_ptr, index))
@@ -120,23 +123,11 @@ module Rdkafka
       # @return [Array<Integer>, nil]
       def build_authorized_operations(group_ptr)
         count_ptr = FFI::MemoryPointer.new(:size_t)
-        operations_ptr = Bindings.rd_kafka_ConsumerGroupDescription_authorized_operations(group_ptr, count_ptr)
 
-        return nil if operations_ptr.null?
-
-        operations_ptr.read_array_of_int(count_ptr.read(:size_t))
-      end
-
-      # @param node_ptr [FFI::Pointer] pointer to the `rd_kafka_Node_t`
-      # @return [Hash, nil]
-      def build_node(node_ptr)
-        return nil if node_ptr.null?
-
-        {
-          id: Bindings.rd_kafka_Node_id(node_ptr),
-          host: read_string(Bindings.rd_kafka_Node_host(node_ptr)),
-          port: Bindings.rd_kafka_Node_port(node_ptr)
-        }
+        extract_authorized_operations(
+          Bindings.rd_kafka_ConsumerGroupDescription_authorized_operations(group_ptr, count_ptr),
+          count_ptr
+        )
       end
 
       # @param error_ptr [FFI::Pointer] pointer to the `rd_kafka_error_t`

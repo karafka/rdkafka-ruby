@@ -220,6 +220,8 @@ module Rdkafka
         when Rdkafka::Bindings::RD_KAFKA_EVENT_LISTOFFSETS_RESULT then ListOffsetsHandler
         when Rdkafka::Bindings::RD_KAFKA_EVENT_LISTCONSUMERGROUPS_RESULT then ListConsumerGroupsHandler
         when Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBECONSUMERGROUPS_RESULT then DescribeConsumerGroupsHandler
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBECLUSTER_RESULT then DescribeClusterHandler
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBETOPICS_RESULT then DescribeTopicsHandler
         end
 
         handler&.call(event_ptr)

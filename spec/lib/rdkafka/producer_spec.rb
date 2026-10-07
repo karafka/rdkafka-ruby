@@ -705,23 +705,30 @@ RSpec.describe Rdkafka::Producer do
     }.to raise_error Rdkafka::RdkafkaError
   end
 
-  it "raises a timeout error when waiting too long" do
-    handle = producer.produce(
-      topic: topic,
-      payload: "payload timeout",
-      key: "key timeout"
-    )
+  context "when the delivery report is not ready yet" do
+    # No broker listens on this port, so the message stays pending until it times out
+    let(:producer) do
+      rdkafka_producer_config(
+        "bootstrap.servers": "127.0.0.1:9095",
+        "message.timeout.ms": 2_000
+      ).producer
+    end
 
-    # With a warmed-up broker connection the message may already be delivered
-    # before we get to call wait, so only assert timeout if still pending
-    if handle[:pending]
+    it "raises a timeout error when waiting too long" do
+      handle = producer.produce(
+        topic: TestTopics.unique,
+        payload: "payload timeout",
+        key: "key timeout"
+      )
+
       expect {
         handle.wait(max_wait_timeout_ms: 0)
       }.to raise_error Rdkafka::Producer::DeliveryHandle::WaitTimeoutError
-    end
 
-    # Waiting with a real timeout should always work
-    handle.wait(max_wait_timeout_ms: 30_000)
+      # Drain the handle so it does not stay in the registry
+      report = handle.wait(max_wait_timeout_ms: 10_000, raise_response_error: false)
+      expect(report.error.code).to eq(:msg_timed_out)
+    end
   end
 
   context "methods that should not be called after a producer has been closed" do

@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-# Guards the public `Rdkafka::Bindings` surface across the split of `bindings.rb` into
-# `lib/rdkafka/bindings/*.rb`. The lists were taken from the single-file module before the split.
-# Adding bindings needs no change here; removing or renaming one fails.
+# Guards the public `Rdkafka::Bindings` surface defined across `bindings.rb` and
+# `lib/rdkafka/bindings/*.rb`. Adding bindings needs no change here; removing or renaming one fails.
 RSpec.describe Rdkafka::Bindings do
   let(:expected_methods) do
     %i[
@@ -166,11 +165,11 @@ RSpec.describe Rdkafka::Bindings do
     ]
   end
 
-  it "defines every method the single-file module defined" do
+  it "defines every expected method" do
     expect(described_class.singleton_methods).to include(*expected_methods)
   end
 
-  it "defines every constant the single-file module defined as its own constant" do
+  it "defines every expected constant as its own constant" do
     expect(described_class.constants(false)).to include(*expected_constants)
   end
 

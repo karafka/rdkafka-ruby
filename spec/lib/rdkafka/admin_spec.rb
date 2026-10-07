@@ -18,6 +18,23 @@ RSpec.describe Rdkafka::Admin do
   let(:operation) { Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ }
   let(:permission_type) { Rdkafka::Bindings::RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW }
   let(:admin) { config.admin }
+  # The broker advertises 127.0.0.1 on the port of the listener the specs bootstrap through (9092
+  # plaintext, 9093 SSL). The rack is read from the broker's own config, as the compose brokers set
+  # `rack-1` and the macOS CI broker sets none.
+  let(:broker_node) do
+    port = Integer(rdkafka_base_config[:"bootstrap.servers"].split(":").last)
+
+    { id: 1, host: "127.0.0.1", port: port, rack: broker_rack }
+  end
+  let(:broker_rack) do
+    resource = admin
+      .describe_configs([{ resource_type: Rdkafka::Bindings::RD_KAFKA_RESOURCE_BROKER, resource_name: "1" }])
+      .wait(max_wait_timeout_ms: 15_000)
+      .resources
+      .first
+
+    resource.configs.find { |config| config.name == "broker.rack" }&.value
+  end
 
   # Close the memoized admin after each example so cleanup does not rely on the GC finalizer. The
   # shared registry-empty check lives in the global hook in spec_helper.
@@ -1397,6 +1414,84 @@ RSpec.describe Rdkafka::Admin do
           end
         end
       end
+    end
+  end
+
+  describe "#describe_cluster" do
+    it "returns the cluster id, the controller and the broker nodes" do
+      report = admin.describe_cluster.wait(max_wait_timeout_ms: 15_000)
+
+      expect(report).to be_a(Rdkafka::Admin::DescribeClusterReport)
+      expect(report.cluster_id).to be_a(String)
+      expect(report.cluster_id).not_to be_empty
+      expect(report.nodes).to eq([broker_node])
+      expect(report.controller).to eq(broker_node)
+      expect(report.authorized_operations).to be_nil
+    end
+
+    it "returns the authorized operations when requested" do
+      report = admin.describe_cluster(include_authorized_operations: true).wait(max_wait_timeout_ms: 15_000)
+
+      expect(report.authorized_operations).to include(Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_DESCRIBE)
+    end
+
+    it "raises when the admin is closed" do
+      admin.close
+
+      expect { admin.describe_cluster }.to raise_error(Rdkafka::ClosedAdminError, /describe_cluster/)
+    end
+  end
+
+  describe "#describe_topics" do
+    before do
+      admin.create_topic(topic_name, topic_partition_count, topic_replication_factor).wait(max_wait_timeout_ms: 15_000)
+    end
+
+    it "describes an existing topic" do
+      report = admin.describe_topics([topic_name]).wait(max_wait_timeout_ms: 15_000)
+
+      expect(report).to be_a(Rdkafka::Admin::DescribeTopicsReport)
+      expect(report.topics.size).to eq(1)
+
+      topic = report.topics.first
+
+      expect(topic[:name]).to eq(topic_name)
+      expect(topic[:error]).to be_nil
+      expect(topic[:topic_id]).to be_a(String)
+      expect(topic[:topic_id]).not_to be_empty
+      expect(topic[:is_internal]).to be(false)
+      expect(topic[:authorized_operations]).to be_nil
+      expect(topic[:partitions].map { |partition| partition[:partition] }).to eq([0, 1, 2])
+      expect(topic[:partitions]).to all(include(leader: broker_node, replicas: [broker_node], isr: [broker_node]))
+    end
+
+    it "returns the authorized operations when requested" do
+      report = admin.describe_topics([topic_name], include_authorized_operations: true).wait(max_wait_timeout_ms: 15_000)
+
+      expect(report.topics.first[:authorized_operations]).to include(Rdkafka::Bindings::RD_KAFKA_ACL_OPERATION_READ)
+    end
+
+    it "returns a per-topic error for a topic that does not exist" do
+      missing_topic_name = TestTopics.unique
+
+      report = admin.describe_topics([topic_name, missing_topic_name]).wait(max_wait_timeout_ms: 15_000)
+      topics = report.topics.to_h { |topic| [topic[:name], topic] }
+
+      expect(topics[topic_name][:error]).to be_nil
+      expect(topics[missing_topic_name][:error]).to be_a(Rdkafka::RdkafkaError)
+      expect(topics[missing_topic_name][:error].code).to eq(:unknown_topic_or_part)
+      expect(topics[missing_topic_name][:partitions]).to be_empty
+      expect(topics[missing_topic_name][:topic_id]).to be_nil
+    end
+
+    it "returns no topics for an empty list" do
+      expect(admin.describe_topics([]).wait(max_wait_timeout_ms: 15_000).topics).to eq([])
+    end
+
+    it "raises before registering a handle when topic names are not an Array of Strings" do
+      expect { admin.describe_topics(topic_name) }.to raise_error(ArgumentError)
+      expect { admin.describe_topics([1]) }.to raise_error(ArgumentError)
+      expect(Rdkafka::Admin::DescribeTopicsHandle::REGISTRY).to be_empty
     end
   end
 

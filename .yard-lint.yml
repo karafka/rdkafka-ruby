@@ -23,6 +23,7 @@ Documentation/UndocumentedObjects:
   Severity: error
   Exclude:
   - lib/rdkafka/bindings.rb
+  - lib/rdkafka/bindings/**/*
   ExcludedMethods:
   - initialize/0
   - "/^_/"

@@ -668,6 +668,83 @@ module Rdkafka
       handle
     end
 
+    # Describes the given consumer groups: their state, partition assignor, coordinator and
+    # members with their partition assignments.
+    #
+    # Each requested group is reported separately, with its own `:error`. A group id the cluster
+    # does not know is not an error: it is reported in the `Dead` state with no members.
+    #
+    # @param group_ids [Array<String>] ids of the consumer groups to describe
+    # @param include_authorized_operations [Boolean] whether to also fetch the ACL operations the
+    #   client is authorized to perform on each group (reported as `:authorized_operations`)
+    # @return [DescribeConsumerGroupsHandle] handle that can be used to wait for the result
+    # @raise [RdkafkaError] when describing the consumer groups fails as a whole
+    #
+    # @example Describe a consumer group and print its members and their assignments
+    #   report = admin.describe_consumer_groups(["example-group"]).wait(max_wait_timeout_ms: 15_000)
+    #
+    #   report.groups.each do |group|
+    #     next warn "#{group[:group_id]}: #{group[:error].message}" if group[:error]
+    #
+    #     puts "#{group[:group_id]} - #{group[:state_name]} (#{group[:members].size} members)"
+    #
+    #     group[:members].each do |member|
+    #       puts "  #{member[:client_id]}@#{member[:host]}: #{member[:assignment]}"
+    #     end
+    #   end
+    def describe_consumer_groups(group_ids, include_authorized_operations: false)
+      closed_admin_check(__method__)
+
+      group_id_ptrs = group_ids.map { |group_id| FFI::MemoryPointer.from_string(group_id) }
+      group_ids_ptr = FFI::MemoryPointer.new(:pointer, group_id_ptrs.size)
+      group_ids_ptr.write_array_of_pointer(group_id_ptrs)
+
+      # Get a pointer to the queue that our request will be enqueued on
+      queue_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_queue_get_background(inner)
+      end
+
+      if queue_ptr.null?
+        raise Rdkafka::Config::ConfigError.new("rd_kafka_queue_get_background was NULL")
+      end
+
+      # Create and register the handle we will return to the caller
+      handle = DescribeConsumerGroupsHandle.new
+      handle[:pending] = true
+      handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
+      DescribeConsumerGroupsHandle.register(handle)
+
+      admin_options_ptr = @native_kafka.with_inner do |inner|
+        Rdkafka::Bindings.rd_kafka_AdminOptions_new(
+          inner,
+          Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DESCRIBECONSUMERGROUPS
+        )
+      end
+      Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
+
+      begin
+        set_include_authorized_operations(admin_options_ptr) if include_authorized_operations
+
+        @native_kafka.with_inner do |inner|
+          Rdkafka::Bindings.rd_kafka_DescribeConsumerGroups(
+            inner,
+            group_ids_ptr,
+            group_id_ptrs.size,
+            admin_options_ptr,
+            queue_ptr
+          )
+        end
+      rescue Exception
+        DescribeConsumerGroupsHandle.remove(handle.to_ptr.address)
+        raise
+      ensure
+        Rdkafka::Bindings.rd_kafka_AdminOptions_destroy(admin_options_ptr)
+        Rdkafka::Bindings.rd_kafka_queue_destroy(queue_ptr)
+      end
+
+      handle
+    end
+
     # Deletes the named topic
     #
     # @param topic_name [String] name of the topic to delete

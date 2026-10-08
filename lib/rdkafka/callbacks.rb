@@ -219,6 +219,9 @@ module Rdkafka
         when Rdkafka::Bindings::RD_KAFKA_EVENT_INCREMENTALALTERCONFIGS_RESULT then IncrementalAlterConfigsHandler
         when Rdkafka::Bindings::RD_KAFKA_EVENT_LISTOFFSETS_RESULT then ListOffsetsHandler
         when Rdkafka::Bindings::RD_KAFKA_EVENT_LISTCONSUMERGROUPS_RESULT then ListConsumerGroupsHandler
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBECONSUMERGROUPS_RESULT then DescribeConsumerGroupsHandler
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBECLUSTER_RESULT then DescribeClusterHandler
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBETOPICS_RESULT then DescribeTopicsHandler
         end
 
         handler&.call(event_ptr)
@@ -247,6 +250,9 @@ module Rdkafka
           delivery_handle[:response] = message[:err]
           delivery_handle[:partition] = message[:partition]
           delivery_handle[:offset] = message[:offset]
+          delivery_handle[:status] = Rdkafka::Bindings.rd_kafka_message_status(message_ptr)
+          delivery_handle[:latency] = Rdkafka::Bindings.rd_kafka_message_latency(message_ptr)
+          delivery_handle[:broker_id] = Rdkafka::Bindings.rd_kafka_message_broker_id(message_ptr)
           # The topic is not stored on the handle here: it is already set as the handle's
           # `topic` Ruby attribute during produce, which spares a native string copy that
           # would otherwise be allocated and retained for every message.
@@ -260,7 +266,10 @@ module Rdkafka
                   message[:offset],
                   topic_name,
                   message[:err],
-                  delivery_handle.label
+                  delivery_handle.label,
+                  status: delivery_handle[:status],
+                  latency: delivery_handle[:latency],
+                  broker_id: delivery_handle[:broker_id]
                 ),
                 delivery_handle
               )

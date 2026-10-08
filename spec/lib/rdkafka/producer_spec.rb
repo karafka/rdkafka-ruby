@@ -458,6 +458,37 @@ RSpec.describe Rdkafka::Producer do
     expect(message.timestamp).to be_within(10).of(Time.now)
   end
 
+  describe "delivery report persistence status, latency and broker" do
+    let(:leader_id) do
+      producer.metadata(topic).topics.first[:partitions].find { |info| info[:partition_id] == 0 }[:leader]
+    end
+
+    it "reports a persisted message, its latency and the partition leader via #wait" do
+      report = producer.produce(topic: topic, payload: "payload", partition: 0).wait(max_wait_timeout_ms: 15_000)
+
+      expect(report.status).to eq(Rdkafka::Bindings::RD_KAFKA_MSG_STATUS_PERSISTED)
+      expect(report).to be_persisted
+      expect(report).not_to be_possibly_persisted
+      expect(report).not_to be_not_persisted
+      expect(report.latency).to be_a(Integer)
+      expect(report.latency).to be > 0
+      expect(report.broker_id).to eq(leader_id)
+    end
+
+    it "passes the same values to the delivery callback" do
+      callback_reports = []
+      producer.delivery_callback = ->(report) { callback_reports << report }
+
+      report = producer.produce(topic: topic, payload: "payload", partition: 0).wait(max_wait_timeout_ms: 15_000)
+      producer.flush
+
+      expect(callback_reports.size).to eq(1)
+      expect(callback_reports.first.status).to eq(Rdkafka::Bindings::RD_KAFKA_MSG_STATUS_PERSISTED)
+      expect(callback_reports.first.latency).to eq(report.latency)
+      expect(callback_reports.first.broker_id).to eq(report.broker_id)
+    end
+  end
+
   context "timestamp" do
     it "raises a type error if not nil, integer or time" do
       expect {
@@ -766,6 +797,17 @@ RSpec.describe Rdkafka::Producer do
       sleep(2)
       expect(handler.create_result.error).to be_a(Rdkafka::RdkafkaError)
       expect(handler.create_result.label).to eq("na")
+    end
+
+    it "reports the message as not persisted with no broker" do
+      handler = producer.produce(topic: topic, payload: nil)
+      # Wait for the async callbacks and delivery registry to update
+      sleep(2)
+      report = handler.create_result
+
+      expect(report.status).to eq(Rdkafka::Bindings::RD_KAFKA_MSG_STATUS_NOT_PERSISTED)
+      expect(report).to be_not_persisted
+      expect(report.broker_id).to be_nil
     end
   end
 

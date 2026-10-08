@@ -56,5 +56,19 @@ RSpec.describe Rdkafka::Producer::DeliveryHandle do
 
       it { expect(report.error).to eq(Rdkafka::RdkafkaError.new(response)) }
     end
+
+    context "when the delivery callback set status, latency and broker id" do
+      before do
+        handle[:status] = Rdkafka::Bindings::RD_KAFKA_MSG_STATUS_PERSISTED
+        handle[:latency] = 2_000
+        handle[:broker_id] = 1
+      end
+
+      it "passes them to the report" do
+        expect(report.status).to eq(Rdkafka::Bindings::RD_KAFKA_MSG_STATUS_PERSISTED)
+        expect(report.latency).to eq(2_000)
+        expect(report.broker_id).to eq(1)
+      end
+    end
   end
 end

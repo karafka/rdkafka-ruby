@@ -1,7 +1,11 @@
 # Rdkafka Changelog
 
 ## 0.31.0 (Unreleased)
-- [Enhancement] Bump librdkafka to `2.16.0` for OpenSSL and libcurl security fixes. It changes how IPv6 addresses are formatted and validated against broker certificates, and admin requests in flight on a decommissioned broker now fail with a retryable transport error.
+- [Feature] Add `status`, `latency` and `broker_id` to `Producer::DeliveryReport`, with `#persisted?`, `#possibly_persisted?` and `#not_persisted?`, so a failed delivery tells whether a retry may duplicate the message.
+- [Feature] Add `Admin#describe_cluster` to get the cluster id, controller and broker nodes (with racks) without a full metadata request.
+- [Feature] Add `Admin#describe_topics` to get topic ids, partition leaders and replicas, and per-topic errors. Both methods can also return the operations the client is authorized to perform.
+- [Feature] Add `Admin#describe_consumer_groups` to read the state, type, coordinator, authorized operations and members (with their current and target partition assignments) of consumer groups.
+- [Enhancement] Bump librdkafka to `2.16.0` for OpenSSL and libcurl security fixes. It changes how IPv6 addresses are formatted and validated against broker certificates.
 - [Enhancement] Bump the bundled OpenSSL to `3.5.9` (LTS) for its security fixes.
 - [Change] Build the precompiled `macos_arm64` library on macOS 26 with the minimum macOS pinned to 14.0, instead of inheriting it from the build host.
 - [Change] Build the precompiled `aarch64-linux-musl` gem on Alpine `3.24` (was `3.23`), matching `x86_64-linux-musl`.
@@ -17,7 +21,7 @@
 - [Fix] Honor the `isolation_level:` argument to `Admin#list_offsets`, which was silently ignored.
 - [Fix] Return correct results for every item of a multi-item topic, partition, group or ACL admin request, not just the first.
 - [Maintenance] Fix a use-after-free in the multi-item admin integration test that read result-name pointers after librdkafka had destroyed the background event, which made it flaky on newer glibc (e.g. Debian trixie).
-- [Maintenance] Stabilize consumer specs on slow CI runners: wait longer for a partition assignment, raise the `TestTopics.create` admin timeout (a timeout there also tripped the leaked-handle guard), and let the long-running consumption spec drain its backlog instead of stopping at a fixed 60s.
+- [Maintenance] Stabilize consumer specs on slow CI runners: wait longer for a partition assignment, raise the `TestTopics.create` admin timeout and drop the fixed 60s limit of the long-running consumption spec.
 - [Maintenance] Raise the `TestTopics.create` admin timeout to 30s so a loaded CI runner no longer hits `create topic timed out` (which also tripped the leaked-handle guard).
 
 ## 0.29.2 (2026-09-11)
@@ -95,7 +99,7 @@
 - [Feature] Support `rd_kafka_ListOffsets` admin API for querying partition offsets by specification (earliest, latest, max_timestamp, or by timestamp) without requiring a consumer group (#613).
 - [Enhancement] Use native ARM64 runners instead of QEMU emulation for Alpine musl aarch64 builds, improving build performance and reliability.
 - [Enhancement] Enable parallel compilation (`make -j$(nproc)`) for ARM64 Alpine musl builds.
-- [Enhancement] Add file descriptor API for fiber scheduler integration. Expose `enable_queue_io_events` and `enable_background_queue_io_events` on `Consumer`, `Producer`, and `Admin` to enable non-blocking monitoring with select/poll/epoll for integration with Ruby fiber schedulers (Falcon, Async) and custom event loops.
+- [Enhancement] Add `enable_queue_io_events` and `enable_background_queue_io_events` to `Consumer`, `Producer` and `Admin` for non-blocking file descriptor monitoring with fiber schedulers (Falcon, Async) and custom event loops.
 - [Enhancement] Add non-blocking poll methods (`poll_nb`, `events_poll_nb`) on `Consumer` that skip GVL release for efficient fiber scheduler integration when using `poll(0)`.
 - [Enhancement] Add `events_poll_nb_each` method on `Producer`, `Consumer`, and `Admin` for polling events in a single GVL/mutex session. Yields count after each iteration, caller returns `:stop` to break.
 - [Enhancement] Add `poll_nb_each` method on `Consumer` for non-blocking message polling with proper resource cleanup, yielding each message and supporting early termination via `:stop` return value.

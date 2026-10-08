@@ -148,6 +148,30 @@ module KafkaWaitHelpers
     end
   end
 
+  # Describes consumer groups, retrying while any group reports a transient coordinator error.
+  #
+  # librdkafka returns per-group DescribeGroups errors as-is, without retrying. On a fresh broker
+  # (e.g. when +__consumer_offsets+ is still being created or loaded) a group can come back with
+  # +not_coordinator+ or +coordinator_load_in_progress+ until its coordinator is ready.
+  #
+  # @param admin [Rdkafka::Admin] admin client to query
+  # @param group_ids [Array<String>] ids of the consumer groups to describe
+  # @param timeout_in_seconds [Integer] maximum seconds to retry before returning the last report
+  # @return [Rdkafka::Admin::DescribeConsumerGroupsReport] the last report
+  def describe_consumer_groups_settled(admin, group_ids, timeout_in_seconds: 30)
+    transient = %i[not_coordinator coordinator_load_in_progress coordinator_not_available]
+    deadline = Time.now.to_f + timeout_in_seconds
+
+    loop do
+      report = admin.describe_consumer_groups(group_ids).wait(max_wait_timeout_ms: 30_000)
+      settled = report.groups.none? { |group| transient.include?(group[:error]&.code) }
+
+      return report if settled || Time.now.to_f >= deadline
+
+      sleep(0.5)
+    end
+  end
+
   # Subscribes to a topic, polls once, executes the given block, then unsubscribes
   # and closes the consumer. Used to trigger consumer group listener callbacks.
   #

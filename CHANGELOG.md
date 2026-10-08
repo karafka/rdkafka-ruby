@@ -1,6 +1,7 @@
 # Rdkafka Changelog
 
 ## 0.31.0 (Unreleased)
+- **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.
 - [Feature] Add `status`, `latency` and `broker_id` to `Producer::DeliveryReport`, with `#persisted?`, `#possibly_persisted?` and `#not_persisted?`, so a failed delivery tells whether a retry may duplicate the message.
 - [Feature] Add `Admin#describe_cluster` to get the cluster id, controller and broker nodes (with racks) without a full metadata request.
 - [Feature] Add `Admin#describe_topics` to get topic ids, partition leaders and replicas, and per-topic errors. Both methods can also return the operations the client is authorized to perform.
@@ -9,7 +10,6 @@
 - [Enhancement] Bump the bundled OpenSSL to `3.5.9` (LTS) for its security fixes.
 - [Change] Build the precompiled `macos_arm64` library on macOS 26 with the minimum macOS pinned to 14.0, instead of inheriting it from the build host.
 - [Change] Build the precompiled `aarch64-linux-musl` gem on Alpine `3.24` (was `3.23`), matching `x86_64-linux-musl`.
-- [Change] Drop Ruby 3.2 support; require Ruby 3.3+.
 
 ## 0.30.0 (2026-09-25)
 - [Feature] Add `Admin#alter_consumer_group_offsets` and `Admin#delete_consumer_group_offsets` to set or clear a consumer group's committed offsets from the admin client.

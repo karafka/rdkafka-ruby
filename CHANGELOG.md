@@ -20,7 +20,7 @@
 - [Fix] Honor the `isolation_level:` argument to `Admin#list_offsets`, which was silently ignored.
 - [Fix] Return correct results for every item of a multi-item topic, partition, group or ACL admin request, not just the first.
 - [Maintenance] Fix a use-after-free in the multi-item admin integration test that read result-name pointers after librdkafka had destroyed the background event, which made it flaky on newer glibc (e.g. Debian trixie).
-- [Maintenance] Stabilize consumer specs on slow CI runners: wait longer for a partition assignment, raise the `TestTopics.create` admin timeout (a timeout there also tripped the leaked-handle guard), and let the long-running consumption spec drain its backlog instead of stopping at a fixed 60s.
+- [Maintenance] Stabilize consumer specs on slow CI runners: wait longer for a partition assignment, raise the `TestTopics.create` admin timeout and drop the fixed 60s limit of the long-running consumption spec.
 - [Maintenance] Raise the `TestTopics.create` admin timeout to 30s so a loaded CI runner no longer hits `create topic timed out` (which also tripped the leaked-handle guard).
 
 ## 0.29.2 (2026-09-11)

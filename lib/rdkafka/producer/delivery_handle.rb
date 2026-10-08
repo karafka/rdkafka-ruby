@@ -7,7 +7,10 @@ module Rdkafka
       layout :pending, :bool,
         :response, :int,
         :partition, :int,
-        :offset, :int64
+        :offset, :int64,
+        :status, :int,
+        :latency, :int64,
+        :broker_id, :int32
 
       # @return [Object, nil] label set during message production or nil by default
       attr_accessor :label
@@ -31,7 +34,10 @@ module Rdkafka
           # we should not return it
           topic,
           (self[:response] != 0) ? RdkafkaError.new(self[:response]) : nil,
-          label
+          label,
+          status: self[:status],
+          latency: self[:latency],
+          broker_id: self[:broker_id]
         )
       end
     end

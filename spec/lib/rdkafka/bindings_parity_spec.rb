@@ -1,16 +1,16 @@
 # frozen_string_literal: true
 
+require_relative "../../support/bindings_signatures"
+
 # Guards the public `Rdkafka::Bindings` surface defined across `bindings.rb` and
 # `lib/rdkafka/bindings/*.rb`. Adding bindings needs no change here; removing or renaming one fails.
 RSpec.describe Rdkafka::Bindings do
   let(:expected_methods) do
     %i[
-      attach_function attach_variable attached_functions attached_variables bitmask callback enum
-      enum_type enum_value ffi_convention ffi_lib ffi_lib_flags ffi_libraries find_type freeze
-      function_names lib_extension partition_key_bytesize partition_key_length partition_key_size
-      partitioner rd_kafka_AclBindingFilter_new rd_kafka_AclBinding_destroy
-      rd_kafka_AclBinding_error rd_kafka_AclBinding_host rd_kafka_AclBinding_name
-      rd_kafka_AclBinding_new rd_kafka_AclBinding_operation rd_kafka_AclBinding_permission_type
+      lib_extension partition_key_bytesize partition_key_length partition_key_size partitioner
+      rd_kafka_AclBindingFilter_new rd_kafka_AclBinding_destroy rd_kafka_AclBinding_error
+      rd_kafka_AclBinding_host rd_kafka_AclBinding_name rd_kafka_AclBinding_new
+      rd_kafka_AclBinding_operation rd_kafka_AclBinding_permission_type
       rd_kafka_AclBinding_principal rd_kafka_AclBinding_resource_pattern_type
       rd_kafka_AclBinding_restype rd_kafka_AdminOptions_destroy rd_kafka_AdminOptions_new
       rd_kafka_AdminOptions_set_include_authorized_operations
@@ -111,7 +111,7 @@ RSpec.describe Rdkafka::Bindings do
       rd_kafka_topic_partition_list_copy rd_kafka_topic_partition_list_destroy
       rd_kafka_topic_partition_list_new rd_kafka_topic_partition_list_set_offset
       rd_kafka_topic_result_error rd_kafka_topic_result_error_string rd_kafka_topic_result_name
-      rd_kafka_unsubscribe typedef
+      rd_kafka_unsubscribe
     ]
   end
 
@@ -167,12 +167,42 @@ RSpec.describe Rdkafka::Bindings do
     ]
   end
 
+  let(:expected_layouts) do
+    {
+      Message: { size: 72, offsets: [[:err, 0], [:rkt, 8], [:partition, 16], [:payload, 24], [:len, 32], [:key, 40], [:key_len, 48], [:offset, 56], [:_private, 64]] },
+      TopicPartition: { size: 64, offsets: [[:topic, 0], [:partition, 8], [:offset, 16], [:metadata, 24], [:metadata_size, 32], [:opaque, 40], [:err, 48], [:_private, 56]] },
+      TopicPartitionList: { size: 16, offsets: [[:cnt, 0], [:size, 4], [:elems, 8]] },
+      ConfigResource: { size: 16, offsets: [[:type, 0], [:name, 8]] },
+      NativeErrorDesc: { size: 24, offsets: [[:code, 0], [:name, 8], [:desc, 16]] },
+      NativeError: { size: 24, offsets: [[:code, 0], [:errstr, 8], [:fatal, 16], [:retriable, 17], [:txn_requires_abort, 18]] },
+      SizePtr: { size: 8, offsets: [[:value, 0]] }
+    }
+  end
+
   it "defines every expected method" do
-    expect(described_class.singleton_methods).to include(*expected_methods)
+    expect(described_class.singleton_methods(false)).to include(*expected_methods)
   end
 
   it "defines every expected constant as its own constant" do
     expect(described_class.constants(false)).to include(*expected_constants)
+  end
+
+  it "keeps the struct layouts" do
+    actual = expected_layouts.keys.to_h do |name|
+      struct = described_class.const_get(name)
+
+      [name, { size: struct.size, offsets: struct.offsets }]
+    end
+
+    expect(actual).to eq(expected_layouts)
+  end
+
+  # Catches drift from a deliberate binding, not a signature that was wrong from the start, and
+  # does not cover the `blocking:` flag
+  it "keeps the signature of every snapshotted function" do
+    expected = JSON.parse(File.read(BindingsSignatures::FIXTURE))
+
+    expect(BindingsSignatures.dump.slice(*expected.keys)).to eq(expected)
   end
 
   it "keeps the callbacks as own constants so they can be replaced with remove_const/const_set" do

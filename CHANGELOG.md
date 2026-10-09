@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.31.0 (Unreleased)
+## 0.31.0 (2026-10-09)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.
 - [Feature] Add `status`, `latency` and `broker_id` to `Producer::DeliveryReport`, with `#persisted?`, `#possibly_persisted?` and `#not_persisted?`, so a failed delivery tells whether a retry may duplicate the message.
 - [Feature] Add `Admin#describe_cluster` to get the cluster id, controller and broker nodes (with racks) without a full metadata request.

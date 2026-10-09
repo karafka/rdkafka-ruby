@@ -11,6 +11,7 @@
 - [Enhancement] Read each pointer field once in `Message#initialize`, saving 3 allocations per consumed message.
 - [Change] Build the precompiled `macos_arm64` library on macOS 26 with the minimum macOS pinned to 14.0, instead of inheriting it from the build host.
 - [Change] Build the precompiled `aarch64-linux-musl` gem on Alpine `3.24` (was `3.23`), matching `x86_64-linux-musl`.
+- [Maintenance] Split `lib/rdkafka/bindings.rb` into per-area files under `lib/rdkafka/bindings/`. `Rdkafka::Bindings` is unchanged.
 
 ## 0.30.0 (2026-09-25)
 - [Feature] Add `Admin#alter_consumer_group_offsets` and `Admin#delete_consumer_group_offsets` to set or clear a consumer group's committed offsets from the admin client.

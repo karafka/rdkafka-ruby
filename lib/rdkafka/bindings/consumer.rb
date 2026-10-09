@@ -75,5 +75,9 @@ module Rdkafka
         Rdkafka::Config.logger.error("Unhandled exception: #{err.class} - #{err.message}")
       end
     end
+
+    # Watermark offsets
+
+    attach_function :rd_kafka_query_watermark_offsets, [:pointer, :string, :int, :pointer, :pointer, :int], :int, blocking: true
   end
 end

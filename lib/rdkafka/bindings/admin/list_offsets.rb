@@ -22,9 +22,5 @@ module Rdkafka
     attach_function :rd_kafka_ListOffsetsResultInfo_timestamp, [:pointer], :int64
     attach_function :rd_kafka_AdminOptions_set_isolation_level, [:pointer, :int], :pointer
     attach_function :rd_kafka_topic_partition_get_leader_epoch, [:pointer], :int32
-
-    # Watermark offsets
-
-    attach_function :rd_kafka_query_watermark_offsets, [:pointer, :string, :int, :pointer, :pointer, :int], :int, blocking: true
   end
 end

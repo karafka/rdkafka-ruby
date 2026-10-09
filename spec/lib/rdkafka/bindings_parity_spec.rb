@@ -183,7 +183,7 @@ RSpec.describe Rdkafka::Bindings do
   end
 
   it "loads every group file from the bindings directory" do
-    group_files = Dir[File.expand_path("../../../lib/rdkafka/bindings/*.rb", __dir__)]
+    group_files = Dir[File.expand_path("../../../lib/rdkafka/bindings/**/*.rb", __dir__)]
 
     expect(group_files).not_to be_empty
     expect($LOADED_FEATURES).to include(*group_files)

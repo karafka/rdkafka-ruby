@@ -177,6 +177,8 @@ module Rdkafka
     attach_function :rd_kafka_event_type, [:pointer], :int32
     attach_function :rd_kafka_event_opaque, [:pointer], :pointer
     attach_function :rd_kafka_event_destroy, [:pointer], :void
+    attach_function :rd_kafka_event_error, [:pointer], :int32
+    attach_function :rd_kafka_event_error_string, [:pointer], :pointer
 
     # Extracting data from topic results
 
@@ -189,3 +191,7 @@ module Rdkafka
     attach_function :rd_kafka_group_result_partitions, [:pointer], :pointer # rd_kafka_group_result_t* => rd_kafka_topic_partition_list_t*
   end
 end
+
+require_relative "admin/configs"
+require_relative "admin/list_offsets"
+require_relative "admin/acls"

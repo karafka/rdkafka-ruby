@@ -80,10 +80,6 @@ module Rdkafka
 
     # Extracting error details from Acl results
     attach_function :rd_kafka_acl_result_error, [:pointer], :pointer
-    attach_function :rd_kafka_error_code, [:pointer], :int32
-    attach_function :rd_kafka_error_string, [:pointer], :pointer
-    attach_function :rd_kafka_event_error, [:pointer], :int32
-    attach_function :rd_kafka_event_error_string, [:pointer], :pointer
     attach_function :rd_kafka_AclBinding_error, [:pointer], :pointer
   end
 end

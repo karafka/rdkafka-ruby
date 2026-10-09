@@ -8,6 +8,8 @@ module Rdkafka
     attach_function :rd_kafka_error_is_retriable, [:pointer], :int
     attach_function :rd_kafka_error_txn_requires_abort, [:pointer], :int
     attach_function :rd_kafka_error_destroy, [:pointer], :void
+    attach_function :rd_kafka_error_code, [:pointer], :int32
+    attach_function :rd_kafka_error_string, [:pointer], :pointer
     attach_function :rd_kafka_get_err_descs, [:pointer, :pointer], :void
   end
 end

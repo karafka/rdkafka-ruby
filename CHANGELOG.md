@@ -7,6 +7,7 @@
 - [Feature] Add `Admin#describe_consumer_groups` to read the state, type, coordinator, authorized operations and members (with their current and target partition assignments) of consumer groups.
 - [Enhancement] Bump librdkafka to `2.15.1` for OpenSSL and libcurl security fixes. It changes how IPv6 addresses are formatted and validated against broker certificates.
 - [Enhancement] Bump the bundled OpenSSL to `3.5.9` (LTS) for its security fixes.
+- [Enhancement] Read each pointer field once in `Message#initialize`, saving 3 allocations per consumed message.
 - [Change] Build the precompiled `macos_arm64` library on macOS 26 with the minimum macOS pinned to 14.0, instead of inheriting it from the build host.
 - [Change] Build the precompiled `aarch64-linux-musl` gem on Alpine `3.24` (was `3.23`), matching `x86_64-linux-musl`.
 

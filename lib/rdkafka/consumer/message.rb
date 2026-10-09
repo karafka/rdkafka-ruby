@@ -35,19 +35,16 @@ module Rdkafka
       # @param native_message [Rdkafka::Bindings::Message] native message struct from librdkafka
       def initialize(native_message)
         # Set topic
-        unless native_message[:rkt].null?
-          @topic = Rdkafka::Bindings.rd_kafka_topic_name(native_message[:rkt])
-        end
+        rkt = native_message[:rkt]
+        @topic = Rdkafka::Bindings.rd_kafka_topic_name(rkt) unless rkt.null?
         # Set partition
         @partition = native_message[:partition]
         # Set payload
-        unless native_message[:payload].null?
-          @payload = native_message[:payload].read_string(native_message[:len])
-        end
+        payload = native_message[:payload]
+        @payload = payload.read_string(native_message[:len]) unless payload.null?
         # Set key
-        unless native_message[:key].null?
-          @key = native_message[:key].read_string(native_message[:key_len])
-        end
+        key = native_message[:key]
+        @key = key.read_string(native_message[:key_len]) unless key.null?
         # Set offset
         @offset = native_message[:offset]
         # Set timestamp

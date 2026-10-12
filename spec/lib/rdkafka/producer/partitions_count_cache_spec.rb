@@ -391,12 +391,17 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
     end
 
     it "handles multiple topics with different TTLs correctly" do
+      # Drive both caches from one controlled clock, so a runner stall cannot expire an entry
+      now = 0
+      allow(cache).to receive(:monotonic_now_ms) { now }
+      allow(custom_ttl_cache).to receive(:monotonic_now_ms) { now }
+
       # Set up initial values
       cache.get(topic) { partition_count }
       custom_ttl_cache.get(topic) { partition_count }
 
-      # Wait past custom TTL but not default TTL (convert ms to seconds)
-      sleep(custom_ttl_ms / 1000.0 + 0.1)
+      # Move past custom TTL but not default TTL
+      now += custom_ttl_ms + 100
 
       # Default cache should NOT refresh (still within default TTL)
       default_result = cache.get(topic) { fail "Should not be called for default cache" }
@@ -414,8 +419,8 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
       expect(custom_block_called).to be true
       expect(custom_result).to eq(custom_cache_value)
 
-      # Now wait past default TTL (convert ms to seconds)
-      sleep((default_ttl_ms - custom_ttl_ms) / 1000.0 + 0.1)
+      # Now move past default TTL
+      now += default_ttl_ms - custom_ttl_ms + 100
 
       # Now default cache should also refresh
       default_block_called = false

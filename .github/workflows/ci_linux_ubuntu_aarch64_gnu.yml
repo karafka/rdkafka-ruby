@@ -18,7 +18,8 @@
 # - Verifies that the same codebase works across different toolchain versions
 #
 # PRECOMPILED FLOW (build_precompiled + specs_precompiled):
-# - Builds the precompiled library in an Ubuntu 22.04 container, so it needs at most glibc 2.34
+# - Builds the precompiled library in an Ubuntu 22.04 container and fails the build if it needs
+#   a glibc symbol newer than GLIBC_2.34 (the RHEL 9 / Amazon Linux 2023 floor)
 # - Tests our precompiled static libraries work on different Ubuntu versions
 # - Validates that statically-linked binaries are truly portable across environments
 # - Ensures precompiled libraries don't have unexpected system dependencies
@@ -26,7 +27,7 @@
 #
 # GLIBC FLOOR (glibc_floor):
 # - Ubuntu 22.04 runners are retired, so we no longer run specs there
-# - Instead, loads the precompiled library with the dynamic loader on ubuntu:22.04 (glibc 2.34),
+# - Instead, loads the precompiled library with the dynamic loader on ubuntu:22.04,
 #   debian:12, rockylinux:9 and amazonlinux:2023 containers
 #
 # ARTIFACT ISOLATION:
@@ -140,9 +141,10 @@ jobs:
 
   build_precompiled:
     timeout-minutes: 30
-    # We precompile in an Ubuntu 22.04 container (glibc 2.34 floor) and check compatibility by
-    # running specs since we aim to release only one precompiled version for all supported
-    # Linux versions. This is why we do not want Renovate to update the image automatically
+    # We precompile in an Ubuntu 22.04 container, gate on a GLIBC_2.34 floor and check
+    # compatibility by running specs since we aim to release only one precompiled version for
+    # all supported Linux versions. This is why we do not want Renovate to update the image
+    # automatically
     runs-on: ubuntu-24.04-arm
     container:
       image: ubuntu:22.04@sha256:5ec03bb3441e8b0bf3b4f9cd4629a1ae763010dc3035bb8da3ae6cf026486401 # renovate: ignore
@@ -194,7 +196,7 @@ jobs:
           ./build_linux_aarch64_gnu.sh
       - name: Verify glibc floor
         run: |
-          # Fails if the library needs a glibc symbol newer than GLIBC_2.34 (Ubuntu 22.04)
+          # Fails if the library needs a glibc symbol newer than GLIBC_2.34 (RHEL 9, Amazon Linux 2023)
           max=$(objdump -T ext/librdkafka.so | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1)
           echo "Highest required glibc symbol version: $max"
           if [ "$(printf '%s\n' "$max" GLIBC_2.34 | sort -V | tail -n 1)" != "GLIBC_2.34" ]; then

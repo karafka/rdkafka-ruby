@@ -67,9 +67,10 @@ env:
 jobs:
   build_precompiled:
     timeout-minutes: 30
-    # We precompile in an Ubuntu 22.04 container (glibc 2.34 floor) and check compatibility by
-    # running specs since we aim to release only one precompiled version for all supported
-    # Linux versions. This is why we do not want Renovate to update the image automatically
+    # We precompile in an Ubuntu 22.04 container, gate on a GLIBC_2.34 floor and check
+    # compatibility by running specs since we aim to release only one precompiled version for
+    # all supported Linux versions. This is why we do not want Renovate to update the image
+    # automatically
     runs-on: ubuntu-24.04-arm
     container:
       image: ubuntu:22.04@sha256:5ec03bb3441e8b0bf3b4f9cd4629a1ae763010dc3035bb8da3ae6cf026486401 # renovate: ignore
@@ -121,7 +122,7 @@ jobs:
           ./build_linux_aarch64_gnu.sh
       - name: Verify glibc floor
         run: |
-          # Fails if the library needs a glibc symbol newer than GLIBC_2.34 (Ubuntu 22.04)
+          # Fails if the library needs a glibc symbol newer than GLIBC_2.34 (RHEL 9, Amazon Linux 2023)
           max=$(objdump -T ext/librdkafka.so | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1)
           echo "Highest required glibc symbol version: $max"
           if [ "$(printf '%s\n' "$max" GLIBC_2.34 | sort -V | tail -n 1)" != "GLIBC_2.34" ]; then

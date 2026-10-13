@@ -158,18 +158,20 @@ jobs:
         debian:
           - 'bookworm'
           - 'trixie'
-    # We precompile on older Ubuntu and check compatibility by running specs since we aim to
-    # release only one precompiled version for all supported Ubuntu versions
-    # This is why we do not want Renovate to update it automatically
-    runs-on: ubuntu-22.04 # renovate: ignore
+    # We precompile in an Ubuntu 22.04 container, gate on a GLIBC_2.34 floor and check
+    # compatibility by running specs since we aim to release only one precompiled version for
+    # all supported Linux versions. This is why we do not want Renovate to update the image
+    # automatically
+    runs-on: ubuntu-24.04
+    container:
+      image: ubuntu:22.04@sha256:5ec03bb3441e8b0bf3b4f9cd4629a1ae763010dc3035bb8da3ae6cf026486401 # renovate: ignore
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
       - name: Install build dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
+          apt-get update
+          apt-get install -y --no-install-recommends \
             build-essential \
             gcc \
             g++ \
@@ -195,15 +197,29 @@ jobs:
             flex \
             perl \
             binutils-dev
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Configure git safe directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Cache build-tmp directory
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ext/build-tmp
-          key: build-tmp-${{ runner.os }}-${{ matrix.debian }}-${{ hashFiles('ext/*.sh', 'ext/Rakefile') }}-v2
+          key: build-tmp-${{ runner.os }}-${{ matrix.debian }}-${{ hashFiles('ext/*.sh', 'ext/Rakefile') }}-v3
       - name: Build precompiled librdkafka.so
         run: |
           cd ext
           ./build_linux_x86_64_gnu.sh
+      - name: Verify glibc floor
+        run: |
+          # Fails if the library needs a glibc symbol newer than GLIBC_2.34 (RHEL 9, Amazon Linux 2023)
+          max=$(objdump -T ext/librdkafka.so | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1)
+          echo "Highest required glibc symbol version: $max"
+          if [ "$(printf '%s\n' "$max" GLIBC_2.34 | sort -V | tail -n 1)" != "GLIBC_2.34" ]; then
+            echo "librdkafka.so requires $max, above the GLIBC_2.34 floor"
+            exit 1
+          fi
       - name: Upload precompiled library
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

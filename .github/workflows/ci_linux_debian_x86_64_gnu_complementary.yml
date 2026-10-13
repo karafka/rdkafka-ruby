@@ -129,7 +129,7 @@ jobs:
           ./build_linux_x86_64_gnu.sh
       - name: Verify glibc floor
         run: |
-          # Fails if the library needs a glibc symbol newer than GLIBC_2.34 (Ubuntu 22.04)
+          # Fails if the library needs a glibc symbol newer than GLIBC_2.34 (RHEL 9, Amazon Linux 2023)
           max=$(objdump -T ext/librdkafka.so | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1)
           echo "Highest required glibc symbol version: $max"
           if [ "$(printf '%s\n' "$max" GLIBC_2.34 | sort -V | tail -n 1)" != "GLIBC_2.34" ]; then

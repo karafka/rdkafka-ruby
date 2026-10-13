@@ -13,11 +13,78 @@ env:
   BUNDLE_JOBS: 4
 
 jobs:
+  build:
+    if: github.repository_owner == 'karafka'
+    timeout-minutes: 30
+    runs-on: ubuntu-24.04
+    environment: deployment
+    container:
+      # Same as CI, we build on an old Ubuntu for ABI compatibility and gate on a GLIBC_2.34 floor
+      image: ubuntu:22.04@sha256:5ec03bb3441e8b0bf3b4f9cd4629a1ae763010dc3035bb8da3ae6cf026486401 # renovate: ignore
+    steps:
+      - name: Install build dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential \
+            gcc \
+            make \
+            patch \
+            tar \
+            wget \
+            curl \
+            file \
+            perl \
+            python3 \
+            git \
+            ca-certificates \
+            libsasl2-dev \
+            libssl-dev \
+            zlib1g-dev \
+            libzstd-dev
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Configure git safe directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Cache build-tmp directory
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ext/build-tmp
+          key: build-tmp-${{ runner.os }}-${{ hashFiles('ext/*.sh') }}-v2
+
+      - name: Build precompiled librdkafka.so
+        run: |
+          cd ext
+          ./build_linux_x86_64_gnu.sh
+
+      - name: Verify glibc floor
+        run: |
+          # Fails if the library needs a glibc symbol newer than GLIBC_2.34 (RHEL 9, Amazon Linux 2023)
+          max=$(objdump -T ext/librdkafka.so | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1)
+          echo "Highest required glibc symbol version: $max"
+          if [ "$(printf '%s\n' "$max" GLIBC_2.34 | sort -V | tail -n 1)" != "GLIBC_2.34" ]; then
+            echo "librdkafka.so requires $max, above the GLIBC_2.34 floor"
+            exit 1
+          fi
+
+      - name: Upload precompiled library
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: librdkafka-precompiled-gnu
+          path: ext/
+          retention-days: 1
+
   push:
     if: github.repository_owner == 'karafka'
     timeout-minutes: 30
-    # Same as CI, we build on the oldest possible for ABI compatibility
-    runs-on: ubuntu-22.04 # renovate: ignore
+    runs-on: ubuntu-24.04
+    needs: build
     environment: deployment
     permissions:
       contents: write
@@ -34,38 +101,18 @@ jobs:
           repository: rubygems/release-gem
           ref: a25424ba2ba8b387abc8ef40807c2c85b96cbe32 # v1.1.1
           path: .github/_release-gem
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential \
-            gcc \
-            make \
-            patch \
-            tar \
-            wget \
-            ca-certificates \
-            libsasl2-dev \
-            libssl-dev \
-            zlib1g-dev \
-            libzstd-dev
 
-      - name: Cache build-tmp directory
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - name: Download precompiled library
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          path: ext/build-tmp
-          key: build-tmp-${{ runner.os }}-${{ hashFiles('ext/*.sh') }}
+          name: librdkafka-precompiled-gnu
+          path: ext/
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
         with:
           ruby-version: '4.0.7'
           bundler-cache: false
-
-      - name: Build precompiled librdkafka.so
-        run: |
-          cd ext
-          ./build_linux_x86_64_gnu.sh
 
       - name: Configure trusted publishing credentials
         uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0

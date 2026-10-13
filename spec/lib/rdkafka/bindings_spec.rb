@@ -8,6 +8,13 @@ RSpec.describe Rdkafka::Bindings do
   end
 
   describe "glibc error handling" do
+    it "raises LibraryLoadError when librdkafka needs a newer glibc" do
+      fixture = File.expand_path("../../fixtures/glibc_load_error.rb", __dir__)
+      output = IO.popen([RbConfig.ruby, "-Ilib", fixture], err: [:child, :out], &:read)
+
+      expect($?).to be_success, output
+    end
+
     it "provides a helpful error message for glibc compatibility issues" do
       # This test simulates what would happen if the library loading fails with a glibc error
       # We can't actually test the real scenario without breaking the test suite,

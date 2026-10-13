@@ -3,6 +3,7 @@
 ## 0.32.0 (Unreleased)
 - [Enhancement] Bump librdkafka to `2.16.0` for OpenSSL and libcurl security fixes. Admin requests in flight on a decommissioned broker now fail with a retryable transport error.
 - [Maintenance] Stabilize the flaky partitions count cache "multiple topics with different TTLs" spec by driving its clock instead of sleeping.
+- [Fix] Raise `Rdkafka::LibraryLoadError` with the glibc upgrade hint instead of `NameError` when the precompiled librdkafka needs a newer glibc.
 
 ## 0.31.0 (2026-10-09)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.

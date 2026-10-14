@@ -97,6 +97,13 @@
         "ruby/setup-ruby"
       ],
       "minimumReleaseAge": "5 days"
+    },
+    {
+      "description": "Keep the ubuntu:22.04 build container of the precompiled gnu libraries; a newer Ubuntu raises their glibc floor",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["ubuntu"],
+      "matchFileNames": [".github/workflows/**"],
+      "allowedVersions": "/^22\\.04$/"
     }
   ],
   "labels": [

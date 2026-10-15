@@ -254,9 +254,40 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
       now[0] += default_ttl_ms + 1
     end
 
-    it "serves the last known count on a transient error" do
-      expect(transport_error.code).to eq(:transport)
-      expect(cache.get(topic) { raise transport_error }).to eq(partition_count)
+    {
+      transport: -195,
+      timed_out: -185,
+      all_brokers_down: -187,
+      resolve: -193
+    }.each do |code_name, code|
+      it "serves the last known count on #{code_name}" do
+        error = Rdkafka::RdkafkaError.new(code)
+
+        expect(error.code).to eq(code_name)
+        expect(cache.get(topic) { raise error }).to eq(partition_count)
+      end
+    end
+
+    it "serves the known count to other callers while the refresh runs" do
+      nested = nil
+
+      cache.get(topic) do
+        nested = cache.get(topic) { fail "Should not be called" }
+        raise transport_error
+      end
+
+      expect(nested).to eq(partition_count)
+    end
+
+    it "refreshes again on the next call after a non-transient error" do
+      error = Rdkafka::RdkafkaError.new(29) # topic_authorization_failed
+
+      expect { cache.get(topic) { raise error } }.to raise_error(error)
+      expect(cache.get(topic) { higher_partition_count }).to eq(higher_partition_count)
+    end
+
+    it "adopts a lower count from a successful refresh" do
+      expect(cache.get(topic) { lower_partition_count }).to eq(lower_partition_count)
     end
 
     it "does not refresh again until the stale backoff passes" do

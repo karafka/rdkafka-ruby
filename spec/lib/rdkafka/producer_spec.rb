@@ -893,6 +893,9 @@ RSpec.describe Rdkafka::Producer do
 
     context "when the cached count expired and the cluster is unreachable" do
       let(:cache) { Rdkafka::Producer::PartitionsCountCache.new(ttl_ms: 1) }
+      let!(:original_cache) { ::Rdkafka::Producer.partitions_count_cache }
+
+      after { ::Rdkafka::Producer.partitions_count_cache = original_cache }
 
       before do
         ::Rdkafka::Producer.partitions_count_cache = cache

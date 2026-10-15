@@ -243,6 +243,43 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
     end
   end
 
+  describe "#get when the refresh fails" do
+    let(:now) { [0] }
+    let(:transport_error) { Rdkafka::RdkafkaError.new(-195) }
+    let(:stale_backoff_ms) { Rdkafka::Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS }
+
+    before do
+      allow(cache).to receive(:monotonic_now_ms) { now[0] }
+      cache.get(topic) { partition_count }
+      now[0] += default_ttl_ms + 1
+    end
+
+    it "serves the last known count on a transient error" do
+      expect(transport_error.code).to eq(:transport)
+      expect(cache.get(topic) { raise transport_error }).to eq(partition_count)
+    end
+
+    it "does not refresh again until the stale backoff passes" do
+      cache.get(topic) { raise transport_error }
+
+      now[0] += stale_backoff_ms
+      expect(cache.get(topic) { fail "Should not be called" }).to eq(partition_count)
+
+      now[0] += 1
+      expect(cache.get(topic) { higher_partition_count }).to eq(higher_partition_count)
+    end
+
+    it "raises when there is no known count" do
+      expect { cache.get(topic2) { raise transport_error } }.to raise_error(transport_error)
+    end
+
+    it "raises on a non-transient error" do
+      error = Rdkafka::RdkafkaError.new(29) # topic_authorization_failed
+
+      expect { cache.get(topic) { raise error } }.to raise_error(error)
+    end
+  end
+
   describe "#set" do
     context "when cache is empty" do
       it "adds a new entry to the cache" do

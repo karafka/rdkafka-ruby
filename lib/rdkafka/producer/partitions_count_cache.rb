@@ -42,8 +42,25 @@ module Rdkafka
     #    an authoritative metadata read and adopts the lower count. Within the TTL window a lower
     #    value is still ignored, so a transient or racy lower read cannot clobber a correct higher
     #    count.
+    #
+    # 7. Cluster outages
+    #    If the refresh of an expired entry fails on a transient error (for example all brokers
+    #    are unreachable), the last known count is served instead of raising, and the next refresh
+    #    is attempted after {Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS}. This lets
+    #    `partition_key` produces keep buffering in librdkafka during an outage. Without a known
+    #    count the error is raised.
     class PartitionsCountCache
       include Helpers::Time
+
+      # Refresh errors after which the last known count is still served
+      STALE_FALLBACK_ERRORS = %i[
+        transport
+        timed_out
+        all_brokers_down
+        resolve
+      ].freeze
+
+      private_constant :STALE_FALLBACK_ERRORS
 
       # Creates a new partition count cache
       #
@@ -83,6 +100,8 @@ module Rdkafka
       # @yield Block that returns the current partition count when cache needs refreshing
       # @yieldreturn [Integer] Current partition count retrieved from Kafka
       # @return [Integer] Partition count for the topic
+      # @raise [RdkafkaError] when the refresh fails and there is no last known count to serve, or
+      #   when it fails on a non-transient error
       #
       # @note The implementation prioritizes read performance over write consistency
       #   since partition counts typically only increase during normal operation.
@@ -94,7 +113,14 @@ module Rdkafka
           # read. We hand it to `set`, which adopts a higher count always and a lower count once the
           # entry has expired (e.g. the topic was recreated with fewer partitions). We then return
           # whatever `set` settled on so a concurrent refresh that wrote a higher value still wins.
-          new_count = yield
+          begin
+            new_count = yield
+          rescue RdkafkaError => e
+            raise unless current_info && STALE_FALLBACK_ERRORS.include?(e.code)
+
+            return serve_stale(current_info)
+          end
+
           set(topic, new_count)
 
           return @counts[topic][1]
@@ -198,6 +224,17 @@ module Rdkafka
 
         # Update the timestamp in-place
         current_info[0] = monotonic_now_ms
+      end
+
+      # Keeps serving an expired entry after a failed refresh and schedules the next refresh
+      # after {Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS}
+      #
+      # @param current_info [Array<Integer>] cached timestamp and partition count
+      # @return [Integer] last known partition count
+      def serve_stale(current_info)
+        current_info[0] = monotonic_now_ms - @ttl_ms + Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS
+
+        current_info[1]
       end
 
       # Check if a timestamp has expired based on the TTL

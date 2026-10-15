@@ -233,23 +233,21 @@ module Rdkafka
       # @raise [RdkafkaError] when the refresh fails on a non-transient error
       def refresh(topic, current_info)
         expired_at = current_info[0]
-        lease = monotonic_now_ms
+        # Outlasts a failed refresh even with a TTL shorter than one metadata request
+        lease = monotonic_now_ms + Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS
         current_info[0] = lease
 
         begin
           new_count = yield
         rescue RdkafkaError => e
-          if STALE_FALLBACK_ERRORS.include?(e.code)
-            return serve_stale(current_info)
-          end
-
+          raise unless STALE_FALLBACK_ERRORS.include?(e.code)
+        ensure
+          # Hand the entry back as expired, unless a concurrent write refreshed it meanwhile
           current_info[0] = expired_at if current_info[0] == lease
-
-          raise
         end
 
-        # Hand `set` the entry as expired again, unless a concurrent write refreshed it meanwhile
-        current_info[0] = expired_at if current_info[0] == lease
+        return serve_stale(current_info) if new_count.nil?
+
         set(topic, new_count)
 
         @counts[topic][1]

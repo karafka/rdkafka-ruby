@@ -286,6 +286,23 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
       expect(cache.get(topic) { higher_partition_count }).to eq(higher_partition_count)
     end
 
+    it "refreshes again on the next call after a non-Rdkafka error" do
+      expect { cache.get(topic) { raise Timeout::Error } }.to raise_error(Timeout::Error)
+      expect(cache.get(topic) { higher_partition_count }).to eq(higher_partition_count)
+    end
+
+    it "keeps serving the known count while a refresh outlasts the TTL" do
+      nested = nil
+
+      cache.get(topic) do
+        now[0] += default_ttl_ms + 1
+        nested = cache.get(topic) { fail "Should not be called" }
+        partition_count
+      end
+
+      expect(nested).to eq(partition_count)
+    end
+
     it "adopts a lower count from a successful refresh" do
       expect(cache.get(topic) { lower_partition_count }).to eq(lower_partition_count)
     end

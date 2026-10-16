@@ -900,7 +900,7 @@ RSpec.describe Rdkafka::Producer do
       before do
         ::Rdkafka::Producer.partitions_count_cache = cache
         cache.set(TestTopics.example_topic, 3)
-        sleep(0.01)
+        sleep(0.1)
         # code -195 == transport, what an unreachable cluster reports
         allow(::Rdkafka::Metadata).to receive(:new).and_raise(Rdkafka::RdkafkaError.new(-195))
       end

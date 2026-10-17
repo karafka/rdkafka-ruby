@@ -221,7 +221,7 @@ RSpec.describe Rdkafka::Consumer do
       it "works when a partition is paused" do
         # 3. get reference message
         send_one_message(:a)
-        message1 = consumer.poll(timeout)
+        message1 = wait_for_next_message(consumer)
         expect(message1&.payload).to eq "payload a"
 
         # 4. pause the subscription
@@ -238,7 +238,7 @@ RSpec.describe Rdkafka::Consumer do
         consumer.resume(tpl)
 
         # 7. ensure same message is read again
-        message2 = consumer.poll(timeout)
+        message2 = wait_for_next_message(consumer)
 
         # This is needed because `enable.auto.offset.store` is true but when running in CI that
         # is overloaded, offset store lags
@@ -256,7 +256,7 @@ RSpec.describe Rdkafka::Consumer do
         send_one_message(:c)
 
         # 4. get reference message
-        message = consumer.poll(timeout)
+        message = wait_for_next_message(consumer)
         expect(message&.payload).to eq "payload a"
 
         # 5. seek over one message
@@ -265,7 +265,7 @@ RSpec.describe Rdkafka::Consumer do
         consumer.seek(fake_msg)
 
         # 6. ensure that only one message is available
-        records = consumer.poll(timeout)
+        records = wait_for_next_message(consumer)
         expect(records&.payload).to eq "payload c"
         records = consumer.poll(timeout)
         expect(records).to be_nil
@@ -320,7 +320,7 @@ RSpec.describe Rdkafka::Consumer do
       it "works when a partition is paused" do
         # 3. get reference message
         send_one_message(:a)
-        message1 = consumer.poll(timeout)
+        message1 = wait_for_next_message(consumer)
         expect(message1&.payload).to eq "payload a"
 
         # 4. pause the subscription
@@ -337,7 +337,7 @@ RSpec.describe Rdkafka::Consumer do
         consumer.resume(tpl)
 
         # 7. ensure same message is read again
-        message2 = consumer.poll(timeout)
+        message2 = wait_for_next_message(consumer)
 
         # This is needed because `enable.auto.offset.store` is true but when running in CI that
         # is overloaded, offset store lags
@@ -355,14 +355,14 @@ RSpec.describe Rdkafka::Consumer do
         send_one_message(:c)
 
         # 4. get reference message
-        message = consumer.poll(timeout)
+        message = wait_for_next_message(consumer)
         expect(message&.payload).to eq "payload a"
 
         # 5. seek over one message
         consumer.seek_by(message.topic, message.partition, message.offset + 2)
 
         # 6. ensure that only one message is available
-        records = consumer.poll(timeout)
+        records = wait_for_next_message(consumer)
         expect(records&.payload).to eq "payload c"
         records = consumer.poll(timeout)
         expect(records).to be_nil

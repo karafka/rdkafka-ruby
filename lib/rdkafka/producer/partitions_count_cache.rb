@@ -42,8 +42,26 @@ module Rdkafka
     #    an authoritative metadata read and adopts the lower count. Within the TTL window a lower
     #    value is still ignored, so a transient or racy lower read cannot clobber a correct higher
     #    count.
+    #
+    # 7. Cluster outages
+    #    If the refresh of an expired entry fails on a transient error (for example all brokers
+    #    are unreachable), the last known count is served instead of raising, and the next refresh
+    #    is attempted after {Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS}. This lets
+    #    `partition_key` produces keep buffering in librdkafka during an outage. Without a known
+    #    count the error is raised. Only one caller refreshes an expired entry at a time; the
+    #    others get the known count meanwhile.
     class PartitionsCountCache
       include Helpers::Time
+
+      # Refresh errors after which the last known count is still served
+      STALE_FALLBACK_ERRORS = %i[
+        transport
+        timed_out
+        all_brokers_down
+        resolve
+      ].freeze
+
+      private_constant :STALE_FALLBACK_ERRORS
 
       # Creates a new partition count cache
       #
@@ -83,22 +101,22 @@ module Rdkafka
       # @yield Block that returns the current partition count when cache needs refreshing
       # @yieldreturn [Integer] Current partition count retrieved from Kafka
       # @return [Integer] Partition count for the topic
+      # @raise [RdkafkaError] when the refresh fails and there is no last known count to serve, or
+      #   when it fails on a non-transient error
       #
       # @note The implementation prioritizes read performance over write consistency
       #   since partition counts typically only increase during normal operation.
       def get(topic)
         current_info = @counts[topic]
 
-        if current_info.nil? || expired?(current_info[0])
-          # The cached entry is missing or expired, so the block performs an authoritative metadata
-          # read. We hand it to `set`, which adopts a higher count always and a lower count once the
-          # entry has expired (e.g. the topic was recreated with fewer partitions). We then return
-          # whatever `set` settled on so a concurrent refresh that wrote a higher value still wins.
+        if current_info.nil?
           new_count = yield
           set(topic, new_count)
 
           return @counts[topic][1]
         end
+
+        return refresh(topic, current_info) { yield } if expired?(current_info[0])
 
         current_info[1]
       end
@@ -198,6 +216,52 @@ module Rdkafka
 
         # Update the timestamp in-place
         current_info[0] = monotonic_now_ms
+      end
+
+      # Refreshes an expired entry. While the refresh runs, other callers see a fresh entry and get
+      # the known count instead of running their own metadata request.
+      #
+      # The block performs an authoritative metadata read. We hand it to `set`, which adopts a
+      # higher count always and a lower count once the entry has expired (e.g. the topic was
+      # recreated with fewer partitions). We then return whatever `set` settled on so a concurrent
+      # refresh that wrote a higher value still wins.
+      #
+      # @param topic [String] Kafka topic name
+      # @param current_info [Array<Integer>] cached timestamp and partition count
+      # @yieldreturn [Integer] Current partition count retrieved from Kafka
+      # @return [Integer] Partition count for the topic
+      # @raise [RdkafkaError] when the refresh fails on a non-transient error
+      def refresh(topic, current_info)
+        expired_at = current_info[0]
+        # Outlasts a failed refresh even with a TTL shorter than one metadata request
+        lease = monotonic_now_ms + Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS
+        current_info[0] = lease
+
+        begin
+          new_count = yield
+        rescue RdkafkaError => e
+          raise unless STALE_FALLBACK_ERRORS.include?(e.code)
+        ensure
+          # Hand the entry back as expired, unless a concurrent write refreshed it meanwhile
+          current_info[0] = expired_at if current_info[0] == lease
+        end
+
+        return serve_stale(current_info) if new_count.nil?
+
+        set(topic, new_count)
+
+        @counts[topic][1]
+      end
+
+      # Keeps serving an expired entry after a failed refresh and schedules the next refresh
+      # after {Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS}
+      #
+      # @param current_info [Array<Integer>] cached timestamp and partition count
+      # @return [Integer] last known partition count
+      def serve_stale(current_info)
+        current_info[0] = monotonic_now_ms - @ttl_ms + Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS
+
+        current_info[1]
       end
 
       # Check if a timestamp has expired based on the TTL

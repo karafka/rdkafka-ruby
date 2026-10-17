@@ -117,6 +117,10 @@ if CHILD_MODE
     sleep WAIT_SECONDS
 
     puts "SURVIVED"
+
+    # The unmap above also dropped ffi's reference, so the shutdown sweep would `dlclose` a handle
+    # glibc has already freed. That crash comes from this test, not the gem, so skip the sweep.
+    exit!(0)
   end
 
   require "rdkafka"

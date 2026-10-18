@@ -40,10 +40,14 @@ class MockCluster
     attach_function :rd_kafka_mock_push_request_errors_array, %i[pointer int16 size_t pointer], :void
   end
 
+  # @return [String] bootstrap servers of the cluster
   attr_reader :bootstrap_servers
 
   # Yields a new cluster and destroys it afterwards. Close the clients that use the cluster
   # inside the block.
+  #
+  # @param broker_count [Integer] number of mock brokers
+  # @yieldparam cluster [MockCluster] the new cluster
   def self.run(broker_count: 1)
     cluster = new(broker_count: broker_count)
     yield(cluster)
@@ -51,6 +55,7 @@ class MockCluster
     cluster&.destroy
   end
 
+  # @param broker_count [Integer] number of mock brokers
   def initialize(broker_count: 1)
     # librdkafka needs a client to host the mock cluster
     @host = Rdkafka::Config.new.producer
@@ -60,6 +65,10 @@ class MockCluster
     @bootstrap_servers = Bindings.rd_kafka_mock_cluster_bootstraps(@cluster)
   end
 
+  # @param topic_name [String] name of the topic to create
+  # @param partition_count [Integer] number of partitions
+  # @param replication_factor [Integer] number of replicas
+  # @raise [Rdkafka::RdkafkaError] when the topic cannot be created
   def create_topic(topic_name, partition_count, replication_factor = 1)
     response = Bindings.rd_kafka_mock_topic_create(
       @cluster, topic_name, partition_count, replication_factor
@@ -70,6 +79,10 @@ class MockCluster
 
   # Fails the next requests of the given API with the given errors, one error per request, in
   # the given order
+  #
+  # @param api [Symbol] request API, a key of `API_KEYS`
+  # @param errors [Array<Symbol>] errors to return, keys of `ERROR_CODES`
+  # @raise [KeyError] when the API or an error name is unknown
   def push_request_errors(api, *errors)
     codes = errors.map { |error| ERROR_CODES.fetch(error) }
     codes_ptr = FFI::MemoryPointer.new(:int, codes.size)
@@ -80,12 +93,16 @@ class MockCluster
     )
   end
 
-  # Client config pointing at this cluster
+  # @param settings [Hash] extra client settings
+  # @return [Rdkafka::Config] client config pointing at this cluster
   def config(settings = {})
     Rdkafka::Config.new({ "bootstrap.servers": bootstrap_servers }.merge(settings))
   end
 
-  # librdkafka requires the cluster to be destroyed before its host client
+  # Destroys the cluster and closes its host client. librdkafka requires the cluster to be
+  # destroyed before its host client.
+  #
+  # @return [void]
   def destroy
     Bindings.rd_kafka_mock_cluster_destroy(@cluster)
     @host.close

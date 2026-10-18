@@ -199,7 +199,7 @@ RSpec.describe Rdkafka::Bindings do
 
   # Catches drift from a deliberate binding, not a signature that was wrong from the start, and
   # does not cover the `blocking:` flag
-  it "keeps the signature of every snapshotted function" do
+  it "keeps the signature of every snapshotted function", skip: defined?(JRUBY_VERSION) && "JRuby's FFI::Function has no param_types or return_type" do
     expected = JSON.parse(File.read(BindingsSignatures::FIXTURE))
 
     expect(BindingsSignatures.dump.slice(*expected.keys)).to eq(expected)

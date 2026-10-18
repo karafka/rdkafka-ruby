@@ -52,17 +52,12 @@ WAIT_MS = 10_000
 failures = []
 
 # Makes the mock cluster fail the next request of the given API with the given error
-# @param mcluster [FFI::Pointer] mock cluster
-# @param api_key [Integer] Kafka protocol API key
-# @param error_code [Integer] Kafka protocol error code
 def push_error(mcluster, api_key, error_code)
   errors = FFI::MemoryPointer.new(:int, 1)
   errors.write_array_of_int([error_code])
   MockCluster.rd_kafka_mock_push_request_errors_array(mcluster, api_key, 1, errors)
 end
 
-# @param offset [Integer] offset of partition 0 of the topic
-# @return [Rdkafka::Consumer::TopicPartitionList]
 def tpl(offset = nil)
   Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
     if offset
@@ -75,9 +70,6 @@ end
 
 # Runs the block against its own mock cluster, so errors that one scenario injects and never
 # triggers are not left for the next scenario
-# @param host [Rdkafka::Producer] client that hosts the mock cluster
-# @yieldparam mcluster [FFI::Pointer] mock cluster
-# @yieldparam bootstraps [String] bootstrap servers of the mock cluster
 def with_mock_cluster(host)
   mcluster = host.instance_variable_get(:@native_kafka).with_inner do |inner|
     MockCluster.rd_kafka_mock_cluster_new(inner, 1)

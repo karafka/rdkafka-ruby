@@ -73,16 +73,26 @@ def tpl(offset = nil)
   end
 end
 
-# Hosts the mock cluster
-host = Rdkafka::Config.new.producer
-mcluster = host.instance_variable_get(:@native_kafka).with_inner do |inner|
-  MockCluster.rd_kafka_mock_cluster_new(inner, 1)
+# Runs the block against its own mock cluster, so errors that one scenario injects and never
+# triggers are not left for the next scenario
+# @param host [Rdkafka::Producer] client that hosts the mock cluster
+# @yieldparam mcluster [FFI::Pointer] mock cluster
+# @yieldparam bootstraps [String] bootstrap servers of the mock cluster
+def with_mock_cluster(host)
+  mcluster = host.instance_variable_get(:@native_kafka).with_inner do |inner|
+    MockCluster.rd_kafka_mock_cluster_new(inner, 1)
+  end
+  MockCluster.rd_kafka_mock_topic_create(mcluster, TOPIC, 1, 1)
+
+  yield(mcluster, MockCluster.rd_kafka_mock_cluster_bootstraps(mcluster))
+ensure
+  MockCluster.rd_kafka_mock_cluster_destroy(mcluster) if mcluster
 end
-MockCluster.rd_kafka_mock_topic_create(mcluster, TOPIC, 1, 1)
-bootstraps = MockCluster.rd_kafka_mock_cluster_bootstraps(mcluster)
+
+host = Rdkafka::Config.new.producer
 
 # Scenario 1: producer-backed admin client
-begin
+with_mock_cluster(host) do |mcluster, bootstraps|
   admin = Rdkafka::Config.new("bootstrap.servers": bootstraps).admin
   group_id = "it-coordinator-errors-#{SecureRandom.hex(6)}"
 
@@ -105,7 +115,7 @@ ensure
 end
 
 # Scenario 2: consumer without group.id
-begin
+with_mock_cluster(host) do |mcluster, bootstraps|
   consumer = Rdkafka::Config.new("bootstrap.servers": bootstraps).consumer
 
   COORDINATOR_ERRORS.each_value { |code| push_error(mcluster, API_KEY_OFFSET_FETCH, code) }
@@ -125,7 +135,7 @@ ensure
 end
 
 # Scenario 3: consumer with group.id
-begin
+with_mock_cluster(host) do |mcluster, bootstraps|
   consumer = Rdkafka::Config.new(
     "bootstrap.servers": bootstraps,
     "group.id": "it-coordinator-errors-#{SecureRandom.hex(6)}",
@@ -165,7 +175,6 @@ ensure
   consumer&.close
 end
 
-MockCluster.rd_kafka_mock_cluster_destroy(mcluster)
 host.close
 
 if failures.empty?

@@ -11,15 +11,22 @@
 #
 # We hammer the failing-creation path and assert RSS stays flat. No broker is needed: the conf is
 # rejected before any network access. RSS is read from /proc on Linux; on platforms without /proc
-# the path is still exercised (no crash) but growth is not asserted.
+# the path is still exercised (no crash) but growth is not asserted. On JRuby RSS follows the JVM
+# heap, so instead we assert that every `rd_kafka_conf_new` has a matching `rd_kafka_conf_destroy`.
 #
 # Exit codes:
 # - 0: no significant memory growth (or growth not measurable on this platform)
-# - 1: RSS grew (leak still present)
+# - 1: RSS grew, or on JRuby the native allocations and releases do not balance (leak still present)
 
 require "rdkafka"
+require_relative "support/native_call_counter"
 
 $stdout.sync = true
+
+if defined?(JRUBY_VERSION)
+  NativeCallCounter.watch(:rd_kafka_conf_new)
+  NativeCallCounter.watch(:rd_kafka_conf_destroy)
+end
 
 ITERATIONS = 50_000
 
@@ -40,6 +47,7 @@ measurable = File.exist?("/proc/self/status")
 # Warm up so the malloc arena / Ruby heap settle before we measure.
 5_000.times { trigger_failed_creation }
 GC.start
+NativeCallCounter.reset
 before = measurable ? rss_kb : 0
 
 ITERATIONS.times { trigger_failed_creation }
@@ -47,7 +55,16 @@ ITERATIONS.times { trigger_failed_creation }
 GC.start
 after = measurable ? rss_kb : 0
 
-if measurable
+if defined?(JRUBY_VERSION)
+  allocated = NativeCallCounter.count(:rd_kafka_conf_new)
+  released = NativeCallCounter.count(:rd_kafka_conf_destroy)
+  puts "Native confs after #{ITERATIONS} failed creations: #{allocated} allocated, #{released} destroyed"
+
+  unless NativeCallCounter.balanced?(:rd_kafka_conf_new, :rd_kafka_conf_destroy)
+    warn "FAIL: #{allocated} confs allocated but #{released} destroyed - the conf still leaks"
+    exit(1)
+  end
+elsif measurable
   delta = after - before
   puts "RSS delta after #{ITERATIONS} failed creations: #{delta} KB"
 

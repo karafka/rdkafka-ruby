@@ -154,10 +154,14 @@ end
 
 $stdout.sync = true
 
-unless RUBY_PLATFORM.include?("linux")
-  puts "SKIP: #{RUBY_PLATFORM} has no exit-time dlclose path for this hazard"
+unless RbConfig::CONFIG["host_os"].include?("linux")
+  puts "SKIP: #{RbConfig::CONFIG["host_os"]} has no exit-time dlclose path for this hazard"
   exit(0)
 end
+
+# Inherited by every child: the expected crashes must not dump cores. Set here rather than as a
+# `spawn` option, which JRuby does not support.
+Process.setrlimit(:CORE, 0)
 
 def run_child(mode)
   read, write = IO.pipe
@@ -171,8 +175,7 @@ def run_child(mode)
   pid = Process.spawn(
     env,
     RbConfig.ruby, "-I#{File.expand_path("../../lib", __dir__)}", __FILE__,
-    out: write, err: write,
-    rlimit_core: 0
+    out: write, err: write
   )
   write.close
   output = read.read

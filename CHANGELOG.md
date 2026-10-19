@@ -7,6 +7,7 @@
 - [Maintenance] Fix a use-after-free in the `client_shutdown_dlclose` integration test that made it crash intermittently after its own unmap.
 - [Maintenance] Stabilize the flaky `Consumer#seek` and `#seek_by` "works when a partition is paused" specs on loaded CI runners.
 - [Maintenance] Cover with integration tests that coordinator errors on group offset requests do not crash the admin client or a consumer without `group.id`.
+- [Fix] Stop `Consumer#store_offset` and other calls that pass partition metadata from raising `NoMethodError` on JRuby.
 - [Fix] Raise `Rdkafka::LibraryLoadError` with the glibc upgrade hint instead of `NameError` when the precompiled librdkafka needs a newer glibc.
 
 ## 0.31.0 (2026-10-09)

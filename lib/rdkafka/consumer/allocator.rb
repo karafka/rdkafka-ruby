@@ -28,8 +28,6 @@ module Rdkafka
           pointer.put_bytes(0, bytes)
           pointer.put_char(bytes.bytesize, 0) # NUL terminator
 
-          pointer.autorelease = false
-
           pointer
         end
       end

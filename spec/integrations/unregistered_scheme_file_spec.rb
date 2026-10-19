@@ -1,17 +1,17 @@
 # frozen_string_literal: true
 
-# This integration test verifies that rdkafka properly detects and reports specific SSL
-# configuration errors when attempting to connect to an SSL-enabled Kafka broker.
+# This integration test verifies that rdkafka does not report specific OpenSSL configuration
+# errors when attempting to connect to an SSL-enabled Kafka broker.
 #
-# It also ensures that we do not statically link ssl certs into incorrect tmp cert location.
+# It ensures that we do not statically link ssl certs into incorrect tmp cert location.
 #
 # These errors occur when rdkafka's underlying OpenSSL library encounters issues
 # with SSL certificate validation, particularly related to file scheme handling
 # and missing certificate directories.
 #
 # Exit codes:
-# - 0: Target error messages NOT detected after 5 seconds (test fails - errors missing)
-# - 1: Target error messages detected (test passes - errors are present as expected)
+# - 0: Target error messages NOT detected after 5 seconds (test passes)
+# - 1: Target error messages detected (test fails - OpenSSL is misconfigured)
 # - 2: Unexpected exception occurred during test execution
 
 require "rdkafka"

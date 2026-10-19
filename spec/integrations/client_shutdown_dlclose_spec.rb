@@ -154,8 +154,8 @@ end
 
 $stdout.sync = true
 
-unless RUBY_PLATFORM.include?("linux")
-  puts "SKIP: #{RUBY_PLATFORM} has no exit-time dlclose path for this hazard"
+unless RbConfig::CONFIG["host_os"].include?("linux")
+  puts "SKIP: #{RbConfig::CONFIG["host_os"]} has no exit-time dlclose path for this hazard"
   exit(0)
 end
 

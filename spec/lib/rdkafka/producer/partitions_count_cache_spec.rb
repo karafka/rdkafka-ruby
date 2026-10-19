@@ -279,6 +279,22 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
       expect(nested).to eq(partition_count)
     end
 
+    it "keeps the full TTL of a write that lands during a failing refresh" do
+      long_ttl_ms = stale_backoff_ms * 3
+      long_ttl_cache = described_class.new(ttl_ms: long_ttl_ms)
+      allow(long_ttl_cache).to receive(:monotonic_now_ms) { now[0] }
+      long_ttl_cache.get(topic) { partition_count }
+      now[0] += long_ttl_ms + 1
+
+      long_ttl_cache.get(topic) do
+        long_ttl_cache.set(topic, partition_count)
+        raise transport_error
+      end
+
+      now[0] += stale_backoff_ms + 1
+      expect(long_ttl_cache.get(topic) { fail "Should not be called" }).to eq(partition_count)
+    end
+
     it "refreshes again on the next call after a non-transient error" do
       error = Rdkafka::RdkafkaError.new(29) # topic_authorization_failed
 

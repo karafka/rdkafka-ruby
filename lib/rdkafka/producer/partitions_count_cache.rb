@@ -246,7 +246,12 @@ module Rdkafka
           current_info[0] = expired_at if current_info[0] == lease
         end
 
-        return serve_stale(current_info) if new_count.nil?
+        if new_count.nil?
+          # A concurrent write refreshed the entry, so it keeps its full TTL
+          return current_info[1] unless current_info[0] == expired_at
+
+          return serve_stale(current_info)
+        end
 
         set(topic, new_count)
 

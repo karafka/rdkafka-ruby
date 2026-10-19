@@ -29,10 +29,8 @@ require_relative "support/native_call_counter"
 
 $stdout.sync = true
 
-JRUBY = RUBY_ENGINE == "jruby"
-
 # rd_kafka_metadata returns an error code and allocates the struct only when it is 0
-if JRUBY
+if defined?(JRUBY_VERSION)
   NativeCallCounter.watch(:rd_kafka_metadata, &:zero?)
   NativeCallCounter.watch(:rd_kafka_metadata_destroy)
 end
@@ -86,7 +84,7 @@ GC.start
 after = measurable ? rss_kb : 0
 admin.close
 
-if JRUBY
+if defined?(JRUBY_VERSION)
   allocated = NativeCallCounter.count(:rd_kafka_metadata)
   released = NativeCallCounter.count(:rd_kafka_metadata_destroy)
   puts "Native metadata structs after #{ITERATIONS} retried fetches: #{allocated} allocated, #{released} destroyed"

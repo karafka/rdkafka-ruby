@@ -24,9 +24,7 @@ require_relative "support/native_call_counter"
 
 $stdout.sync = true
 
-JRUBY = RUBY_ENGINE == "jruby"
-
-if JRUBY
+if defined?(JRUBY_VERSION)
   NativeCallCounter.watch(:rd_kafka_topic_partition_list_new)
   NativeCallCounter.watch(:rd_kafka_topic_partition_list_destroy)
 end
@@ -66,7 +64,7 @@ ITERATIONS.times { trigger_failed_build }
 settle_heap
 after = measurable ? rss_kb : 0
 
-if JRUBY
+if defined?(JRUBY_VERSION)
   allocated = NativeCallCounter.count(:rd_kafka_topic_partition_list_new)
   released = NativeCallCounter.count(:rd_kafka_topic_partition_list_destroy)
   puts "Native lists after #{ITERATIONS} failed to_native_tpl builds: #{allocated} allocated, #{released} destroyed"

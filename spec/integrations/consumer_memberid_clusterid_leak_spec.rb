@@ -28,9 +28,7 @@ require_relative "support/native_call_counter"
 
 $stdout.sync = true
 
-JRUBY = RUBY_ENGINE == "jruby"
-
-if JRUBY
+if defined?(JRUBY_VERSION)
   NativeCallCounter.watch(:rd_kafka_clusterid) { |ptr| !ptr.null? }
   NativeCallCounter.watch(:rd_kafka_mem_free)
 end
@@ -78,7 +76,7 @@ released = NativeCallCounter.count(:rd_kafka_mem_free)
 balanced = NativeCallCounter.balanced?(:rd_kafka_clusterid, :rd_kafka_mem_free)
 consumer.close
 
-if JRUBY
+if defined?(JRUBY_VERSION)
   puts "Native strings after #{ITERATIONS} cluster_id calls: #{allocated} allocated, #{released} freed"
 
   unless balanced

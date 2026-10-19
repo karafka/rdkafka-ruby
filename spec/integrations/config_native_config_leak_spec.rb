@@ -23,9 +23,7 @@ require_relative "support/native_call_counter"
 
 $stdout.sync = true
 
-JRUBY = RUBY_ENGINE == "jruby"
-
-if JRUBY
+if defined?(JRUBY_VERSION)
   NativeCallCounter.watch(:rd_kafka_conf_new)
   NativeCallCounter.watch(:rd_kafka_conf_destroy)
 end
@@ -57,7 +55,7 @@ ITERATIONS.times { trigger_failed_creation }
 GC.start
 after = measurable ? rss_kb : 0
 
-if JRUBY
+if defined?(JRUBY_VERSION)
   allocated = NativeCallCounter.count(:rd_kafka_conf_new)
   released = NativeCallCounter.count(:rd_kafka_conf_destroy)
   puts "Native confs after #{ITERATIONS} failed creations: #{allocated} allocated, #{released} destroyed"

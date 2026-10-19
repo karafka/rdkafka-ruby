@@ -24,7 +24,6 @@ unless ENV["CI"] == "true"
   end
 end
 
-require "pry"
 require "rspec"
 require "rdkafka"
 require "timeout"

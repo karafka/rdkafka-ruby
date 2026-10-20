@@ -257,8 +257,8 @@ RSpec.describe Rdkafka::Bindings do
           new.call(*args, **kwargs)
         end
 
-        Rdkafka::Bindings::ErrorCallback.call(nil, 8, "Broker not available", nil)
-        expect(received.map(&:code)).to eq([:broker_not_available])
+        Rdkafka::Bindings::ErrorCallback.call(nil, Rdkafka::Bindings::RD_KAFKA_RESP_ERR__STATE, "state", nil)
+        expect(received.map(&:code)).to eq([:state])
       end
     end
 

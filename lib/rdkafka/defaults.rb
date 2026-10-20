@@ -86,7 +86,7 @@ module Rdkafka
     PRODUCER_PURGE_SLEEP_INTERVAL_MS = 1
 
     # Sleep interval while waiting for operations to complete in NativeKafka#synchronize
-    # @see NativeKafka#synchronize
+    # @deprecated Unused: NativeKafka#synchronize now waits on a condition variable
     NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS = 10
 
     # Base backoff factor for metadata retry in milliseconds (multiplied by 2^attempt)

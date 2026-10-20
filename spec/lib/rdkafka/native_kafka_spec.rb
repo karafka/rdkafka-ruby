@@ -176,3 +176,37 @@ RSpec.describe Rdkafka::NativeKafka, "#enable_main_queue_io_events and #enable_b
     end
   end
 end
+
+# Separate describe block with real threads, which the mocked threading tests above stub out
+RSpec.describe Rdkafka::NativeKafka, "#with_inner from many threads" do
+  let(:config) { rdkafka_producer_config }
+  let(:native) { config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer) }
+  let(:opaque) { Rdkafka::Opaque.new }
+  let(:client) { described_class.new(native, run_polling_thread: false, opaque: opaque) }
+  let(:threads_count) { 16 }
+
+  after { client.close unless client.closed? }
+
+  it "counts the operations in progress exactly and closes" do
+    barrier = Queue.new
+    stop = false
+
+    threads = Array.new(threads_count) do
+      Thread.new do
+        barrier.pop
+        client.with_inner { nil } until stop
+      end
+    end
+
+    threads_count.times { barrier << true }
+    sleep(2)
+    stop = true
+    threads.each(&:join)
+
+    operations_in_progress = client.instance_variable_get(:@operations_in_progress)
+    closer = Thread.new { client.close }
+
+    expect(closer.join(5)).not_to be_nil
+    expect(operations_in_progress).to eq(0)
+  end
+end

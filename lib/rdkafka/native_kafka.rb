@@ -25,20 +25,13 @@ module Rdkafka
       @access_mutex = Mutex.new
       # Lock around internal polling
       @poll_mutex = Mutex.new
-      # Lock around decrementing the operations in progress counter
-      # We have two mutexes - one for increment (`@access_mutex`) and one for decrement mutex
-      # because they serve different purposes:
-      #
-      #   - `@access_mutex` allows us to lock the execution and make sure that any operation within
-      #      the `#synchronize` is the only one running and that there are no other running
-      #      operations.
-      #   - `@decrement_mutex` ensures, that our decrement operation is thread-safe for any Ruby
-      #     implementation.
-      #
-      # We do not use the same mutex, because it could create a deadlock when an already
-      # incremented operation cannot decrement because `@access_lock` is now owned by a different
-      # thread in a synchronized mode and the synchronized mode is waiting on the decrement.
-      @decrement_mutex = Mutex.new
+      # Lock around the operations in progress counter. Both the increment and the decrement
+      # happen under it, so no update is lost on Rubies without a GVL (JRuby). It is separate from
+      # `@access_mutex`: an operation that started before `#synchronize` took `@access_mutex` must
+      # still be able to decrement, or `#synchronize` would wait for it forever.
+      @operations_mutex = Mutex.new
+      # Signalled when the operations in progress counter reaches zero
+      @operations_done = ConditionVariable.new
       # counter for operations in progress using inner
       @operations_in_progress = 0
 
@@ -90,14 +83,16 @@ module Rdkafka
     # @raise [ClosedInnerError] when the inner handle is nil
     def with_inner
       if @access_mutex.owned?
-        @operations_in_progress += 1
+        increment_operations_in_progress
       else
-        @access_mutex.synchronize { @operations_in_progress += 1 }
+        @access_mutex.synchronize { increment_operations_in_progress }
       end
 
-      @inner.nil? ? raise(ClosedInnerError) : yield(@inner)
-    ensure
-      @decrement_mutex.synchronize { @operations_in_progress -= 1 }
+      begin
+        @inner.nil? ? raise(ClosedInnerError) : yield(@inner)
+      ensure
+        decrement_operations_in_progress
+      end
     end
 
     # Executes a block while holding exclusive access to the native Kafka handle
@@ -110,7 +105,9 @@ module Rdkafka
         # This can take a while on blocking operations like polling but is essential not to proceed
         # with certain types of operations like resources destruction as it can cause the process
         # to hang or crash
-        sleep(Defaults::NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS / 1000.0) until @operations_in_progress.zero?
+        @operations_mutex.synchronize do
+          @operations_done.wait(@operations_mutex) until @operations_in_progress.zero?
+        end
 
         with_inner(&block)
       end
@@ -229,6 +226,21 @@ module Rdkafka
         @opaque = nil
         @poll_mutex.unlock
         @poll_mutex = nil
+      end
+    end
+
+    private
+
+    # Registers an operation that uses the inner handle
+    def increment_operations_in_progress
+      @operations_mutex.synchronize { @operations_in_progress += 1 }
+    end
+
+    # Unregisters an operation and wakes `#synchronize` once none is left
+    def decrement_operations_in_progress
+      @operations_mutex.synchronize do
+        @operations_in_progress -= 1
+        @operations_done.broadcast if @operations_in_progress.zero?
       end
     end
   end

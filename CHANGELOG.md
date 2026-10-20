@@ -11,6 +11,7 @@
 - [Maintenance] Run the `client_shutdown_dlclose` integration test on JRuby on Linux.
 - [Fix] Stop `Consumer#store_offset` and other calls that pass partition metadata from raising `NoMethodError` on JRuby.
 - [Fix] Raise `Rdkafka::LibraryLoadError` with the glibc upgrade hint instead of `NameError` when the precompiled librdkafka needs a newer glibc.
+- [Fix] Count a client's operations in progress under one lock, so on JRuby `close` no longer hangs or destroys the client while another thread still uses it.
 
 ## 0.31.0 (2026-10-09)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.

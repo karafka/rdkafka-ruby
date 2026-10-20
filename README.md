@@ -125,7 +125,7 @@ To address this, it's highly recommended to:
 
 ## Thread Safety
 
-librdkafka is thread-safe, but poll each `Rdkafka::Consumer` from one thread at a time. This rule covers all of its poll methods: `#poll`, `#poll_nb`, `#poll_batch`, `#poll_batch_nb`, `#poll_nb_each` and `#each`.
+librdkafka is thread-safe, but poll each `Rdkafka::Consumer` from one thread at a time. This rule covers the consumer methods that poll messages: `#poll`, `#poll_nb`, `#poll_batch`, `#poll_batch_nb`, `#poll_nb_each` and `#each`.
 
 To poll from several threads, use one consumer per polling thread.
 

@@ -66,19 +66,19 @@ module Rdkafka
 
     # Sets alternative set of configuration details that can be set per topic
     #
-    # @param topic [String] The topic name
+    # @param topic_name [String] The topic name
     # @param config [Hash] config we want to use per topic basis
     # @param config_hash [Integer] hash of the config. We expect it here instead of computing it,
     #   because it is already computed during the retrieval attempt in the `#produce` flow.
     # @note It is not allowed to re-set the same topic config twice because of the underlying
     #   librdkafka caching
-    def set_topic_config(topic, config, config_hash)
+    def set_topic_config(topic_name, config, config_hash)
       # Ensure lock on topic reference just in case
       @native_kafka.with_inner do |inner|
-        @topics_refs_map[topic] ||= {}
-        @topics_configs[topic] ||= {}
+        @topics_refs_map[topic_name] ||= {}
+        @topics_configs[topic_name] ||= {}
 
-        return if @topics_configs[topic].key?(config_hash)
+        return if @topics_configs[topic_name].key?(config_hash)
 
         # If config is empty, we create an empty reference that will be used with defaults
         rd_topic_config = if config.empty?
@@ -108,12 +108,12 @@ module Rdkafka
           end
         end
 
-        topic_handle = Bindings.rd_kafka_topic_new(inner, topic, rd_topic_config)
+        topic_handle = Bindings.rd_kafka_topic_new(inner, topic_name, rd_topic_config)
 
-        raise TopicHandleCreationError.new("Error creating topic handle for topic #{topic}") if topic_handle.null?
+        raise TopicHandleCreationError.new("Error creating topic handle for topic #{topic_name}") if topic_handle.null?
 
-        @topics_configs[topic][config_hash] = config
-        @topics_refs_map[topic][config_hash] = topic_handle
+        @topics_configs[topic_name][config_hash] = config
+        @topics_refs_map[topic_name][config_hash] = topic_handle
       end
     end
 
@@ -305,7 +305,7 @@ module Rdkafka
 
     # Partition count for a given topic.
     #
-    # @param topic [String] The topic name.
+    # @param topic_name [String] The topic name.
     # @return [Integer] partition count for a given topic or `-1` if it could not be obtained.
     #
     # @note If 'allow.auto.create.topics' is set to true in the broker, the topic will be
@@ -317,14 +317,14 @@ module Rdkafka
     #   This prevents us in case someone uses `partition_key` from querying for the count with
     #   each message. Instead we query at most once every 30 seconds at most if we have a valid
     #   partition count or every 5 seconds in case we were not able to obtain number of partitions.
-    def partition_count(topic)
+    def partition_count(topic_name)
       closed_producer_check(__method__)
 
-      self.class.partitions_count_cache.get(topic) do
+      self.class.partitions_count_cache.get(topic_name) do
         topic_metadata = nil
 
         @native_kafka.with_inner do |inner|
-          topic_metadata = ::Rdkafka::Metadata.new(inner, topic).topics&.first
+          topic_metadata = ::Rdkafka::Metadata.new(inner, topic_name).topics&.first
         end
 
         topic_metadata ? topic_metadata[:partition_count] : Rdkafka::Bindings::RD_KAFKA_PARTITION_UA

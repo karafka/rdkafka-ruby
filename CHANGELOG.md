@@ -7,6 +7,9 @@
 - [Maintenance] Fix a use-after-free in the `client_shutdown_dlclose` integration test that made it crash intermittently after its own unmap.
 - [Maintenance] Stabilize the flaky `Consumer#seek` and `#seek_by` "works when a partition is paused" specs on loaded CI runners.
 - [Maintenance] Name positional String topic parameters `topic_name` (`Consumer#query_watermark_offsets`, `#seek_by`, `Producer#partition_count`, `TopicPartitionList#add_topic` and others). Callers are not affected.
+- [Maintenance] Skip the bindings signature parity spec on JRuby, whose FFI does not expose function signatures.
+- [Maintenance] Match the `rd_kafka_message_destroy` pointers in the `poll_batch` and `poll_batch_nb` specs by address, so they pass on JRuby.
+- [Maintenance] Run the `client_shutdown_dlclose` integration test on JRuby on Linux.
 - [Fix] Stop `Consumer#store_offset` and other calls that pass partition metadata from raising `NoMethodError` on JRuby.
 - [Fix] Raise `Rdkafka::LibraryLoadError` with the glibc upgrade hint instead of `NameError` when the precompiled librdkafka needs a newer glibc.
 

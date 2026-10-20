@@ -180,6 +180,7 @@ module Rdkafka
 
       @config_hash = DEFAULT_CONFIG.merge(config_hash)
       @consumer_rebalance_listener = nil
+      @consumer_offset_commit_listener = nil
       @consumer_poll_set = true
     end
 
@@ -206,6 +207,15 @@ module Rdkafka
     #
     # @return [Object, #on_partitions_assigned, #on_partitions_revoked] listener instance
     attr_writer :consumer_rebalance_listener
+
+    # Get the result of every offset commit, including async commits that the broker rejects
+    #
+    # `#on_offsets_committed` gets an {RdkafkaError} (nil on success) and the
+    # {Consumer::TopicPartitionList} of the commit, whose partitions carry their own errors. It
+    # runs on the thread that polls the consumer, as part of that poll.
+    #
+    # @return [Object, #on_offsets_committed] listener instance
+    attr_writer :consumer_offset_commit_listener
 
     # Should we use a single queue for the underlying consumer and events.
     #
@@ -241,6 +251,11 @@ module Rdkafka
       if @consumer_rebalance_listener
         opaque.consumer_rebalance_listener = @consumer_rebalance_listener
         Rdkafka::Bindings.rd_kafka_conf_set_rebalance_cb(config, Rdkafka::Bindings::RebalanceCallback)
+      end
+
+      if @consumer_offset_commit_listener
+        opaque.consumer_offset_commit_listener = @consumer_offset_commit_listener
+        Rdkafka::Bindings.rd_kafka_conf_set_offset_commit_cb(config, Rdkafka::Bindings::OffsetCommitCallback)
       end
 
       build_native_client(
@@ -515,6 +530,7 @@ module Rdkafka
   class Opaque
     attr_accessor :producer
     attr_accessor :consumer_rebalance_listener
+    attr_accessor :consumer_offset_commit_listener
 
     # Invokes the delivery callback on the producer if one is set
     # @param delivery_report [Rdkafka::Producer::DeliveryReport] the delivery report
@@ -539,6 +555,16 @@ module Rdkafka
       return unless consumer_rebalance_listener.respond_to?(:on_partitions_revoked)
 
       consumer_rebalance_listener.on_partitions_revoked(list)
+    end
+
+    # Invokes the on_offsets_committed callback on the offset commit listener if set
+    # @param error [Rdkafka::RdkafkaError, nil] the commit error or nil on success
+    # @param list [Rdkafka::Consumer::TopicPartitionList] the offsets of the commit
+    def call_on_offsets_committed(error, list)
+      return unless consumer_offset_commit_listener
+      return unless consumer_offset_commit_listener.respond_to?(:on_offsets_committed)
+
+      consumer_offset_commit_listener.on_offsets_committed(error, list)
     end
   end
 end

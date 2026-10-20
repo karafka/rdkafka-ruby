@@ -212,7 +212,8 @@ module Rdkafka
     #
     # `#on_offsets_committed` gets an {RdkafkaError} (nil on success) and the
     # {Consumer::TopicPartitionList} of the commit, whose partitions carry their own errors. It
-    # runs on the thread that polls the consumer, as part of that poll.
+    # runs inside {Consumer#poll} (or {Consumer#events_poll} when `consumer_poll_set` is false)
+    # and inside {Consumer#close}, on the thread that calls them.
     #
     # @return [Object, #on_offsets_committed] listener instance
     attr_writer :consumer_offset_commit_listener

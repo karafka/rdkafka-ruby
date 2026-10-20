@@ -5,8 +5,8 @@
 #
 # An async `Consumer#commit` returns once the commit is scheduled. Without an offset commit
 # callback librdkafka only logs a failed commit (`COMMITFAIL`) and nothing reaches Ruby. With
-# `Config#consumer_offset_commit_listener` set, librdkafka serves each commit result from the
-# consumer poll and the listener gets the error (or nil) and the committed offsets.
+# `Config#consumer_offset_commit_listener` set, librdkafka serves each commit result when the
+# consumer polls (or closes) and the listener gets the error (or nil) and the committed offsets.
 #
 # Requires a running Kafka broker at localhost:9092.
 #

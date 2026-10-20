@@ -1671,6 +1671,40 @@ RSpec.describe Rdkafka::Consumer do
       expect(list.to_h[topic].map(&:offset)).to eq([3])
     end
 
+    it "gets the result of an async commit when the consumer closes before a poll" do
+      consumer.commit(offsets_list(topic, 0 => 4), true)
+      consumer.close
+
+      error, list = results.pop(true)
+
+      expect(error).to be_nil
+      expect(list.to_h[topic].map(&:offset)).to eq([4])
+    end
+
+    context "with consumer_poll_set false" do
+      let(:consumer) do
+        config = rdkafka_consumer_config
+        config.consumer_offset_commit_listener = listener
+        config.consumer_poll_set = false
+        config.consumer
+      end
+
+      it "gets the result from events_poll" do
+        consumer.commit(offsets_list(topic, 0 => 5), true)
+
+        deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 30
+
+        while results.empty? && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+          consumer.events_poll(100)
+        end
+
+        error, list = results.pop(true)
+
+        expect(error).to be_nil
+        expect(list.to_h[topic].map(&:offset)).to eq([5])
+      end
+    end
+
     context "with a listener that raises" do
       let(:listener) do
         Struct.new(:results) do

@@ -81,7 +81,8 @@ module Rdkafka
     callback :offset_commit_cb_function, [:pointer, :int, :pointer, :pointer], :void
     attach_function :rd_kafka_conf_set_offset_commit_cb, [:pointer, :offset_commit_cb_function], :void, blocking: true
 
-    # Served from the consumer poll, so it runs on the thread that polls the consumer
+    # Served from the consumer poll (or the events poll when `consumer_poll_set` is false) and
+    # from the consumer close, on the thread that calls them
     OffsetCommitCallback = FFI::Function.new(
       :void, [:pointer, :int, :pointer, :pointer]
     ) do |_client_ptr, code, offsets_ptr, opaque_ptr|

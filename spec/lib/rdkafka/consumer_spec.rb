@@ -1619,11 +1619,11 @@ RSpec.describe Rdkafka::Consumer do
       wait_for_assignment(consumer)
     end
 
-    def wait_for_commit_result(consumer, results)
+    def wait_for_commit_result(consumer, results, poll_method: :poll)
       deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 30
 
       while results.empty? && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
-        consumer.poll(100)
+        consumer.public_send(poll_method, 100)
       end
 
       results.pop(true)
@@ -1692,13 +1692,7 @@ RSpec.describe Rdkafka::Consumer do
       it "gets the result from events_poll" do
         consumer.commit(offsets_list(topic, 0 => 5), true)
 
-        deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 30
-
-        while results.empty? && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
-          consumer.events_poll(100)
-        end
-
-        error, list = results.pop(true)
+        error, list = wait_for_commit_result(consumer, results, poll_method: :events_poll)
 
         expect(error).to be_nil
         expect(list.to_h[topic].map(&:offset)).to eq([5])

@@ -55,8 +55,6 @@ module Rdkafka
     # @param partitioner [String, nil] name of the partitioner we want to use or nil to use
     #   the "consistent_random" default
     def initialize(native_kafka, partitioner)
-      # Both maps are replaced, never mutated, under @topics_mutex, so `produce` can read them
-      # without the lock and never sees a half-built entry
       @topics_refs_map = EMPTY_HASH
       @topics_configs = EMPTY_HASH
       @topics_mutex = Mutex.new

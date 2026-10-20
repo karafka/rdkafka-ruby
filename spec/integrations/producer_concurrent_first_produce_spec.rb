@@ -21,6 +21,7 @@
 
 require "rdkafka"
 require "securerandom"
+require_relative "support/native_call_counter"
 
 $stdout.sync = true
 
@@ -28,24 +29,10 @@ THREADS = 16
 TOPICS = Array.new(20) { "it-concurrent-first-produce-#{SecureRandom.uuid}" }
 CLOSE_TIMEOUT = 10
 
-# Records the native topic handles created and destroyed, per topic name
-module TopicHandleRecorder
-  LOCK = Mutex.new
-  CREATED = Hash.new { |hash, key| hash[key] = [] }
-  DESTROYED = []
-
-  def rd_kafka_topic_new(inner, topic_name, config)
-    super.tap do |handle|
-      LOCK.synchronize { CREATED[topic_name] << handle.address }
-    end
-  end
-
-  def rd_kafka_topic_destroy(handle)
-    LOCK.synchronize { DESTROYED << handle.address }
-    super
-  end
+NativeCallCounter.watch(:rd_kafka_topic_new, by: ->(_inner, topic_name, _config) { topic_name }) do |handle|
+  !handle.null?
 end
-Rdkafka::Bindings.singleton_class.prepend(TopicHandleRecorder)
+NativeCallCounter.watch(:rd_kafka_topic_destroy)
 
 producer = Rdkafka::Config.new(
   "bootstrap.servers": "localhost:9092",
@@ -76,7 +63,7 @@ unless errors.empty?
   exit!(1)
 end
 
-counts = TOPICS.map { |topic_name| TopicHandleRecorder::CREATED[topic_name].size }
+counts = TOPICS.map { |topic_name| NativeCallCounter.count(:rd_kafka_topic_new, topic_name) }
 
 unless counts.all?(1)
   warn "FAIL: expected one topic handle per topic, got #{counts.inspect}"
@@ -89,8 +76,9 @@ closer = Thread.new { producer.close }
 
 unless closer.join(CLOSE_TIMEOUT)
   # On JRuby concurrent produces can leave the operations counter of the native client
-  # unbalanced, so `close` waits forever. That is fixed separately; `exit!` skips the `at_exit`
-  # close that would wait the same way.
+  # unbalanced, so `close` waits forever until
+  # https://github.com/karafka/rdkafka-ruby/pull/1055 is merged. Remove this branch with it.
+  # `exit!` skips the `at_exit` close that would wait the same way.
   if defined?(JRUBY_VERSION)
     puts "SKIP: close did not finish on JRuby, handle destruction not checked"
     exit!(0)
@@ -100,11 +88,10 @@ unless closer.join(CLOSE_TIMEOUT)
   exit!(1)
 end
 
-created = TopicHandleRecorder::CREATED.values_at(*TOPICS).flatten
-not_destroyed = created - TopicHandleRecorder::DESTROYED
-
-unless not_destroyed.empty?
-  warn "FAIL: close did not destroy #{not_destroyed.size} of #{created.size} topic handles"
+unless NativeCallCounter.balanced?(:rd_kafka_topic_new, :rd_kafka_topic_destroy)
+  created = NativeCallCounter.count(:rd_kafka_topic_new)
+  destroyed = NativeCallCounter.count(:rd_kafka_topic_destroy)
+  warn "FAIL: close destroyed #{destroyed} of #{created} topic handles"
   exit(1)
 end
 

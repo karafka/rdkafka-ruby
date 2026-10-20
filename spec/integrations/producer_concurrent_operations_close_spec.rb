@@ -60,7 +60,8 @@ puts "Calls: #{calls.sum}, operations in progress after join: #{operations_in_pr
 
 unless operations_in_progress.zero? && closed
   warn "FAIL: the operations in progress count drifted or close did not return"
-  exit(1)
+  # A normal exit runs the producer finalizer, which waits for the stuck close
+  exit!(1)
 end
 
 puts "PASS: the operations in progress count stayed exact and close returned"

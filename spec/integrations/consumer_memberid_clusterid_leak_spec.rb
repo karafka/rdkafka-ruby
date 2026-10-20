@@ -11,18 +11,27 @@
 # string, and freed.
 #
 # We hammer cluster_id and assert RSS stays flat. RSS is read from /proc on Linux; on platforms
-# without /proc the calls are still exercised (no crash) but growth is not asserted.
+# without /proc the calls are still exercised (no crash) but growth is not asserted. On JRuby RSS
+# follows the JVM heap, so instead we assert that every non-NULL string returned by
+# `rd_kafka_clusterid` is released with `rd_kafka_mem_free`.
 #
 # Requires a running Kafka broker at localhost:9092.
 #
 # Exit codes:
 # - 0: no significant memory growth (or growth not measurable on this platform)
-# - 1: the cluster id could not be fetched, or RSS grew (leak still present)
+# - 1: the cluster id could not be fetched, RSS grew, or on JRuby the native allocations and
+#   releases do not balance (leak still present)
 
 require "rdkafka"
 require "securerandom"
+require_relative "support/native_call_counter"
 
 $stdout.sync = true
+
+if defined?(JRUBY_VERSION)
+  NativeCallCounter.watch(:rd_kafka_clusterid) { |ptr| !ptr.null? }
+  NativeCallCounter.watch(:rd_kafka_mem_free)
+end
 
 BOOTSTRAP = "localhost:9092"
 GROUP = "memberid-clusterid-leak-#{SecureRandom.hex(6)}"
@@ -55,15 +64,26 @@ measurable = File.exist?("/proc/self/status")
 # Warm up so the malloc arena / Ruby heap settle before we measure.
 20_000.times { consumer.cluster_id(5_000) }
 GC.start
+NativeCallCounter.reset
 before = measurable ? rss_kb : 0
 
 ITERATIONS.times { consumer.cluster_id(5_000) }
 
 GC.start
 after = measurable ? rss_kb : 0
+allocated = NativeCallCounter.count(:rd_kafka_clusterid)
+released = NativeCallCounter.count(:rd_kafka_mem_free)
+balanced = NativeCallCounter.balanced?(:rd_kafka_clusterid, :rd_kafka_mem_free)
 consumer.close
 
-if measurable
+if defined?(JRUBY_VERSION)
+  puts "Native strings after #{ITERATIONS} cluster_id calls: #{allocated} allocated, #{released} freed"
+
+  unless balanced
+    warn "FAIL: #{allocated} cluster id strings allocated but #{released} freed - cluster_id still leaks"
+    exit(1)
+  end
+elsif measurable
   delta = after - before
   puts "RSS delta after #{ITERATIONS} cluster_id calls: #{delta} KB"
 

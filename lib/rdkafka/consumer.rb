@@ -482,12 +482,12 @@ module Rdkafka
 
     # Query broker for low (oldest/beginning) and high (newest/end) offsets for a partition.
     #
-    # @param topic [String] The topic to query
+    # @param topic_name [String] The topic to query
     # @param partition [Integer] The partition to query
     # @param timeout_ms [Integer] The timeout for querying the broker
     # @return [Integer] The low and high watermark
     # @raise [RdkafkaError] When querying the broker fails.
-    def query_watermark_offsets(topic, partition, timeout_ms = Defaults::CONSUMER_QUERY_WATERMARK_TIMEOUT_MS)
+    def query_watermark_offsets(topic_name, partition, timeout_ms = Defaults::CONSUMER_QUERY_WATERMARK_TIMEOUT_MS)
       closed_consumer_check(__method__)
 
       low = FFI::MemoryPointer.new(:int64, 1)
@@ -496,7 +496,7 @@ module Rdkafka
       response = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_query_watermark_offsets(
           inner,
-          topic,
+          topic_name,
           partition,
           low,
           high,
@@ -504,7 +504,7 @@ module Rdkafka
         )
       end
       if response != Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
-        raise Rdkafka::RdkafkaError.new(response, "Error querying watermark offsets for partition #{partition} of #{topic}")
+        raise Rdkafka::RdkafkaError.new(response, "Error querying watermark offsets for partition #{partition} of #{topic_name}")
       end
 
       [low.read_array_of_int64(1).first, high.read_array_of_int64(1).first]
@@ -666,12 +666,12 @@ module Rdkafka
     # Seek to a particular message by providing the topic, partition and offset.
     # The next poll on the topic/partition will return the message at the given offset.
     #
-    # @param topic [String] The topic in which to seek
+    # @param topic_name [String] The topic in which to seek
     # @param partition [Integer] The partition number to seek
     # @param offset [Integer] The partition offset to seek
     # @return [nil]
     # @raise [RdkafkaError] When seeking fails
-    def seek_by(topic, partition, offset)
+    def seek_by(topic_name, partition, offset)
       closed_consumer_check(__method__)
 
       # rd_kafka_offset_store is one of the few calls that does not support
@@ -679,7 +679,7 @@ module Rdkafka
       native_topic = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_topic_new(
           inner,
-          topic,
+          topic_name,
           nil
         )
       end

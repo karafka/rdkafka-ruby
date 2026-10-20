@@ -24,7 +24,6 @@ unless ENV["CI"] == "true"
   end
 end
 
-require "pry"
 require "rspec"
 require "rdkafka"
 require "timeout"
@@ -37,6 +36,7 @@ require_relative "support/kafka_wait_helpers"
 require_relative "support/native_client_helpers"
 require_relative "support/admin_topic_auto_wait"
 require_relative "support/test_topics"
+require_relative "support/pointer_matchers"
 
 RSpec.configure do |config|
   config.disable_monkey_patching!

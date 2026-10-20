@@ -221,7 +221,7 @@ RSpec.describe Rdkafka::Consumer do
       it "works when a partition is paused" do
         # 3. get reference message
         send_one_message(:a)
-        message1 = consumer.poll(timeout)
+        message1 = wait_for_next_message(consumer)
         expect(message1&.payload).to eq "payload a"
 
         # 4. pause the subscription
@@ -238,7 +238,7 @@ RSpec.describe Rdkafka::Consumer do
         consumer.resume(tpl)
 
         # 7. ensure same message is read again
-        message2 = consumer.poll(timeout)
+        message2 = wait_for_next_message(consumer)
 
         # This is needed because `enable.auto.offset.store` is true but when running in CI that
         # is overloaded, offset store lags
@@ -256,7 +256,7 @@ RSpec.describe Rdkafka::Consumer do
         send_one_message(:c)
 
         # 4. get reference message
-        message = consumer.poll(timeout)
+        message = wait_for_next_message(consumer)
         expect(message&.payload).to eq "payload a"
 
         # 5. seek over one message
@@ -265,7 +265,7 @@ RSpec.describe Rdkafka::Consumer do
         consumer.seek(fake_msg)
 
         # 6. ensure that only one message is available
-        records = consumer.poll(timeout)
+        records = wait_for_next_message(consumer)
         expect(records&.payload).to eq "payload c"
         records = consumer.poll(timeout)
         expect(records).to be_nil
@@ -320,7 +320,7 @@ RSpec.describe Rdkafka::Consumer do
       it "works when a partition is paused" do
         # 3. get reference message
         send_one_message(:a)
-        message1 = consumer.poll(timeout)
+        message1 = wait_for_next_message(consumer)
         expect(message1&.payload).to eq "payload a"
 
         # 4. pause the subscription
@@ -337,7 +337,7 @@ RSpec.describe Rdkafka::Consumer do
         consumer.resume(tpl)
 
         # 7. ensure same message is read again
-        message2 = consumer.poll(timeout)
+        message2 = wait_for_next_message(consumer)
 
         # This is needed because `enable.auto.offset.store` is true but when running in CI that
         # is overloaded, offset store lags
@@ -355,14 +355,14 @@ RSpec.describe Rdkafka::Consumer do
         send_one_message(:c)
 
         # 4. get reference message
-        message = consumer.poll(timeout)
+        message = wait_for_next_message(consumer)
         expect(message&.payload).to eq "payload a"
 
         # 5. seek over one message
         consumer.seek_by(message.topic, message.partition, message.offset + 2)
 
         # 6. ensure that only one message is available
-        records = consumer.poll(timeout)
+        records = wait_for_next_message(consumer)
         expect(records&.payload).to eq "payload c"
         records = consumer.poll(timeout)
         expect(records).to be_nil
@@ -2120,7 +2120,7 @@ RSpec.describe Rdkafka::Consumer do
 
       expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue).and_return(1)
       allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
-      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(message_pointer)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(same_address_as(message_pointer))
 
       consumer.subscribe(topic)
 
@@ -2141,8 +2141,8 @@ RSpec.describe Rdkafka::Consumer do
 
       expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue).and_return(2)
       allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
-      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr1)
-      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr2)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(same_address_as(ptr1))
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(same_address_as(ptr2))
 
       consumer.subscribe(topic)
 
@@ -2165,8 +2165,8 @@ RSpec.describe Rdkafka::Consumer do
       expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue).and_return(2)
       allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
       allow(Rdkafka::Consumer::Message).to receive(:new).and_return(fake_message)
-      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr_err)
-      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr_ok)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(same_address_as(ptr_err))
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(same_address_as(ptr_ok))
 
       consumer.subscribe(topic)
 
@@ -2241,7 +2241,7 @@ RSpec.describe Rdkafka::Consumer do
 
       expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue_nb).and_return(1)
       allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
-      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(message_pointer)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(same_address_as(message_pointer))
 
       consumer.subscribe(topic)
 
@@ -2262,8 +2262,8 @@ RSpec.describe Rdkafka::Consumer do
 
       expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue_nb).and_return(2)
       allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
-      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr1)
-      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr2)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(same_address_as(ptr1))
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(same_address_as(ptr2))
 
       consumer.subscribe(topic)
 
@@ -2286,8 +2286,8 @@ RSpec.describe Rdkafka::Consumer do
       expect(Rdkafka::Bindings).to receive(:rd_kafka_consume_batch_queue_nb).and_return(2)
       allow(consumer).to receive_messages(batch_buffer: buffer, consumer_queue: FFI::Pointer::NULL)
       allow(Rdkafka::Consumer::Message).to receive(:new).and_return(fake_message)
-      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr_err)
-      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(ptr_ok)
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(same_address_as(ptr_err))
+      expect(Rdkafka::Bindings).to receive(:rd_kafka_message_destroy).with(same_address_as(ptr_ok))
 
       consumer.subscribe(topic)
 

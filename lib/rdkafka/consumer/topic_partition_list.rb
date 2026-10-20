@@ -38,7 +38,7 @@ module Rdkafka
       # Calling this method multiple times for the same topic will overwrite the previous
       # configuraton.
       #
-      # @param topic [String] The topic's name
+      # @param topic_name [String] The topic's name
       # @param partitions [Array<Integer>, Range<Integer>, Integer] The topic's partitions or
       #   partition count
       #
@@ -52,14 +52,14 @@ module Rdkafka
       #
       # @example Add a topic with all topics up to a count
       #   tpl.add_topic("topic", 9)
-      def add_topic(topic, partitions = nil)
+      def add_topic(topic_name, partitions = nil)
         if partitions.nil?
-          @data[topic.to_s] = nil
+          @data[topic_name.to_s] = nil
         else
           if partitions.is_a? Integer
             partitions = (0..partitions - 1)
           end
-          @data[topic.to_s] = partitions.map { |p| Partition.new(p, nil, Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR) }
+          @data[topic_name.to_s] = partitions.map { |p| Partition.new(p, nil, Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR) }
         end
       end
 
@@ -67,12 +67,12 @@ module Rdkafka
       # Calling this method multiple times for the same topic will overwrite the previous
       # configuraton.
       #
-      # @param topic [String] The topic's name
+      # @param topic_name [String] The topic's name
       # @param partitions_with_offsets [Hash{Integer => Integer}, Array<Consumer::Partition>] The
       #   topic's partitions and offsets (Hash) or partitions with offsets and metadata (Array)
       # @return [nil]
-      def add_topic_and_partitions_with_offsets(topic, partitions_with_offsets)
-        @data[topic.to_s] = partitions_with_offsets.map do |p, o|
+      def add_topic_and_partitions_with_offsets(topic_name, partitions_with_offsets)
+        @data[topic_name.to_s] = partitions_with_offsets.map do |p, o|
           p.is_a?(Partition) ? p : Partition.new(p, o)
         end
       end

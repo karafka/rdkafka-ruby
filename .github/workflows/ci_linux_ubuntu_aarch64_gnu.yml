@@ -61,6 +61,8 @@ env:
 jobs:
   specs_install:
     timeout-minutes: 45
+    # JRuby is non-blocking: a failing JRuby job shows red but does not fail the workflow
+    continue-on-error: ${{ matrix.continue-on-error || false }}
     strategy:
       fail-fast: false
       matrix:
@@ -132,7 +134,6 @@ jobs:
         env:
           GITHUB_COVERAGE: ${{matrix.coverage}}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
-        continue-on-error: ${{ matrix.continue-on-error || false }}
         run: |
           bundle exec rspec
 

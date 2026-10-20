@@ -356,5 +356,23 @@ RSpec.describe Rdkafka::Bindings do
         end
       end
     end
+
+    context "when the oauthbearer callback is cleared while it runs" do
+      it "calls the callback it read" do
+        received = []
+        callback = ->(config, client_name) { received << [config, client_name] }
+
+        allow(Rdkafka::Config)
+          .to receive(:oauthbearer_token_refresh_callback)
+          .and_return(callback, nil)
+
+        RdKafkaTestConsumer.with do |consumer_ptr|
+          Rdkafka::Bindings::OAuthbearerTokenRefreshCallback.call(consumer_ptr, "{}", nil)
+        end
+
+        expect(received.size).to eq(1)
+        expect(received.first.first).to eq("{}")
+      end
+    end
   end
 end

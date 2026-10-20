@@ -31,6 +31,7 @@ The most essential pieces of a Kafka client are implemented, and we aim to provi
   * [Message Processing Frameworks](#message-processing-frameworks)
   * [Message Publishing Libraries](#message-publishing-libraries)
 - [Forking](#forking)
+- [Thread Safety](#thread-safety)
 - [Development](#development)
 - [Example](#example)
 - [Versions](#versions)
@@ -121,6 +122,14 @@ To address this, it's highly recommended to:
 - Never initialize any `rdkafka-ruby` producers or consumers before forking to avoid state corruption.
 - Before forking, always close any open producers or consumers if you've opened any.
 - Use high-level libraries like [WaterDrop](https://github.com/karafka/waterdrop) and [Karafka](https://github.com/karafka/karafka/), which provide abstractions for handling librdkafka's intricacies.
+
+## Thread Safety
+
+librdkafka is thread-safe, but poll each `Rdkafka::Consumer` from one thread at a time. This rule covers all of its poll methods: `#poll`, `#poll_nb`, `#poll_batch`, `#poll_batch_nb`, `#poll_nb_each` and `#each`.
+
+To poll from several threads, use one consumer per polling thread.
+
+The rule applies to all Ruby runtimes. It matters most on JRuby, where threads run in parallel.
 
 ## Development
 

@@ -14,17 +14,26 @@
 # leader election), so we deterministically force the parse step to raise it twice per call while
 # letting the REAL `rd_kafka_metadata` allocate a struct on each of the three attempts. We then
 # hammer the path and assert RSS stays flat. RSS is read from /proc on Linux; on platforms
-# without /proc the path is still exercised (no crash) but growth is not asserted.
+# without /proc the path is still exercised (no crash) but growth is not asserted. On JRuby RSS
+# follows the JVM heap, so instead we assert that every successful `rd_kafka_metadata` has a
+# matching `rd_kafka_metadata_destroy`.
 #
 # Requires a running Kafka broker at localhost:9092.
 #
 # Exit codes:
 # - 0: no significant memory growth (or growth not measurable on this platform)
-# - 1: RSS grew (leak still present)
+# - 1: RSS grew, or on JRuby the native allocations and releases do not balance (leak still present)
 
 require "rdkafka"
+require_relative "support/native_call_counter"
 
 $stdout.sync = true
+
+# rd_kafka_metadata returns an error code and allocates the struct only when it is 0
+if defined?(JRUBY_VERSION)
+  NativeCallCounter.watch(:rd_kafka_metadata, &:zero?)
+  NativeCallCounter.watch(:rd_kafka_metadata_destroy)
+end
 
 BOOTSTRAP = "localhost:9092"
 TOPIC = "metadata-retry-leak-probe"
@@ -66,6 +75,7 @@ end
 # Warm up so the broker connection is established and the malloc arena / Ruby heap settle.
 2_000.times { probe(admin) }
 GC.start
+NativeCallCounter.reset
 before = measurable ? rss_kb : 0
 
 ITERATIONS.times { probe(admin) }
@@ -74,7 +84,16 @@ GC.start
 after = measurable ? rss_kb : 0
 admin.close
 
-if measurable
+if defined?(JRUBY_VERSION)
+  allocated = NativeCallCounter.count(:rd_kafka_metadata)
+  released = NativeCallCounter.count(:rd_kafka_metadata_destroy)
+  puts "Native metadata structs after #{ITERATIONS} retried fetches: #{allocated} allocated, #{released} destroyed"
+
+  unless NativeCallCounter.balanced?(:rd_kafka_metadata, :rd_kafka_metadata_destroy)
+    warn "FAIL: #{allocated} metadata structs allocated but #{released} destroyed - metadata struct still leaks"
+    exit(1)
+  end
+elsif measurable
   delta = after - before
   puts "RSS delta after #{ITERATIONS} retried metadata fetches: #{delta} KB"
 

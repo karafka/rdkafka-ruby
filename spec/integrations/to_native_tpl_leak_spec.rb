@@ -11,14 +11,23 @@
 #
 # We repeatedly build a list whose partition has a non-integer offset (which makes
 # `rd_kafka_topic_partition_list_set_offset` raise) and assert RSS stays flat. No broker needed.
+# On JRuby RSS follows the JVM heap, so instead we assert that every
+# `rd_kafka_topic_partition_list_new` has a matching `rd_kafka_topic_partition_list_destroy`.
 #
 # Exit codes:
 # - 0: no significant memory growth (or growth not measurable on this platform)
-# - 1: RSS grew (the native list still leaks)
+# - 1: RSS grew, or on JRuby the native allocations and releases do not balance (the native list
+#   still leaks)
 
 require "rdkafka"
+require_relative "support/native_call_counter"
 
 $stdout.sync = true
+
+if defined?(JRUBY_VERSION)
+  NativeCallCounter.watch(:rd_kafka_topic_partition_list_new)
+  NativeCallCounter.watch(:rd_kafka_topic_partition_list_destroy)
+end
 
 ITERATIONS = 200_000
 
@@ -47,6 +56,7 @@ end
 # Warm up so the malloc arena / Ruby heap settle before we measure.
 20_000.times { trigger_failed_build }
 settle_heap
+NativeCallCounter.reset
 before = measurable ? rss_kb : 0
 
 ITERATIONS.times { trigger_failed_build }
@@ -54,7 +64,16 @@ ITERATIONS.times { trigger_failed_build }
 settle_heap
 after = measurable ? rss_kb : 0
 
-if measurable
+if defined?(JRUBY_VERSION)
+  allocated = NativeCallCounter.count(:rd_kafka_topic_partition_list_new)
+  released = NativeCallCounter.count(:rd_kafka_topic_partition_list_destroy)
+  puts "Native lists after #{ITERATIONS} failed to_native_tpl builds: #{allocated} allocated, #{released} destroyed"
+
+  unless NativeCallCounter.balanced?(:rd_kafka_topic_partition_list_new, :rd_kafka_topic_partition_list_destroy)
+    warn "FAIL: #{allocated} native lists allocated but #{released} destroyed - the native list still leaks"
+    exit(1)
+  end
+elsif measurable
   delta = after - before
   puts "RSS delta after #{ITERATIONS} failed to_native_tpl builds: #{delta} KB"
 

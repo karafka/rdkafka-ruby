@@ -1332,22 +1332,26 @@ RSpec.describe Rdkafka::Producer do
     let(:created) { Hash.new { |hash, key| hash[key] = [] } }
     let(:destroyed) { [] }
     let(:lock) { Mutex.new }
+    let(:recording) { { active: true } }
 
     before do
       created_handles = created
       destroyed_handles = destroyed
       counter_lock = lock
+      state = recording
 
-      # Counts the native calls behind every topic handle of this example only
+      # A prepended module cannot be removed, so it records only while this example runs
       counter = Module.new do
         define_method(:rd_kafka_topic_new) do |inner, topic_name, config|
           super(inner, topic_name, config).tap do |handle|
+            next unless state[:active]
+
             counter_lock.synchronize { created_handles[topic_name] << handle.address }
           end
         end
 
         define_method(:rd_kafka_topic_destroy) do |handle|
-          counter_lock.synchronize { destroyed_handles << handle.address }
+          counter_lock.synchronize { destroyed_handles << handle.address } if state[:active]
           super(handle)
         end
       end
@@ -1355,9 +1359,12 @@ RSpec.describe Rdkafka::Producer do
       Rdkafka::Bindings.singleton_class.prepend(counter)
     end
 
+    after { recording[:active] = false }
+
     it "creates exactly one topic handle per topic and destroys each on close" do
       # Concurrent produces leave the operations counter unbalanced on JRuby, so `close` hangs
-      # until the operations counter fix lands. Remove this skip with it.
+      # until the operations counter fix lands. Remove this skip with it. Until then
+      # `spec/integrations/producer_concurrent_first_produce_spec.rb` covers JRuby.
       skip "Producer#close can hang after concurrent produces on JRuby" if defined?(JRUBY_VERSION)
 
       start = Queue.new

@@ -43,16 +43,18 @@ class MockCluster
   # @return [String] bootstrap servers of the cluster
   attr_reader :bootstrap_servers
 
-  # Yields a new cluster and destroys it afterwards. Close the clients that use the cluster
-  # inside the block.
-  #
-  # @param broker_count [Integer] number of mock brokers
-  # @yieldparam cluster [MockCluster] the new cluster
-  def self.run(broker_count: 1)
-    cluster = new(broker_count: broker_count)
-    yield(cluster)
-  ensure
-    cluster&.destroy
+  class << self
+    # Yields a new cluster and destroys it afterwards. Close the clients that use the cluster
+    # inside the block.
+    #
+    # @param broker_count [Integer] number of mock brokers
+    # @yieldparam cluster [MockCluster] the new cluster
+    def run(broker_count: 1)
+      cluster = new(broker_count: broker_count)
+      yield(cluster)
+    ensure
+      cluster&.destroy
+    end
   end
 
   # @param broker_count [Integer] number of mock brokers

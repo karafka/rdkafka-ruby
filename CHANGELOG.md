@@ -14,6 +14,7 @@
 - [Maintenance] Drop `pry` from the development bundle and stop requiring it in the spec helper.
 - [Fix] Stop `Consumer#store_offset` and other calls that pass partition metadata from raising `NoMethodError` on JRuby.
 - [Fix] Raise `Rdkafka::LibraryLoadError` with the glibc upgrade hint instead of `NameError` when the precompiled librdkafka needs a newer glibc.
+- [Fix] Report a failed consumer close (e.g. of a fatally-errored consumer) to `Rdkafka::Config.error_callback` instead of dropping it. `Consumer#close` still does not raise.
 
 ## 0.31.0 (2026-10-09)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.

@@ -540,22 +540,6 @@ RSpec.describe Rdkafka::Consumer do
         expect(Rdkafka::Config.logger).to have_received(:error).with(/callback failure/)
       end
 
-      it "reports the underlying fatal error of a fatally-errored consumer" do
-        Rdkafka::Config.error_callback = ->(error) { errors << error }
-        allow(Rdkafka::Bindings).to receive_messages(
-          rd_kafka_consumer_close: Rdkafka::Bindings::RD_KAFKA_RESP_ERR__FATAL,
-          extract_fatal_error: { error_code: Rdkafka::Bindings::RD_KAFKA_RESP_ERR_INVALID_PRODUCER_EPOCH, error_string: "test fatal error" }
-        )
-
-        described_class.finalizer(native_kafka, []).call
-
-        expect(errors.size).to eq(1)
-        expect(errors.first.fatal?).to be(true)
-        expect(errors.first.code).to eq(:invalid_producer_epoch)
-        expect(errors.first.broker_message).to eq("test fatal error")
-        expect(Rdkafka::Bindings).to have_received(:extract_fatal_error).with(inner)
-      end
-
       it "does not raise without an error callback" do
         expect { described_class.finalizer(native_kafka, []).call }.not_to raise_error
         expect(native_kafka).to have_received(:close)

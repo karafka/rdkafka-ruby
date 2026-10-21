@@ -6,7 +6,6 @@ gemspec
 
 group :development do
   gem "ostruct"
-  gem "pry"
   gem "rspec"
   gem "simplecov"
   gem "warning"

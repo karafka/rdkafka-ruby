@@ -7,7 +7,8 @@ require "openssl"
 #
 # It stops with a flag and by closing the listener, never with `Thread#kill`: on JRuby,
 # jruby-openssl turns a kill that lands in a TLS handshake into `OpenSSL::SSL::SSLError`. The
-# accept loop rescues that, so a killed thread kept running and JRuby hung at exit joining it.
+# accept loop must rescue handshake errors, so it rescues the kill too: the thread survives and
+# JRuby waits for it forever at exit.
 class FakeSslServer
   # @param host [String] host to listen on
   # @param port [Integer] port to listen on

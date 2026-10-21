@@ -58,39 +58,41 @@ cert.sign(key, OpenSSL::Digest.new("SHA256"))
 
 # Start servers on multiple ports
 # We do not use a shared context for the server because the goal is to stress librdkafka layer
-# and not the Ruby SSL layer. Handshake errors are expected and irrelevant.
-servers = PORTS.map do |port|
-  ssl_context = OpenSSL::SSL::SSLContext.new
-  ssl_context.cert = cert
-  ssl_context.key = key
-
-  FakeSslServer.new("127.0.0.1", port, ssl_context)
-end
-
-timeout = 30
-start = Time.now
-
-# Wait for the servers to be available
-# We want to make sure that they are available so we are sure that librdkafka actually hammers them
-loop do
-  all_up = PORTS.all? do |port|
-    TCPSocket.new("127.0.0.1", port).close
-    true
-  rescue
-    false
-  end
-
-  break if all_up
-
-  raise "Timeout waiting for SSL servers" if Time.now - start > timeout
-
-  sleep 0.1
-end
-
-start_time = Time.now
-duration = 60 * 10 # 10 minutes - it should crash faster than that if SSL vulnerable
+# and not the Ruby SSL layer.
+servers = []
 
 begin
+  PORTS.each do |port|
+    ssl_context = OpenSSL::SSL::SSLContext.new
+    ssl_context.cert = cert
+    ssl_context.key = key
+
+    servers << FakeSslServer.new("127.0.0.1", port, ssl_context)
+  end
+
+  timeout = 30
+  start = Time.now
+
+  # Wait for the servers to be available
+  # We want to make sure that they are available so we are sure that librdkafka actually hammers them
+  loop do
+    all_up = PORTS.all? do |port|
+      TCPSocket.new("127.0.0.1", port).close
+      true
+    rescue
+      false
+    end
+
+    break if all_up
+
+    raise "Timeout waiting for SSL servers" if Time.now - start > timeout
+
+    sleep 0.1
+  end
+
+  start_time = Time.now
+  duration = 60 * 10 # 10 minutes - it should crash faster than that if SSL vulnerable
+
   while Time.now - start_time < duration
     css = Array.new(BATCHES) { Rdkafka::Config.new(CONFIG) }
     csss = css.map(&:consumer)

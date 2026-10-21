@@ -11,6 +11,7 @@
 - [Maintenance] Skip the bindings signature parity spec on JRuby, whose FFI does not expose function signatures.
 - [Maintenance] Match the `rd_kafka_message_destroy` pointers in the `poll_batch` and `poll_batch_nb` specs by address, so they pass on JRuby.
 - [Maintenance] Run the `client_shutdown_dlclose` integration test on JRuby on Linux.
+- [Maintenance] Stop the `client_shutdown_dlclose` integration test from failing with `Errno::ESRCH` when a librdkafka thread exits while its name is read.
 - [Maintenance] Drop `pry` from the development bundle and stop requiring it in the spec helper.
 - [Fix] Stop `Consumer#store_offset` and other calls that pass partition metadata from raising `NoMethodError` on JRuby.
 - [Fix] Raise `Rdkafka::LibraryLoadError` with the glibc upgrade hint instead of `NameError` when the precompiled librdkafka needs a newer glibc.

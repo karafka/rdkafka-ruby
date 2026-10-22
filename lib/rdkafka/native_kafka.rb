@@ -25,14 +25,14 @@ module Rdkafka
       @access_mutex = Mutex.new
       # Lock around internal polling
       @poll_mutex = Mutex.new
-      # Lock around the operations in progress counter. Both the increment and the decrement
-      # happen under it, so no update is lost on Rubies without a GVL (JRuby). It is separate from
-      # `@access_mutex`: an operation that started before `#synchronize` took `@access_mutex` must
-      # still be able to decrement, or `#synchronize` would wait for it forever.
-      @operations_mutex = Mutex.new
-      # Signalled when the operations in progress counter reaches zero
+      # Signalled when the operations in progress counter reaches zero and when `#synchronize`
+      # ends. `#synchronize` waits on it with `@access_mutex` released, so operations that started
+      # before it can still decrement the counter.
       @operations_done = ConditionVariable.new
-      # counter for operations in progress using inner
+      # Set while `#synchronize` runs, so no new operation starts until it ends
+      @synchronizing = false
+      # counter for operations in progress using inner, changed only under `@access_mutex`, so no
+      # update is lost on Rubies without a GVL (JRuby)
       @operations_in_progress = 0
 
       @run_polling_thread = run_polling_thread
@@ -83,15 +83,25 @@ module Rdkafka
     # @raise [ClosedInnerError] when the inner handle is nil
     def with_inner
       if @access_mutex.owned?
-        increment_operations_in_progress
+        @operations_in_progress += 1
       else
-        @access_mutex.synchronize { increment_operations_in_progress }
+        @access_mutex.synchronize do
+          @operations_done.wait(@access_mutex) while @synchronizing
+          @operations_in_progress += 1
+        end
       end
 
       begin
         @inner.nil? ? raise(ClosedInnerError) : yield(@inner)
       ensure
-        decrement_operations_in_progress
+        if @access_mutex.owned?
+          @operations_in_progress -= 1
+        else
+          @access_mutex.synchronize do
+            @operations_in_progress -= 1
+            @operations_done.broadcast if @operations_in_progress.zero?
+          end
+        end
       end
     end
 
@@ -101,15 +111,21 @@ module Rdkafka
     # @return [Object] the result of the block
     def synchronize(&block)
       @access_mutex.synchronize do
-        # Wait for any commands using the inner to finish
-        # This can take a while on blocking operations like polling but is essential not to proceed
-        # with certain types of operations like resources destruction as it can cause the process
-        # to hang or crash
-        @operations_mutex.synchronize do
-          @operations_done.wait(@operations_mutex) until @operations_in_progress.zero?
-        end
+        @operations_done.wait(@access_mutex) while @synchronizing
+        @synchronizing = true
 
-        with_inner(&block)
+        begin
+          # Wait for any commands using the inner to finish
+          # This can take a while on blocking operations like polling but is essential not to
+          # proceed with certain types of operations like resources destruction as it can cause the
+          # process to hang or crash
+          @operations_done.wait(@access_mutex) until @operations_in_progress.zero?
+
+          with_inner(&block)
+        ensure
+          @synchronizing = false
+          @operations_done.broadcast
+        end
       end
     end
 
@@ -226,21 +242,6 @@ module Rdkafka
         @opaque = nil
         @poll_mutex.unlock
         @poll_mutex = nil
-      end
-    end
-
-    private
-
-    # Registers an operation that uses the inner handle
-    def increment_operations_in_progress
-      @operations_mutex.synchronize { @operations_in_progress += 1 }
-    end
-
-    # Unregisters an operation and wakes `#synchronize` once none is left
-    def decrement_operations_in_progress
-      @operations_mutex.synchronize do
-        @operations_in_progress -= 1
-        @operations_done.broadcast if @operations_in_progress.zero?
       end
     end
   end

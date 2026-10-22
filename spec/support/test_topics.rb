@@ -15,6 +15,11 @@ module TestTopics
 
   private_constant :SPEC_HASH
 
+  # Milliseconds to wait for +create_topic+ to be acknowledged. A loaded CI runner can take
+  # well over 15s to answer; a timeout here both fails the spec and leaves the unresolved
+  # +CreateTopicHandle+ registered, which then trips the leaked-handle guard.
+  CREATE_TIMEOUT_MS = 30_000
+
   class << self
     # Returns the per-file spec hash for embedding in topic/group names.
     #
@@ -45,11 +50,6 @@ module TestTopics
     def example_topic
       @example_topic ||= unique
     end
-
-    # Milliseconds to wait for +create_topic+ to be acknowledged. A loaded CI runner can take
-    # well over 15s to answer; a timeout here both fails the spec and leaves the unresolved
-    # +CreateTopicHandle+ registered, which then trips the leaked-handle guard.
-    CREATE_TIMEOUT_MS = 30_000
 
     # Creates a new Kafka topic with a unique name and waits until it is available.
     #

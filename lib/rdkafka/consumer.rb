@@ -69,7 +69,7 @@ module Rdkafka
     # {Bindings::ErrorCallback}, the same path as errors emitted by librdkafka, so it reaches
     # {Config.error_callback} in the shape the callback expects (libraries such as karafka-core
     # replace `ErrorCallback`). It runs after the close, but before the native client is destroyed,
-    # as the callback reads the client name and fatal error from it. Close runs during shutdown and
+    # as the callback reads the client name from it. Close runs during shutdown and
     # from the GC finalizer, so the error is reported, never raised.
     #
     # @private

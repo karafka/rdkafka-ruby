@@ -27,6 +27,7 @@
 require "rdkafka"
 require "socket"
 require "openssl"
+require_relative "support/fake_ssl_server"
 
 $stdout.sync = true
 
@@ -56,56 +57,50 @@ cert.not_after = Time.now + 3600
 cert.sign(key, OpenSSL::Digest.new("SHA256"))
 
 # Start servers on multiple ports
-PORTS.map do |port|
-  Thread.new do
-    # Prepare SSL context
-    # We do not use a shared context for the server because the goal is to stress librdkafka layer
-    # and not the Ruby SSL layer
+# We do not use a shared context for the server because the goal is to stress librdkafka layer
+# and not the Ruby SSL layer.
+servers = []
+
+begin
+  PORTS.each do |port|
     ssl_context = OpenSSL::SSL::SSLContext.new
     ssl_context.cert = cert
     ssl_context.key = key
 
-    tcp_server = TCPServer.new("127.0.0.1", port)
-    ssl_server = OpenSSL::SSL::SSLServer.new(tcp_server, ssl_context)
+    servers << FakeSslServer.new("127.0.0.1", port, ssl_context)
+  end
 
-    loop do
-      ssl_socket = ssl_server.accept
-      ssl_socket.close
-    rescue => e
-      # Some errors are expected and irrelevant
-      next if e.message.include?("unexpected eof while reading")
+  timeout = 30
+  start = Time.now
+
+  # Wait for the servers to be available
+  # We want to make sure that they are available so we are sure that librdkafka actually hammers them
+  loop do
+    all_up = PORTS.all? do |port|
+      TCPSocket.new("127.0.0.1", port).close
+      true
+    rescue
+      false
     end
-  end
-end
 
-timeout = 30
-start = Time.now
+    break if all_up
 
-# Wait for the servers to be available
-# We want to make sure that they are available so we are sure that librdkafka actually hammers them
-loop do
-  all_up = PORTS.all? do |port|
-    TCPSocket.new("127.0.0.1", port).close
-    true
-  rescue
-    false
+    raise "Timeout waiting for SSL servers" if Time.now - start > timeout
+
+    sleep 0.1
   end
 
-  break if all_up
+  start_time = Time.now
+  duration = 60 * 10 # 10 minutes - it should crash faster than that if SSL vulnerable
 
-  raise "Timeout waiting for SSL servers" if Time.now - start > timeout
+  while Time.now - start_time < duration
+    css = Array.new(BATCHES) { Rdkafka::Config.new(CONFIG) }
+    csss = css.map(&:consumer)
+    # This print is needed. No idea why but it increases the chances of segfault
 
-  sleep 0.1
-end
-
-start_time = Time.now
-duration = 60 * 10 # 10 minutes - it should crash faster than that if SSL vulnerable
-
-while Time.now - start_time < duration
-  css = Array.new(BATCHES) { Rdkafka::Config.new(CONFIG) }
-  csss = css.map(&:consumer)
-  # This print is needed. No idea why but it increases the chances of segfault
-
-  sleep(1)
-  csss.each(&:close)
+    sleep(1)
+    csss.each(&:close)
+  end
+ensure
+  servers.each(&:stop)
 end

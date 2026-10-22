@@ -76,6 +76,33 @@ module Rdkafka
       end
     end
 
+    # Offset commit
+
+    callback :offset_commit_cb_function, [:pointer, :int, :pointer, :pointer], :void
+    attach_function :rd_kafka_conf_set_offset_commit_cb, [:pointer, :offset_commit_cb_function], :void, blocking: true
+
+    # Served from the consumer poll (or the events poll when `consumer_poll_set` is false) and
+    # from the consumer close, on the thread that calls them
+    OffsetCommitCallback = FFI::Function.new(
+      :void, [:pointer, :int, :pointer, :pointer]
+    ) do |_client_ptr, code, offsets_ptr, opaque_ptr|
+      opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
+      return unless opaque
+
+      error = code.zero? ? nil : Rdkafka::RdkafkaError.new(code)
+      tpl = if offsets_ptr.null?
+        Rdkafka::Consumer::TopicPartitionList.new
+      else
+        Rdkafka::Consumer::TopicPartitionList.from_native_tpl(offsets_ptr)
+      end
+
+      begin
+        opaque.call_on_offsets_committed(error, tpl.freeze)
+      rescue Exception => err
+        Rdkafka::Config.logger.error("Unhandled exception: #{err.class} - #{err.message}")
+      end
+    end
+
     # Watermark offsets
 
     attach_function :rd_kafka_query_watermark_offsets, [:pointer, :string, :int, :pointer, :pointer, :int], :int, blocking: true

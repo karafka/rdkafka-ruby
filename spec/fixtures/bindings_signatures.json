@@ -144,6 +144,7 @@
   "rd_kafka_conf_set_error_cb": "(POINTER, callback(POINTER, INT32, STRING, POINTER) -> VOID) -> VOID",
   "rd_kafka_conf_set_log_cb": "(POINTER, callback(POINTER, INT32, STRING, STRING) -> VOID) -> VOID",
   "rd_kafka_conf_set_oauthbearer_token_refresh_cb": "(POINTER, callback(POINTER, STRING, POINTER) -> VOID) -> VOID",
+  "rd_kafka_conf_set_offset_commit_cb": "(POINTER, callback(POINTER, INT32, POINTER, POINTER) -> VOID) -> VOID",
   "rd_kafka_conf_set_opaque": "(POINTER, POINTER) -> VOID",
   "rd_kafka_conf_set_rebalance_cb": "(POINTER, callback(POINTER, INT32, POINTER, POINTER) -> VOID) -> VOID",
   "rd_kafka_conf_set_stats_cb": "(POINTER, callback(POINTER, STRING, INT32, POINTER) -> INT32) -> VOID",

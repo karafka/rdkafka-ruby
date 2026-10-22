@@ -1715,6 +1715,139 @@ RSpec.describe Rdkafka::Consumer do
     end
   end
 
+  describe "an offset commit listener" do
+    let(:results) { Queue.new }
+    let(:listener) do
+      Struct.new(:results) do
+        def on_offsets_committed(error, list)
+          results << [error, list]
+        end
+      end.new(results)
+    end
+    let(:consumer) do
+      config = rdkafka_consumer_config
+      config.consumer_offset_commit_listener = listener
+      config.consumer
+    end
+
+    # A fresh consumer that commits before it finds its coordinator gets `not_coordinator`
+    before do
+      consumer.subscribe(topic)
+      wait_for_assignment(consumer)
+    end
+
+    def wait_for_commit_result(consumer, results, poll_method: :poll)
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 30
+
+      while results.empty? && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+        consumer.public_send(poll_method, 100)
+      end
+
+      results.pop(true)
+    end
+
+    def offsets_list(topic_name, offsets)
+      Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+        list.add_topic_and_partitions_with_offsets(topic_name, offsets)
+      end
+    end
+
+    it "gets no error and the offsets of a successful async commit" do
+      consumer.commit(offsets_list(topic, 0 => 1, 1 => 2), true)
+
+      error, list = wait_for_commit_result(consumer, results)
+
+      expect(error).to be_nil
+      expect(list).to be_frozen
+      expect(list.to_h[topic].map { |partition| [partition.partition, partition.offset, partition.err] })
+        .to contain_exactly(
+          [0, 1, Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR],
+          [1, 2, Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR]
+        )
+    end
+
+    it "gets the error and the partition errors of a failed async commit" do
+      missing_topic = TestTopics.non_existing
+
+      consumer.commit(offsets_list(missing_topic, 0 => 1), true)
+
+      error, list = wait_for_commit_result(consumer, results)
+
+      expect(error).to be_a(Rdkafka::RdkafkaError)
+      expect(error.code).to eq(:unknown_topic_or_part)
+      expect(list.to_h[missing_topic].map { |partition| Rdkafka::RdkafkaError.new(partition.err).code })
+        .to eq([:unknown_topic_or_part])
+    end
+
+    it "gets the result of a sync commit" do
+      consumer.commit(offsets_list(topic, 0 => 3), false)
+
+      error, list = wait_for_commit_result(consumer, results)
+
+      expect(error).to be_nil
+      expect(list.to_h[topic].map(&:offset)).to eq([3])
+    end
+
+    it "gets the result of an async commit when the consumer closes before a poll" do
+      consumer.commit(offsets_list(topic, 0 => 4), true)
+      consumer.close
+
+      error, list = results.pop(true)
+
+      expect(error).to be_nil
+      expect(list.to_h[topic].map(&:offset)).to eq([4])
+    end
+
+    context "with consumer_poll_set false" do
+      let(:consumer) do
+        config = rdkafka_consumer_config
+        config.consumer_offset_commit_listener = listener
+        config.consumer_poll_set = false
+        config.consumer
+      end
+
+      it "gets the result from events_poll" do
+        consumer.commit(offsets_list(topic, 0 => 5), true)
+
+        error, list = wait_for_commit_result(consumer, results, poll_method: :events_poll)
+
+        expect(error).to be_nil
+        expect(list.to_h[topic].map(&:offset)).to eq([5])
+      end
+    end
+
+    context "with a listener that raises" do
+      let(:listener) do
+        Struct.new(:results) do
+          def on_offsets_committed(error, list)
+            results << [error, list]
+            raise "boom"
+          end
+        end.new(results)
+      end
+
+      it "logs the exception and keeps polling" do
+        allow(Rdkafka::Config.logger).to receive(:error)
+
+        consumer.commit(offsets_list(topic, 0 => 1), true)
+
+        expect(wait_for_commit_result(consumer, results).first).to be_nil
+        expect { consumer.poll(100) }.not_to raise_error
+        expect(Rdkafka::Config.logger).to have_received(:error).with("Unhandled exception: RuntimeError - boom")
+      end
+    end
+
+    context "without a listener" do
+      it "does not set the native callback" do
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_conf_set_offset_commit_cb).and_call_original
+
+        rdkafka_consumer_config.consumer.close
+
+        expect(Rdkafka::Bindings).not_to have_received(:rd_kafka_conf_set_offset_commit_cb)
+      end
+    end
+  end
+
   context "methods that should not be called after a consumer has been closed" do
     before do
       consumer.close

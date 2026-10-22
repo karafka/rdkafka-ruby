@@ -891,6 +891,25 @@ RSpec.describe Rdkafka::Producer do
       end
     end
 
+    context "when the cached count expired and the cluster is unreachable" do
+      let(:cache) { Rdkafka::Producer::PartitionsCountCache.new(ttl_ms: 1) }
+      let!(:original_cache) { ::Rdkafka::Producer.partitions_count_cache }
+
+      after { ::Rdkafka::Producer.partitions_count_cache = original_cache }
+
+      before do
+        ::Rdkafka::Producer.partitions_count_cache = cache
+        cache.set(TestTopics.example_topic, 3)
+        sleep(0.1)
+        # code -195 == transport, what an unreachable cluster reports
+        allow(::Rdkafka::Metadata).to receive(:new).and_raise(Rdkafka::RdkafkaError.new(-195))
+      end
+
+      it "returns the last known count" do
+        expect(producer.partition_count(TestTopics.example_topic)).to eq(3)
+      end
+    end
+
     context "when the topic does not exist" do
       let(:missing_topic) { "missing-topic-for-negative-cache" }
 

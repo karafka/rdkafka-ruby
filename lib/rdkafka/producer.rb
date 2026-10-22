@@ -33,14 +33,22 @@ module Rdkafka
 
     private_constant :EMPTY_HASH
 
-    # FFI types of the `rd_kafka_producev` varargs, resolved once. A variadic call resolves each
+    # FFI types of the `rd_kafka_producev` varargs are resolved once. A variadic call resolves each
     # type argument it gets on every call, unless it already is an `FFI::Type`
+
+    # `:int` vararg type
     FFI_INT = Rdkafka::Bindings.find_type(:int)
+    # `:pointer` vararg type
     FFI_POINTER = Rdkafka::Bindings.find_type(:pointer)
+    # `:buffer_in` vararg type
     FFI_BUFFER_IN = Rdkafka::Bindings.find_type(:buffer_in)
+    # `:size_t` vararg type
     FFI_SIZE_T = Rdkafka::Bindings.find_type(:size_t)
+    # `:int32` vararg type
     FFI_INT32 = Rdkafka::Bindings.find_type(:int32)
+    # `:int64` vararg type
     FFI_INT64 = Rdkafka::Bindings.find_type(:int64)
+    # `:string` vararg type
     FFI_STRING = Rdkafka::Bindings.find_type(:string)
 
     private_constant :FFI_INT, :FFI_POINTER, :FFI_BUFFER_IN, :FFI_SIZE_T, :FFI_INT32, :FFI_INT64,

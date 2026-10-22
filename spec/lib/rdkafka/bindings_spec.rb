@@ -202,6 +202,21 @@ RSpec.describe Rdkafka::Bindings do
         expect($received_stats).to eq({ "received" => 1 })
       end
     end
+
+    context "when the stats callback is cleared while it runs" do
+      it "calls the callback it read" do
+        received = []
+        Rdkafka::Config.statistics_callback = ->(stats) { received << stats }
+
+        allow(JSON).to receive(:parse).and_wrap_original do |parse, *args|
+          Rdkafka::Config.statistics_callback = nil
+          parse.call(*args)
+        end
+
+        Rdkafka::Bindings::StatsCallback.call(nil, "{\"received\":1}", 13, nil)
+        expect(received).to eq([{ "received" => 1 }])
+      end
+    end
   end
 
   describe "error callback" do
@@ -229,6 +244,21 @@ RSpec.describe Rdkafka::Bindings do
       it "sets instance_name to nil when client_ptr is null" do
         Rdkafka::Bindings::ErrorCallback.call(nil, 8, "Broker not available", nil)
         expect($received_error.instance_name).to be_nil
+      end
+    end
+
+    context "when the error callback is cleared while it runs" do
+      it "calls the callback it read" do
+        received = []
+        Rdkafka::Config.error_callback = ->(error) { received << error }
+
+        allow(Rdkafka::RdkafkaError).to receive(:new).and_wrap_original do |new, *args, **kwargs|
+          Rdkafka::Config.error_callback = nil
+          new.call(*args, **kwargs)
+        end
+
+        Rdkafka::Bindings::ErrorCallback.call(nil, Rdkafka::Bindings::RD_KAFKA_RESP_ERR__STATE, "state", nil)
+        expect(received.map(&:code)).to eq([:state])
       end
     end
 
@@ -324,6 +354,24 @@ RSpec.describe Rdkafka::Bindings do
           expect($received_config).to eq("{}")
           expect($received_client_name).to match(/consumer/)
         end
+      end
+    end
+
+    context "when the oauthbearer callback is cleared while it runs" do
+      it "calls the callback it read" do
+        received = []
+        callback = ->(config, client_name) { received << [config, client_name] }
+
+        allow(Rdkafka::Config)
+          .to receive(:oauthbearer_token_refresh_callback)
+          .and_return(callback, nil)
+
+        RdKafkaTestConsumer.with do |consumer_ptr|
+          Rdkafka::Bindings::OAuthbearerTokenRefreshCallback.call(consumer_ptr, "{}", nil)
+        end
+
+        expect(received.size).to eq(1)
+        expect(received.first.first).to eq("{}")
       end
     end
   end

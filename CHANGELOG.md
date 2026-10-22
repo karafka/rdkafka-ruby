@@ -1,7 +1,9 @@
 # Rdkafka Changelog
 
 ## 0.32.0 (Unreleased)
+- [Feature] Add `Config#consumer_offset_commit_listener`: its `#on_offsets_committed(error, list)` gets the result of every offset commit when the consumer polls or closes, so an async commit that the broker rejects reaches Ruby instead of only a `COMMITFAIL` log line.
 - [Enhancement] Bump librdkafka to `2.16.0` for OpenSSL and libcurl security fixes. Admin requests in flight on a decommissioned broker now fail with a retryable transport error.
+- [Enhancement] Keep `partition_key` produces working during a cluster outage once the topic partition count is known, instead of raising.
 - [Change] Build the precompiled `x86_64-linux-gnu` and `aarch64-linux-gnu` libraries in an Ubuntu 22.04 container on Ubuntu 24.04 runners, keeping the glibc 2.34 floor after GitHub retires its Ubuntu 22.04 runners.
 - [Change] Depend on `mini_portile2` and `rake` only in the source gem, as only it compiles librdkafka. Apps that got `rake` only through this gem must add it to their Gemfile.
 - [Change] Remove the unused `Rdkafka::Defaults::NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS`: `close` now waits for operations in progress without polling.
@@ -14,8 +16,10 @@
 - [Maintenance] Run the `client_shutdown_dlclose` integration test on JRuby on Linux.
 - [Maintenance] Cover with integration tests that coordinator errors on group offset requests do not crash the admin client or a consumer without `group.id`.
 - [Maintenance] Drop `pry` from the development bundle and stop requiring it in the spec helper.
+- [Fix] Create one topic handle per topic when many threads produce to a new topic at once. On JRuby this race leaked topic handles and could crash with a segfault; `produce` now raises `TopicHandleCreationError` instead of passing a missing handle to librdkafka.
 - [Fix] Stop `Consumer#store_offset` and other calls that pass partition metadata from raising `NoMethodError` on JRuby.
 - [Fix] Raise `Rdkafka::LibraryLoadError` with the glibc upgrade hint instead of `NameError` when the precompiled librdkafka needs a newer glibc.
+- [Fix] Stop the statistics, error and OAuth token refresh callbacks from raising `NoMethodError` when another thread clears the global callback while they run. On JRuby this aborted the process from the polling thread.
 - [Fix] Count a client's operations in progress under one lock, so on JRuby `close` no longer hangs or destroys the client while another thread still uses it.
 
 ## 0.31.0 (2026-10-09)
@@ -41,8 +45,8 @@
 - [Maintenance] Drop the unused `dist/openssl-3.0.16.tar.gz` build cache.
 - [Fix] Honor the `isolation_level:` argument to `Admin#list_offsets`, which was silently ignored.
 - [Fix] Return correct results for every item of a multi-item topic, partition, group or ACL admin request, not just the first.
-- [Maintenance] Fix a use-after-free in the multi-item admin integration test that read result-name pointers after librdkafka had destroyed the background event, which made it flaky on newer glibc (e.g. Debian trixie).
-- [Maintenance] Stabilize consumer specs on slow CI runners: wait longer for a partition assignment, raise the `TestTopics.create` admin timeout and drop the fixed 60s limit of the long-running consumption spec.
+- [Maintenance] Fix a use-after-free in the multi-item admin integration test that made it flaky on newer glibc (e.g. Debian trixie).
+- [Maintenance] Stabilize consumer specs on slow CI runners.
 - [Maintenance] Raise the `TestTopics.create` admin timeout to 30s so a loaded CI runner no longer hits `create topic timed out` (which also tripped the leaked-handle guard).
 
 ## 0.29.2 (2026-09-11)

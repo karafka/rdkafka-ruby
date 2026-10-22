@@ -105,6 +105,12 @@ module Rdkafka
     # @see Producer::PartitionsCountCache
     PARTITIONS_COUNT_CACHE_TTL_MS = 30_000
 
+    # How long an expired partitions count is served after a refresh failed on a transient
+    # (e.g. transport) error, before the next refresh attempt. Longer than one failed metadata
+    # refresh (up to ~7 s with retries), so produces are not blocked most of the time
+    # @see Producer::PartitionsCountCache#get
+    PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS = 10_000
+
     # Configuration values (not time-based)
 
     # Maximum number of metadata fetch retry attempts

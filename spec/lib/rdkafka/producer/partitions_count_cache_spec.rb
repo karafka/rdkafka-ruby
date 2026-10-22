@@ -243,6 +243,107 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
     end
   end
 
+  describe "#get when the refresh fails" do
+    let(:now) { [0] }
+    let(:transport_error) { Rdkafka::RdkafkaError.new(-195) }
+    let(:stale_backoff_ms) { Rdkafka::Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS }
+
+    before do
+      allow(cache).to receive(:monotonic_now_ms) { now[0] }
+      cache.get(topic) { partition_count }
+      now[0] += default_ttl_ms + 1
+    end
+
+    {
+      transport: -195,
+      timed_out: -185,
+      all_brokers_down: -187,
+      resolve: -193
+    }.each do |code_name, code|
+      it "serves the last known count on #{code_name}" do
+        error = Rdkafka::RdkafkaError.new(code)
+
+        expect(error.code).to eq(code_name)
+        expect(cache.get(topic) { raise error }).to eq(partition_count)
+      end
+    end
+
+    it "serves the known count to other callers while the refresh runs" do
+      nested = nil
+
+      cache.get(topic) do
+        nested = cache.get(topic) { fail "Should not be called" }
+        raise transport_error
+      end
+
+      expect(nested).to eq(partition_count)
+    end
+
+    it "keeps the full TTL of a write that lands during a failing refresh" do
+      long_ttl_ms = stale_backoff_ms * 3
+      long_ttl_cache = described_class.new(ttl_ms: long_ttl_ms)
+      allow(long_ttl_cache).to receive(:monotonic_now_ms) { now[0] }
+      long_ttl_cache.get(topic) { partition_count }
+      now[0] += long_ttl_ms + 1
+
+      long_ttl_cache.get(topic) do
+        long_ttl_cache.set(topic, partition_count)
+        raise transport_error
+      end
+
+      now[0] += stale_backoff_ms + 1
+      expect(long_ttl_cache.get(topic) { fail "Should not be called" }).to eq(partition_count)
+    end
+
+    it "refreshes again on the next call after a non-transient error" do
+      error = Rdkafka::RdkafkaError.new(29) # topic_authorization_failed
+
+      expect { cache.get(topic) { raise error } }.to raise_error(error)
+      expect(cache.get(topic) { higher_partition_count }).to eq(higher_partition_count)
+    end
+
+    it "refreshes again on the next call after a non-Rdkafka error" do
+      expect { cache.get(topic) { raise Timeout::Error } }.to raise_error(Timeout::Error)
+      expect(cache.get(topic) { higher_partition_count }).to eq(higher_partition_count)
+    end
+
+    it "keeps serving the known count while a refresh outlasts the TTL" do
+      nested = nil
+
+      cache.get(topic) do
+        now[0] += default_ttl_ms + 1
+        nested = cache.get(topic) { fail "Should not be called" }
+        partition_count
+      end
+
+      expect(nested).to eq(partition_count)
+    end
+
+    it "adopts a lower count from a successful refresh" do
+      expect(cache.get(topic) { lower_partition_count }).to eq(lower_partition_count)
+    end
+
+    it "does not refresh again until the stale backoff passes" do
+      cache.get(topic) { raise transport_error }
+
+      now[0] += stale_backoff_ms
+      expect(cache.get(topic) { fail "Should not be called" }).to eq(partition_count)
+
+      now[0] += 1
+      expect(cache.get(topic) { higher_partition_count }).to eq(higher_partition_count)
+    end
+
+    it "raises when there is no known count" do
+      expect { cache.get(topic2) { raise transport_error } }.to raise_error(transport_error)
+    end
+
+    it "raises on a non-transient error" do
+      error = Rdkafka::RdkafkaError.new(29) # topic_authorization_failed
+
+      expect { cache.get(topic) { raise error } }.to raise_error(error)
+    end
+  end
+
   describe "#set" do
     context "when cache is empty" do
       it "adds a new entry to the cache" do

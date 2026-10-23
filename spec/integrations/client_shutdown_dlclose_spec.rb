@@ -62,7 +62,7 @@ def librdkafka_threads
   Dir.children("/proc/self/task").filter_map do |tid|
     name = File.read("/proc/self/task/#{tid}/comm").strip
     name if name.start_with?("rdk")
-  rescue Errno::ENOENT
+  rescue Errno::ENOENT, Errno::ESRCH
     nil
   end
 end

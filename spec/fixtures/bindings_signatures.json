@@ -150,7 +150,7 @@
   "rd_kafka_conf_set_stats_cb": "(POINTER, callback(POINTER, STRING, INT32, POINTER) -> INT32) -> VOID",
   "rd_kafka_consume_batch_queue": "(POINTER, INT32, POINTER, ULONG) -> LONG",
   "rd_kafka_consume_batch_queue_nb": "(POINTER, INT32, POINTER, ULONG) -> LONG",
-  "rd_kafka_consumer_close": "(POINTER) -> VOID",
+  "rd_kafka_consumer_close": "(POINTER) -> INT32",
   "rd_kafka_consumer_group_metadata": "(POINTER) -> POINTER",
   "rd_kafka_consumer_group_metadata_destroy": "(POINTER) -> VOID",
   "rd_kafka_consumer_group_state_name": "(INT32) -> POINTER",

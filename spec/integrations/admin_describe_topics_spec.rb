@@ -26,6 +26,22 @@ def fail!(message)
   exit(1)
 end
 
+# A topic that was just created can be missing from the broker's metadata for a moment, so retry
+# while the new topic is reported as unknown
+def describe_topics_settled(admin, topic_name, topic_names)
+  deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 10
+
+  loop do
+    report = admin.describe_topics(topic_names).wait(max_wait_timeout_ms: 15_000)
+    error = report.topics.find { |topic| topic[:name] == topic_name }&.fetch(:error)
+
+    return report unless error&.code == :unknown_topic_or_part
+    return report if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+
+    sleep(0.1)
+  end
+end
+
 admin = Rdkafka::Config.new("bootstrap.servers": "localhost:9092").admin
 topic_name = "it-describe-topics-#{SecureRandom.hex(6)}"
 missing_topic_name = "it-describe-topics-missing-#{SecureRandom.hex(6)}"
@@ -34,7 +50,7 @@ begin
   admin.create_topic(topic_name, PARTITIONS, 1).wait(max_wait_timeout_ms: 15_000)
 
   nodes = admin.describe_cluster.wait(max_wait_timeout_ms: 15_000).nodes
-  report = admin.describe_topics([topic_name, missing_topic_name]).wait(max_wait_timeout_ms: 15_000)
+  report = describe_topics_settled(admin, topic_name, [topic_name, missing_topic_name])
   topics = report.topics.to_h { |topic| [topic[:name], topic] }
 
   topic = topics.fetch(topic_name) { fail!("#{topic_name} was not described") }

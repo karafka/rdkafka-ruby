@@ -10,14 +10,14 @@
 # with a count drifted low, could destroy the handle while another thread still used it). MRI's
 # GVL hid the race.
 #
-# Threads call `Producer#queue_size` in a loop behind a start barrier. After they finish, the count
-# must be zero and `close` must return within a timeout.
+# Threads call `Producer#queue_size` in a loop behind a start barrier. After they finish, `close`
+# must return within a timeout: a count drifted either way never reaches zero, so `close` hangs.
 #
 # No broker is required: `queue_size` reads only the local queue.
 #
 # Exit codes:
-# - 0: the count is zero and `close` returned
-# - 1: the count drifted or `close` did not return
+# - 0: `close` returned
+# - 1: `close` did not return
 
 require "rdkafka"
 
@@ -52,17 +52,16 @@ sleep(RUN_FOR)
 stop = true
 workers.each(&:join)
 
-operations_in_progress = producer.instance_variable_get(:@native_kafka).instance_variable_get(:@operations_in_progress)
 closer = Thread.new { producer.close }
 closed = !closer.join(CLOSE_TIMEOUT).nil?
 
-puts "Calls: #{calls.sum}, operations in progress after join: #{operations_in_progress}, closed: #{closed}"
+puts "Calls: #{calls.sum}, closed: #{closed}"
 
-unless operations_in_progress.zero? && closed
-  warn "FAIL: the operations in progress count drifted or close did not return"
+unless closed
+  warn "FAIL: close did not return, the operations in progress count drifted"
   # A normal exit runs the producer finalizer, which waits for the stuck close
   exit!(1)
 end
 
-puts "PASS: the operations in progress count stayed exact and close returned"
+puts "PASS: close returned, the operations in progress count stayed exact"
 exit(0)

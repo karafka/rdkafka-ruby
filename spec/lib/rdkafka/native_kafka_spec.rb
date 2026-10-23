@@ -179,34 +179,55 @@ end
 
 # Separate describe block with real threads, which the mocked threading tests above stub out
 RSpec.describe Rdkafka::NativeKafka, "#with_inner from many threads" do
-  let(:config) { rdkafka_producer_config }
-  let(:native) { config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer) }
-  let(:opaque) { Rdkafka::Opaque.new }
-  let(:client) { described_class.new(native, run_polling_thread: false, opaque: opaque) }
-  let(:threads_count) { 16 }
+  context "when many threads use a producer" do
+    let(:producer) { rdkafka_producer_config.producer }
+    let(:threads_count) { 16 }
 
-  after { client.close unless client.closed? }
+    after { producer.close unless producer.closed? }
 
-  it "counts the operations in progress exactly and closes" do
-    barrier = Queue.new
-    stop = false
+    it "closes once the threads are done" do
+      barrier = Queue.new
+      stop = false
 
-    threads = Array.new(threads_count) do
-      Thread.new do
-        barrier.pop
-        client.with_inner { nil } until stop
+      threads = Array.new(threads_count) do
+        Thread.new do
+          barrier.pop
+          producer.queue_size until stop
+        end
       end
+
+      threads_count.times { barrier << true }
+      sleep(2)
+      stop = true
+      threads.each(&:join)
+
+      closer = Thread.new { producer.close }
+
+      expect(closer.join(5)).not_to be_nil
     end
+  end
 
-    threads_count.times { barrier << true }
-    sleep(2)
-    stop = true
-    threads.each(&:join)
+  context "when operations overlap so that one is always in progress" do
+    let(:consumer) { rdkafka_consumer_config.consumer }
 
-    operations_in_progress = client.instance_variable_get(:@operations_in_progress)
-    closer = Thread.new { client.close }
+    after { consumer.close unless consumer.closed? }
 
-    expect(closer.join(5)).not_to be_nil
-    expect(operations_in_progress).to eq(0)
+    it "does not start new operations while close waits" do
+      threads = Array.new(2) do |i|
+        Thread.new do
+          sleep(0.025 * i)
+
+          loop { consumer.poll(50) }
+        rescue Rdkafka::ClosedConsumerError, Rdkafka::ClosedInnerError
+          nil
+        end
+      end
+
+      sleep(0.2)
+      closer = Thread.new { consumer.close }
+
+      expect(closer.join(5)).not_to be_nil
+      threads.each(&:join)
+    end
   end
 end

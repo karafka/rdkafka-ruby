@@ -33,6 +33,27 @@ module Rdkafka
 
     private_constant :EMPTY_HASH
 
+    # FFI types of the `rd_kafka_producev` varargs are resolved once. A variadic call resolves each
+    # type argument it gets on every call, unless it already is an `FFI::Type`
+
+    # `:int` vararg type
+    FFI_INT = Rdkafka::Bindings.find_type(:int)
+    # `:pointer` vararg type
+    FFI_POINTER = Rdkafka::Bindings.find_type(:pointer)
+    # `:buffer_in` vararg type
+    FFI_BUFFER_IN = Rdkafka::Bindings.find_type(:buffer_in)
+    # `:size_t` vararg type
+    FFI_SIZE_T = Rdkafka::Bindings.find_type(:size_t)
+    # `:int32` vararg type
+    FFI_INT32 = Rdkafka::Bindings.find_type(:int32)
+    # `:int64` vararg type
+    FFI_INT64 = Rdkafka::Bindings.find_type(:int64)
+    # `:string` vararg type
+    FFI_STRING = Rdkafka::Bindings.find_type(:string)
+
+    private_constant :FFI_INT, :FFI_POINTER, :FFI_BUFFER_IN, :FFI_SIZE_T, :FFI_INT32, :FFI_INT64,
+      :FFI_STRING
+
     # Raised when there was a critical issue when invoking rd_kafka_topic_new
     # This is a temporary solution until https://github.com/karafka/rdkafka-ruby/issues/451 is
     # resolved and this is normalized in all the places
@@ -55,8 +76,9 @@ module Rdkafka
     # @param partitioner [String, nil] name of the partitioner we want to use or nil to use
     #   the "consistent_random" default
     def initialize(native_kafka, partitioner)
-      @topics_refs_map = {}
-      @topics_configs = {}
+      @topics_refs_map = EMPTY_HASH
+      @topics_configs = EMPTY_HASH
+      @topics_mutex = Mutex.new
       @native_kafka = native_kafka
       @partitioner = partitioner || "consistent_random"
 
@@ -73,47 +95,20 @@ module Rdkafka
     # @note It is not allowed to re-set the same topic config twice because of the underlying
     #   librdkafka caching
     def set_topic_config(topic_name, config, config_hash)
-      # Ensure lock on topic reference just in case
+      # `with_inner` only counts this as an operation in progress; it takes no lock. Concurrent
+      # first produces to the same topic are serialized by @topics_mutex, so librdkafka gets one
+      # `rd_kafka_topic_new` per topic and config.
       @native_kafka.with_inner do |inner|
-        @topics_refs_map[topic_name] ||= {}
-        @topics_configs[topic_name] ||= {}
+        @topics_mutex.synchronize do
+          return if @topics_refs_map.dig(topic_name, config_hash)
 
-        return if @topics_configs[topic_name].key?(config_hash)
-
-        # If config is empty, we create an empty reference that will be used with defaults
-        rd_topic_config = if config.empty?
-          nil
-        else
-          Rdkafka::Bindings.rd_kafka_topic_conf_new.tap do |topic_config|
-            config.each do |key, value|
-              error_buffer = FFI::MemoryPointer.new(:char, 256)
-              result = Rdkafka::Bindings.rd_kafka_topic_conf_set(
-                topic_config,
-                key.to_s,
-                value.to_s,
-                error_buffer,
-                256
-              )
-
-              unless result == :config_ok
-                # rd_kafka_topic_new has not been called yet, so librdkafka has not taken
-                # ownership of the config. Destroy it ourselves before raising, otherwise the
-                # partially built rd_kafka_topic_conf_t leaks. (On the rd_kafka_topic_new path
-                # librdkafka frees the conf on both success and failure, so we never destroy it
-                # there.)
-                Rdkafka::Bindings.rd_kafka_topic_conf_destroy(topic_config)
-                raise Config::ConfigError.new(error_buffer.read_string)
-              end
-            end
-          end
+          store_topic_handle(
+            topic_name,
+            config,
+            config_hash,
+            create_topic_handle(inner, topic_name, config)
+          )
         end
-
-        topic_handle = Bindings.rd_kafka_topic_new(inner, topic_name, rd_topic_config)
-
-        raise TopicHandleCreationError.new("Error creating topic handle for topic #{topic_name}") if topic_handle.null?
-
-        @topics_configs[topic_name][config_hash] = config
-        @topics_refs_map[topic_name][config_hash] = topic_handle
       end
     end
 
@@ -169,14 +164,16 @@ module Rdkafka
       @native_kafka.close do
         # We need to remove the topics references objects before we destroy the producer,
         # otherwise they would leak out
-        @topics_refs_map.each_value do |refs|
-          refs.each_value do |ref|
-            Rdkafka::Bindings.rd_kafka_topic_destroy(ref)
+        @topics_mutex.synchronize do
+          @topics_refs_map.each_value do |refs|
+            refs.each_value do |ref|
+              Rdkafka::Bindings.rd_kafka_topic_destroy(ref)
+            end
           end
+
+          @topics_refs_map = EMPTY_HASH
         end
       end
-
-      @topics_refs_map.clear
     end
 
     # Whether this producer has closed
@@ -404,6 +401,9 @@ module Rdkafka
       set_topic_config(topic, topic_config, topic_config_hash) unless @topics_refs_map.dig(topic, topic_config_hash)
       topic_ref = @topics_refs_map.dig(topic, topic_config_hash)
 
+      # A NULL topic handle would crash librdkafka, so never hand one over
+      raise TopicHandleCreationError.new("No topic handle for topic #{topic}") if topic_ref.nil?
+
       if partition_key
         partition_count = partition_count(topic)
 
@@ -448,13 +448,15 @@ module Rdkafka
 
       begin
         args = [
-          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_RKT, :pointer, topic_ref,
-          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_MSGFLAGS, :int, Rdkafka::Bindings::RD_KAFKA_MSG_F_COPY,
-          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_VALUE, :buffer_in, payload, :size_t, payload_size,
-          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_KEY, :buffer_in, key, :size_t, key_size,
-          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_PARTITION, :int32, partition,
-          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_TIMESTAMP, :int64, raw_timestamp,
-          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_OPAQUE, :pointer, delivery_handle
+          FFI_INT, Rdkafka::Bindings::RD_KAFKA_VTYPE_RKT, FFI_POINTER, topic_ref,
+          FFI_INT, Rdkafka::Bindings::RD_KAFKA_VTYPE_MSGFLAGS,
+          FFI_INT, Rdkafka::Bindings::RD_KAFKA_MSG_F_COPY,
+          FFI_INT, Rdkafka::Bindings::RD_KAFKA_VTYPE_VALUE,
+          FFI_BUFFER_IN, payload, FFI_SIZE_T, payload_size,
+          FFI_INT, Rdkafka::Bindings::RD_KAFKA_VTYPE_KEY, FFI_BUFFER_IN, key, FFI_SIZE_T, key_size,
+          FFI_INT, Rdkafka::Bindings::RD_KAFKA_VTYPE_PARTITION, FFI_INT32, partition,
+          FFI_INT, Rdkafka::Bindings::RD_KAFKA_VTYPE_TIMESTAMP, FFI_INT64, raw_timestamp,
+          FFI_INT, Rdkafka::Bindings::RD_KAFKA_VTYPE_OPAQUE, FFI_POINTER, delivery_handle
         ]
 
         headers&.each do |key0, value0|
@@ -463,22 +465,22 @@ module Rdkafka
             # Handle array of values per KIP-82
             value0.each do |value|
               value = value.to_s
-              args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
-              args << :string << key
-              args << :pointer << value
-              args << :size_t << value.bytesize
+              args << FFI_INT << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
+              args << FFI_STRING << key
+              args << FFI_POINTER << value
+              args << FFI_SIZE_T << value.bytesize
             end
           else
             # Handle single value
             value = value0.to_s
-            args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
-            args << :string << key
-            args << :pointer << value
-            args << :size_t << value.bytesize
+            args << FFI_INT << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
+            args << FFI_STRING << key
+            args << FFI_POINTER << value
+            args << FFI_SIZE_T << value.bytesize
           end
         end
 
-        args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_END
+        args << FFI_INT << Rdkafka::Bindings::RD_KAFKA_VTYPE_END
 
         # Produce the message
         response = @native_kafka.with_inner do |inner|
@@ -537,5 +539,72 @@ module Rdkafka
       raise Rdkafka::ClosedProducerError.new(method) if closed?
     end
     alias_method :closed_check, :closed_producer_check
+
+    # Creates a librdkafka topic handle. Callers hold @topics_mutex.
+    #
+    # @param inner [FFI::Pointer] native producer handle
+    # @param topic_name [String] topic name
+    # @param config [Hash] per-topic config; empty for the defaults
+    # @return [FFI::Pointer] the topic handle
+    # @raise [Config::ConfigError] when a per-topic config value is rejected
+    # @raise [TopicHandleCreationError] when librdkafka cannot create the handle
+    def create_topic_handle(inner, topic_name, config)
+      # If config is empty, we create an empty reference that will be used with defaults
+      rd_topic_config = if config.empty?
+        nil
+      else
+        Rdkafka::Bindings.rd_kafka_topic_conf_new.tap do |topic_config|
+          config.each do |key, value|
+            error_buffer = FFI::MemoryPointer.new(:char, 256)
+            result = Rdkafka::Bindings.rd_kafka_topic_conf_set(
+              topic_config,
+              key.to_s,
+              value.to_s,
+              error_buffer,
+              256
+            )
+
+            unless result == :config_ok
+              # rd_kafka_topic_new has not been called yet, so librdkafka has not taken
+              # ownership of the config. Destroy it ourselves before raising, otherwise the
+              # partially built rd_kafka_topic_conf_t leaks. (On the rd_kafka_topic_new path
+              # librdkafka frees the conf on both success and failure, so we never destroy it
+              # there.)
+              Rdkafka::Bindings.rd_kafka_topic_conf_destroy(topic_config)
+              raise Config::ConfigError.new(error_buffer.read_string)
+            end
+          end
+        end
+      end
+
+      topic_handle = Bindings.rd_kafka_topic_new(inner, topic_name, rd_topic_config)
+
+      raise TopicHandleCreationError.new("Error creating topic handle for topic #{topic_name}") if topic_handle.null?
+
+      topic_handle
+    end
+
+    # Publishes a topic handle and its config. Callers hold @topics_mutex. Both maps are
+    # replaced with frozen copies rather than mutated, and the config goes in first, so a
+    # lock-free reader that finds the handle also finds its config.
+    #
+    # @param topic_name [String] topic name
+    # @param config [Hash] per-topic config
+    # @param config_hash [Integer] hash of the config
+    # @param topic_handle [FFI::Pointer] the topic handle
+    def store_topic_handle(topic_name, config, config_hash, topic_handle)
+      @topics_configs = with_topic_entry(@topics_configs, topic_name, config_hash, config)
+      @topics_refs_map = with_topic_entry(@topics_refs_map, topic_name, config_hash, topic_handle)
+    end
+
+    # @param map [Hash{String => Hash{Integer => Object}}] a frozen topic map
+    # @param topic_name [String] topic name
+    # @param config_hash [Integer] hash of the config
+    # @param value [Object] value to store
+    # @return [Hash{String => Hash{Integer => Object}}] a frozen copy of the map with the value
+    def with_topic_entry(map, topic_name, config_hash, value)
+      entries = map.fetch(topic_name, EMPTY_HASH).merge(config_hash => value).freeze
+      map.merge(topic_name => entries).freeze
+    end
   end
 end

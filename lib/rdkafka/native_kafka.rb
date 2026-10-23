@@ -25,9 +25,10 @@ module Rdkafka
       @access_mutex = Mutex.new
       # Lock around internal polling
       @poll_mutex = Mutex.new
-      # Signalled when the operations in progress counter reaches zero and when `#synchronize`
-      # ends. `#synchronize` waits on it with `@access_mutex` released, so operations that started
-      # before it can still decrement the counter.
+      # Signalled when `#synchronize` ends and, only while `#synchronize` waits, when the operations
+      # in progress counter reaches zero: no one else waits for zero, so other decrements skip the
+      # broadcast. `#synchronize` waits on it with `@access_mutex` released, so operations that
+      # started before it can still decrement the counter.
       @operations_done = ConditionVariable.new
       # Set while `#synchronize` runs, so no new operation starts until it ends
       @synchronizing = false

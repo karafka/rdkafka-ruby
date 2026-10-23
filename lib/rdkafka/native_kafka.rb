@@ -82,7 +82,9 @@ module Rdkafka
     # @return [Object] the result of the block
     # @raise [ClosedInnerError] when the inner handle is nil
     def with_inner
-      if @access_mutex.owned?
+      owned = @access_mutex.owned?
+
+      if owned
         @operations_in_progress += 1
       else
         @access_mutex.synchronize do
@@ -94,12 +96,12 @@ module Rdkafka
       begin
         @inner.nil? ? raise(ClosedInnerError) : yield(@inner)
       ensure
-        if @access_mutex.owned?
+        if owned
           @operations_in_progress -= 1
         else
           @access_mutex.synchronize do
             @operations_in_progress -= 1
-            @operations_done.broadcast if @operations_in_progress.zero?
+            @operations_done.broadcast if @synchronizing && @operations_in_progress.zero?
           end
         end
       end

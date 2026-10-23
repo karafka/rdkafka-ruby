@@ -6,6 +6,7 @@
 - [Enhancement] Keep `partition_key` produces working during a cluster outage once the topic partition count is known, instead of raising.
 - [Change] Build the precompiled `x86_64-linux-gnu` and `aarch64-linux-gnu` libraries in an Ubuntu 22.04 container on Ubuntu 24.04 runners, keeping the glibc 2.34 floor after GitHub retires its Ubuntu 22.04 runners.
 - [Change] Depend on `mini_portile2` and `rake` only in the source gem, as only it compiles librdkafka. Apps that got `rake` only through this gem must add it to their Gemfile.
+- [Change] Remove the unused `Rdkafka::Defaults::NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS`: `close` now waits for operations in progress without polling.
 - [Maintenance] Stabilize the flaky partitions count cache "multiple topics with different TTLs" spec by driving its clock instead of sleeping.
 - [Maintenance] Fix a use-after-free in the `client_shutdown_dlclose` integration test that made it crash intermittently after its own unmap.
 - [Maintenance] Stabilize the flaky `Consumer#seek` and `#seek_by` "works when a partition is paused" specs on loaded CI runners.
@@ -19,6 +20,7 @@
 - [Fix] Stop `Consumer#store_offset` and other calls that pass partition metadata from raising `NoMethodError` on JRuby.
 - [Fix] Raise `Rdkafka::LibraryLoadError` with the glibc upgrade hint instead of `NameError` when the precompiled librdkafka needs a newer glibc.
 - [Fix] Stop the statistics, error and OAuth token refresh callbacks from raising `NoMethodError` when another thread clears the global callback while they run. On JRuby this aborted the process from the polling thread.
+- [Fix] Count a client's operations in progress under one lock, so on JRuby `close` no longer hangs or destroys the client while another thread still uses it.
 
 ## 0.31.0 (2026-10-09)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.

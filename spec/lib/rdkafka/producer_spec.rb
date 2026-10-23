@@ -223,6 +223,18 @@ RSpec.describe Rdkafka::Producer do
         expect(called_report.first.topic_name).to eq topic
       end
 
+      it "reports the topic given to produce without reading it back from librdkafka" do
+        called_report = []
+        producer.delivery_callback = ->(report) { called_report << report }
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_topic_name).and_call_original
+
+        producer.produce(topic: topic, payload: "payload").wait(max_wait_timeout_ms: 15_000)
+        producer.close
+
+        expect(called_report.first.topic_name).to be(topic)
+        expect(Rdkafka::Bindings).not_to have_received(:rd_kafka_topic_name)
+      end
+
       it "provides handle" do
         callback_handles = []
         callback = Class.new do

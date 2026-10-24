@@ -27,6 +27,9 @@ module Rdkafka
       # @param result_ptr [FFI::Pointer] pointer to the `rd_kafka_DescribeCluster_result_t`
       def initialize(result_ptr)
         @nodes = []
+        @cluster_id = nil
+        @controller = nil
+        @authorized_operations = nil
 
         return if result_ptr.null?
 

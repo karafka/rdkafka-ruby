@@ -20,8 +20,8 @@ module Rdkafka
       # @param result_name [FFI::Pointer] pointer to the group name
       # @param partitions_ptr [FFI::Pointer] pointer to the per partition result list
       def initialize(error_string, result_name, partitions_ptr = FFI::Pointer::NULL)
-        @error_string = error_string.read_string if error_string != FFI::Pointer::NULL
-        @group_name = result_name.read_string if result_name != FFI::Pointer::NULL
+        @error_string = error_string.null? ? nil : error_string.read_string
+        @group_name = result_name.null? ? nil : result_name.read_string
         @partitions = extract_partitions(partitions_ptr)
       end
 

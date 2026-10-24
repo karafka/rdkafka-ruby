@@ -15,12 +15,8 @@ module Rdkafka
       # @param error_string [FFI::Pointer] pointer to error string
       # @param result_name [FFI::Pointer] pointer to group name
       def initialize(error_string, result_name)
-        if error_string != FFI::Pointer::NULL
-          @error_string = error_string.read_string
-        end
-        if result_name != FFI::Pointer::NULL
-          @result_name = result_name.read_string
-        end
+        @error_string = error_string.null? ? nil : error_string.read_string
+        @result_name = result_name.null? ? nil : result_name.read_string
       end
     end
   end

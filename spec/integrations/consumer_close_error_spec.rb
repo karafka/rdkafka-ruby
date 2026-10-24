@@ -2,8 +2,8 @@
 
 # This integration test verifies that a failed consumer close is reported, not lost.
 #
-# `rd_kafka_consumer_close` returns an error code, which used to be dropped at the FFI boundary,
-# so a failed close (e.g. of a fatally-errored consumer) looked like a clean close. Now:
+# `rd_kafka_consumer_close` returns an error code, so a failed close (e.g. of a fatally-errored
+# consumer) must not look like a clean close:
 #
 # 1. When the native close fails (here: the native consumer was already closed, so librdkafka
 #    returns "Consumer already closed"), `#close` passes an `RdkafkaError` with the

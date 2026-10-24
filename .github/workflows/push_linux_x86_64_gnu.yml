@@ -16,7 +16,7 @@ jobs:
   build:
     if: github.repository_owner == 'karafka'
     timeout-minutes: 30
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     environment: deployment
     container:
       # Same as CI, we build on an old Ubuntu for ABI compatibility and gate on a GLIBC_2.34 floor
@@ -83,7 +83,7 @@ jobs:
   push:
     if: github.repository_owner == 'karafka'
     timeout-minutes: 30
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: build
     environment: deployment
     permissions:

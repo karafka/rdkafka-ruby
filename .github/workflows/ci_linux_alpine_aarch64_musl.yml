@@ -43,7 +43,7 @@ env:
 jobs:
   specs_install:
     timeout-minutes: 60
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     strategy:
       fail-fast: false
       matrix:
@@ -116,7 +116,7 @@ jobs:
 
   build_precompiled:
     timeout-minutes: 60
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     steps:
       - name: Disable needrestart
         run: sudo apt-get autopurge -y needrestart
@@ -152,7 +152,7 @@ jobs:
 
   specs_precompiled:
     timeout-minutes: 45
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     needs: build_precompiled
     strategy:
       fail-fast: false
@@ -221,7 +221,7 @@ jobs:
 
   ci-success:
     name: CI Linux Alpine aarch64 musl Success
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     if: always()
     needs:
       - specs_install

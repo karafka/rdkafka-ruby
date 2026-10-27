@@ -4,6 +4,8 @@
 - [Feature] Add `Config#consumer_offset_commit_listener`: its `#on_offsets_committed(error, list)` gets the result of every offset commit when the consumer polls or closes, so an async commit that the broker rejects reaches Ruby instead of only a `COMMITFAIL` log line.
 - [Enhancement] Bump librdkafka to `2.16.0` for OpenSSL and libcurl security fixes. Admin requests in flight on a decommissioned broker now fail with a retryable transport error.
 - [Enhancement] Keep `partition_key` produces working during a cluster outage once the topic partition count is known, instead of raising.
+- [Enhancement] Make `Producer#produce` use about 13% less CPU per call.
+- [Enhancement] Reduce object shape variations of the admin report classes to one shape per class.
 - [Change] Build the precompiled `x86_64-linux-gnu` and `aarch64-linux-gnu` libraries in an Ubuntu 22.04 container on Ubuntu 24.04 runners, keeping the glibc 2.34 floor after GitHub retires its Ubuntu 22.04 runners.
 - [Change] Depend on `mini_portile2` and `rake` only in the source gem, as only it compiles librdkafka. Apps that got `rake` only through this gem must add it to their Gemfile.
 - [Change] Remove the unused `Rdkafka::Defaults::NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS`: `close` now waits for operations in progress without polling.
@@ -16,11 +18,18 @@
 - [Maintenance] Run the `client_shutdown_dlclose` integration test on JRuby on Linux.
 - [Maintenance] Cover with integration tests that coordinator errors on group offset requests do not crash the admin client or a consumer without `group.id`.
 - [Maintenance] Drop `pry` from the development bundle and stop requiring it in the spec helper.
+- [Maintenance] Stop the `client_shutdown_dlclose` integration test from failing with `Errno::ESRCH` when a librdkafka thread exits while its name is read.
+- [Maintenance] Define `Consumer.finalizer` and `Consumer.report_close_error` in a `class << self` block. Callers are not affected.
+- [Maintenance] Wait for the new topic in `describe_topics` integration test; its karafka-rdkafka port is #582.
+- [Maintenance] Wait 30 s for the `before(:suite)` topic creates.
+- [Maintenance] Stop the fake SSL servers in integration specs without `Thread#kill`.
+- [Maintenance] Check native call balance instead of RSS in leak specs on JRuby.
 - [Fix] Create one topic handle per topic when many threads produce to a new topic at once. On JRuby this race leaked topic handles and could crash with a segfault; `produce` now raises `TopicHandleCreationError` instead of passing a missing handle to librdkafka.
 - [Fix] Stop `Consumer#store_offset` and other calls that pass partition metadata from raising `NoMethodError` on JRuby.
 - [Fix] Raise `Rdkafka::LibraryLoadError` with the glibc upgrade hint instead of `NameError` when the precompiled librdkafka needs a newer glibc.
 - [Fix] Stop the statistics, error and OAuth token refresh callbacks from raising `NoMethodError` when another thread clears the global callback while they run. On JRuby this aborted the process from the polling thread.
 - [Fix] Count a client's operations in progress under one lock, so on JRuby `close` no longer hangs or destroys the client while another thread still uses it.
+- [Fix] Report a failed consumer close (e.g. of a fatally-errored consumer) to `Rdkafka::Config.error_callback` instead of dropping it. `Consumer#close` still does not raise.
 
 ## 0.31.0 (2026-10-09)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.

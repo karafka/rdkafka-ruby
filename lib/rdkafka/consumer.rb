@@ -17,6 +17,9 @@ module Rdkafka
     include Helpers::Metadata
     include Helpers::ListOffsets
 
+    # Reason passed to the error callback when closing the consumer fails
+    CLOSE_ERROR_REASON = "Consumer close failed"
+
     # @private
     # @param native_kafka [NativeKafka] wrapper around the native Kafka consumer handle
     def initialize(native_kafka)
@@ -31,30 +34,61 @@ module Rdkafka
       ObjectSpace.define_finalizer(self, self.class.finalizer(native_kafka, @consumer_queue_holder))
     end
 
-    # Builds the GC finalizer for a consumer. It mirrors {#close}: close the consumer, destroy the
-    # consumer-queue reference, then destroy the native client. The default `NativeKafka#finalizer`
-    # went straight to `rd_kafka_destroy`, leaving the consumer-queue reference (from
-    # `rd_kafka_queue_get_consumer`, taken by `poll_batch`) dangling - which can make
-    # `rd_kafka_destroy` block inside the finalizer (process hang at GC/shutdown) or leak the
-    # handle.
-    #
-    # @private
-    # @param native_kafka [NativeKafka] the wrapped native client
-    # @param queue_holder [Array] single-element holder carrying the consumer queue pointer
-    #   (or empty)
-    # @return [Proc] finalizer proc that must not reference the consumer instance
-    def self.finalizer(native_kafka, queue_holder)
-      proc do
-        next if native_kafka.closed?
+    class << self
+      # Builds the GC finalizer for a consumer. It mirrors {#close}: close the consumer, destroy the
+      # consumer-queue reference, then destroy the native client. The default
+      # `NativeKafka#finalizer` went straight to `rd_kafka_destroy`, leaving the consumer-queue
+      # reference (from `rd_kafka_queue_get_consumer`, taken by `poll_batch`) dangling - which can
+      # make `rd_kafka_destroy` block inside the finalizer (process hang at GC/shutdown) or leak the
+      # handle.
+      #
+      # @private
+      # @param native_kafka [NativeKafka] the wrapped native client
+      # @param queue_holder [Array] single-element holder carrying the consumer queue pointer
+      #   (or empty)
+      # @return [Proc] finalizer proc that must not reference the consumer instance
+      def finalizer(native_kafka, queue_holder)
+        proc do
+          next if native_kafka.closed?
 
-        native_kafka.synchronize do |inner|
-          Rdkafka::Bindings.rd_kafka_consumer_close(inner)
+          close_response = nil
 
-          queue = queue_holder[0]
-          Rdkafka::Bindings.rd_kafka_queue_destroy(queue) if queue
+          native_kafka.synchronize do |inner|
+            close_response = Rdkafka::Bindings.rd_kafka_consumer_close(inner)
+
+            queue = queue_holder[0]
+            Rdkafka::Bindings.rd_kafka_queue_destroy(queue) if queue
+          end
+
+          report_close_error(native_kafka, close_response)
+
+          native_kafka.close
+        end
+      end
+
+      # Reports a failed `rd_kafka_consumer_close` (e.g. of a fatally-errored consumer) through
+      # {Bindings::ErrorCallback}, the same path as errors emitted by librdkafka, so it reaches
+      # {Config.error_callback} in the shape the callback expects (libraries such as karafka-core
+      # replace `ErrorCallback`). It runs after the close, but before the native client is
+      # destroyed, as the callback reads the client name from it. Close runs during shutdown and
+      # from the GC finalizer, so the error is reported, never raised.
+      #
+      # @private
+      # @param native_kafka [NativeKafka] the wrapped native client
+      # @param response [Integer] result code of `rd_kafka_consumer_close`
+      # @return [nil]
+      def report_close_error(native_kafka, response)
+        return if response == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+
+        native_kafka.with_inner do |inner|
+          Rdkafka::Bindings::ErrorCallback.call(inner, response, CLOSE_ERROR_REASON, nil)
         end
 
-        native_kafka.close
+        nil
+      rescue Exception => err
+        Rdkafka::Config.logger.error("Unhandled exception: #{err.class} - #{err.message}")
+
+        nil
       end
     end
 
@@ -213,8 +247,10 @@ module Rdkafka
       return if closed?
       ObjectSpace.undefine_finalizer(self)
 
+      close_response = nil
+
       @native_kafka.synchronize do |inner|
-        Rdkafka::Bindings.rd_kafka_consumer_close(inner)
+        close_response = Rdkafka::Bindings.rd_kafka_consumer_close(inner)
 
         if @consumer_queue
           Rdkafka::Bindings.rd_kafka_queue_destroy(@consumer_queue)
@@ -222,6 +258,8 @@ module Rdkafka
           @consumer_queue_holder[0] = nil
         end
       end
+
+      self.class.report_close_error(@native_kafka, close_response)
 
       @native_kafka.close
     end

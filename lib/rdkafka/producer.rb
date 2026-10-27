@@ -33,6 +33,27 @@ module Rdkafka
 
     private_constant :EMPTY_HASH
 
+    # FFI types of the `rd_kafka_producev` varargs are resolved once. A variadic call resolves each
+    # type argument it gets on every call, unless it already is an `FFI::Type`
+
+    # `:int` vararg type
+    FFI_INT = Rdkafka::Bindings.find_type(:int)
+    # `:pointer` vararg type
+    FFI_POINTER = Rdkafka::Bindings.find_type(:pointer)
+    # `:buffer_in` vararg type
+    FFI_BUFFER_IN = Rdkafka::Bindings.find_type(:buffer_in)
+    # `:size_t` vararg type
+    FFI_SIZE_T = Rdkafka::Bindings.find_type(:size_t)
+    # `:int32` vararg type
+    FFI_INT32 = Rdkafka::Bindings.find_type(:int32)
+    # `:int64` vararg type
+    FFI_INT64 = Rdkafka::Bindings.find_type(:int64)
+    # `:string` vararg type
+    FFI_STRING = Rdkafka::Bindings.find_type(:string)
+
+    private_constant :FFI_INT, :FFI_POINTER, :FFI_BUFFER_IN, :FFI_SIZE_T, :FFI_INT32, :FFI_INT64,
+      :FFI_STRING
+
     # Raised when there was a critical issue when invoking rd_kafka_topic_new
     # This is a temporary solution until https://github.com/karafka/rdkafka-ruby/issues/451 is
     # resolved and this is normalized in all the places
@@ -427,13 +448,15 @@ module Rdkafka
 
       begin
         args = [
-          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_RKT, :pointer, topic_ref,
-          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_MSGFLAGS, :int, Rdkafka::Bindings::RD_KAFKA_MSG_F_COPY,
-          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_VALUE, :buffer_in, payload, :size_t, payload_size,
-          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_KEY, :buffer_in, key, :size_t, key_size,
-          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_PARTITION, :int32, partition,
-          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_TIMESTAMP, :int64, raw_timestamp,
-          :int, Rdkafka::Bindings::RD_KAFKA_VTYPE_OPAQUE, :pointer, delivery_handle
+          FFI_INT, Rdkafka::Bindings::RD_KAFKA_VTYPE_RKT, FFI_POINTER, topic_ref,
+          FFI_INT, Rdkafka::Bindings::RD_KAFKA_VTYPE_MSGFLAGS,
+          FFI_INT, Rdkafka::Bindings::RD_KAFKA_MSG_F_COPY,
+          FFI_INT, Rdkafka::Bindings::RD_KAFKA_VTYPE_VALUE,
+          FFI_BUFFER_IN, payload, FFI_SIZE_T, payload_size,
+          FFI_INT, Rdkafka::Bindings::RD_KAFKA_VTYPE_KEY, FFI_BUFFER_IN, key, FFI_SIZE_T, key_size,
+          FFI_INT, Rdkafka::Bindings::RD_KAFKA_VTYPE_PARTITION, FFI_INT32, partition,
+          FFI_INT, Rdkafka::Bindings::RD_KAFKA_VTYPE_TIMESTAMP, FFI_INT64, raw_timestamp,
+          FFI_INT, Rdkafka::Bindings::RD_KAFKA_VTYPE_OPAQUE, FFI_POINTER, delivery_handle
         ]
 
         headers&.each do |key0, value0|
@@ -442,22 +465,22 @@ module Rdkafka
             # Handle array of values per KIP-82
             value0.each do |value|
               value = value.to_s
-              args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
-              args << :string << key
-              args << :pointer << value
-              args << :size_t << value.bytesize
+              args << FFI_INT << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
+              args << FFI_STRING << key
+              args << FFI_POINTER << value
+              args << FFI_SIZE_T << value.bytesize
             end
           else
             # Handle single value
             value = value0.to_s
-            args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
-            args << :string << key
-            args << :pointer << value
-            args << :size_t << value.bytesize
+            args << FFI_INT << Rdkafka::Bindings::RD_KAFKA_VTYPE_HEADER
+            args << FFI_STRING << key
+            args << FFI_POINTER << value
+            args << FFI_SIZE_T << value.bytesize
           end
         end
 
-        args << :int << Rdkafka::Bindings::RD_KAFKA_VTYPE_END
+        args << FFI_INT << Rdkafka::Bindings::RD_KAFKA_VTYPE_END
 
         # Produce the message
         response = @native_kafka.with_inner do |inner|

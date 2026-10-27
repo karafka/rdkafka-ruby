@@ -24,6 +24,9 @@
 - [Maintenance] Wait 30 s for the `before(:suite)` topic creates.
 - [Maintenance] Stop the fake SSL servers in integration specs without `Thread#kill`.
 - [Maintenance] Check native call balance instead of RSS in leak specs on JRuby.
+- [Maintenance] Give the `Consumer#lag` spec a 30 s list offsets wait, like its siblings. Ported from karafka-rdkafka.
+- [Maintenance] Retry the `Consumer#poll_nb` "returns a message" spec on a 30 s deadline instead of a fixed ~2 s, for loaded CI runners. Ported from karafka-rdkafka.
+- [Maintenance] Stabilize the `consumer_memberid_clusterid_leak` integration spec against RSS noise on Ruby 4.0: compact the heap before sampling and run 400k calls against a 5 MB ceiling. Ported from karafka-rdkafka.
 - [Fix] Create one topic handle per topic when many threads produce to a new topic at once. On JRuby this race leaked topic handles and could crash with a segfault; `produce` now raises `TopicHandleCreationError` instead of passing a missing handle to librdkafka.
 - [Fix] Stop `Consumer#store_offset` and other calls that pass partition metadata from raising `NoMethodError` on JRuby.
 - [Fix] Raise `Rdkafka::LibraryLoadError` with the glibc upgrade hint instead of `NameError` when the precompiled librdkafka needs a newer glibc.

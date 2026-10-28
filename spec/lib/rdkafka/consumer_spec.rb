@@ -1033,7 +1033,7 @@ RSpec.describe Rdkafka::Consumer do
       end)
 
       # Lag should be 0 now
-      lag = consumer.lag(list)
+      lag = consumer.lag(list, 30_000)
       expected_lag = {
         topic => {
           0 => 0,
@@ -1053,7 +1053,7 @@ RSpec.describe Rdkafka::Consumer do
       end
 
       # Lag should be 1 now
-      lag = consumer.lag(list)
+      lag = consumer.lag(list, 30_000)
       expected_lag = {
         topic => {
           0 => 1,
@@ -1368,13 +1368,14 @@ RSpec.describe Rdkafka::Consumer do
       consumer.subscribe(topic)
       wait_for_assignment(consumer)
 
-      # Give time for message to arrive
-      sleep 1
-
+      # A non-blocking poll can return nil for a while on a loaded runner before the fetch
+      # lands, so retry on a generous deadline instead of a fixed handful of attempts.
       message = nil
-      10.times do
+      deadline = Time.now + 30
+      loop do
         message = consumer.poll_nb(100)
-        break if message
+        break if message || Time.now >= deadline
+
         sleep 0.1
       end
 

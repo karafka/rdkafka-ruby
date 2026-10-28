@@ -6,6 +6,7 @@
 - [Enhancement] Keep `partition_key` produces working during a cluster outage once the topic partition count is known, instead of raising.
 - [Enhancement] Make `Producer#produce` use about 13% less CPU per call.
 - [Enhancement] Reduce object shape variations of the admin report classes to one shape per class.
+- [Enhancement] Allocate fewer objects per delivered message: delivery callback reports reuse the topic String given to `produce`.
 - [Change] Build the precompiled `x86_64-linux-gnu` and `aarch64-linux-gnu` libraries in an Ubuntu 22.04 container on Ubuntu 24.04 runners, keeping the glibc 2.34 floor after GitHub retires its Ubuntu 22.04 runners.
 - [Change] Depend on `mini_portile2` and `rake` only in the source gem, as only it compiles librdkafka. Apps that got `rake` only through this gem must add it to their Gemfile.
 - [Change] Remove the unused `Rdkafka::Defaults::NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS`: `close` now waits for operations in progress without polling.

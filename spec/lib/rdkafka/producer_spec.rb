@@ -502,6 +502,10 @@ RSpec.describe Rdkafka::Producer do
   end
 
   context "timestamp" do
+    # The 2017 timestamps are past the broker's default 7-day retention, so its periodic retention
+    # check could delete the segment before the message is read back.
+    let(:topic) { TestTopics.create(config: { "retention.ms" => "-1" }) }
+
     it "raises a type error if not nil, integer or time" do
       expect {
         producer.produce(

@@ -424,8 +424,8 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
       end
 
       it "stays consistent when many threads set and get distinct and shared topics" do
-        threads_count = 16
-        topics_per_thread = 250
+        threads_count = 32
+        topics_per_thread = 500
         shared_topics = Array.new(32) { |i| "shared-#{i}" }
         start = Queue.new
 

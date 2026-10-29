@@ -34,6 +34,7 @@
 - [Fix] Stop the statistics, error and OAuth token refresh callbacks from raising `NoMethodError` when another thread clears the global callback while they run. On JRuby this aborted the process from the polling thread.
 - [Fix] Count a client's operations in progress under one lock, so on JRuby `close` no longer hangs or destroys the client while another thread still uses it.
 - [Fix] Report a failed consumer close (e.g. of a fatally-errored consumer) to `Rdkafka::Config.error_callback` instead of dropping it. `Consumer#close` still does not raise.
+- [Fix] Keep the shared partition count cache consistent when many threads produce with `partition_key` or call `partition_count` at once. On JRuby it lost topics and raised `NoMethodError`.
 
 ## 0.31.0 (2026-10-09)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.

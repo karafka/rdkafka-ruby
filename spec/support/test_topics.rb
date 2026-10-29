@@ -54,12 +54,13 @@ module TestTopics
     # Creates a new Kafka topic with a unique name and waits until it is available.
     #
     # @param partitions [Integer] the number of partitions for the topic
+    # @param config [Hash{String => String}] topic-level configuration overrides
     # @return [String] the created topic name
-    def create(partitions: 3)
+    def create(partitions: 3, config: {})
       topic_name = unique
       admin = rdkafka_config.admin
       begin
-        handle = admin.create_topic(topic_name, partitions, 1)
+        handle = admin.create_topic(topic_name, partitions, 1, config)
         handle.wait(max_wait_timeout_ms: CREATE_TIMEOUT_MS)
         topic_name
       ensure

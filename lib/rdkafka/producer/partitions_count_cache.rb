@@ -33,8 +33,9 @@ module Rdkafka
     #    the cache updated, benefiting all other clients.
     #
     # 5. Thread-safety approach
-    #    The implementation uses fine-grained locking with per-topic mutexes to minimize
-    #    contention in multi-threaded environments while ensuring data consistency.
+    #    One cache-wide mutex guards every read and write of the cached entries, so the cache stays
+    #    consistent on Rubies without a GVL (JRuby). The metadata request that refreshes an entry
+    #    runs outside of it, so a slow lookup for one topic never blocks the others.
     #
     # 6. Topic recreation handling
     #    If a topic is deleted and recreated with fewer partitions, the cache keeps reporting the
@@ -71,9 +72,7 @@ module Rdkafka
       #   Defaults to {Defaults::PARTITIONS_COUNT_CACHE_TTL_MS}.
       def initialize(ttl = :not_provided, ttl_ms: :not_provided)
         @counts = {}
-        @mutex_hash = {}
-        # Used only for @mutex_hash access to ensure thread-safety when creating new mutexes
-        @mutex_for_hash = Mutex.new
+        @mutex = Mutex.new
 
         # Determine which TTL value to use
         if ttl != :not_provided && ttl_ms != :not_provided
@@ -104,51 +103,49 @@ module Rdkafka
       # @raise [RdkafkaError] when the refresh fails and there is no last known count to serve, or
       #   when it fails on a non-transient error
       #
-      # @note The implementation prioritizes read performance over write consistency
-      #   since partition counts typically only increase during normal operation.
+      # @note The metadata request in the block runs outside of the cache-wide mutex.
       def get(topic)
-        current_info = @counts[topic]
+        @mutex.lock
 
-        if current_info.nil?
-          new_count = yield
-          set(topic, new_count)
+        begin
+          current_info = @counts[topic]
 
-          return @counts[topic][1]
+          return current_info[1] if current_info && !expired?(current_info[0])
+
+          if current_info
+            # While the refresh runs, other callers see a fresh entry and get the known count
+            # instead of running their own metadata request. The lease outlasts a failed refresh
+            # even with a TTL shorter than one metadata request.
+            expired_at = current_info[0]
+            lease = monotonic_now_ms + Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS
+            current_info[0] = lease
+          end
+        ensure
+          @mutex.unlock
         end
 
-        return refresh(topic, current_info) { yield } if expired?(current_info[0])
+        return refresh(topic, current_info, expired_at, lease) { yield } if current_info
 
-        current_info[1]
+        set(topic, yield)
+
+        @mutex.synchronize { @counts[topic][1] }
       end
 
       # Update partition count for a topic when needed
       #
       # This method updates the partition count for a topic in the cache.
-      # It uses a mutex to ensure thread-safety during updates.
+      # The check and the update run under the cache-wide mutex, so concurrent updates never
+      # interleave.
       #
       # @param topic [String] Kafka topic name
       # @param new_count [Integer] New partition count value
       #
-      # @note We prioritize higher partition counts and only accept them when using
-      #   a mutex to ensure consistency. This design decision is based on the fact that
-      #   partition counts in Kafka only increase during normal operation.
+      # @note We prioritize higher partition counts. Within the TTL window a lower value is treated
+      #   as a stale/racy read and ignored, since partition counts only grow during normal
+      #   operation. Once the entry has expired a lower value is an authoritative refresh (e.g. the
+      #   topic was recreated with fewer partitions) and is adopted.
       def set(topic, new_count)
-        # First check outside mutex to avoid unnecessary locking
-        current_info = @counts[topic]
-
-        # Within the TTL window a lower value is treated as a stale/racy read and ignored, since
-        # partition counts only grow during normal operation. Once the entry has expired a lower
-        # value is an authoritative refresh (e.g. the topic was recreated with fewer partitions),
-        # so we fall through and adopt it below.
-        if current_info && new_count < current_info[1] && !expired?(current_info[0])
-          refresh_timestamp(topic)
-
-          return
-        end
-
-        # Only lock the specific topic mutex
-        mutex_for(topic).synchronize do
-          # Check again inside the lock as another thread might have updated
+        @mutex.synchronize do
           current_info = @counts[topic]
 
           if current_info.nil?
@@ -168,58 +165,16 @@ module Rdkafka
       end
 
       # @return [Hash] hash with ttls and partitions counts array
+      # @note Returns the live hash without locking: do not read it while other threads use the
+      #   cache.
       def to_h
         @counts
       end
 
       private
 
-      # Get or create a mutex for a specific topic
-      #
-      # This method ensures that each topic has its own mutex,
-      # allowing operations on different topics to proceed in parallel.
-      #
-      # @param topic [String] Kafka topic name
-      # @return [Mutex] Mutex for the specified topic
-      #
-      # @note We use a separate mutex (@mutex_for_hash) to protect the creation
-      #   of new topic mutexes. This pattern allows fine-grained locking while
-      #   maintaining thread-safety.
-      def mutex_for(topic)
-        mutex = @mutex_hash[topic]
-
-        return mutex if mutex
-
-        # Use a separate mutex to protect the creation of new topic mutexes
-        @mutex_for_hash.synchronize do
-          # Check again in case another thread created it
-          @mutex_hash[topic] ||= Mutex.new
-        end
-
-        @mutex_hash[topic]
-      end
-
-      # Update the timestamp without acquiring the mutex
-      #
-      # This is an optimization that allows refreshing the TTL of existing entries
-      # without the overhead of mutex acquisition.
-      #
-      # @param topic [String] Kafka topic name
-      #
-      # @note This method is safe for refreshing existing data regardless of count
-      #   because it only updates the timestamp, which doesn't affect the correctness
-      #   of concurrent operations.
-      def refresh_timestamp(topic)
-        current_info = @counts[topic]
-
-        return unless current_info
-
-        # Update the timestamp in-place
-        current_info[0] = monotonic_now_ms
-      end
-
-      # Refreshes an expired entry. While the refresh runs, other callers see a fresh entry and get
-      # the known count instead of running their own metadata request.
+      # Refreshes an expired entry that {#get} leased. Runs the metadata request outside of the
+      # cache-wide mutex.
       #
       # The block performs an authoritative metadata read. We hand it to `set`, which adopts a
       # higher count always and a lower count once the entry has expired (e.g. the topic was
@@ -228,38 +183,40 @@ module Rdkafka
       #
       # @param topic [String] Kafka topic name
       # @param current_info [Array<Integer>] cached timestamp and partition count
+      # @param expired_at [Integer] timestamp of the entry before it was leased
+      # @param lease [Integer] timestamp {#get} set on the entry for the refresh
       # @yieldreturn [Integer] Current partition count retrieved from Kafka
       # @return [Integer] Partition count for the topic
       # @raise [RdkafkaError] when the refresh fails on a non-transient error
-      def refresh(topic, current_info)
-        expired_at = current_info[0]
-        # Outlasts a failed refresh even with a TTL shorter than one metadata request
-        lease = monotonic_now_ms + Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS
-        current_info[0] = lease
-
+      def refresh(topic, current_info, expired_at, lease)
         begin
           new_count = yield
         rescue RdkafkaError => e
           raise unless STALE_FALLBACK_ERRORS.include?(e.code)
         ensure
-          # Hand the entry back as expired, unless a concurrent write refreshed it meanwhile
-          current_info[0] = expired_at if current_info[0] == lease
+          @mutex.synchronize do
+            # Hand the entry back as expired, unless a concurrent write refreshed it meanwhile
+            current_info[0] = expired_at if current_info[0] == lease
+          end
         end
 
         if new_count.nil?
-          # A concurrent write refreshed the entry, so it keeps its full TTL
-          return current_info[1] unless current_info[0] == expired_at
+          return @mutex.synchronize do
+            # A concurrent write refreshed the entry, so it keeps its full TTL
+            next current_info[1] unless current_info[0] == expired_at
 
-          return serve_stale(current_info)
+            serve_stale(current_info)
+          end
         end
 
         set(topic, new_count)
 
-        @counts[topic][1]
+        @mutex.synchronize { @counts[topic][1] }
       end
 
       # Keeps serving an expired entry after a failed refresh and schedules the next refresh
-      # after {Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS}
+      # after {Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS}. Call it under the cache-wide
+      # mutex.
       #
       # @param current_info [Array<Integer>] cached timestamp and partition count
       # @return [Integer] last known partition count

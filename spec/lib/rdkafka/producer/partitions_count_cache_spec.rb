@@ -422,6 +422,45 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
         result = cache.get(topic) { fail "Should not be called" }
         expect(result).to eq(14)
       end
+
+      it "stays consistent when many threads set and get distinct and shared topics" do
+        threads_count = 32
+        topics_per_thread = 500
+        shared_topics = Array.new(32) { |i| "shared-#{i}" }
+        start = Queue.new
+
+        threads = Array.new(threads_count) do |t|
+          Thread.new do
+            start.pop
+
+            topics_per_thread.times do |i|
+              own_topic = "own-#{t}-#{i}"
+              shared_topic = shared_topics[i % shared_topics.size]
+
+              cache.get(own_topic) { i + 1 }
+              cache.set(shared_topic, shared_topics.index(shared_topic) + 1)
+              cache.get(shared_topic) { shared_topics.index(shared_topic) + 1 }
+            end
+          end
+        end
+
+        threads_count.times { start << true }
+        threads.each(&:value)
+
+        counts = cache.to_h
+
+        expect(counts.size).to eq(threads_count * topics_per_thread + shared_topics.size)
+
+        threads_count.times do |t|
+          topics_per_thread.times do |i|
+            expect(counts["own-#{t}-#{i}"][1]).to eq(i + 1)
+          end
+        end
+
+        shared_topics.each_with_index do |shared_topic, i|
+          expect(counts[shared_topic][1]).to eq(i + 1)
+        end
+      end
     end
   end
 

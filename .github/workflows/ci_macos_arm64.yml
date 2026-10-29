@@ -47,7 +47,7 @@ jobs:
           brew list krb5 &>/dev/null || brew install krb5
           echo "/opt/homebrew/bin" >> $GITHUB_PATH
       - name: Set up Ruby
-        uses: ruby/setup-ruby@e1bd6146574da5e0795075b5319b300edb30c5b0 # v1.333.0
+        uses: ruby/setup-ruby@26e5b7d197ebf60545ee9667bcbace0be11ccaec # v1.334.0
         with:
           ruby-version: ${{matrix.ruby}}
           bundler-cache: false
@@ -188,7 +188,7 @@ jobs:
           name: librdkafka-precompiled-macos
           path: ext/
       - name: Set up Ruby
-        uses: ruby/setup-ruby@e1bd6146574da5e0795075b5319b300edb30c5b0 # v1.333.0
+        uses: ruby/setup-ruby@26e5b7d197ebf60545ee9667bcbace0be11ccaec # v1.334.0
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: false

@@ -64,7 +64,7 @@
 - [Maintenance] Raise the `TestTopics.create` admin timeout to 30s so a loaded CI runner no longer hits `create topic timed out` (which also tripped the leaked-handle guard).
 
 ## 0.29.2 (2026-09-11)
-- [Fix] Close live clients from an `at_exit` hook before Ruby's shutdown finalization, so librdkafka is no longer `dlclose`d while its native threads are still running (which could segfault on exit).
+- [Fix] Close live clients from an `at_exit` hook so librdkafka is no longer `dlclose`d while its native threads still run, which could segfault on exit.
 - [Fix] Make client construction exception-safe and destroy the native handle when setup fails after `rd_kafka_new`, so a later error no longer orphans the native client.
 - [Fix] Fix a double-free in `Consumer#poll_batch`/`#poll_batch_nb` that could abort the process when building a message raised a non-`RdkafkaError`.
 - [Fix] Free native resources when `Admin#describe_configs`/`#incremental_alter_configs` raise while building their request (e.g. a non-String resource name).

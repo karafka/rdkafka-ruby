@@ -57,6 +57,10 @@ jobs:
   # so the required check does not stay pending
   changes:
     uses: ./.github/workflows/ci_changes.yml
+    # actions: read lets it find the last green run of this workflow
+    permissions:
+      contents: read
+      actions: read
 
   specs_install:
     timeout-minutes: 50

@@ -28,8 +28,15 @@ env:
   BUNDLE_JOBS: 4
 
 jobs:
+  # Docs-only pull requests skip the jobs below; the Success job still reports success,
+  # so the required check does not stay pending
+  changes:
+    uses: ./.github/workflows/ci_changes.yml
+
   rubocop:
     name: RuboCop (StandardRB)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     env:
       BUNDLE_GEMFILE: Gemfile.lint
@@ -47,6 +54,8 @@ jobs:
 
   yard_lint:
     name: YARD Documentation Lint
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     env:
       BUNDLE_GEMFILE: Gemfile.lint
@@ -64,6 +73,8 @@ jobs:
 
   lostconf:
     name: Config Files Lint
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -87,14 +98,17 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs:
+      - changes
       - rubocop
       - yard_lint
       - lostconf
     steps:
+      # Skipped jobs are fine only when the change is docs-only
       - name: Check all jobs passed
         if: |
+          needs.changes.result != 'success' ||
           contains(needs.*.result, 'failure') ||
           contains(needs.*.result, 'cancelled') ||
-          contains(needs.*.result, 'skipped')
+          (needs.changes.outputs.code != 'false' && contains(needs.*.result, 'skipped'))
         run: exit 1
       - run: echo "All linting checks passed!"

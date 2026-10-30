@@ -231,3 +231,103 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner from many threads" do
     end
   end
 end
+
+# Interrupts delivered at the exact points of `#with_inner` where the operations in progress
+# counter used to drift, which left `#close` waiting for ever
+RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is interrupted" do
+  let(:producer) { rdkafka_producer_config.producer }
+  let(:release) { Queue.new }
+  let(:parked) { Queue.new }
+
+  before do
+    # JRuby reports calls of its core methods to TracePoint only with `--debug`
+    skip "TracePoint core method events need --debug on JRuby" if defined?(JRUBY_VERSION)
+
+    producer.queue_size
+  end
+
+  after { producer.close unless producer.closed? }
+
+  # Runs `producer.queue_size` in a new thread and parks it when the given `Mutex#synchronize`
+  # call that `#with_inner` makes starts (`:call`) or ends (`:return`): the first takes the lock
+  # for the increment, the second the lock for the decrement. `Mutex#synchronize` is a C method
+  # before Ruby 4.0, so both kinds of events are traced.
+  def park_worker(event, call)
+    calls = 0
+    worker = nil
+
+    trace = TracePoint.new(event, :"c_#{event}") do |tp|
+      next unless Thread.current == worker
+      next unless tp.defined_class == Thread::Mutex && tp.method_id == :synchronize
+
+      calls += 1
+      next unless calls == call
+
+      parked << true
+      release.pop
+    end
+
+    worker = Thread.new do
+      Thread.stop
+      producer.queue_size
+    rescue
+      nil
+    end
+
+    sleep(0.01) until worker.status == "sleep"
+    trace.enable
+    worker.run
+
+    expect(parked.pop(timeout: 5)).to be(true)
+
+    [worker, trace]
+  end
+
+  def expect_close_to_finish(worker, trace)
+    release << true
+    worker.join(5)
+    trace.disable
+
+    closer = Thread.new { producer.close }
+
+    expect(closer.join(5)).not_to be_nil
+  ensure
+    closer&.kill
+  end
+
+  context "when raised before it takes the lock for the increment" do
+    it "lets close finish" do
+      worker, trace = park_worker(:call, 1)
+      worker.raise("interrupted")
+
+      expect_close_to_finish(worker, trace)
+    end
+  end
+
+  context "when raised right after the increment" do
+    it "lets close finish" do
+      worker, trace = park_worker(:return, 1)
+      worker.raise("interrupted")
+
+      expect_close_to_finish(worker, trace)
+    end
+  end
+
+  context "when raised before it takes the lock for the decrement" do
+    it "lets close finish" do
+      worker, trace = park_worker(:call, 2)
+      worker.raise("interrupted")
+
+      expect_close_to_finish(worker, trace)
+    end
+  end
+
+  context "when killed before it takes the lock for the decrement" do
+    it "lets close finish" do
+      worker, trace = park_worker(:call, 2)
+      worker.kill
+
+      expect_close_to_finish(worker, trace)
+    end
+  end
+end

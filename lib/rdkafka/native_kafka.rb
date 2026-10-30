@@ -5,8 +5,9 @@ module Rdkafka
   # A wrapper around a native kafka that polls and cleanly exits
   class NativeKafka
     # Defers every asynchronous interrupt (`Thread#raise`, `Thread#kill`) for the decrement of the
-    # operations in progress counter
-    DEFER_INTERRUPTS = { Object => :never }.freeze
+    # operations in progress counter. Frozen and `compare_by_identity`, so MRI uses it without
+    # copying it on every call.
+    DEFER_INTERRUPTS = { Object => :never }.compare_by_identity.freeze
 
     private_constant :DEFER_INTERRUPTS
 

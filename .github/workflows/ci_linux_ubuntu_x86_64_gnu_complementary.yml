@@ -137,6 +137,8 @@ jobs:
 
   specs_install:
     timeout-minutes: 50
+    # JRuby is non-blocking: a failing JRuby job shows red but does not fail the workflow
+    continue-on-error: ${{ matrix.continue-on-error || false }}
     strategy:
       fail-fast: false
       matrix:
@@ -194,11 +196,9 @@ jobs:
       - name: Install dependencies
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
-        continue-on-error: ${{ matrix.continue-on-error || false }}
         run: |
           bundle install
       - name: Build gem with mini_portile
-        continue-on-error: ${{ matrix.continue-on-error || false }}
         run: |
           set -e
           cd ext && bundle exec rake
@@ -207,7 +207,6 @@ jobs:
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           KAFKA_SSL_ENABLED: "true"
-        continue-on-error: ${{ matrix.continue-on-error || false }}
         run: |
           bundle exec rspec
 
@@ -215,12 +214,22 @@ jobs:
         run: bin/verify_kafka_warnings
 
       - name: Run integration specs (compiled flow)
-        continue-on-error: ${{ matrix.continue-on-error || false }}
         run: |
-          for file in $(ls spec/integrations/*_spec.rb); do
-            echo "Running $file with Ruby ${{ matrix.ruby }}";
-            bundle exec ruby "$file" || exit 1;
+          failed=()
+          for file in spec/integrations/*_spec.rb; do
+            echo "Running $file with Ruby ${{ matrix.ruby }}"
+            bundle exec ruby "$file" || {
+              code=$?
+              echo "::error file=$file::$file failed with exit code $code"
+              failed+=("$file (exit code $code)")
+            }
           done
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo "${#failed[@]} integration spec file(s) failed:"
+            printf '  %s\n' "${failed[@]}"
+            exit 1
+          fi
+          echo "All integration spec files passed"
 
   specs_precompiled:
     timeout-minutes: 30
@@ -320,10 +329,21 @@ jobs:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           RDKAFKA_PRECOMPILED: "true"
         run: |
-          for file in $(ls spec/integrations/*_spec.rb); do
-            echo "Running $file with Ruby ${{ matrix.ruby }} (precompiled)";
-            bundle exec ruby "$file" || exit 1;
+          failed=()
+          for file in spec/integrations/*_spec.rb; do
+            echo "Running $file with Ruby ${{ matrix.ruby }} (precompiled)"
+            bundle exec ruby "$file" || {
+              code=$?
+              echo "::error file=$file::$file failed with exit code $code"
+              failed+=("$file (exit code $code)")
+            }
           done
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo "${#failed[@]} integration spec file(s) failed:"
+            printf '  %s\n' "${failed[@]}"
+            exit 1
+          fi
+          echo "All integration spec files passed"
 
   ci-success:
     name: CI Linux Complementary Ubuntu x86_64 GNU Success

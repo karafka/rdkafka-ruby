@@ -52,6 +52,9 @@ module AdminTopicAutoWait
 
   def create_topic(topic_name, *args, **kwargs)
     handle = super
+    # A validate only request creates no topic, so there is nothing to wait for
+    return handle if kwargs[:validate_only]
+
     HandleWrapper.new(handle, self, topic_name)
   end
 end

@@ -170,4 +170,60 @@ RSpec.describe Rdkafka::AbstractHandle do
       end
     end
   end
+
+  describe "#unlock" do
+    let(:pending_handle) { true }
+
+    # Two pending handles that share one lock stripe
+    let(:handles) do
+      by_stripe = {}
+
+      loop do
+        candidate = TestHandle.new
+        candidate[:pending] = true
+        stripe = candidate.send(:lock_stripe)
+        break [by_stripe[stripe], candidate] if by_stripe.key?(stripe)
+
+        by_stripe[stripe] = candidate
+      end
+    end
+
+    def start_waiter(handle)
+      waiter = Thread.new { handle.wait(max_wait_timeout_ms: 10_000) }
+      deadline = monotonic_now + 5
+      sleep(0.001) until waiter.status == "sleep" || monotonic_now > deadline
+      waiter
+    end
+
+    def monotonic_now
+      Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    end
+
+    it "ends only the wait of the unlocked handle when handles share a stripe" do
+      first, second = handles
+      first[:result] = 1
+      second[:result] = 2
+      expect(first.send(:lock_stripe)).to equal(second.send(:lock_stripe))
+
+      first_waiter = start_waiter(first)
+      second_waiter = start_waiter(second)
+
+      second.unlock
+      expect(second_waiter.join(5)&.value).to eq(2)
+      expect(first_waiter.join(0.2)).to be_nil
+      expect(first).to be_pending
+
+      first.unlock
+      expect(first_waiter.join(5)&.value).to eq(1)
+    end
+
+    it "wakes every thread waiting on the same handle" do
+      handle[:result] = 7
+      waiters = Array.new(8) { start_waiter(handle) }
+
+      handle.unlock
+
+      expect(waiters.map { |waiter| waiter.join(5)&.value }).to all(eq(7))
+    end
+  end
 end

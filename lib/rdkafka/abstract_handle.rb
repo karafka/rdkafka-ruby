@@ -22,9 +22,20 @@ module Rdkafka
     REGISTRY_MUTEX = Mutex.new
     # Default wait timeout is 31 years
     MAX_WAIT_TIMEOUT_FOREVER = 10_000_000_000
+    # Number of shared lock stripes (power of two)
+    LOCK_STRIPES_COUNT = 64
+    # Shared `[Mutex, ConditionVariable]` pairs for `#wait` and `#unlock`, so a handle does not
+    # allocate its own. A handle picks its stripe by native address, which is stable for its life.
+    # A broadcast for another handle on the same stripe is a spurious wakeup: `#wait` re-checks
+    # `pending?` after every wakeup.
+    LOCK_STRIPES = Array.new(LOCK_STRIPES_COUNT) do
+      [Thread::Mutex.new, Thread::ConditionVariable.new].freeze
+    end.freeze
 
     private_constant :REGISTRY_MUTEX
     private_constant :MAX_WAIT_TIMEOUT_FOREVER
+    private_constant :LOCK_STRIPES_COUNT
+    private_constant :LOCK_STRIPES
 
     class << self
       # Adds handle to the register
@@ -53,13 +64,6 @@ module Rdkafka
     # Broker-provided error message copied out of event-owned memory by the background event
     # callback, used by `#raise_error`.
     attr_accessor :broker_message
-
-    def initialize
-      @mutex = Thread::Mutex.new
-      @resource = Thread::ConditionVariable.new
-
-      super
-    end
 
     # Whether the handle is still pending.
     #
@@ -101,13 +105,15 @@ module Rdkafka
       timeout_s = timeout_ms ? timeout_ms / 1000.0 : nil
       timeout = timeout_s ? monotonic_now + timeout_s : MAX_WAIT_TIMEOUT_FOREVER
 
-      @mutex.synchronize do
+      mutex, resource = lock_stripe
+
+      mutex.synchronize do
         loop do
           if pending?
             to_wait = (timeout - monotonic_now)
 
             if to_wait.positive?
-              @resource.wait(@mutex, to_wait)
+              resource.wait(mutex, to_wait)
             else
               raise WaitTimeoutError.new(
                 "Waiting for #{operation_name} timed out after #{timeout_ms} ms"
@@ -124,9 +130,11 @@ module Rdkafka
 
     # Unlock the resources
     def unlock
-      @mutex.synchronize do
+      mutex, resource = lock_stripe
+
+      mutex.synchronize do
         self[:pending] = false
-        @resource.broadcast
+        resource.broadcast
       end
     end
 
@@ -159,5 +167,12 @@ module Rdkafka
     # Error that is raised when waiting for the handle to complete
     # takes longer than the specified timeout.
     class WaitTimeoutError < RuntimeError; end
+
+    private
+
+    # @return [Array(Thread::Mutex, Thread::ConditionVariable)] lock stripe of this handle
+    def lock_stripe
+      LOCK_STRIPES[(to_ptr.address >> 4) & (LOCK_STRIPES_COUNT - 1)]
+    end
   end
 end

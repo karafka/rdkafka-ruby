@@ -148,7 +148,7 @@ module Rdkafka
 
     # Polls for events in a non-blocking loop, yielding the count after each iteration.
     #
-    # This method processes events (stats, errors, etc.) in a single GVL/mutex session,
+    # This method processes events (stats, errors, etc.) in a single GVL session,
     # which is more efficient than repeated individual polls. It uses non-blocking polls
     # internally (no GVL release between polls).
     #
@@ -188,7 +188,7 @@ module Rdkafka
 
     # Polls for messages in a non-blocking loop, yielding each message to the caller.
     #
-    # This method processes messages in a single GVL/mutex session until the queue is empty
+    # This method processes messages in a single GVL session until the queue is empty
     # or the caller returns `:stop`. It handles the message pointer lifecycle internally,
     # ensuring proper cleanup via `rd_kafka_message_destroy`.
     #

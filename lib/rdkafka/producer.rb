@@ -264,7 +264,7 @@ module Rdkafka
 
     # Polls for events in a non-blocking loop, yielding the count after each iteration.
     #
-    # This method processes delivery callbacks in a single GVL/mutex session, which is more
+    # This method processes delivery callbacks in a single GVL session, which is more
     # efficient than repeated individual polls. It uses non-blocking polls internally
     # (no GVL release between polls).
     #

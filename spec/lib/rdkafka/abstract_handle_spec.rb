@@ -170,4 +170,55 @@ RSpec.describe Rdkafka::AbstractHandle do
       end
     end
   end
+
+  describe "#unlock" do
+    let(:pending_handle) { true }
+
+    def start_waiter(handle)
+      waiter = Thread.new { handle.wait(max_wait_timeout_ms: 10_000) }
+      deadline = monotonic_now + 5
+      sleep(0.001) until waiter.status == "sleep" || monotonic_now > deadline
+      waiter
+    end
+
+    def monotonic_now
+      Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    end
+
+    # More pending handles than lock stripes, so at least two of them share one
+    it "ends only the wait of the unlocked handle when handles share a stripe" do
+      handles = Array.new(1_025) do |index|
+        TestHandle.new.tap do |test_handle|
+          test_handle[:pending] = true
+          test_handle[:result] = index
+        end
+      end
+
+      waiters = handles.map do |test_handle|
+        Thread.new do
+          value = test_handle.wait(max_wait_timeout_ms: 60_000)
+          [value, test_handle.pending?]
+        end
+      end
+
+      deadline = monotonic_now + 30
+      sleep(0.01) until waiters.all? { |waiter| waiter.status == "sleep" } || monotonic_now > deadline
+
+      handles.zip(waiters).each_with_index do |(test_handle, waiter), index|
+        test_handle.unlock
+        expect(waiter.join(5)&.value).to eq([index, false])
+      end
+    ensure
+      waiters&.each(&:kill)
+    end
+
+    it "wakes every thread waiting on the same handle" do
+      handle[:result] = 7
+      waiters = Array.new(8) { start_waiter(handle) }
+
+      handle.unlock
+
+      expect(waiters.map { |waiter| waiter.join(5)&.value }).to all(eq(7))
+    end
+  end
 end

@@ -149,13 +149,34 @@ module Rdkafka
     # @param partition_count [Integer] number of partitions for the topic
     # @param replication_factor [Integer] replication factor for the topic
     # @param topic_config [Hash] optional topic configuration settings
+    # @param validate_only [Boolean] when true, the broker only validates the request and does not
+    #   create the topic
+    # @param operation_timeout_ms [Integer, nil] how long the broker waits for the topic creation
+    #   to complete before it responds (librdkafka default: 60 seconds)
+    # @param request_timeout_ms [Integer, nil] overall request timeout (librdkafka default:
+    #   `socket.timeout.ms`)
+    # @param braceless_topic_config [Hash] topic configuration given as a hash without braces,
+    #   e.g. `create_topic("t", 1, 1, "retention.ms" => "1000")`, merged into `topic_config`
+    # @option braceless_topic_config [String] any topic configuration name, e.g. `"retention.ms"`
     # @return [CreateTopicHandle] Create topic handle that can be used to wait for the result of
     #   creating the topic
     # @raise [ConfigError] When the partition count or replication factor are out of valid range
     # @raise [RdkafkaError] When the topic name is invalid or the topic already exists
     # @raise [RdkafkaError] When the topic configuration is invalid
-    def create_topic(topic_name, partition_count, replication_factor, topic_config = {})
+    # @raise [RdkafkaError] When librdkafka rejects a timeout value
+    def create_topic(
+      topic_name,
+      partition_count,
+      replication_factor,
+      topic_config = {},
+      validate_only: false,
+      operation_timeout_ms: nil,
+      request_timeout_ms: nil,
+      **braceless_topic_config
+    )
       closed_admin_check(__method__)
+
+      topic_config = (topic_config || {}).merge(braceless_topic_config) unless braceless_topic_config.empty?
 
       # Create a rd_kafka_NewTopic_t representing the new topic
       error_buffer = FFI::MemoryPointer.from_string(" " * 256)
@@ -203,6 +224,13 @@ module Rdkafka
       Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, create_topic_handle.to_ptr)
 
       begin
+        set_admin_options(
+          admin_options_ptr,
+          validate_only: validate_only,
+          operation_timeout_ms: operation_timeout_ms,
+          request_timeout_ms: request_timeout_ms
+        )
+
         @native_kafka.with_inner do |inner|
           Rdkafka::Bindings.rd_kafka_CreateTopics(
             inner,
@@ -748,10 +776,15 @@ module Rdkafka
     # Deletes the named topic
     #
     # @param topic_name [String] name of the topic to delete
+    # @param operation_timeout_ms [Integer, nil] how long the broker waits for the topic deletion
+    #   to complete before it responds (librdkafka default: 60 seconds)
+    # @param request_timeout_ms [Integer, nil] overall request timeout (librdkafka default:
+    #   `socket.timeout.ms`)
     # @return [DeleteTopicHandle] Delete topic handle that can be used to wait for the result of
     #   deleting the topic
     # @raise [RdkafkaError] When the topic name is invalid or the topic does not exist
-    def delete_topic(topic_name)
+    # @raise [RdkafkaError] When librdkafka rejects a timeout value
+    def delete_topic(topic_name, operation_timeout_ms: nil, request_timeout_ms: nil)
       closed_admin_check(__method__)
 
       # Create a rd_kafka_DeleteTopic_t representing the topic to be deleted
@@ -782,6 +815,12 @@ module Rdkafka
       Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, delete_topic_handle.to_ptr)
 
       begin
+        set_admin_options(
+          admin_options_ptr,
+          operation_timeout_ms: operation_timeout_ms,
+          request_timeout_ms: request_timeout_ms
+        )
+
         @native_kafka.with_inner do |inner|
           Rdkafka::Bindings.rd_kafka_DeleteTopics(
             inner,
@@ -807,12 +846,25 @@ module Rdkafka
     #
     # @param topic_name [String] name of the topic
     # @param partition_count [Integer] how many partitions we want to end up with for given topic
+    # @param validate_only [Boolean] when true, the broker only validates the request and does not
+    #   add the partitions
+    # @param operation_timeout_ms [Integer, nil] how long the broker waits for the partitions to be
+    #   created before it responds (librdkafka default: 60 seconds)
+    # @param request_timeout_ms [Integer, nil] overall request timeout (librdkafka default:
+    #   `socket.timeout.ms`)
     # @return [CreatePartitionsHandle] Create partitions handle that can be used to wait for the
     #   result
     # @raise [ConfigError] When the partition count or replication factor are out of valid range
     # @raise [RdkafkaError] When the topic name is invalid or the topic already exists
     # @raise [RdkafkaError] When the topic configuration is invalid
-    def create_partitions(topic_name, partition_count)
+    # @raise [RdkafkaError] When librdkafka rejects a timeout value
+    def create_partitions(
+      topic_name,
+      partition_count,
+      validate_only: false,
+      operation_timeout_ms: nil,
+      request_timeout_ms: nil
+    )
       closed_admin_check(__method__)
 
       @native_kafka.with_inner do |inner|
@@ -847,6 +899,13 @@ module Rdkafka
         Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, create_partitions_handle.to_ptr)
 
         begin
+          set_admin_options(
+            admin_options_ptr,
+            validate_only: validate_only,
+            operation_timeout_ms: operation_timeout_ms,
+            request_timeout_ms: request_timeout_ms
+          )
+
           Rdkafka::Bindings.rd_kafka_CreatePartitions(
             inner,
             topics_array_ptr,
@@ -1502,6 +1561,47 @@ module Rdkafka
       ensure
         Rdkafka::Bindings.rd_kafka_error_destroy(error_ptr)
       end
+    end
+
+    # Applies the optional request settings to admin options
+    # @param admin_options_ptr [FFI::Pointer] the admin options to update
+    # @param validate_only [Boolean] whether the broker should only validate the request
+    # @param operation_timeout_ms [Integer, nil] broker operation timeout, librdkafka default if nil
+    # @param request_timeout_ms [Integer, nil] request timeout, librdkafka default if nil
+    # @raise [RdkafkaError] when librdkafka rejects a value
+    def set_admin_options(admin_options_ptr, validate_only: false, operation_timeout_ms: nil, request_timeout_ms: nil)
+      error_buffer = FFI::MemoryPointer.new(:char, 256)
+
+      if validate_only
+        check_admin_option(
+          Rdkafka::Bindings.rd_kafka_AdminOptions_set_validate_only(admin_options_ptr, 1, error_buffer, 256),
+          error_buffer
+        )
+      end
+
+      if operation_timeout_ms
+        check_admin_option(
+          Rdkafka::Bindings.rd_kafka_AdminOptions_set_operation_timeout(admin_options_ptr, operation_timeout_ms, error_buffer, 256),
+          error_buffer
+        )
+      end
+
+      if request_timeout_ms
+        check_admin_option(
+          Rdkafka::Bindings.rd_kafka_AdminOptions_set_request_timeout(admin_options_ptr, request_timeout_ms, error_buffer, 256),
+          error_buffer
+        )
+      end
+    end
+
+    # Raises when an admin options setter failed
+    # @param response [Integer] result code of an admin options setter
+    # @param error_buffer [FFI::MemoryPointer] buffer the setter wrote its error into
+    # @raise [RdkafkaError] when the setter failed
+    def check_admin_option(response, error_buffer)
+      return if response == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
+
+      raise RdkafkaError.new(response, broker_message: error_buffer.read_string)
     end
 
     # Checks if the admin is closed and raises an error if so

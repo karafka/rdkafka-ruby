@@ -174,20 +174,6 @@ RSpec.describe Rdkafka::AbstractHandle do
   describe "#unlock" do
     let(:pending_handle) { true }
 
-    # Two pending handles that share one lock stripe
-    let(:handles) do
-      by_stripe = {}
-
-      loop do
-        candidate = TestHandle.new
-        candidate[:pending] = true
-        stripe = candidate.send(:lock_stripe)
-        break [by_stripe[stripe], candidate] if by_stripe.key?(stripe)
-
-        by_stripe[stripe] = candidate
-      end
-    end
-
     def start_waiter(handle)
       waiter = Thread.new { handle.wait(max_wait_timeout_ms: 10_000) }
       deadline = monotonic_now + 5
@@ -199,22 +185,31 @@ RSpec.describe Rdkafka::AbstractHandle do
       Process.clock_gettime(Process::CLOCK_MONOTONIC)
     end
 
+    # More pending handles than lock stripes, so at least two of them share one
     it "ends only the wait of the unlocked handle when handles share a stripe" do
-      first, second = handles
-      first[:result] = 1
-      second[:result] = 2
-      expect(first.send(:lock_stripe)).to equal(second.send(:lock_stripe))
+      handles = Array.new(1_025) do |index|
+        TestHandle.new.tap do |test_handle|
+          test_handle[:pending] = true
+          test_handle[:result] = index
+        end
+      end
 
-      first_waiter = start_waiter(first)
-      second_waiter = start_waiter(second)
+      waiters = handles.map do |test_handle|
+        Thread.new do
+          value = test_handle.wait(max_wait_timeout_ms: 60_000)
+          [value, test_handle.pending?]
+        end
+      end
 
-      second.unlock
-      expect(second_waiter.join(5)&.value).to eq(2)
-      expect(first_waiter.join(0.2)).to be_nil
-      expect(first).to be_pending
+      deadline = monotonic_now + 30
+      sleep(0.01) until waiters.all? { |waiter| waiter.status == "sleep" } || monotonic_now > deadline
 
-      first.unlock
-      expect(first_waiter.join(5)&.value).to eq(1)
+      handles.zip(waiters).each_with_index do |(test_handle, waiter), index|
+        test_handle.unlock
+        expect(waiter.join(5)&.value).to eq([index, false])
+      end
+    ensure
+      waiters&.each(&:kill)
     end
 
     it "wakes every thread waiting on the same handle" do

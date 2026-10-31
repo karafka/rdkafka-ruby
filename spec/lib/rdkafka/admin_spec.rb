@@ -159,16 +159,16 @@ RSpec.describe Rdkafka::Admin do
     end
 
     context "when the topic config is given as a hash without braces" do
-      let(:cleanup_policy) do
+      let(:configs) do
         admin
           .describe_configs([{ resource_type: 2, resource_name: topic_name }])
           .wait(max_wait_timeout_ms: 15_000)
           .resources
           .first
           .configs
-          .find { |config| config.name == "cleanup.policy" }
-          .value
+          .to_h { |config| [config.name, config.value] }
       end
+      let(:cleanup_policy) { configs.fetch("cleanup.policy") }
 
       it "creates the topic with that config" do
         admin.create_topic(topic_name, 1, 1, "cleanup.policy" => "compact").wait(max_wait_timeout_ms: 15_000)
@@ -182,6 +182,7 @@ RSpec.describe Rdkafka::Admin do
           .wait(max_wait_timeout_ms: 15_000)
 
         expect(cleanup_policy).to eq("compact")
+        expect(configs.fetch("retention.ms")).to eq("1000")
       end
 
       it "creates the topic with a Symbol keyed config together with keyword options" do
@@ -966,6 +967,12 @@ RSpec.describe Rdkafka::Admin do
     it "raises when the request timeout is out of range" do
       expect {
         admin.delete_topic(topic_name, request_timeout_ms: 3_600_001)
+      }.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
+    end
+
+    it "raises when the operation timeout is out of range" do
+      expect {
+        admin.delete_topic(topic_name, operation_timeout_ms: -2)
       }.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
     end
 

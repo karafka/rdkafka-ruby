@@ -4,6 +4,13 @@ module Rdkafka
   # @private
   # A wrapper around a native kafka that polls and cleanly exits
   class NativeKafka
+    # Defers every asynchronous interrupt (`Thread#raise`, `Thread#kill`) for the decrement of the
+    # operations in progress counter. Frozen and `compare_by_identity`, so MRI uses it without
+    # copying it on every call.
+    DEFER_INTERRUPTS = { Object => :never }.compare_by_identity.freeze
+
+    private_constant :DEFER_INTERRUPTS
+
     # Creates a new NativeKafka wrapper
     # @param inner [FFI::Pointer] pointer to the native Kafka handle
     # @param run_polling_thread [Boolean] whether to run a background polling thread
@@ -84,25 +91,38 @@ module Rdkafka
     # @raise [ClosedInnerError] when the inner handle is nil
     def with_inner
       owned = @access_mutex.owned?
-
-      if owned
-        @operations_in_progress += 1
-      else
-        @access_mutex.synchronize do
-          @operations_done.wait(@access_mutex) while @synchronizing
-          @operations_in_progress += 1
-        end
-      end
+      # Set in the same step as the increment, so the `ensure` undoes only an increment that
+      # happened, even when `Thread#raise`, `Timeout` or `Thread#kill` interrupts this method
+      counted = false
 
       begin
-        @inner.nil? ? raise(ClosedInnerError) : yield(@inner)
-      ensure
         if owned
-          @operations_in_progress -= 1
+          @operations_in_progress += 1
+          counted = true
         else
           @access_mutex.synchronize do
+            @operations_done.wait(@access_mutex) while @synchronizing
+            @operations_in_progress += 1
+            counted = true
+          end
+        end
+
+        @inner.nil? ? raise(ClosedInnerError) : yield(@inner)
+      ensure
+        # Deferred from the first step of the `ensure`: an interrupt delivered before the decrement
+        # (even at the branches below) would skip it and leave `#synchronize` (and so `#close`)
+        # waiting for ever. JRuby delivers a `Thread#kill` that arrived during a blocking native
+        # call at its first chance after the call, the lock below.
+        Thread.handle_interrupt(DEFER_INTERRUPTS) do
+          if !counted
+            # Interrupted before the increment: nothing to undo
+          elsif owned
             @operations_in_progress -= 1
-            @operations_done.broadcast if @synchronizing && @operations_in_progress.zero?
+          else
+            @access_mutex.synchronize do
+              @operations_in_progress -= 1
+              @operations_done.broadcast if @synchronizing && @operations_in_progress.zero?
+            end
           end
         end
       end

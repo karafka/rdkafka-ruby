@@ -23,7 +23,7 @@ module Rdkafka
     # Default wait timeout is 31 years
     MAX_WAIT_TIMEOUT_FOREVER = 10_000_000_000
     # Number of shared lock stripes (power of two)
-    LOCK_STRIPES_COUNT = 64
+    LOCK_STRIPES_COUNT = 1_024
     # Shared `[Mutex, ConditionVariable]` pairs for `#wait` and `#unlock`, so a handle does not
     # allocate its own. A handle picks its stripe by native address, which is stable for its life.
     # A broadcast for another handle on the same stripe is a spurious wakeup: `#wait` re-checks

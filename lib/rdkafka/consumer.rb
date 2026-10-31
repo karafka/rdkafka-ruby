@@ -169,8 +169,9 @@ module Rdkafka
     #   consumer.events_poll_nb_each do |_count|
     #     :stop if monotonic_now >= deadline
     #   end
-    # @note This method holds the inner lock until the queue is empty or `:stop` is returned.
-    #   Other consumer operations will wait until this method returns.
+    # @note This method runs inside `with_inner` and does not hold a lock while it loops.
+    #   Other operations on the same client run concurrently. `close` waits until this
+    #   method returns.
     # @note This method is thread-safe as it uses @native_kafka.with_inner synchronization
     # @note Do NOT use this if `consumer_poll_set` was set to `true`
     def events_poll_nb_each
@@ -214,8 +215,9 @@ module Rdkafka
     #   `events_poll_nb_each` which uses `rd_kafka_poll` for event callbacks (delivery reports,
     #   statistics, etc.). For consumers, use this method to receive messages and
     #   `events_poll_nb_each` for processing background events.
-    # @note This method holds the inner lock for the duration. Other consumer operations
-    #   will wait until this method returns.
+    # @note This method runs inside `with_inner` and does not hold a lock while it loops.
+    #   Other operations on the same client run concurrently. `close` waits until this
+    #   method returns.
     # @note Timeout/max_messages logic should be implemented by the caller
     def poll_nb_each
       closed_consumer_check(__method__)

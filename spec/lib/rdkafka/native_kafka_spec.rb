@@ -253,12 +253,27 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
   # for the increment, the second the lock for the decrement. `Mutex#synchronize` is a C method
   # before Ruby 4.0, so both kinds of events are traced.
   def park_worker(event, call)
+    park_worker_on(event, :"c_#{event}", call: call) do |tp|
+      tp.defined_class == Thread::Mutex && tp.method_id == :synchronize
+    end
+  end
+
+  # Runs `producer.queue_size` in a new thread and parks it at the given line of
+  # `lib/rdkafka/native_kafka.rb`, found by its code
+  def park_worker_at_line(code)
+    path = Rdkafka::NativeKafka.instance_method(:with_inner).source_location.first
+    lineno = File.readlines(path).index { |line| line.strip == code } + 1
+
+    park_worker_on(:line, call: 1) { |tp| tp.path == path && tp.lineno == lineno }
+  end
+
+  def park_worker_on(*events, call:, &matches)
     calls = 0
     worker = nil
 
-    trace = TracePoint.new(event, :"c_#{event}") do |tp|
+    trace = TracePoint.new(*events) do |tp|
       next unless Thread.current == worker
-      next unless tp.defined_class == Thread::Mutex && tp.method_id == :synchronize
+      next unless matches.call(tp)
 
       calls += 1
       next unless calls == call
@@ -316,6 +331,17 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
   context "when raised before it takes the lock for the decrement" do
     it "lets close finish" do
       worker, trace = park_worker(:call, 2)
+      worker.raise("interrupted")
+
+      expect_close_to_finish(worker, trace)
+    end
+  end
+
+  # MRI checks for interrupts at branches, so one raised as the `ensure` starts used to skip the
+  # decrement before it deferred interrupts
+  context "when raised at the first branch of the ensure" do
+    it "lets close finish" do
+      worker, trace = park_worker_at_line("if !counted")
       worker.raise("interrupted")
 
       expect_close_to_finish(worker, trace)

@@ -208,6 +208,7 @@ jobs:
           cd ext && bundle exec rake
           cd ..
       - name: Run all specs in SSL (compiled flow)
+        timeout-minutes: 25
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           KAFKA_SSL_ENABLED: "true"

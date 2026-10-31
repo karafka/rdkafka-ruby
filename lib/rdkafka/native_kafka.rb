@@ -109,15 +109,16 @@ module Rdkafka
 
         @inner.nil? ? raise(ClosedInnerError) : yield(@inner)
       ensure
-        if !counted
-          # Interrupted before the increment: nothing to undo
-        elsif owned
-          @operations_in_progress -= 1
-        else
-          # An interrupt delivered while the decrement waits for the lock would skip it and leave
-          # `#synchronize` (and so `#close`) waiting for ever. JRuby delivers a `Thread#kill` that
-          # arrived during a blocking native call right there, at its first chance after the call.
-          Thread.handle_interrupt(DEFER_INTERRUPTS) do
+        # Deferred from the first step of the `ensure`: an interrupt delivered before the decrement
+        # (even at the branches below) would skip it and leave `#synchronize` (and so `#close`)
+        # waiting for ever. JRuby delivers a `Thread#kill` that arrived during a blocking native
+        # call at its first chance after the call, the lock below.
+        Thread.handle_interrupt(DEFER_INTERRUPTS) do
+          if !counted
+            # Interrupted before the increment: nothing to undo
+          elsif owned
+            @operations_in_progress -= 1
+          else
             @access_mutex.synchronize do
               @operations_in_progress -= 1
               @operations_done.broadcast if @synchronizing && @operations_in_progress.zero?

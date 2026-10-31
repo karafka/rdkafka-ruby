@@ -171,9 +171,9 @@ module Rdkafka
     attach_function :rd_kafka_AdminOptions_new, [:pointer, :int32], :pointer
     attach_function :rd_kafka_AdminOptions_set_opaque, [:pointer, :pointer], :void
     attach_function :rd_kafka_AdminOptions_destroy, [:pointer], :void
-    attach_function :rd_kafka_AdminOptions_set_request_timeout, [:pointer, :int, :pointer, :size_t], :int
-    attach_function :rd_kafka_AdminOptions_set_operation_timeout, [:pointer, :int, :pointer, :size_t], :int
-    attach_function :rd_kafka_AdminOptions_set_validate_only, [:pointer, :int, :pointer, :size_t], :int
+    attach_function :rd_kafka_AdminOptions_set_request_timeout, [:pointer, :int, :pointer, :size_t], :int32
+    attach_function :rd_kafka_AdminOptions_set_operation_timeout, [:pointer, :int, :pointer, :size_t], :int32
+    attach_function :rd_kafka_AdminOptions_set_validate_only, [:pointer, :int, :pointer, :size_t], :int32
 
     # Extracting data from event types
 

@@ -1594,6 +1594,7 @@ module Rdkafka
       end
     end
 
+    # Raises when an admin options setter failed
     # @param response [Integer] result code of an admin options setter
     # @param error_buffer [FFI::MemoryPointer] buffer the setter wrote its error into
     # @raise [RdkafkaError] when the setter failed

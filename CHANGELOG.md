@@ -57,11 +57,11 @@
 - [Enhancement] Add `Rdkafka::Config.partitioner_key_uses_bytesize` to hash partition keys by byte length, matching other Kafka clients for multibyte keys. Defaults to `false`.
 - [Maintenance] Derive the zlib `CHECKSUMS` entry from `ZLIB_VERSION`.
 - [Maintenance] Drop the unused `dist/openssl-3.0.16.tar.gz` build cache.
-- [Fix] Honor the `isolation_level:` argument to `Admin#list_offsets`, which was silently ignored.
-- [Fix] Return correct results for every item of a multi-item topic, partition, group or ACL admin request, not just the first.
 - [Maintenance] Fix a use-after-free in the multi-item admin integration test that made it flaky on newer glibc (e.g. Debian trixie).
 - [Maintenance] Stabilize consumer specs on slow CI runners.
 - [Maintenance] Raise the `TestTopics.create` admin timeout to 30s so a loaded CI runner no longer hits `create topic timed out` (which also tripped the leaked-handle guard).
+- [Fix] Honor the `isolation_level:` argument to `Admin#list_offsets`, which was silently ignored.
+- [Fix] Return correct results for every item of a multi-item topic, partition, group or ACL admin request, not just the first.
 
 ## 0.29.2 (2026-09-11)
 - [Fix] Close live clients from an `at_exit` hook so librdkafka is no longer `dlclose`d while its native threads still run, which could segfault on exit.

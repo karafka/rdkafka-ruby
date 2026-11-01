@@ -6,7 +6,7 @@ Gem::Specification.new do |gem|
   gem.authors = ["Thijs Cadier", "Maciej Mensfeld"]
   gem.email = ["contact@karafka.io"]
   gem.description = "Modern Kafka client library for Ruby based on librdkafka"
-  gem.summary = "The rdkafka gem is a modern Kafka client library for Ruby based on librdkafka. It wraps the production-ready C client using the ffi gem and targets Kafka 1.0+ and Ruby 2.7+."
+  gem.summary = "The rdkafka gem is a modern Kafka client library for Ruby based on librdkafka. It wraps the production-ready C client using the ffi gem and targets Kafka 1.0+ and Ruby 3.3+."
   gem.license = "MIT"
 
   gem.name = "rdkafka"

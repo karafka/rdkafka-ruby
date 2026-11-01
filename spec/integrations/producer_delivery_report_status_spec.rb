@@ -21,11 +21,6 @@ require "securerandom"
 
 $stdout.sync = true
 
-def fail!(message)
-  warn "FAIL: #{message}"
-  exit(1)
-end
-
 config = Rdkafka::Config.new("bootstrap.servers": "localhost:9092")
 admin = config.admin
 producer = config.producer
@@ -42,21 +37,15 @@ begin
 
   leader = producer.metadata(topic_name).topics.first[:partitions].first[:leader]
 
-  puts "Delivered: status=#{report.status} persisted=#{report.persisted?} " \
-       "latency=#{report.latency}us broker_id=#{report.broker_id} (partition leader: #{leader})"
-
-  fail!("expected a persisted message, got status #{report.status}") unless report.persisted?
-  fail!("latency missing: #{report.latency.inspect}") unless report.latency.is_a?(Integer) && report.latency.positive?
-  fail!("broker #{report.broker_id.inspect} is not the partition leader #{leader}") unless report.broker_id == leader
+  exit(1) unless report.persisted?
+  exit(1) unless report.latency.is_a?(Integer) && report.latency.positive?
+  exit(1) unless report.broker_id == leader
 
   callback_report = callback_reports.first
 
-  fail!("delivery callback was not called") if callback_report.nil?
-
-  unless [callback_report.status, callback_report.latency, callback_report.broker_id] ==
-      [report.status, report.latency, report.broker_id]
-    fail!("delivery callback report differs: #{callback_report.inspect}")
-  end
+  exit(1) if callback_report.nil?
+  exit(1) unless [callback_report.status, callback_report.latency, callback_report.broker_id] ==
+    [report.status, report.latency, report.broker_id]
 ensure
   begin
     admin.delete_topic(topic_name).wait(max_wait_timeout_ms: 15_000)
@@ -78,16 +67,11 @@ begin
   # its `error` and `status` can be inspected to decide on a retry
   report = handle.wait(max_wait_timeout_ms: 15_000, raise_response_error: false)
 
-  puts "Undeliverable: error=#{report.error&.code.inspect} status=#{report.status} " \
-       "not_persisted=#{report.not_persisted?} broker_id=#{report.broker_id.inspect}"
-
-  fail!("expected a delivery error") unless report.error.is_a?(Rdkafka::RdkafkaError)
-
-  fail!("expected a not persisted message, got status #{report.status}") unless report.not_persisted?
-  fail!("expected no broker, got #{report.broker_id}") unless report.broker_id.nil?
+  exit(1) unless report.error.is_a?(Rdkafka::RdkafkaError)
+  exit(1) unless report.not_persisted?
+  exit(1) unless report.broker_id.nil?
 ensure
   unreachable.close
 end
 
-puts "PASS: delivery reports carried the right status, latency and broker"
 exit(0)

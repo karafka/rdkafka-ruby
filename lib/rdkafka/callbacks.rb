@@ -216,6 +216,7 @@ module Rdkafka
         when Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATEPARTITIONS_RESULT then CreatePartitionsHandler
         when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETEGROUPS_RESULT then DeleteGroupsHandler
         when Rdkafka::Bindings::RD_KAFKA_EVENT_ALTERCONSUMERGROUPOFFSETS_RESULT then AlterConsumerGroupOffsetsHandler
+        when Rdkafka::Bindings::RD_KAFKA_EVENT_LISTCONSUMERGROUPOFFSETS_RESULT then ListConsumerGroupOffsetsHandler
         when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETECONSUMERGROUPOFFSETS_RESULT then DeleteConsumerGroupOffsetsHandler
         when Rdkafka::Bindings::RD_KAFKA_EVENT_DELETERECORDS_RESULT then DeleteRecordsHandler
         when Rdkafka::Bindings::RD_KAFKA_EVENT_CREATEACLS_RESULT then CreateAclHandler

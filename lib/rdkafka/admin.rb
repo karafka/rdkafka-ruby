@@ -224,6 +224,51 @@ module Rdkafka
       create_topic_handle
     end
 
+    # Reads the committed offsets of a consumer group from outside the group.
+    #
+    # Unlike {Consumer#committed}, this works for any group and does not join it, so it does not
+    # trigger a rebalance of the group it inspects.
+    #
+    # While the group coordinator is loading, not known yet or has moved (e.g. on a fresh cluster
+    # or after a broker restart), the handle raises `coordinator_load_in_progress`,
+    # `not_coordinator` or `coordinator_not_available`. Retry the call on these codes;
+    # `RdkafkaError#retryable?` is false for them.
+    #
+    # @param group_id [String] the group whose committed offsets we want to read
+    # @param topic_partition_list [TopicPartitionList, nil] partitions to read the offsets for, or
+    #   nil to read every partition the group has committed offsets for. List the partitions
+    #   explicitly: a topic without partitions is not expanded to its partitions
+    # @param require_stable_offsets [Boolean] pending offsets of an open transaction are never
+    #   returned. Without this option the last committed offset is returned for such a partition.
+    #   With it, the call fails with `unstable_offset_commit` until that transaction is committed
+    #   or aborted; retry on this code
+    # @return [ListConsumerGroupOffsetsHandle] handle that can be used to wait for the result
+    # @raise [RdkafkaError] when listing the offsets fails
+    def list_consumer_group_offsets(group_id, topic_partition_list = nil, require_stable_offsets: false)
+      closed_admin_check(__method__)
+
+      native_tpl = topic_partition_list&.to_native_tpl
+
+      begin
+        list_ptr = Rdkafka::Bindings.rd_kafka_ListConsumerGroupOffsets_new(
+          FFI::MemoryPointer.from_string(group_id),
+          native_tpl || FFI::Pointer::NULL
+        )
+      ensure
+        # librdkafka copies the list into the request object, so ours is no longer needed
+        Rdkafka::Bindings.rd_kafka_topic_partition_list_destroy(native_tpl) if native_tpl
+      end
+
+      enqueue_group_offsets_op(
+        request_ptr: list_ptr,
+        handle: ListConsumerGroupOffsetsHandle.new,
+        admin_op: Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_LISTCONSUMERGROUPOFFSETS,
+        destroy: Rdkafka::Bindings.method(:rd_kafka_ListConsumerGroupOffsets_destroy),
+        enqueue: Rdkafka::Bindings.method(:rd_kafka_ListConsumerGroupOffsets),
+        configure: ->(admin_options_ptr) { set_require_stable_offsets(admin_options_ptr) if require_stable_offsets }
+      )
+    end
+
     # Sets the committed offsets of a consumer group from outside the group.
     #
     # Kafka requires the group to be empty (no active members) for this to be accepted; when it
@@ -1431,8 +1476,8 @@ module Rdkafka
 
     private
 
-    # Shared enqueue path for the two consumer group offset admin operations. They differ only
-    # in their C entry points, so keeping one body avoids two near identical copies of the
+    # Shared enqueue path for the consumer group offset admin operations. They differ only in
+    # their C entry points, so keeping one body avoids near identical copies of the
     # queue/handle/options dance and its cleanup.
     #
     # @param request_ptr [FFI::Pointer] the op specific request object
@@ -1440,8 +1485,13 @@ module Rdkafka
     # @param admin_op [Integer] the RD_KAFKA_ADMIN_OP_* constant for this operation
     # @param destroy [Method] bound function used to free the request object
     # @param enqueue [Method] bound function used to enqueue the request
+    # @param configure [Proc, nil] called with the `rd_kafka_AdminOptions_t` pointer before the
+    #   request is enqueued, to set an option only this operation supports. For example
+    #   `#list_consumer_group_offsets` always passes a lambda that takes `admin_options_ptr` and
+    #   calls `set_require_stable_offsets(admin_options_ptr)` only when
+    #   `require_stable_offsets: true`. nil (alter and delete) sets no extra option
     # @return [AbstractHandle] the registered handle
-    def enqueue_group_offsets_op(request_ptr:, handle:, admin_op:, destroy:, enqueue:)
+    def enqueue_group_offsets_op(request_ptr:, handle:, admin_op:, destroy:, enqueue:, configure: nil)
       array_ptr = FFI::MemoryPointer.new(:pointer)
       array_ptr.write_array_of_pointer([request_ptr])
 
@@ -1464,6 +1514,8 @@ module Rdkafka
       Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
 
       begin
+        configure&.call(admin_options_ptr)
+
         @native_kafka.with_inner do |inner|
           enqueue.call(inner, array_ptr, 1, admin_options_ptr, queue_ptr)
         end
@@ -1483,8 +1535,25 @@ module Rdkafka
     # @param admin_options_ptr [FFI::Pointer] the admin options to update
     # @raise [RdkafkaError] when librdkafka rejects the option
     def set_include_authorized_operations(admin_options_ptr)
-      error_ptr = Rdkafka::Bindings.rd_kafka_AdminOptions_set_include_authorized_operations(admin_options_ptr, 1)
+      raise_admin_option_error(
+        Rdkafka::Bindings.rd_kafka_AdminOptions_set_include_authorized_operations(admin_options_ptr, 1)
+      )
+    end
 
+    # Makes the broker fail a partition with `unstable_offset_commit` while a transaction with
+    # pending offsets for it is open, instead of returning its last committed offset
+    # @param admin_options_ptr [FFI::Pointer] the admin options to update
+    # @raise [RdkafkaError] when librdkafka rejects the option
+    def set_require_stable_offsets(admin_options_ptr)
+      raise_admin_option_error(
+        Rdkafka::Bindings.rd_kafka_AdminOptions_set_require_stable_offsets(admin_options_ptr, 1)
+      )
+    end
+
+    # Raises and releases the error librdkafka returned from setting an admin option
+    # @param error_ptr [FFI::Pointer] the returned `rd_kafka_error_t*`, NULL on success
+    # @raise [RdkafkaError] when the error pointer is not NULL
+    def raise_admin_option_error(error_ptr)
       return if error_ptr.null?
 
       begin

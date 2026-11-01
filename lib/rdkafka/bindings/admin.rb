@@ -53,6 +53,17 @@ module Rdkafka
     attach_function :rd_kafka_event_AlterConsumerGroupOffsets_result, [:pointer], :pointer, blocking: true # rd_kafka_event_t* => rd_kafka_AlterConsumerGroupOffsets_result_t*
     attach_function :rd_kafka_AlterConsumerGroupOffsets_result_groups, [:pointer, :pointer], :pointer, blocking: true # rd_kafka_AlterConsumerGroupOffsets_result_t*, size_t* => rd_kafka_group_result_t**
 
+    # List Consumer Group Offsets
+    RD_KAFKA_ADMIN_OP_LISTCONSUMERGROUPOFFSETS = 14   # rd_kafka_admin_op_t
+    RD_KAFKA_EVENT_LISTCONSUMERGROUPOFFSETS_RESULT = 0x8000 # rd_kafka_event_type_t
+
+    attach_function :rd_kafka_ListConsumerGroupOffsets, [:pointer, :pointer, :size_t, :pointer, :pointer], :void, blocking: true
+    attach_function :rd_kafka_ListConsumerGroupOffsets_new, [:pointer, :pointer], :pointer, blocking: true # const char*, const rd_kafka_topic_partition_list_t* => rd_kafka_ListConsumerGroupOffsets_t*
+    attach_function :rd_kafka_ListConsumerGroupOffsets_destroy, [:pointer], :void, blocking: true
+    attach_function :rd_kafka_event_ListConsumerGroupOffsets_result, [:pointer], :pointer, blocking: true # rd_kafka_event_t* => rd_kafka_ListConsumerGroupOffsets_result_t*
+    attach_function :rd_kafka_ListConsumerGroupOffsets_result_groups, [:pointer, :pointer], :pointer, blocking: true # rd_kafka_ListConsumerGroupOffsets_result_t*, size_t* => rd_kafka_group_result_t**
+    attach_function :rd_kafka_AdminOptions_set_require_stable_offsets, [:pointer, :int], :pointer, blocking: true # => rd_kafka_error_t*
+
     # Delete Consumer Group Offsets
     RD_KAFKA_ADMIN_OP_DELETECONSUMERGROUPOFFSETS = 8   # rd_kafka_admin_op_t
     RD_KAFKA_EVENT_DELETECONSUMERGROUPOFFSETS_RESULT = 107 # rd_kafka_event_type_t

@@ -1214,6 +1214,163 @@ RSpec.describe Rdkafka::Admin do
   end
 
   describe("Group tests") do
+    describe "#list_consumer_group_offsets" do
+      let(:consumer_config) { rdkafka_consumer_config("group.id": group_name) }
+      let(:producer) { rdkafka_producer_config.producer }
+      let(:consumer) { consumer_config.consumer }
+      # Partition 2 gets no commit, so a request for it shows how a missing offset is reported
+      let(:seed_tpl) do
+        Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic_and_partitions_with_offsets(topic_name, 0 => 3, 1 => 5)
+        end
+      end
+
+      before do
+        admin.create_topic(topic_name, topic_partition_count, topic_replication_factor).wait(max_wait_timeout_ms: 15_000)
+        producer.produce(topic: topic_name, payload: "test", key: "test").wait(max_wait_timeout_ms: 15_000)
+
+        consumer.subscribe(topic_name)
+        wait_for_assignment(consumer)
+        consumer.commit(seed_tpl)
+        consumer.close
+      end
+
+      after { producer.close }
+
+      def offsets_by_partition(report)
+        report.partitions.to_h { |part| [part[:partition], part[:offset]] }
+      end
+
+      it "reads every committed offset of the group when no partitions are given" do
+        report = admin.list_consumer_group_offsets(group_name).wait(max_wait_timeout_ms: 30_000)
+
+        expect(report.group_name).to eq(group_name)
+        expect(report.partitions.map { |part| part[:topic] }).to all(eq(topic_name))
+        expect(report.partitions.map { |part| part[:error] }).to all(be_nil)
+        expect(offsets_by_partition(report)).to eq(0 => 3, 1 => 5)
+      end
+
+      it "reads only the requested partitions and reports a missing commit as nil" do
+        tpl = Rdkafka::Consumer::TopicPartitionList.new.tap { |list| list.add_topic(topic_name, [1, 2]) }
+
+        report = admin.list_consumer_group_offsets(group_name, tpl).wait(max_wait_timeout_ms: 30_000)
+
+        expect(offsets_by_partition(report)).to eq(1 => 5, 2 => nil)
+        expect(report.partitions.map { |part| part[:error] }).to all(be_nil)
+      end
+
+      it "returns the committed metadata" do
+        tpl = Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+          list.add_topic_and_partitions_with_offsets(
+            topic_name,
+            [Rdkafka::Consumer::Partition.new(0, 7, Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR, "meta-0")]
+          )
+        end
+
+        committer = consumer_config.consumer
+
+        begin
+          committer.subscribe(topic_name)
+          wait_for_assignment(committer)
+          committer.commit(tpl)
+        ensure
+          committer.close
+        end
+
+        report = admin.list_consumer_group_offsets(group_name).wait(max_wait_timeout_ms: 30_000)
+        partition = report.partitions.find { |part| part[:partition] == 0 }
+
+        expect(partition).to include(offset: 7, metadata: "meta-0")
+      end
+
+      it "returns the same offsets with require_stable_offsets when no transaction is open" do
+        report = admin
+          .list_consumer_group_offsets(group_name, require_stable_offsets: true)
+          .wait(max_wait_timeout_ms: 30_000)
+
+        expect(offsets_by_partition(report)).to eq(0 => 3, 1 => 5)
+      end
+
+      context "when a transaction that commits offsets is still open" do
+        let(:transactional_producer) do
+          rdkafka_producer_config("transactional.id": TestTopics.unique).producer
+        end
+
+        let(:member) { consumer_config.consumer }
+
+        before do
+          member.subscribe(topic_name)
+          wait_for_assignment(member)
+
+          transactional_producer.init_transactions
+          transactional_producer.begin_transaction
+          transactional_producer.send_offsets_to_transaction(
+            member,
+            Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+              list.add_topic_and_partitions_with_offsets(topic_name, 0 => 9)
+            end
+          )
+        end
+
+        after do
+          transactional_producer.abort_transaction
+          transactional_producer.close
+          member.close
+        end
+
+        it "returns the last stable offsets without require_stable_offsets" do
+          report = admin.list_consumer_group_offsets(group_name).wait(max_wait_timeout_ms: 30_000)
+
+          expect(offsets_by_partition(report)).to eq(0 => 3, 1 => 5)
+        end
+
+        it "raises unstable_offset_commit with require_stable_offsets" do
+          expect {
+            admin
+              .list_consumer_group_offsets(group_name, require_stable_offsets: true)
+              .wait(max_wait_timeout_ms: 30_000)
+          }.to raise_error(Rdkafka::RdkafkaError, /unstable_offset_commit/)
+        end
+      end
+
+      it "does not join the group it reads" do
+        admin.list_consumer_group_offsets(group_name).wait(max_wait_timeout_ms: 30_000)
+
+        description = describe_consumer_groups_settled(admin, [group_name]).groups.first
+
+        expect(description[:members]).to be_empty
+      end
+
+      context "when the group does not exist" do
+        let(:unknown_group) { TestTopics.unique }
+
+        it "returns no partitions" do
+          report = admin.list_consumer_group_offsets(unknown_group).wait(max_wait_timeout_ms: 30_000)
+
+          expect(report.group_name).to eq(unknown_group)
+          expect(report.partitions).to be_empty
+        end
+
+        it "returns nil offsets for requested partitions" do
+          tpl = Rdkafka::Consumer::TopicPartitionList.new.tap { |list| list.add_topic(topic_name, [0, 1]) }
+
+          report = admin.list_consumer_group_offsets(unknown_group, tpl).wait(max_wait_timeout_ms: 30_000)
+
+          expect(offsets_by_partition(report)).to eq(0 => nil, 1 => nil)
+        end
+      end
+
+      context "when the partition list is empty" do
+        it "raises invalid_arg" do
+          expect {
+            admin
+              .list_consumer_group_offsets(group_name, Rdkafka::Consumer::TopicPartitionList.new)
+              .wait(max_wait_timeout_ms: 30_000)
+          }.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
+        end
+      end
+    end
+
     describe "#alter_consumer_group_offsets" do
       let(:consumer_config) { rdkafka_consumer_config("group.id": group_name) }
       let(:producer) { rdkafka_producer_config.producer }
@@ -1944,6 +2101,14 @@ RSpec.describe Rdkafka::Admin do
       it "raises a ConfigError" do
         expect {
           admin.alter_consumer_group_offsets(group_name, Rdkafka::Consumer::TopicPartitionList.new)
+        }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
+      end
+    end
+
+    describe "#list_consumer_group_offsets" do
+      it "raises a ConfigError" do
+        expect {
+          admin.list_consumer_group_offsets(group_name)
         }.to raise_error Rdkafka::Config::ConfigError, /rd_kafka_queue_get_background was NULL/
       end
     end

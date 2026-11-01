@@ -51,10 +51,9 @@ def wait_for_commit_result(consumer, listener)
   deadline = now + TIMEOUT
   consumer.poll(100) while listener.results.empty? && now < deadline
 
-  return listener.results.pop unless listener.results.empty?
+  exit(1) if listener.results.empty?
 
-  warn "FAIL: no commit result in #{TIMEOUT} s"
-  exit(1)
+  listener.results.pop
 end
 
 admin = Rdkafka::Config.new("bootstrap.servers": BOOTSTRAP).admin
@@ -93,10 +92,7 @@ begin
   deadline = now + TIMEOUT
   message = consumer.poll(100) while message.nil? && now < deadline
 
-  if message.nil?
-    warn "FAIL: no message consumed in #{TIMEOUT} s"
-    exit(1)
-  end
+  exit(1) if message.nil?
 
   consumer.store_offset(message)
   consumer.commit(nil, true)
@@ -104,12 +100,7 @@ begin
   error, list = wait_for_commit_result(consumer, listener)
   offsets = list.to_h.fetch(TOPIC, []).map(&:offset)
 
-  unless error.nil? && offsets == [message.offset + 1]
-    warn "FAIL: successful commit reported #{error.inspect} with offsets #{offsets.inspect}"
-    exit(1)
-  end
-
-  puts "Scenario 1: async commit of offset #{offsets.first} reported no error"
+  exit(1) unless error.nil? && offsets == [message.offset + 1]
 
   # 2. A failed async commit
   missing = Rdkafka::Consumer::TopicPartitionList.new
@@ -119,12 +110,7 @@ begin
   error, list = wait_for_commit_result(consumer, listener)
   partition_errors = list.to_h.fetch(MISSING_TOPIC, []).map { |partition| Rdkafka::RdkafkaError.new(partition.err).code }
 
-  unless error&.code == :unknown_topic_or_part && partition_errors == [:unknown_topic_or_part]
-    warn "FAIL: failed commit reported #{error.inspect} with partition errors #{partition_errors.inspect}"
-    exit(1)
-  end
-
-  puts "Scenario 2: failed async commit reported #{error.code}"
+  exit(1) unless error&.code == :unknown_topic_or_part && partition_errors == [:unknown_topic_or_part]
 ensure
   consumer.close
   producer.close
@@ -132,5 +118,4 @@ ensure
   admin.close
 end
 
-puts "PASS: the offset commit listener got the result of each async commit"
 exit(0)

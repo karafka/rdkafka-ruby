@@ -3,6 +3,7 @@
 ## 0.31.1 (Unreleased)
 - **[Feature]** Add `Config#consumer_offset_commit_listener`: its `#on_offsets_committed(error, list)` gets the result of every offset commit when the consumer polls or closes, so an async commit that the broker rejects reaches Ruby instead of only a `COMMITFAIL` log line. Ported from rdkafka-ruby (#1061).
 - **[Feature]** Let the offset commit listener define `#on_offsets_commit_failed(error, list)`, called only for failed commits (not on success or `no_offset`). A listener with only this method does not convert the commit offsets of the other commits.
+- **[Feature]** Add `Admin#list_consumer_group_offsets` to read the committed offsets of any consumer group without joining it, with a `require_stable_offsets` option.
 - [Enhancement] Reduce object shape variations of the admin report classes to one shape per class.
 - [Enhancement] Keep `partition_key` produces working during a cluster outage once the topic partition count is known, instead of raising. Ported from rdkafka-ruby (#1039).
 - [Enhancement] Add `Rdkafka::Config.partitions_count_cache_ttl_ms=` to set how long `partition_key` produces reuse a cached partition count (default 30 seconds).
@@ -12,6 +13,7 @@
 - [Maintenance] Fix a use-after-free in the `client_shutdown_dlclose` integration test that made it crash intermittently after its own unmap.
 - [Maintenance] Stabilize the flaky `Consumer#seek` and `#seek_by` "works when a partition is paused" specs on loaded CI runners.
 - [Maintenance] Stop the `client_shutdown_dlclose` integration test from failing with `Errno::ESRCH` when a librdkafka thread exits while its name is read.
+- [Maintenance] Stabilize the flaky `Consumer` "long running consumption" spec, and stop its producer when it fails so its statistics do not break later specs.
 - [Maintenance] Drop `pry` from the development bundle and stop requiring it in the spec helper.
 - [Maintenance] Stabilize the flaky `admin_describe_topics` integration test, which could describe its new topic before the topic was in the broker's metadata.
 - [Maintenance] Name positional String topic parameters `topic_name` (`Consumer#query_watermark_offsets`, `#seek_by`, `Producer#partition_count`, `TopicPartitionList#add_topic` and others). Callers are not affected. Ported from rdkafka-ruby (#1052).

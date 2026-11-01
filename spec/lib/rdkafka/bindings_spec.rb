@@ -79,6 +79,64 @@ RSpec.describe Rdkafka::Bindings do
     }.not_to raise_error
   end
 
+  describe "error buffer size" do
+    let(:error_buffer) { FFI::MemoryPointer.from_string(" " * 256) }
+    let(:conf_error) { 'No such configuration property: "not.a.property"' }
+    let(:new_error) { "`acks` must be set to `all` when `enable.idempotence` is true" }
+
+    def conf_set_error(size)
+      config = described_class.rd_kafka_conf_new
+      expect(described_class.rd_kafka_conf_set(config, "not.a.property", "1", error_buffer, size))
+        .to eq(:config_unknown)
+      error_buffer.read_string
+    ensure
+      described_class.rd_kafka_conf_destroy(config)
+    end
+
+    def topic_conf_set_error(size)
+      config = described_class.rd_kafka_topic_conf_new
+      expect(described_class.rd_kafka_topic_conf_set(config, "not.a.property", "1", error_buffer, size))
+        .to eq(:config_unknown)
+      error_buffer.read_string
+    ensure
+      described_class.rd_kafka_topic_conf_destroy(config)
+    end
+
+    def new_error_for(size)
+      config = described_class.rd_kafka_conf_new
+      described_class.rd_kafka_conf_set(config, "enable.idempotence", "true", FFI::MemoryPointer.new(:char, 256), 256)
+      described_class.rd_kafka_conf_set(config, "acks", "1", FFI::MemoryPointer.new(:char, 256), 256)
+      expect(described_class.rd_kafka_new(:rd_kafka_producer, config, error_buffer, size)).to be_null
+      error_buffer.read_string
+    ensure
+      described_class.rd_kafka_conf_destroy(config)
+    end
+
+    it "cuts the rd_kafka_conf_set error to the given size" do
+      expect(conf_set_error(16)).to eq(conf_error[0, 15])
+    end
+
+    it "passes a rd_kafka_conf_set size above 32 bits" do
+      expect(conf_set_error(2**32 + 1)).to eq(conf_error)
+    end
+
+    it "cuts the rd_kafka_topic_conf_set error to the given size" do
+      expect(topic_conf_set_error(16)).to eq(conf_error[0, 15])
+    end
+
+    it "passes a rd_kafka_topic_conf_set size above 32 bits" do
+      expect(topic_conf_set_error(2**32 + 1)).to eq(conf_error)
+    end
+
+    it "cuts the rd_kafka_new error to the given size" do
+      expect(new_error_for(16)).to eq(new_error[0, 15])
+    end
+
+    it "passes a rd_kafka_new size above 32 bits" do
+      expect(new_error_for(2**32 + 1)).to eq(new_error)
+    end
+  end
+
   describe "non-blocking poll bindings" do
     it "has rd_kafka_poll_nb attached" do
       expect(described_class).to respond_to(:rd_kafka_poll_nb)

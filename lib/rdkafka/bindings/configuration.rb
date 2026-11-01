@@ -11,7 +11,7 @@ module Rdkafka
     ]
 
     attach_function :rd_kafka_conf_new, [], :pointer
-    attach_function :rd_kafka_conf_set, [:pointer, :string, :string, :pointer, :int], :kafka_config_response
+    attach_function :rd_kafka_conf_set, [:pointer, :string, :string, :pointer, :size_t], :kafka_config_response
     attach_function :rd_kafka_conf_get, [:pointer, :string, :pointer, :pointer], :kafka_config_response
     attach_function :rd_kafka_conf, [:pointer], :pointer
     attach_function :rd_kafka_conf_dump, [:pointer, :pointer], :pointer
@@ -45,6 +45,6 @@ module Rdkafka
     # Per topic configs
     attach_function :rd_kafka_topic_conf_new, [], :pointer
     attach_function :rd_kafka_topic_conf_destroy, [:pointer], :void
-    attach_function :rd_kafka_topic_conf_set, [:pointer, :string, :string, :pointer, :int], :kafka_config_response
+    attach_function :rd_kafka_topic_conf_set, [:pointer, :string, :string, :pointer, :size_t], :kafka_config_response
   end
 end

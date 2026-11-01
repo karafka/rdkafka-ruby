@@ -11,7 +11,7 @@ module Rdkafka
     attach_function :rd_kafka_error_code, [:pointer], :int32
     attach_function :rd_kafka_error_string, [:pointer], :pointer
     attach_function :rd_kafka_get_err_descs, [:pointer, :pointer], :void
-    attach_function :rd_kafka_fatal_error, [:pointer, :pointer, :int], :int
+    attach_function :rd_kafka_fatal_error, [:pointer, :pointer, :size_t], :int
     attach_function :rd_kafka_test_fatal_error, [:pointer, :int, :string], :int
   end
 end

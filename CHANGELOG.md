@@ -1,8 +1,8 @@
 # Rdkafka Changelog
 
 ## 0.32.0 (Unreleased)
-- [Feature] Add `Config#consumer_offset_commit_listener`: its `#on_offsets_committed(error, list)` gets the result of every offset commit when the consumer polls or closes, so an async commit that the broker rejects reaches Ruby instead of only a `COMMITFAIL` log line.
-- [Feature] Add `validate_only:`, `operation_timeout_ms:` and `request_timeout_ms:` keyword options to `Admin#create_topic` and `#create_partitions`, and the two timeouts to `#delete_topic`. A `create_topic` topic config passed without braces keeps working.
+- **[Feature]** Add `Config#consumer_offset_commit_listener`: its `#on_offsets_committed(error, list)` gets the result of every offset commit when the consumer polls or closes, so an async commit that the broker rejects reaches Ruby instead of only a `COMMITFAIL` log line.
+- **[Feature]** Add `validate_only:`, `operation_timeout_ms:` and `request_timeout_ms:` keyword options to `Admin#create_topic` and `#create_partitions`, and the two timeouts to `#delete_topic`. A `create_topic` topic config passed without braces keeps working.
 - [Enhancement] Bump librdkafka to `2.16.0` for OpenSSL and libcurl security fixes. Admin requests in flight on a decommissioned broker now fail with a retryable transport error.
 - [Enhancement] Keep `partition_key` produces working during a cluster outage once the topic partition count is known, instead of raising.
 - [Enhancement] Make `Producer#produce` use about 13% less CPU per call.
@@ -29,7 +29,9 @@
 - [Maintenance] Give the `Consumer#lag` spec a 30 s list offsets wait, like its siblings. Ported from karafka-rdkafka.
 - [Maintenance] Retry the `Consumer#poll_nb` "returns a message" spec on a 30 s deadline instead of a fixed ~2 s, for loaded CI runners. Ported from karafka-rdkafka.
 - [Maintenance] Stabilize the `consumer_memberid_clusterid_leak` integration spec against RSS noise on Ruby 4.0: compact the heap before sampling and run 400k calls against a 5 MB ceiling. Ported from karafka-rdkafka.
+- [Maintenance] Fix the YARD notes of `events_poll_nb_each` and `Consumer#poll_nb_each`: they do not hold a lock while they loop, so other operations run concurrently and only `close` waits.
 - [Maintenance] Time out the SSL spec step of the Ubuntu aarch64 complementary CI workflow after 25 minutes, so a hanging example fails the step and its log is kept.
+- [Maintenance] Create the topics of the producer `timestamp` specs with `retention.ms: -1`, so broker retention no longer deletes their 2017-timestamped messages before the specs read them back.
 - [Fix] Create one topic handle per topic when many threads produce to a new topic at once. On JRuby this race leaked topic handles and could crash with a segfault; `produce` now raises `TopicHandleCreationError` instead of passing a missing handle to librdkafka.
 - [Fix] Stop `Consumer#store_offset` and other calls that pass partition metadata from raising `NoMethodError` on JRuby.
 - [Fix] Raise `Rdkafka::LibraryLoadError` with the glibc upgrade hint instead of `NameError` when the precompiled librdkafka needs a newer glibc.
@@ -58,11 +60,11 @@
 - [Enhancement] Add `Rdkafka::Config.partitioner_key_uses_bytesize` to hash partition keys by byte length, matching other Kafka clients for multibyte keys. Defaults to `false`.
 - [Maintenance] Derive the zlib `CHECKSUMS` entry from `ZLIB_VERSION`.
 - [Maintenance] Drop the unused `dist/openssl-3.0.16.tar.gz` build cache.
-- [Fix] Honor the `isolation_level:` argument to `Admin#list_offsets`, which was silently ignored.
-- [Fix] Return correct results for every item of a multi-item topic, partition, group or ACL admin request, not just the first.
 - [Maintenance] Fix a use-after-free in the multi-item admin integration test that made it flaky on newer glibc (e.g. Debian trixie).
 - [Maintenance] Stabilize consumer specs on slow CI runners.
 - [Maintenance] Raise the `TestTopics.create` admin timeout to 30s so a loaded CI runner no longer hits `create topic timed out` (which also tripped the leaked-handle guard).
+- [Fix] Honor the `isolation_level:` argument to `Admin#list_offsets`, which was silently ignored.
+- [Fix] Return correct results for every item of a multi-item topic, partition, group or ACL admin request, not just the first.
 
 ## 0.29.2 (2026-09-11)
 - [Fix] Close live clients from an `at_exit` hook so librdkafka is no longer `dlclose`d while its native threads still run, which could segfault on exit.

@@ -1381,12 +1381,6 @@ RSpec.describe Rdkafka::Producer do
     after { recording[:active] = false }
 
     it "creates exactly one topic handle per topic and destroys each on close" do
-      # Concurrent produces leave the operations counter unbalanced on JRuby, so `close` hangs
-      # until https://github.com/karafka/rdkafka-ruby/pull/1055 is merged. Remove this skip with
-      # it. Until then
-      # `spec/integrations/producer_concurrent_first_produce_spec.rb` covers JRuby.
-      skip "Producer#close can hang after concurrent produces on JRuby" if defined?(JRUBY_VERSION)
-
       start = Queue.new
       errors = Queue.new
 

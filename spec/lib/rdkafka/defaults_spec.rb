@@ -56,10 +56,6 @@ RSpec.describe Rdkafka::Defaults do
       expect(described_class::PRODUCER_PURGE_SLEEP_INTERVAL_MS).to eq(1)
     end
 
-    it "defines NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS as 10" do
-      expect(described_class::NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS).to eq(10)
-    end
-
     it "defines METADATA_RETRY_BACKOFF_BASE_MS as 100" do
       expect(described_class::METADATA_RETRY_BACKOFF_BASE_MS).to eq(100)
     end
@@ -101,7 +97,6 @@ RSpec.describe Rdkafka::Defaults do
         :HANDLE_WAIT_TIMEOUT_MS,
         :NATIVE_KAFKA_POLL_TIMEOUT_MS,
         :PRODUCER_PURGE_SLEEP_INTERVAL_MS,
-        :NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS,
         :METADATA_RETRY_BACKOFF_BASE_MS,
         :METADATA_MAX_RETRIES,
         :CONSUMER_SEEK_TIMEOUT_MS,

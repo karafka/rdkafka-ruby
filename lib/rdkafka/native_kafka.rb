@@ -25,21 +25,15 @@ module Rdkafka
       @access_mutex = Mutex.new
       # Lock around internal polling
       @poll_mutex = Mutex.new
-      # Lock around decrementing the operations in progress counter
-      # We have two mutexes - one for increment (`@access_mutex`) and one for decrement mutex
-      # because they serve different purposes:
-      #
-      #   - `@access_mutex` allows us to lock the execution and make sure that any operation within
-      #      the `#synchronize` is the only one running and that there are no other running
-      #      operations.
-      #   - `@decrement_mutex` ensures, that our decrement operation is thread-safe for any Ruby
-      #     implementation.
-      #
-      # We do not use the same mutex, because it could create a deadlock when an already
-      # incremented operation cannot decrement because `@access_lock` is now owned by a different
-      # thread in a synchronized mode and the synchronized mode is waiting on the decrement.
-      @decrement_mutex = Mutex.new
-      # counter for operations in progress using inner
+      # Signalled when `#synchronize` ends and, only while `#synchronize` waits, when the operations
+      # in progress counter reaches zero: no one else waits for zero, so other decrements skip the
+      # broadcast. `#synchronize` waits on it with `@access_mutex` released, so operations that
+      # started before it can still decrement the counter.
+      @operations_done = ConditionVariable.new
+      # Set while `#synchronize` runs, so no new operation starts until it ends
+      @synchronizing = false
+      # counter for operations in progress using inner, changed only under `@access_mutex`, so no
+      # update is lost on Rubies without a GVL (JRuby)
       @operations_in_progress = 0
 
       @run_polling_thread = run_polling_thread
@@ -63,8 +57,7 @@ module Rdkafka
         Rdkafka::Bindings.rd_kafka_poll(@inner, 0)
 
         if @run_polling_thread
-          # Start thread to poll client for delivery callbacks,
-          # not used in consumer.
+          # Start thread to poll client for delivery callbacks, not used in consumer.
           @polling_thread = Thread.new do
             loop do
               @poll_mutex.synchronize do
@@ -90,15 +83,29 @@ module Rdkafka
     # @return [Object] the result of the block
     # @raise [ClosedInnerError] when the inner handle is nil
     def with_inner
-      if @access_mutex.owned?
+      owned = @access_mutex.owned?
+
+      if owned
         @operations_in_progress += 1
       else
-        @access_mutex.synchronize { @operations_in_progress += 1 }
+        @access_mutex.synchronize do
+          @operations_done.wait(@access_mutex) while @synchronizing
+          @operations_in_progress += 1
+        end
       end
 
-      @inner.nil? ? raise(ClosedInnerError) : yield(@inner)
-    ensure
-      @decrement_mutex.synchronize { @operations_in_progress -= 1 }
+      begin
+        @inner.nil? ? raise(ClosedInnerError) : yield(@inner)
+      ensure
+        if owned
+          @operations_in_progress -= 1
+        else
+          @access_mutex.synchronize do
+            @operations_in_progress -= 1
+            @operations_done.broadcast if @synchronizing && @operations_in_progress.zero?
+          end
+        end
+      end
     end
 
     # Executes a block while holding exclusive access to the native Kafka handle
@@ -107,13 +114,21 @@ module Rdkafka
     # @return [Object] the result of the block
     def synchronize(&block)
       @access_mutex.synchronize do
-        # Wait for any commands using the inner to finish
-        # This can take a while on blocking operations like polling but is essential not to proceed
-        # with certain types of operations like resources destruction as it can cause the process
-        # to hang or crash
-        sleep(Defaults::NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS / 1_000.0) until @operations_in_progress.zero?
+        @operations_done.wait(@access_mutex) while @synchronizing
+        @synchronizing = true
 
-        with_inner(&block)
+        begin
+          # Wait for any commands using the inner to finish
+          # This can take a while on blocking operations like polling but is essential not to
+          # proceed with certain types of operations like resources destruction as it can cause the
+          # process to hang or crash
+          @operations_done.wait(@access_mutex) until @operations_in_progress.zero?
+
+          with_inner(&block)
+        ensure
+          @synchronizing = false
+          @operations_done.broadcast
+        end
       end
     end
 
@@ -210,8 +225,7 @@ module Rdkafka
           # Indicate to polling thread that we're closing
           @polling_thread[:closing] = true
 
-          # Wait for the polling thread to finish up,
-          # this can be aborted in practice if this
+          # Wait for the polling thread to finish up, this can be aborted in practice if this
           # code runs from a finalizer.
           @polling_thread.join
         end

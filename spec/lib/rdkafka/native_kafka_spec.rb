@@ -176,3 +176,58 @@ RSpec.describe Rdkafka::NativeKafka, "#enable_main_queue_io_events and #enable_b
     end
   end
 end
+
+# Separate describe block with real threads, which the mocked threading tests above stub out
+RSpec.describe Rdkafka::NativeKafka, "#with_inner from many threads" do
+  context "when many threads use a producer" do
+    let(:producer) { rdkafka_producer_config.producer }
+    let(:threads_count) { 16 }
+
+    after { producer.close unless producer.closed? }
+
+    it "closes once the threads are done" do
+      barrier = Queue.new
+      stop = false
+
+      threads = Array.new(threads_count) do
+        Thread.new do
+          barrier.pop
+          producer.queue_size until stop
+        end
+      end
+
+      threads_count.times { barrier << true }
+      sleep(2)
+      stop = true
+      threads.each(&:join)
+
+      closer = Thread.new { producer.close }
+
+      expect(closer.join(5)).not_to be_nil
+    end
+  end
+
+  context "when operations overlap so that one is always in progress" do
+    let(:consumer) { rdkafka_consumer_config.consumer }
+
+    after { consumer.close unless consumer.closed? }
+
+    it "does not start new operations while close waits" do
+      threads = Array.new(2) do |i|
+        Thread.new do
+          sleep(0.025 * i)
+
+          loop { consumer.poll(50) }
+        rescue Rdkafka::ClosedConsumerError, Rdkafka::ClosedInnerError
+          nil
+        end
+      end
+
+      sleep(0.2)
+      closer = Thread.new { consumer.close }
+
+      expect(closer.join(5)).not_to be_nil
+      threads.each(&:join)
+    end
+  end
+end

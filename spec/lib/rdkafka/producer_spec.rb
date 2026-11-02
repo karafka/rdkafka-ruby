@@ -1346,6 +1346,74 @@ RSpec.describe Rdkafka::Producer do
     end
   end
 
+  describe "concurrent first produce to new topics" do
+    let(:topics) { Array.new(20) { TestTopics.non_existing } }
+    let(:created) { Hash.new { |hash, key| hash[key] = [] } }
+    let(:destroyed) { [] }
+    let(:lock) { Mutex.new }
+    let(:recording) { { active: true } }
+
+    before do
+      created_handles = created
+      destroyed_handles = destroyed
+      counter_lock = lock
+      state = recording
+
+      # A prepended module cannot be removed, so it records only while this example runs
+      counter = Module.new do
+        define_method(:rd_kafka_topic_new) do |inner, topic_name, config|
+          super(inner, topic_name, config).tap do |handle|
+            next unless state[:active]
+
+            counter_lock.synchronize { created_handles[topic_name] << handle.address }
+          end
+        end
+
+        define_method(:rd_kafka_topic_destroy) do |handle|
+          counter_lock.synchronize { destroyed_handles << handle.address } if state[:active]
+          super(handle)
+        end
+      end
+
+      Rdkafka::Bindings.singleton_class.prepend(counter)
+    end
+
+    after { recording[:active] = false }
+
+    it "creates exactly one topic handle per topic and destroys each on close" do
+      # Concurrent produces leave the operations counter unbalanced on JRuby, so `close` hangs
+      # until https://github.com/karafka/rdkafka-ruby/pull/1055 is merged. Remove this skip with
+      # it. Until then
+      # `spec/integrations/producer_concurrent_first_produce_spec.rb` covers JRuby.
+      skip "Producer#close can hang after concurrent produces on JRuby" if defined?(JRUBY_VERSION)
+
+      start = Queue.new
+      errors = Queue.new
+
+      threads = Array.new(16) do
+        Thread.new do
+          start.pop
+
+          topics.each do |topic_name|
+            producer.produce(topic: topic_name, payload: "payload")
+          rescue => e
+            errors << e
+          end
+        end
+      end
+
+      16.times { start << true }
+      threads.each(&:join)
+
+      expect(errors.size).to eq(0)
+      expect(topics.map { |topic_name| created[topic_name].size }).to all(eq(1))
+
+      producer.close
+
+      expect(destroyed).to include(*created.values_at(*topics).flatten)
+    end
+  end
+
   describe "with other fiber closing" do
     context "when we create many fibers and close producer in some of them" do
       it "expect not to crash ruby" do

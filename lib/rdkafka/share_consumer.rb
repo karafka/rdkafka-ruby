@@ -96,13 +96,17 @@ module Rdkafka
       # and after close or in a forked child, where the native handle must not be touched.
       # librdkafka assigns the name at creation, so no broker connection is required.
       @name = Rdkafka::Bindings.rd_kafka_name(Rdkafka::Bindings::NativeShareConsumer.new(native)[:rkshare_rk])
-      # Guards handle teardown against in-flight calls: increments happen under this mutex and
-      # close holds it while draining and destroying (mirrors NativeKafka's approach)
+      # Guards handle teardown against in-flight calls: the operations in progress counter
+      # changes only under this mutex, and close holds it while destroying (mirrors NativeKafka)
       @access_mutex = Mutex.new
-      # Separate mutex for decrements so a blocked close (holding @access_mutex) cannot
-      # deadlock with an operation trying to finish
-      @decrement_mutex = Mutex.new
-      # Number of calls currently using the native handle
+      # Signalled when `#close` ends and, only while `#close` waits, when the operations in
+      # progress counter reaches zero. `#close` waits on it with `@access_mutex` released, so calls
+      # that started before it can still decrement the counter.
+      @operations_done = ConditionVariable.new
+      # Set while `#close` runs, so no new call starts until it ends
+      @closing = false
+      # Number of calls currently using the native handle, changed only under `@access_mutex`, so
+      # no update is lost on Rubies without a GVL (JRuby)
       @operations_in_progress = 0
 
       ObjectSpace.define_finalizer(self, self.class.finalizer(@state))
@@ -541,31 +545,15 @@ module Rdkafka
       return if closed?
 
       @access_mutex.synchronize do
-        # Wait for in-flight calls on other threads to finish using the handle. New calls block
-        # on the mutex above while we hold it.
-        sleep(Defaults::NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS / 1_000.0) until @operations_in_progress.zero?
+        @operations_done.wait(@access_mutex) while @closing
+        @closing = true
 
-        native = @state.native
-
-        # Lost the race against a concurrent close that already finished
-        return if native.nil?
-
-        # librdkafka leaves the instance intact when close/destroy fail, and validate! raises
-        # before any reference (or the finalizer) is dropped, so the caller can retry close
-        # and the handle cannot leak silently.
-        #
-        # The close step is skipped when librdkafka already considers the consumer closed
-        # (e.g. a prior close attempt succeeded but its destroy failed and was retried).
-        if Rdkafka::Bindings.rd_kafka_share_consumer_closed(native).zero?
-          Rdkafka::RdkafkaError.validate!(Rdkafka::Bindings.rd_kafka_share_consumer_close(native))
+        begin
+          close_native
+        ensure
+          @closing = false
+          @operations_done.broadcast
         end
-
-        Rdkafka::RdkafkaError.validate!(Rdkafka::Bindings.rd_kafka_share_destroy(native))
-
-        # The native handle is gone only now; drop all references and the finalizer
-        ObjectSpace.undefine_finalizer(self)
-        @state.native = nil
-        @state.ack_callback = nil
       end
 
       nil
@@ -573,10 +561,46 @@ module Rdkafka
 
     private
 
+    # Destroys the native handle once no other thread uses it. Runs under `@access_mutex`, with
+    # `@closing` set so no new call starts.
+    #
+    # @return [nil]
+    # @raise [RdkafkaError] When closing or destroying reported an error
+    def close_native
+      # Wait for in-flight calls on other threads to finish using the handle. The wait releases
+      # `@access_mutex`, so those calls can decrement the counter, while `@closing` keeps new
+      # calls out.
+      @operations_done.wait(@access_mutex) until @operations_in_progress.zero?
+
+      native = @state.native
+
+      # Lost the race against a concurrent close that already finished
+      return if native.nil?
+
+      # librdkafka leaves the instance intact when close/destroy fail, and validate! raises
+      # before any reference (or the finalizer) is dropped, so the caller can retry close
+      # and the handle cannot leak silently.
+      #
+      # The close step is skipped when librdkafka already considers the consumer closed
+      # (e.g. a prior close attempt succeeded but its destroy failed and was retried).
+      if Rdkafka::Bindings.rd_kafka_share_consumer_closed(native).zero?
+        Rdkafka::RdkafkaError.validate!(Rdkafka::Bindings.rd_kafka_share_consumer_close(native))
+      end
+
+      Rdkafka::RdkafkaError.validate!(Rdkafka::Bindings.rd_kafka_share_destroy(native))
+
+      # The native handle is gone only now; drop all references and the finalizer
+      ObjectSpace.undefine_finalizer(self)
+      @state.native = nil
+      @state.ack_callback = nil
+
+      nil
+    end
+
     # Executes a block with the native share handle while tracking the call so {#close} cannot
-    # tear the handle down mid-call from another thread. Increments happen under the access
-    # mutex that close holds for the whole teardown, so once close is draining no new call can
-    # slip in; librdkafka's own single-owner gate still rejects genuinely concurrent API calls.
+    # tear the handle down mid-call from another thread. New calls wait while close runs, so once
+    # close is draining no new call can slip in; librdkafka's own single-owner gate still rejects
+    # genuinely concurrent API calls.
     #
     # @param method [Symbol] public method name, used for the ClosedConsumerError
     # @yield [FFI::Pointer] the native share handle
@@ -586,7 +610,10 @@ module Rdkafka
       # (the only internal holder) - the handle is going away, so reject before tracking
       raise Rdkafka::ClosedConsumerError.new(method) if @access_mutex.owned?
 
-      @access_mutex.synchronize { @operations_in_progress += 1 }
+      @access_mutex.synchronize do
+        @operations_done.wait(@access_mutex) while @closing
+        @operations_in_progress += 1
+      end
 
       begin
         native = @state.native
@@ -597,7 +624,10 @@ module Rdkafka
 
         yield(native)
       ensure
-        @decrement_mutex.synchronize { @operations_in_progress -= 1 }
+        @access_mutex.synchronize do
+          @operations_in_progress -= 1
+          @operations_done.broadcast if @closing && @operations_in_progress.zero?
+        end
       end
     end
 

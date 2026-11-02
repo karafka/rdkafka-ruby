@@ -10,6 +10,7 @@
 - [Enhancement] Make `Producer#produce` use about 13% less CPU per call. Ported from rdkafka-ruby (#1064).
 - [Change] Build the precompiled `x86_64-linux-gnu` and `aarch64-linux-gnu` libraries in an Ubuntu 22.04 container on Ubuntu 24.04 runners, keeping the glibc 2.34 floor after GitHub retires its Ubuntu 22.04 runners. Ported from rdkafka-ruby (#1029).
 - [Change] Depend on `mini_portile2` and `rake` only in the source gem, as only it compiles librdkafka. Apps that got `rake` only through this gem must add it to their Gemfile.
+- [Change] Remove the unused `Rdkafka::Defaults::NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS`: `close` and `ShareConsumer#close` now wait for operations in progress without polling. Ported from rdkafka-ruby (#1055).
 - [Maintenance] Fix a use-after-free in the `client_shutdown_dlclose` integration test that made it crash intermittently after its own unmap.
 - [Maintenance] Stabilize the flaky `Consumer#seek` and `#seek_by` "works when a partition is paused" specs on loaded CI runners.
 - [Maintenance] Stop the `client_shutdown_dlclose` integration test from failing with `Errno::ESRCH` when a librdkafka thread exits while its name is read.
@@ -26,6 +27,7 @@
 - [Maintenance] Give the `Consumer#lag` spec a 30 s list offsets wait.
 - [Maintenance] Give the share group offset reset in the `ShareConsumer` specs a 30 s wait and always close its admin, so a timeout no longer fails the stats specs that run after it.
 - [Maintenance] Define `Consumer.finalizer` and `Consumer.report_close_error` in a `class << self` block. Callers are not affected. Ported from rdkafka-ruby (#1068).
+- [Maintenance] Wait 30 s for the `before(:suite)` topic creates. Ported from rdkafka-ruby (#1065).
 - [Maintenance] Stop the fake SSL servers in integration specs without `Thread#kill`. Ported from rdkafka-ruby (#1059).
 - [Fix] Stop `Consumer#store_offset` and other calls that pass partition metadata from raising `NoMethodError` on JRuby. Ported from rdkafka-ruby (#1045).
 - [Fix] Pass the error buffer size to librdkafka as `size_t` when setting config options and creating clients.
@@ -37,6 +39,8 @@
 - [Fix] Pass the fatal error buffer size (used by `Producer#fatal_error` and the error callback) and the config resource array count to librdkafka as `size_t`.
 - [Fix] Stop the producer from retrying a message without backoff after about 25 retries, by patching the bundled librdkafka (confluentinc/librdkafka#5646).
 - [Fix] Stop the rebalance callback from raising `LocalJumpError` when called for a client whose opaque is already gone.
+- [Fix] Create one topic handle per topic when many threads produce to a new topic at once. On JRuby this race leaked topic handles and could crash with a segfault; `produce` now raises `TopicHandleCreationError` instead of passing a missing handle to librdkafka. Ported from rdkafka-ruby (#1056).
+- [Fix] Count a client's (and a share consumer's) operations in progress under one lock, so on JRuby `close` no longer hangs or destroys the client while another thread still uses it. Ported from rdkafka-ruby (#1055).
 
 ## 0.31.0 (2026-10-12)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.

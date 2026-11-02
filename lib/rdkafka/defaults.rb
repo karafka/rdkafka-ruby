@@ -114,10 +114,6 @@ module Rdkafka
     # @see Config#admin
     NATIVE_KAFKA_POLL_TIMEOUT_MS = 100
 
-    # Sleep interval used in NativeKafka#synchronize wait loop
-    # @see NativeKafka#synchronize
-    NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS = 10
-
     # TTL for partitions count cache entries (30 seconds)
     # @see Producer::PartitionsCountCache
     PARTITIONS_COUNT_CACHE_TTL_MS = 30_000

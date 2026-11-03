@@ -95,7 +95,7 @@ module Rdkafka
 
     # Polls for events in a non-blocking loop, yielding the count after each iteration.
     #
-    # This method processes events (stats, errors, etc.) in a single GVL/mutex session,
+    # This method processes events (stats, errors, etc.) in a single GVL session,
     # which is more efficient than repeated individual polls. It uses non-blocking polls
     # internally (no GVL release between polls).
     #
@@ -116,8 +116,9 @@ module Rdkafka
     #   admin.events_poll_nb_each do |_count|
     #     :stop if monotonic_now >= deadline
     #   end
-    # @note This method holds the inner lock until the queue is empty or `:stop` is returned.
-    #   Other admin operations will wait until this method returns.
+    # @note This method runs inside `with_inner` and does not hold a lock while it loops.
+    #   Other operations on the same client run concurrently. `close` waits until this
+    #   method returns.
     # @note This method is thread-safe as it uses @native_kafka.with_inner synchronization
     def events_poll_nb_each
       closed_admin_check(__method__)

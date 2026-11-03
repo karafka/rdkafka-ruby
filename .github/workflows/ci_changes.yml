@@ -1,7 +1,8 @@
 # Decides whether a pull request touches anything but docs. Called as the `changes` job by each
 # CI workflow that runs on pull requests: docs-only pull requests skip the heavy jobs, while the
 # Success job of each workflow still runs and reports success, so the required checks do not
-# stay pending. Scheduled and any other runs always test everything
+# stay pending. Scheduled and any other runs always test everything. A pull request whose
+# commits since the last green run of the calling workflow touch only docs skips them too
 
 name: CI Changes
 
@@ -14,13 +15,15 @@ on:
 
 permissions:
   contents: read
+  # Lists the runs of the calling workflow; the caller's `changes` job grants it
+  actions: read
 
 jobs:
   detect:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     outputs:
-      code: ${{ steps.filter.outputs.code }}
+      code: ${{ steps.followup.outputs.skip == 'true' && 'false' || steps.filter.outputs.code }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -54,3 +57,63 @@ jobs:
           echo "Changed files:"
           echo "$changed"
           echo "code=$code" >> "$GITHUB_OUTPUT"
+
+      - name: Detect docs-only changes since the last green run
+        id: followup
+        if: steps.filter.outputs.code == 'true' && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          # The caller's workflow file: in a called workflow the github context is the caller's
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          # skip=true only when this is the first attempt, a run of this workflow on this branch
+          # (same head repo) succeeded, its head is an ancestor of this head, and every file changed
+          # since then is docs. Anything unexpected (an API error too) runs everything
+          set -uo pipefail
+          out() {
+            echo "skip=$1 ($2)"
+            echo "skip=$1" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          api() {
+            curl -sf --retry 3 \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$REPO/$1"
+          }
+
+          [ "$RUN_ATTEMPT" = "1" ] || out false "re-run (attempt $RUN_ATTEMPT)"
+
+          workflow_file="$(basename "${WORKFLOW_REF%@*}")"
+          branch="$(jq -rn --arg b "$HEAD_REF" '$b|@uri')"
+          runs="$(api "actions/workflows/$workflow_file/runs?event=pull_request&status=success&branch=$branch&per_page=30")" ||
+            out false "runs API failed"
+          prev="$(jq -r --arg repo "$HEAD_REPO" --arg sha "$HEAD_SHA" '
+            [.workflow_runs[]
+              | select(.head_repository.full_name == $repo and .head_sha != $sha and .conclusion == "success")]
+            | sort_by(.created_at) | last | .head_sha // empty' <<< "$runs")" || out false "bad runs JSON"
+          [ -n "$prev" ] || out false "no green run"
+
+          cmp="$(api "compare/$prev...$HEAD_SHA?per_page=100")" || out false "compare API failed"
+          status="$(jq -r '.status' <<< "$cmp")" || out false "bad compare JSON"
+          [ "$status" = "ahead" ] || out false "green head $prev is not an ancestor ($status)"
+          files="$(jq -r '.files[].filename' <<< "$cmp")" || out false "bad compare JSON"
+          [ -n "$files" ] || out false "no changed files"
+          [ "$(wc -l <<< "$files")" -lt 100 ] || out false "100+ files changed"
+
+          # Same docs list as the step above
+          while IFS= read -r file; do
+            case "$file" in
+              lib/*|spec/*|test/*|ext/*|bin/*) out false "code changed since $prev: $file" ;;
+              *.md|LICENSE*|MIT-LICENSE|.github/ISSUE_TEMPLATE/*|.github/FUNDING.yml) ;;
+              *.png|*.jpg|*.jpeg|*.svg|*.gif) ;;
+              *) out false "code changed since $prev: $file" ;;
+            esac
+          done <<< "$files"
+
+          out true "only docs since green $prev"

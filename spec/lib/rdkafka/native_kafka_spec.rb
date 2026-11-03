@@ -248,10 +248,9 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
 
   after { producer.close unless producer.closed? }
 
-  # Runs `producer.queue_size` in a new thread and parks it when the given `Mutex#synchronize`
-  # call that `#with_inner` makes starts (`:call`) or ends (`:return`): the first takes the lock
-  # for the increment, the second the lock for the decrement. `Mutex#synchronize` is a C method
-  # before Ruby 4.0, so both kinds of events are traced.
+  # Runs `producer.queue_size` in a new thread and parks it when the `Mutex#synchronize` call that
+  # takes the lock for the increment starts (`:call`) or ends (`:return`). `Mutex#synchronize` is a
+  # C method before Ruby 4.0, so both kinds of events are traced.
   def park_worker(event, call)
     park_worker_on(event, :"c_#{event}", call: call) do |tp|
       tp.defined_class == Thread::Mutex && tp.method_id == :synchronize
@@ -330,7 +329,7 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
 
   context "when raised before it takes the lock for the decrement" do
     it "lets close finish" do
-      worker, trace = park_worker(:call, 2)
+      worker, trace = park_worker_at_line("@access_mutex.lock")
       worker.raise("interrupted")
 
       expect_close_to_finish(worker, trace)
@@ -350,7 +349,7 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
 
   context "when killed before it takes the lock for the decrement" do
     it "lets close finish" do
-      worker, trace = park_worker(:call, 2)
+      worker, trace = park_worker_at_line("@access_mutex.lock")
       worker.kill
 
       expect_close_to_finish(worker, trace)

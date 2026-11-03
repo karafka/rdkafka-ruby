@@ -119,10 +119,12 @@ module Rdkafka
           elsif owned
             @operations_in_progress -= 1
           else
-            @access_mutex.synchronize do
-              @operations_in_progress -= 1
-              @operations_done.broadcast if @synchronizing && @operations_in_progress.zero?
-            end
+            # No interrupt lands between the lock and the unlock under the mask, so the lock does
+            # not need the block form
+            @access_mutex.lock
+            @operations_in_progress -= 1
+            @operations_done.broadcast if @synchronizing && @operations_in_progress.zero?
+            @access_mutex.unlock
           end
         end
       end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# This integration test verifies that `Rdkafka::Config.partitions_count_cache_ttl_ms=` changes how
+# This integration test verifies that `Rdkafka::Config.partition_count_cache_ttl_ms=` changes how
 # long `partition_key` produces rely on a cached partition count, for the whole process and
 # without dropping counts that are already cached.
 #
@@ -49,7 +49,7 @@ if cached != 1
   exit(1)
 end
 
-Rdkafka::Config.partitions_count_cache_ttl_ms = TTL_MS
+Rdkafka::Config.partition_count_cache_ttl_ms = TTL_MS
 
 refreshed = producer.partition_count(TOPIC)
 producer.close

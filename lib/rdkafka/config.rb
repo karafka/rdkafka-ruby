@@ -160,7 +160,7 @@ module Rdkafka
     # `produce(partition_key:)`.
     #
     # @return [Integer] time-to-live in milliseconds
-    def self.partitions_count_cache_ttl_ms
+    def self.partition_count_cache_ttl_ms
       Rdkafka::Producer.partitions_count_cache.ttl_ms
     end
 
@@ -171,7 +171,7 @@ module Rdkafka
     #   (defaults to {Defaults::PARTITIONS_COUNT_CACHE_TTL_MS})
     # @return [void]
     # @raise [ArgumentError] when the value is not a positive Integer
-    def self.partitions_count_cache_ttl_ms=(value)
+    def self.partition_count_cache_ttl_ms=(value)
       Rdkafka::Producer.partitions_count_cache.ttl_ms = value
     end
 

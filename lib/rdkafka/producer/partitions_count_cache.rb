@@ -119,9 +119,9 @@ module Rdkafka
       #
       # @note The metadata request in the block runs outside of the cache-wide mutex.
       def get(topic_name)
-        @mutex.lock
+        current_info = expired_at = lease = nil
 
-        begin
+        @mutex.synchronize do
           current_info = @counts[topic_name]
 
           return current_info[1] if current_info && !expired?(current_info[0])
@@ -134,8 +134,6 @@ module Rdkafka
             lease = monotonic_now_ms + Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS
             current_info[0] = lease
           end
-        ensure
-          @mutex.unlock
         end
 
         return refresh(topic_name, current_info, expired_at, lease) { yield } if current_info

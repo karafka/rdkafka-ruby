@@ -1838,6 +1838,91 @@ RSpec.describe Rdkafka::Consumer do
       end
     end
 
+    context "with a listener for failed commits only" do
+      let(:listener) do
+        Struct.new(:results) do
+          def on_offsets_commit_failed(error, list)
+            results << [error, list]
+          end
+        end.new(results)
+      end
+
+      it "gets the error and the partition errors of a failed async commit" do
+        missing_topic = TestTopics.non_existing
+
+        consumer.commit(offsets_list(missing_topic, 0 => 1), true)
+
+        error, list = wait_for_commit_result(consumer, results)
+
+        expect(error.code).to eq(:unknown_topic_or_part)
+        expect(list).to be_frozen
+        expect(list.to_h[missing_topic].map { |partition| Rdkafka::RdkafkaError.new(partition.err).code })
+          .to eq([:unknown_topic_or_part])
+      end
+
+      it "does not build the list of a successful commit" do
+        allow(Rdkafka::Consumer::TopicPartitionList).to receive(:from_native_tpl).and_call_original
+
+        consumer.commit(offsets_list(topic, 0 => 1), true)
+        # Results are served in order, so the failed one comes after the successful one
+        consumer.commit(offsets_list(TestTopics.non_existing, 0 => 1), true)
+
+        expect(wait_for_commit_result(consumer, results).first.code).to eq(:unknown_topic_or_part)
+        expect(results).to be_empty
+        expect(Rdkafka::Consumer::TopicPartitionList).to have_received(:from_native_tpl).once
+      end
+    end
+
+    context "with a listener for every commit and for failed commits" do
+      let(:failures) { Queue.new }
+      let(:listener) do
+        Struct.new(:results, :failures) do
+          def on_offsets_committed(error, list)
+            results << [error, list]
+          end
+
+          def on_offsets_commit_failed(error, list)
+            failures << [error, list]
+          end
+        end.new(results, failures)
+      end
+
+      it "does not report a commit with nothing new as failed" do
+        consumer.commit(nil, true)
+
+        expect(wait_for_commit_result(consumer, results).first.code).to eq(:no_offset)
+        expect(failures).to be_empty
+      end
+
+      it "reports a failed commit to both methods" do
+        consumer.commit(offsets_list(TestTopics.non_existing, 0 => 1), true)
+
+        expect(wait_for_commit_result(consumer, results).first.code).to eq(:unknown_topic_or_part)
+        expect(failures.pop(true).first.code).to eq(:unknown_topic_or_part)
+      end
+    end
+
+    context "with a listener for failed commits only that raises" do
+      let(:listener) do
+        Struct.new(:results) do
+          def on_offsets_commit_failed(error, list)
+            results << [error, list]
+            raise "boom"
+          end
+        end.new(results)
+      end
+
+      it "logs the exception and keeps polling" do
+        allow(Rdkafka::Config.logger).to receive(:error)
+
+        consumer.commit(offsets_list(TestTopics.non_existing, 0 => 1), true)
+
+        expect(wait_for_commit_result(consumer, results).first.code).to eq(:unknown_topic_or_part)
+        expect { consumer.poll(100) }.not_to raise_error
+        expect(Rdkafka::Config.logger).to have_received(:error).with("Unhandled exception: RuntimeError - boom")
+      end
+    end
+
     context "without a listener" do
       it "does not set the native callback" do
         allow(Rdkafka::Bindings).to receive(:rd_kafka_conf_set_offset_commit_cb).and_call_original

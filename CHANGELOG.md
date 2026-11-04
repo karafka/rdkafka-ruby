@@ -2,6 +2,7 @@
 
 ## 0.32.0 (Unreleased)
 - **[Feature]** Add `Config#consumer_offset_commit_listener`: its `#on_offsets_committed(error, list)` gets the result of every offset commit when the consumer polls or closes, so an async commit that the broker rejects reaches Ruby instead of only a `COMMITFAIL` log line.
+- **[Feature]** Let the offset commit listener define `#on_offsets_commit_failed(error, list)`, called only for failed commits (not on success or `no_offset`). A listener with only this method does not convert the commit offsets of the other commits. Ported from karafka-rdkafka (#590).
 - **[Feature]** Add `validate_only:`, `operation_timeout_ms:` and `request_timeout_ms:` keyword options to `Admin#create_topic` and `#create_partitions`, and the two timeouts to `#delete_topic`. A `create_topic` topic config passed without braces keeps working.
 - [Enhancement] Bump librdkafka to `2.16.0` for OpenSSL and libcurl security fixes. Admin requests in flight on a decommissioned broker now fail with a retryable transport error.
 - [Enhancement] Keep `partition_key` produces working during a cluster outage once the topic partition count is known, instead of raising.
@@ -38,6 +39,7 @@
 - [Fix] Stop the statistics, error and OAuth token refresh callbacks from raising `NoMethodError` when another thread clears the global callback while they run. On JRuby this aborted the process from the polling thread.
 - [Fix] Count a client's operations in progress under one lock, so on JRuby `close` no longer hangs or destroys the client while another thread still uses it.
 - [Fix] Report a failed consumer close (e.g. of a fatally-errored consumer) to `Rdkafka::Config.error_callback` instead of dropping it. `Consumer#close` still does not raise.
+- [Fix] Stop the rebalance and offset commit callbacks from raising `LocalJumpError` when called for a client whose opaque is already gone. Ported from karafka-rdkafka (#590).
 
 ## 0.31.0 (2026-10-09)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.

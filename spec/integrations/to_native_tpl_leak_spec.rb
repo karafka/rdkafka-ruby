@@ -21,6 +21,7 @@
 
 require "rdkafka"
 require_relative "support/native_call_counter"
+require_relative "support/memory"
 
 $stdout.sync = true
 
@@ -40,18 +41,7 @@ rescue TypeError
   nil
 end
 
-def rss_kb
-  File.read("/proc/self/status")[/VmRSS:\s+(\d+)/, 1].to_i
-end
-
 measurable = File.exist?("/proc/self/status")
-
-# Settle the Ruby heap before sampling RSS. `GC.compact` defragments the heap so freed pages can be
-# released, which keeps the baseline and final samples from drifting purely due to fragmentation.
-def settle_heap
-  GC.start
-  GC.compact if GC.respond_to?(:compact)
-end
 
 # Warm up so the malloc arena / Ruby heap settle before we measure.
 20_000.times { trigger_failed_build }

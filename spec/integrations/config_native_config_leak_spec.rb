@@ -20,6 +20,7 @@
 
 require "rdkafka"
 require_relative "support/native_call_counter"
+require_relative "support/memory"
 
 $stdout.sync = true
 
@@ -36,10 +37,6 @@ def trigger_failed_creation
   Rdkafka::Config.new("totally.invalid.property": "x").consumer
 rescue Rdkafka::Config::ConfigError
   nil
-end
-
-def rss_kb
-  File.read("/proc/self/status")[/VmRSS:\s+(\d+)/, 1].to_i
 end
 
 measurable = File.exist?("/proc/self/status")

@@ -75,15 +75,6 @@ puts "One topic handle per topic for #{TOPICS.size} topics and #{THREADS} thread
 closer = Thread.new { producer.close }
 
 unless closer.join(CLOSE_TIMEOUT)
-  # On JRuby concurrent produces can leave the operations counter of the native client
-  # unbalanced, so `close` waits forever until
-  # https://github.com/karafka/rdkafka-ruby/pull/1055 is merged. Remove this branch with it.
-  # `exit!` skips the `at_exit` close that would wait the same way.
-  if defined?(JRUBY_VERSION)
-    puts "SKIP: close did not finish on JRuby, handle destruction not checked"
-    exit!(0)
-  end
-
   warn "FAIL: close did not finish in #{CLOSE_TIMEOUT} s"
   exit!(1)
 end

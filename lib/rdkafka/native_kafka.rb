@@ -111,7 +111,7 @@ module Rdkafka
       ensure
         # Deferred from the first step of the `ensure`: an interrupt delivered before the decrement
         # (even at the branches below) would skip it and leave `#synchronize` (and so `#close`)
-        # waiting for ever. JRuby delivers a `Thread#kill` that arrived during a blocking native
+        # waiting forever. JRuby delivers a `Thread#kill` that arrived during a blocking native
         # call at its first chance after the call, the lock below.
         Thread.handle_interrupt(DEFER_INTERRUPTS) do
           if !counted

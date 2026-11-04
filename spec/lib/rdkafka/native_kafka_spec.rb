@@ -232,15 +232,14 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner from many threads" do
   end
 end
 
-# Interrupts delivered at the exact points of `#with_inner` where the operations in progress
-# counter used to drift, which left `#close` waiting for ever
+# Separate describe block with real threads parked by TracePoint, to deliver an interrupt at an
+# exact point of `#with_inner`
 RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is interrupted" do
   let(:producer) { rdkafka_producer_config.producer }
   let(:release) { Queue.new }
   let(:parked) { Queue.new }
 
   before do
-    # JRuby reports calls of its core methods to TracePoint only with `--debug`
     skip "TracePoint core method events need --debug on JRuby" if defined?(JRUBY_VERSION)
 
     producer.queue_size
@@ -337,8 +336,7 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
     end
   end
 
-  # MRI checks for interrupts at branches, so one raised as the `ensure` starts used to skip the
-  # decrement before it deferred interrupts
+  # MRI checks for interrupts at branches, so the `ensure` must defer them before its first one
   context "when raised at the first branch of the ensure" do
     it "lets close finish" do
       worker, trace = park_worker_at_line("if !counted")

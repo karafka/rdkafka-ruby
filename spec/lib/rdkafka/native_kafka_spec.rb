@@ -336,10 +336,9 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
     end
   end
 
-  # MRI checks for interrupts at branches, so the `ensure` must defer them before its first one
-  context "when raised at the first branch of the ensure" do
+  context "when raised at the first step of the release" do
     it "lets close finish" do
-      worker, trace = park_worker_at_line("if !counted")
+      worker, trace = park_worker_at_line("released = false")
       worker.raise("interrupted")
 
       expect_close_to_finish(worker, trace)
@@ -352,6 +351,83 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
       worker.kill
 
       expect_close_to_finish(worker, trace)
+    end
+  end
+end
+
+# Separate describe block: trap handlers run only on the main thread, so the example itself calls
+# `#with_inner` and a TracePoint sends the signal at an exact point of it
+RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler raises" do
+  let(:producer) { rdkafka_producer_config.producer }
+  let(:trapped) { Class.new(StandardError) }
+
+  before do
+    skip "TracePoint core method events need --debug on JRuby" if defined?(JRUBY_VERSION)
+
+    producer.queue_size
+  end
+
+  after { producer.close unless producer.closed? }
+
+  # Calls `producer.queue_size` and raises from a `USR1` trap handler at each of the given calls
+  # of the method that `#with_inner` makes
+  def queue_size_trapped_at(klass, method_id, event, calls)
+    error = trapped
+    previous = trap("USR1") { raise error }
+    seen = 0
+
+    trace = TracePoint.new(event, :"c_#{event}") do |tp|
+      next unless tp.defined_class == klass && tp.method_id == method_id
+
+      seen += 1
+      next unless calls.include?(seen)
+
+      Process.kill("USR1", Process.pid)
+      sleep(5)
+    end
+
+    expect { trace.enable { producer.queue_size } }.to raise_error(error)
+  ensure
+    trap("USR1", previous)
+  end
+
+  def expect_close_to_finish
+    closer = Thread.new { producer.close }
+
+    expect(closer.join(5)).not_to be_nil
+  ensure
+    closer&.kill
+  end
+
+  context "when it raises before the interrupt mask of the release" do
+    it "lets close finish" do
+      queue_size_trapped_at(Thread.singleton_class, :handle_interrupt, :call, [1])
+
+      expect_close_to_finish
+    end
+  end
+
+  context "when it raises before the lock for the decrement" do
+    it "lets close finish" do
+      queue_size_trapped_at(Thread::Mutex, :synchronize, :call, [2])
+
+      expect_close_to_finish
+    end
+  end
+
+  context "when it raises after the decrement" do
+    it "lets close finish" do
+      queue_size_trapped_at(Thread::Mutex, :synchronize, :return, [2])
+
+      expect_close_to_finish
+    end
+  end
+
+  context "when it raises again in the retried release" do
+    it "lets close finish" do
+      queue_size_trapped_at(Thread::Mutex, :synchronize, :call, [2, 3])
+
+      expect_close_to_finish
     end
   end
 end

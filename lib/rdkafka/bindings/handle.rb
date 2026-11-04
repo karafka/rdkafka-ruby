@@ -9,7 +9,7 @@ module Rdkafka
       :rd_kafka_consumer
     ]
 
-    attach_function :rd_kafka_new, [:kafka_type, :pointer, :pointer, :int], :pointer
+    attach_function :rd_kafka_new, [:kafka_type, :pointer, :pointer, :size_t], :pointer
 
     attach_function :rd_kafka_destroy, [:pointer], :void
   end

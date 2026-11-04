@@ -9,6 +9,7 @@
 - [Enhancement] Make `Producer#produce` use about 13% less CPU per call.
 - [Enhancement] Reduce object shape variations of the admin report classes to one shape per class.
 - [Enhancement] Allocate fewer objects per delivered message: delivery callback reports reuse the topic String given to `produce`.
+- [Enhancement] Add `Rdkafka::Config.partition_count_cache_ttl_ms=` to set how long `partition_key` produces reuse a cached partition count (default 30 seconds). Ported from karafka-rdkafka (#562, #615).
 - [Change] Build the precompiled `x86_64-linux-gnu` and `aarch64-linux-gnu` libraries in an Ubuntu 22.04 container on Ubuntu 24.04 runners, keeping the glibc 2.34 floor after GitHub retires its Ubuntu 22.04 runners.
 - [Change] Depend on `mini_portile2` and `rake` only in the source gem, as only it compiles librdkafka. Apps that got `rake` only through this gem must add it to their Gemfile.
 - [Change] Remove the unused `Rdkafka::Defaults::NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS`: `close` now waits for operations in progress without polling.
@@ -17,6 +18,7 @@
 - [Maintenance] Stabilize the flaky `Consumer#seek` and `#seek_by` "works when a partition is paused" specs on loaded CI runners.
 - [Maintenance] Stabilize the flaky `producer_delivery_report_topic` integration test: wait through `unknown_topic_or_part` while its new topics propagate.
 - [Maintenance] Name positional String topic parameters `topic_name` (`Consumer#query_watermark_offsets`, `#seek_by`, `Producer#partition_count`, `TopicPartitionList#add_topic` and others). Callers are not affected.
+- [Maintenance] Name the positional String topic parameters of `Producer::PartitionsCountCache` `topic_name`. Callers are not affected. Ported from karafka-rdkafka (#594).
 - [Maintenance] Skip the bindings signature parity spec on JRuby, whose FFI does not expose function signatures.
 - [Maintenance] Match the `rd_kafka_message_destroy` pointers in the `poll_batch` and `poll_batch_nb` specs by address, so they pass on JRuby.
 - [Maintenance] Run the `client_shutdown_dlclose` integration test on JRuby on Linux.
@@ -42,6 +44,9 @@
 - [Fix] Report a failed consumer close (e.g. of a fatally-errored consumer) to `Rdkafka::Config.error_callback` instead of dropping it. `Consumer#close` still does not raise.
 - [Fix] Stop the rebalance and offset commit callbacks from raising `LocalJumpError` when called for a client whose opaque is already gone. Ported from karafka-rdkafka (#590).
 - [Fix] Keep `close` from hanging forever after a thread using the client was killed (JRuby) or interrupted by `Thread#raise` or `Timeout` (all Rubies).
+- [Fix] Pass the `#oauthbearer_set_token` size arguments to librdkafka as `size_t`, so the token set error is no longer truncated at random on JRuby. Ported from karafka-rdkafka (#601).
+- [Fix] Pass the error buffer size to librdkafka as `size_t` when setting config options and creating clients. Ported from karafka-rdkafka (#603).
+- [Fix] Pass the config resource array count to librdkafka as `size_t`. Ported from karafka-rdkafka (#608).
 
 ## 0.31.0 (2026-10-09)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.

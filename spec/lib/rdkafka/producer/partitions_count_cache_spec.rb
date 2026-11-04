@@ -478,6 +478,9 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
         topics_per_thread = 500
         shared_topics = Array.new(32) { |i| "shared-#{i}" }
         start = Queue.new
+        shared_misses = Queue.new
+
+        shared_topics.each_with_index { |shared_topic, i| cache.set(shared_topic, i + 1) }
 
         threads = Array.new(threads_count) do |t|
           Thread.new do
@@ -485,11 +488,16 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
 
             topics_per_thread.times do |i|
               own_topic = "own-#{t}-#{i}"
-              shared_topic = shared_topics[i % shared_topics.size]
+              shared_index = i % shared_topics.size
+              shared_topic = shared_topics[shared_index]
 
               cache.get(own_topic) { i + 1 }
-              cache.set(shared_topic, shared_topics.index(shared_topic) + 1)
-              cache.get(shared_topic) { shared_topics.index(shared_topic) + 1 }
+              cache.set(shared_topic, shared_index + 1)
+              # Shared topics are cached before the threads start, so a miss here is a lost read
+              cache.get(shared_topic) do
+                shared_misses << shared_topic
+                shared_index + 1
+              end
             end
           end
         end
@@ -498,6 +506,8 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
         threads.each(&:value)
 
         counts = cache.to_h
+
+        expect(shared_misses.size).to eq(0)
 
         expect(counts.size).to eq(threads_count * topics_per_thread + shared_topics.size)
 

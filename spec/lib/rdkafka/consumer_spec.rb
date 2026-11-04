@@ -2154,13 +2154,21 @@ RSpec.describe Rdkafka::Consumer do
   end
 
   describe "long running consumption" do
-    let(:consumer) { rdkafka_consumer_config.consumer }
+    # Without auto commit the manual commit always has new stored offsets, so it cannot fail with
+    # `no_offset` after the auto commit timer committed them first
+    let(:consumer) { rdkafka_consumer_config("enable.auto.commit": false).consumer }
     let(:producer) { rdkafka_producer_config.producer }
 
-    after {
+    # A failed example must not leave the producer thread running: its client would keep
+    # emitting statistics into the global callback of the specs that run after it
+    after do
+      @stop_producing = true
+      # `join` re-raises an error the producer thread died with
+      @producer_thread&.join
+    ensure
       consumer.close
       producer.close
-    }
+    end
 
     it "consumes messages continuously for 60 seconds" do
       consumer.subscribe(topic)
@@ -2170,9 +2178,9 @@ RSpec.describe Rdkafka::Consumer do
       start_time = Time.now
 
       # Producer thread - sends message every second
-      producer_thread = Thread.new do
+      @producer_thread = Thread.new do
         counter = 0
-        while Time.now - start_time < 60
+        while !@stop_producing && Time.now - start_time < 60
           producer.produce(
             topic: topic,
             payload: "payload #{counter}",
@@ -2200,10 +2208,10 @@ RSpec.describe Rdkafka::Consumer do
 
         break if Time.now >= drain_deadline
         # Once producing has stopped, a full poll timeout with no message means we are caught up.
-        break if !producer_thread.alive? && message.nil?
+        break if !@producer_thread.alive? && message.nil?
       end
 
-      producer_thread.join
+      @producer_thread.join
 
       expect(messages_consumed).to be > 50 # Should consume most messages
     end

@@ -1,6 +1,6 @@
 # Rdkafka Changelog
 
-## 0.31.1 (Unreleased)
+## 0.32.0 (2026-11-04)
 - **[Feature]** Add `Config#consumer_offset_commit_listener`: its `#on_offsets_committed(error, list)` gets the result of every offset commit when the consumer polls or closes, so an async commit that the broker rejects reaches Ruby instead of only a `COMMITFAIL` log line. Ported from rdkafka-ruby (#1061).
 - **[Feature]** Let the offset commit listener define `#on_offsets_commit_failed(error, list)`, called only for failed commits (not on success or `no_offset`). A listener with only this method does not convert the commit offsets of the other commits.
 - **[Feature]** Add `Admin#list_consumer_group_offsets` to read the committed offsets of any consumer group without joining it, with a `require_stable_offsets` option.

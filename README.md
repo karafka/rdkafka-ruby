@@ -63,6 +63,7 @@ Contributions should generally be made to the upstream [rdkafka-ruby repository]
 
 | karafka-rdkafka | librdkafka | patches |
 |-|-|-|
+| 0.32.x (2026-11-04) | 2.16.0 (2026-10-06)  | yes |
 | 0.31.x (2026-10-12) | 2.16.0 (2026-10-06)  | yes |
 | 0.30.x (2026-09-25) | 2.15.1 (2026-09-09)  | yes |
 | 0.29.x (2026-09-14) | 2.15.0 (2026-06-30)  | yes |

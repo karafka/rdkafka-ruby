@@ -63,6 +63,9 @@ module Rdkafka
 
       private_constant :STALE_FALLBACK_ERRORS
 
+      # @return [Integer] time-to-live in milliseconds for cached values
+      attr_reader :ttl_ms
+
       # Creates a new partition count cache
       #
       # @param ttl [Integer, nil] DEPRECATED: Use ttl_ms instead.
@@ -91,13 +94,24 @@ module Rdkafka
         end
       end
 
+      # Changes the time-to-live of cached values. Cached entries are kept and expire based on the
+      # new value.
+      #
+      # @param value [Integer] time-to-live in milliseconds
+      # @raise [ArgumentError] when the value is not a positive Integer
+      def ttl_ms=(value)
+        raise ArgumentError.new("ttl_ms has to be a positive Integer") unless value.is_a?(Integer) && value.positive?
+
+        @ttl_ms = value
+      end
+
       # Reads partition count for a topic with automatic refresh when expired
       #
       # This method will return the cached partition count if available and not expired.
       # If the value is expired or not available, it will execute the provided block
       # to fetch the current value from Kafka.
       #
-      # @param topic [String] Kafka topic name
+      # @param topic_name [String] Kafka topic name
       # @yield Block that returns the current partition count when cache needs refreshing
       # @yieldreturn [Integer] Current partition count retrieved from Kafka
       # @return [Integer] Partition count for the topic
@@ -106,17 +120,17 @@ module Rdkafka
       #
       # @note The implementation prioritizes read performance over write consistency
       #   since partition counts typically only increase during normal operation.
-      def get(topic)
-        current_info = @counts[topic]
+      def get(topic_name)
+        current_info = @counts[topic_name]
 
         if current_info.nil?
           new_count = yield
-          set(topic, new_count)
+          set(topic_name, new_count)
 
-          return @counts[topic][1]
+          return @counts[topic_name][1]
         end
 
-        return refresh(topic, current_info) { yield } if expired?(current_info[0])
+        return refresh(topic_name, current_info) { yield } if expired?(current_info[0])
 
         current_info[1]
       end
@@ -126,34 +140,34 @@ module Rdkafka
       # This method updates the partition count for a topic in the cache.
       # It uses a mutex to ensure thread-safety during updates.
       #
-      # @param topic [String] Kafka topic name
+      # @param topic_name [String] Kafka topic name
       # @param new_count [Integer] New partition count value
       #
       # @note We prioritize higher partition counts and only accept them when using
       #   a mutex to ensure consistency. This design decision is based on the fact that
       #   partition counts in Kafka only increase during normal operation.
-      def set(topic, new_count)
+      def set(topic_name, new_count)
         # First check outside mutex to avoid unnecessary locking
-        current_info = @counts[topic]
+        current_info = @counts[topic_name]
 
         # Within the TTL window a lower value is treated as a stale/racy read and ignored, since
         # partition counts only grow during normal operation. Once the entry has expired a lower
         # value is an authoritative refresh (e.g. the topic was recreated with fewer partitions),
         # so we fall through and adopt it below.
         if current_info && new_count < current_info[1] && !expired?(current_info[0])
-          refresh_timestamp(topic)
+          refresh_timestamp(topic_name)
 
           return
         end
 
         # Only lock the specific topic mutex
-        mutex_for(topic).synchronize do
+        mutex_for(topic_name).synchronize do
           # Check again inside the lock as another thread might have updated
-          current_info = @counts[topic]
+          current_info = @counts[topic_name]
 
           if current_info.nil?
             # Create new entry
-            @counts[topic] = [monotonic_now_ms, new_count]
+            @counts[topic_name] = [monotonic_now_ms, new_count]
           elsif new_count > current_info[1] || expired?(current_info[0])
             # A higher count always wins; a lower count is accepted only when the existing entry
             # has expired, so a concurrent fresh higher value (which reset the timestamp) is never
@@ -179,24 +193,24 @@ module Rdkafka
       # This method ensures that each topic has its own mutex,
       # allowing operations on different topics to proceed in parallel.
       #
-      # @param topic [String] Kafka topic name
+      # @param topic_name [String] Kafka topic name
       # @return [Mutex] Mutex for the specified topic
       #
       # @note We use a separate mutex (@mutex_for_hash) to protect the creation
       #   of new topic mutexes. This pattern allows fine-grained locking while
       #   maintaining thread-safety.
-      def mutex_for(topic)
-        mutex = @mutex_hash[topic]
+      def mutex_for(topic_name)
+        mutex = @mutex_hash[topic_name]
 
         return mutex if mutex
 
         # Use a separate mutex to protect the creation of new topic mutexes
         @mutex_for_hash.synchronize do
           # Check again in case another thread created it
-          @mutex_hash[topic] ||= Mutex.new
+          @mutex_hash[topic_name] ||= Mutex.new
         end
 
-        @mutex_hash[topic]
+        @mutex_hash[topic_name]
       end
 
       # Update the timestamp without acquiring the mutex
@@ -204,13 +218,13 @@ module Rdkafka
       # This is an optimization that allows refreshing the TTL of existing entries
       # without the overhead of mutex acquisition.
       #
-      # @param topic [String] Kafka topic name
+      # @param topic_name [String] Kafka topic name
       #
       # @note This method is safe for refreshing existing data regardless of count
       #   because it only updates the timestamp, which doesn't affect the correctness
       #   of concurrent operations.
-      def refresh_timestamp(topic)
-        current_info = @counts[topic]
+      def refresh_timestamp(topic_name)
+        current_info = @counts[topic_name]
 
         return unless current_info
 
@@ -226,12 +240,12 @@ module Rdkafka
       # recreated with fewer partitions). We then return whatever `set` settled on so a concurrent
       # refresh that wrote a higher value still wins.
       #
-      # @param topic [String] Kafka topic name
+      # @param topic_name [String] Kafka topic name
       # @param current_info [Array<Integer>] cached timestamp and partition count
       # @yieldreturn [Integer] Current partition count retrieved from Kafka
       # @return [Integer] Partition count for the topic
       # @raise [RdkafkaError] when the refresh fails on a non-transient error
-      def refresh(topic, current_info)
+      def refresh(topic_name, current_info)
         expired_at = current_info[0]
         # Outlasts a failed refresh even with a TTL shorter than one metadata request
         lease = monotonic_now_ms + Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS
@@ -253,9 +267,9 @@ module Rdkafka
           return serve_stale(current_info)
         end
 
-        set(topic, new_count)
+        set(topic_name, new_count)
 
-        @counts[topic][1]
+        @counts[topic_name][1]
       end
 
       # Keeps serving an expired entry after a failed refresh and schedules the next refresh

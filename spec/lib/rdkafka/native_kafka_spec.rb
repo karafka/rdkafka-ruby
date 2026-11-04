@@ -369,15 +369,14 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler rai
 
   after { producer.close unless producer.closed? }
 
-  # Calls `producer.queue_size` and raises from a `USR1` trap handler at each of the given calls
-  # of the method that `#with_inner` makes
-  def queue_size_trapped_at(klass, method_id, event, calls)
+  # Runs the block and raises from a `USR1` trap handler at each of the given matching events
+  def trapped_at(events, calls, matches)
     error = trapped
     previous = trap("USR1") { raise error }
     seen = 0
 
-    trace = TracePoint.new(event, :"c_#{event}") do |tp|
-      next unless tp.defined_class == klass && tp.method_id == method_id
+    trace = TracePoint.new(*events) do |tp|
+      next unless matches.call(tp)
 
       seen += 1
       next unless calls.include?(seen)
@@ -386,13 +385,21 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler rai
       sleep(5)
     end
 
-    expect { trace.enable { producer.queue_size } }.to raise_error(error)
+    expect { trace.enable { yield } }.to raise_error(error)
   ensure
     trap("USR1", previous)
   end
 
-  def expect_close_to_finish
-    closer = Thread.new { producer.close }
+  # Calls `producer.queue_size` and raises from a `USR1` trap handler at each of the given calls
+  # of the method that `#with_inner` makes
+  def queue_size_trapped_at(klass, method_id, event, calls)
+    matches = ->(tp) { tp.defined_class == klass && tp.method_id == method_id }
+
+    trapped_at([event, :"c_#{event}"], calls, matches) { producer.queue_size }
+  end
+
+  def expect_close_to_finish(client = producer)
+    closer = Thread.new { client.close }
 
     expect(closer.join(5)).not_to be_nil
   ensure
@@ -428,6 +435,25 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler rai
       queue_size_trapped_at(Thread::Mutex, :synchronize, :call, [2, 3])
 
       expect_close_to_finish
+    end
+  end
+
+  context "when it raises after the decrement of a call that holds the lock" do
+    let(:config) { rdkafka_producer_config }
+    let(:native) { config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer) }
+    let!(:client) { described_class.new(native, run_polling_thread: false, opaque: Rdkafka::Opaque.new) }
+
+    after { client.close unless client.closed? }
+
+    it "lets close finish" do
+      path = described_class.instance_method(:with_inner).source_location.first
+      lineno = File.readlines(path).index { |line| line.strip == "released = true" } + 1
+      matches = ->(tp) { tp.path == path && tp.lineno == lineno }
+
+      # `#synchronize` calls `#with_inner` while it holds the lock
+      trapped_at([:line], [1], matches) { client.synchronize { nil } }
+
+      expect_close_to_finish(client)
     end
   end
 end

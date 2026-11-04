@@ -121,10 +121,11 @@ module Rdkafka
       def get(topic_name)
         current_info = expired_at = lease = nil
 
-        @mutex.synchronize do
+        # `next` instead of `return`: a return from the block allocates on every cache hit
+        cached_count = @mutex.synchronize do
           current_info = @counts[topic_name]
 
-          return current_info[1] if current_info && !expired?(current_info[0])
+          next current_info[1] if current_info && !expired?(current_info[0])
 
           if current_info
             # While the refresh runs, other callers see a fresh entry and get the known count
@@ -134,7 +135,11 @@ module Rdkafka
             lease = monotonic_now_ms + Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS
             current_info[0] = lease
           end
+
+          nil
         end
+
+        return cached_count if cached_count
 
         return refresh(topic_name, current_info, expired_at, lease) { yield } if current_info
 

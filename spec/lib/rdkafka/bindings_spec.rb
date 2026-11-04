@@ -331,6 +331,19 @@ RSpec.describe Rdkafka::Bindings do
     end
   end
 
+  describe "offset commit callback" do
+    it "does nothing when the opaque is no longer registered" do
+      expect do
+        Rdkafka::Bindings::OffsetCommitCallback.call(
+          FFI::Pointer::NULL,
+          Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR,
+          FFI::Pointer::NULL,
+          FFI::Pointer.new(0xDEAD)
+        )
+      end.not_to raise_error
+    end
+  end
+
   describe "oauthbearer callback" do
     context "without an oauthbearer callback" do
       it "does nothing" do

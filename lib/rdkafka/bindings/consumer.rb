@@ -61,7 +61,7 @@ module Rdkafka
       end
 
       opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
-      return unless opaque
+      next unless opaque
 
       tpl = Rdkafka::Consumer::TopicPartitionList.from_native_tpl(partitions_ptr).freeze
       begin
@@ -87,19 +87,34 @@ module Rdkafka
       :void, [:pointer, :int, :pointer, :pointer]
     ) do |_client_ptr, code, offsets_ptr, opaque_ptr|
       opaque = Rdkafka::Config.opaques[opaque_ptr.to_i]
-      return unless opaque
+      next unless opaque
 
-      error = code.zero? ? nil : Rdkafka::RdkafkaError.new(code)
-      tpl = if offsets_ptr.null?
-        Rdkafka::Consumer::TopicPartitionList.new
-      else
-        Rdkafka::Consumer::TopicPartitionList.from_native_tpl(offsets_ptr)
-      end
+      # Success and `no_offset` (a commit with nothing new to commit) are not failures
+      failed = code != RD_KAFKA_RESP_ERR_NO_ERROR && code != RD_KAFKA_RESP_ERR__NO_OFFSET
+      every = opaque.offsets_committed_listened?
+      on_failure = failed && opaque.offsets_commit_failed_listened?
 
-      begin
-        opaque.call_on_offsets_committed(error, tpl.freeze)
-      rescue Exception => err
-        Rdkafka::Config.logger.error("Unhandled exception: #{err.class} - #{err.message}")
+      # The list has an entry for every assigned partition, so build it only when it is used
+      if every || on_failure
+        error = code.zero? ? nil : Rdkafka::RdkafkaError.new(code)
+        tpl = if offsets_ptr.null?
+          Rdkafka::Consumer::TopicPartitionList.new
+        else
+          Rdkafka::Consumer::TopicPartitionList.from_native_tpl(offsets_ptr)
+        end
+        tpl.freeze
+
+        begin
+          opaque.call_on_offsets_committed(error, tpl) if every
+        rescue Exception => err
+          Rdkafka::Config.logger.error("Unhandled exception: #{err.class} - #{err.message}")
+        end
+
+        begin
+          opaque.call_on_offsets_commit_failed(error, tpl) if on_failure
+        rescue Exception => err
+          Rdkafka::Config.logger.error("Unhandled exception: #{err.class} - #{err.message}")
+        end
       end
     end
 

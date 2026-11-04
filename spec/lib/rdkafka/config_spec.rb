@@ -55,6 +55,33 @@ RSpec.describe Rdkafka::Config do
     end
   end
 
+  context "partition count cache ttl" do
+    let(:cache) { Rdkafka::Producer::PartitionsCountCache.new }
+    let!(:original_cache) { Rdkafka::Producer.partitions_count_cache }
+
+    before { Rdkafka::Producer.partitions_count_cache = cache }
+
+    after { Rdkafka::Producer.partitions_count_cache = original_cache }
+
+    it "defaults to the cache default" do
+      expect(described_class.partition_count_cache_ttl_ms)
+        .to eq(Rdkafka::Defaults::PARTITIONS_COUNT_CACHE_TTL_MS)
+    end
+
+    it "sets the ttl of the process-wide cache and keeps cached counts" do
+      cache.set("topic", 5)
+      described_class.partition_count_cache_ttl_ms = 60_000
+
+      expect(cache.ttl_ms).to eq(60_000)
+      expect(described_class.partition_count_cache_ttl_ms).to eq(60_000)
+      expect(cache.to_h["topic"][1]).to eq(5)
+    end
+
+    it "rejects a non positive ttl" do
+      expect { described_class.partition_count_cache_ttl_ms = 0 }.to raise_error(ArgumentError)
+    end
+  end
+
   context "statistics callback" do
     context "with a proc/lambda" do
       it "sets the callback" do

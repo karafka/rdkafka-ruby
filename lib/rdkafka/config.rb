@@ -156,6 +156,25 @@ module Rdkafka
       )
     end
 
+    # Returns the time-to-live of the process-wide partitions count cache used by
+    # `produce(partition_key:)`.
+    #
+    # @return [Integer] time-to-live in milliseconds
+    def self.partition_count_cache_ttl_ms
+      Rdkafka::Producer.partitions_count_cache.ttl_ms
+    end
+
+    # Sets the time-to-live of the process-wide partitions count cache shared by all the producers.
+    # Cached counts are kept, so it can be changed at any time.
+    #
+    # @param value [Integer] time-to-live in milliseconds
+    #   (defaults to {Defaults::PARTITIONS_COUNT_CACHE_TTL_MS})
+    # @return [void]
+    # @raise [ArgumentError] when the value is not a positive Integer
+    def self.partition_count_cache_ttl_ms=(value)
+      Rdkafka::Producer.partitions_count_cache.ttl_ms = value
+    end
+
     # @private
     def self.opaques
       @@opaques

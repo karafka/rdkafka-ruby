@@ -243,6 +243,56 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
     end
   end
 
+  describe "#ttl_ms=" do
+    let(:now) { [0] }
+
+    before do
+      allow(cache).to receive(:monotonic_now_ms) { now[0] }
+      cache.get(topic) { partition_count }
+    end
+
+    it "exposes the ttl" do
+      expect(cache.ttl_ms).to eq(default_ttl_ms)
+    end
+
+    it "keeps cached entries and expires them with the new ttl" do
+      cache.ttl_ms = default_ttl_ms * 2
+      now[0] += default_ttl_ms + 1
+
+      expect(cache.get(topic) { fail "Should not be called" }).to eq(partition_count)
+
+      now[0] += default_ttl_ms
+      expect(cache.get(topic) { higher_partition_count }).to eq(higher_partition_count)
+    end
+
+    it "expires entries sooner with a shorter ttl" do
+      cache.ttl_ms = default_ttl_ms / 2
+      now[0] += (default_ttl_ms / 2) + 1
+
+      expect(cache.get(topic) { higher_partition_count }).to eq(higher_partition_count)
+    end
+
+    it "applies to an entry served stale after a failed refresh" do
+      stale_backoff_ms = Rdkafka::Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS
+      now[0] += default_ttl_ms + 1
+      cache.get(topic) { raise Rdkafka::RdkafkaError.new(-195) }
+
+      cache.ttl_ms = default_ttl_ms * 2
+      now[0] += stale_backoff_ms + default_ttl_ms
+      expect(cache.get(topic) { fail "Should not be called" }).to eq(partition_count)
+
+      now[0] += 1
+      expect(cache.get(topic) { higher_partition_count }).to eq(higher_partition_count)
+    end
+
+    [0, -1, 1.5, "1000", nil].each do |value|
+      it "rejects #{value.inspect}" do
+        expect { cache.ttl_ms = value }.to raise_error(ArgumentError)
+        expect(cache.ttl_ms).to eq(default_ttl_ms)
+      end
+    end
+  end
+
   describe "#get when the refresh fails" do
     let(:now) { [0] }
     let(:transport_error) { Rdkafka::RdkafkaError.new(-195) }

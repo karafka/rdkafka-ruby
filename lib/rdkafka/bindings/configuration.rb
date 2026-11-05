@@ -11,7 +11,7 @@ module Rdkafka
     ]
 
     attach_function :rd_kafka_conf_new, [], :pointer
-    attach_function :rd_kafka_conf_set, [:pointer, :string, :string, :pointer, :int], :kafka_config_response
+    attach_function :rd_kafka_conf_set, [:pointer, :string, :string, :pointer, :size_t], :kafka_config_response
     attach_function :rd_kafka_conf_get, [:pointer, :string, :pointer, :pointer], :kafka_config_response
     attach_function :rd_kafka_conf, [:pointer], :pointer
     attach_function :rd_kafka_conf_dump, [:pointer, :pointer], :pointer
@@ -27,7 +27,7 @@ module Rdkafka
     attach_function :rd_kafka_rebalance_protocol, [:pointer], :string
     callback :oauthbearer_token_refresh_cb, [:pointer, :string, :pointer], :void
     attach_function :rd_kafka_conf_set_oauthbearer_token_refresh_cb, [:pointer, :oauthbearer_token_refresh_cb], :void
-    attach_function :rd_kafka_oauthbearer_set_token, [:pointer, :string, :int64, :pointer, :pointer, :int, :pointer, :int], :int
+    attach_function :rd_kafka_oauthbearer_set_token, [:pointer, :string, :int64, :pointer, :pointer, :size_t, :pointer, :size_t], :int
     attach_function :rd_kafka_oauthbearer_set_token_failure, [:pointer, :string], :int
     # Log queue
     attach_function :rd_kafka_set_log_queue, [:pointer, :pointer], :void
@@ -45,6 +45,6 @@ module Rdkafka
     # Per topic configs
     attach_function :rd_kafka_topic_conf_new, [], :pointer
     attach_function :rd_kafka_topic_conf_destroy, [:pointer], :void
-    attach_function :rd_kafka_topic_conf_set, [:pointer, :string, :string, :pointer, :int], :kafka_config_response
+    attach_function :rd_kafka_topic_conf_set, [:pointer, :string, :string, :pointer, :size_t], :kafka_config_response
   end
 end

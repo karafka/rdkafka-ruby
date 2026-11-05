@@ -36,6 +36,7 @@
 - [Maintenance] Fix the YARD notes of `events_poll_nb_each` and `Consumer#poll_nb_each`: they do not hold a lock while they loop, so other operations run concurrently and only `close` waits.
 - [Maintenance] Time out the SSL spec step of the Ubuntu aarch64 complementary CI workflow after 25 minutes, so a hanging example fails the step and its log is kept.
 - [Maintenance] Create the topics of the producer `timestamp` specs with `retention.ms: -1`, so broker retention no longer deletes their 2017-timestamped messages before the specs read them back.
+- [Maintenance] Stabilize the flaky `Consumer` "long running consumption" spec, and stop its producer when it fails so its statistics do not break later specs. Ported from karafka-rdkafka (#565).
 - [Maintenance] Share the topic metadata wait (`WaitForTopic`) and the RSS sampling helpers (`rss_kb`, `settle_heap`) between integration specs instead of copying them into each one. Ported from karafka-rdkafka (#621).
 - [Fix] Create one topic handle per topic when many threads produce to a new topic at once. On JRuby this race leaked topic handles and could crash with a segfault; `produce` now raises `TopicHandleCreationError` instead of passing a missing handle to librdkafka.
 - [Fix] Stop `Consumer#store_offset` and other calls that pass partition metadata from raising `NoMethodError` on JRuby.
@@ -44,6 +45,7 @@
 - [Fix] Count a client's operations in progress under one lock, so on JRuby `close` no longer hangs or destroys the client while another thread still uses it.
 - [Fix] Report a failed consumer close (e.g. of a fatally-errored consumer) to `Rdkafka::Config.error_callback` instead of dropping it. `Consumer#close` still does not raise.
 - [Fix] Stop the rebalance and offset commit callbacks from raising `LocalJumpError` when called for a client whose opaque is already gone. Ported from karafka-rdkafka (#590).
+- [Fix] Keep `close` from hanging forever after a thread using the client was killed (JRuby) or interrupted by `Thread#raise` or `Timeout` (all Rubies).
 - [Fix] Pass the `#oauthbearer_set_token` size arguments to librdkafka as `size_t`, so the token set error is no longer truncated at random on JRuby. Ported from karafka-rdkafka (#601).
 - [Fix] Pass the error buffer size to librdkafka as `size_t` when setting config options and creating clients. Ported from karafka-rdkafka (#603).
 - [Fix] Pass the config resource array count to librdkafka as `size_t`. Ported from karafka-rdkafka (#608).

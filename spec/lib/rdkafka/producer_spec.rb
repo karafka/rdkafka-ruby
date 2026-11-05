@@ -873,23 +873,23 @@ RSpec.describe Rdkafka::Producer do
     after { described_class.partition_count_cache = original_cache }
 
     it "resolves PartitionsCountCache to PartitionCountCache with a warning" do
-      expect { expect(described_class::PartitionsCountCache).to be(described_class::PartitionCountCache) }
-        .to output(/DEPRECATION WARNING: Rdkafka::Producer::PartitionsCountCache is deprecated/)
-        .to_stderr
+      expect(described_class).to receive(:warn).with(/DEPRECATION WARNING: .*PartitionsCountCache is deprecated/)
+
+      expect(described_class::PartitionsCountCache).to be(described_class::PartitionCountCache)
     end
 
     it "returns the partition count cache from .partitions_count_cache with a warning" do
-      expect { expect(described_class.partitions_count_cache).to be(original_cache) }
-        .to output(/DEPRECATION WARNING: Rdkafka::Producer.partitions_count_cache is deprecated/)
-        .to_stderr
+      expect(described_class).to receive(:warn).with(/DEPRECATION WARNING: .*partitions_count_cache is deprecated/)
+
+      expect(described_class.partitions_count_cache).to be(original_cache)
     end
 
     it "sets the partition count cache via .partitions_count_cache= with a warning" do
       cache = described_class::PartitionCountCache.new
 
-      expect { described_class.partitions_count_cache = cache }
-        .to output(/DEPRECATION WARNING: Rdkafka::Producer.partitions_count_cache= is deprecated/)
-        .to_stderr
+      expect(described_class).to receive(:warn).with(/DEPRECATION WARNING: .*partitions_count_cache= is deprecated/)
+
+      described_class.partitions_count_cache = cache
       expect(described_class.partition_count_cache).to be(cache)
     end
 

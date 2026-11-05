@@ -900,7 +900,7 @@ RSpec.describe Rdkafka::Producer do
 
       expect(original_cache.reopened?).to be(true)
     ensure
-      described_class::PartitionCountCache.send(:remove_method, :reopened?)
+      described_class::PartitionCountCache.remove_method(:reopened?)
     end
 
     it "keeps the deprecated require path working" do

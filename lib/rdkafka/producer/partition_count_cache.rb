@@ -291,5 +291,9 @@ module Rdkafka
         monotonic_now_ms - timestamp > @ttl_ms
       end
     end
+
+    # @deprecated Use {PartitionCountCache} instead. It will be removed in v1.0.0.
+    PartitionsCountCache = PartitionCountCache
+    deprecate_constant :PartitionsCountCache
   end
 end

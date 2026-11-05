@@ -44,18 +44,6 @@ module Rdkafka
       self.partition_count_cache = partition_count_cache
     end
 
-    # Resolves the deprecated `PartitionsCountCache` constant to {PartitionCountCache}
-    #
-    # @param name [Symbol] missing constant name
-    # @return [Class]
-    def self.const_missing(name)
-      return super unless name == :PartitionsCountCache
-
-      warn "DEPRECATION WARNING: Rdkafka::Producer::PartitionsCountCache is deprecated. " \
-        "Use Rdkafka::Producer::PartitionCountCache instead. It will be removed in v1.0.0."
-      PartitionCountCache
-    end
-
     # Empty hash used as a default
     EMPTY_HASH = {}.freeze
 

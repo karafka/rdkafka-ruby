@@ -872,10 +872,39 @@ RSpec.describe Rdkafka::Producer do
 
     after { described_class.partition_count_cache = original_cache }
 
-    it "resolves PartitionsCountCache to PartitionCountCache with a warning" do
-      expect(described_class).to receive(:warn).with(/DEPRECATION WARNING: .*PartitionsCountCache is deprecated/)
+    it "keeps PartitionsCountCache as a deprecated alias of PartitionCountCache" do
+      expect(Warning).to receive(:warn).with(
+        /constant Rdkafka::Producer::PartitionsCountCache is deprecated/,
+        category: :deprecated
+      )
 
       expect(described_class::PartitionsCountCache).to be(described_class::PartitionCountCache)
+    end
+
+    it "keeps PartitionsCountCache defined" do
+      expect(defined?(described_class::PartitionsCountCache)).to eq("constant")
+      expect(described_class.const_defined?(:PartitionsCountCache)).to be(true)
+      expect(described_class.constants).to include(:PartitionsCountCache)
+    end
+
+    it "reopens the live cache class when PartitionsCountCache is reopened" do
+      allow(Warning).to receive(:warn)
+
+      described_class.module_eval(<<~RUBY, __FILE__, __LINE__ + 1)
+        class PartitionsCountCache
+          def reopened?
+            true
+          end
+        end
+      RUBY
+
+      expect(original_cache.reopened?).to be(true)
+    ensure
+      described_class::PartitionCountCache.send(:remove_method, :reopened?)
+    end
+
+    it "keeps the deprecated require path working" do
+      expect { require "rdkafka/producer/partitions_count_cache" }.not_to raise_error
     end
 
     it "returns the partition count cache from .partitions_count_cache with a warning" do
@@ -892,14 +921,16 @@ RSpec.describe Rdkafka::Producer do
       described_class.partitions_count_cache = cache
       expect(described_class.partition_count_cache).to be(cache)
     end
-
-    it "raises NameError for other missing constants" do
-      expect { described_class::PartitionsCountCacheTypo }.to raise_error(NameError)
-    end
   end
 
   describe "#partition_count" do
     it { expect(producer.partition_count(TestTopics.example_topic)).to eq(1) }
+
+    it "does not use the deprecated partition count cache names" do
+      expect(described_class).not_to receive(:warn)
+
+      producer.partition_count(TestTopics.example_topic)
+    end
 
     context "when the partition count value is already cached" do
       before do

@@ -49,6 +49,7 @@
 - [Fix] Pass the `#oauthbearer_set_token` size arguments to librdkafka as `size_t`, so the token set error is no longer truncated at random on JRuby. Ported from karafka-rdkafka (#601).
 - [Fix] Pass the error buffer size to librdkafka as `size_t` when setting config options and creating clients. Ported from karafka-rdkafka (#603).
 - [Fix] Pass the config resource array count to librdkafka as `size_t`. Ported from karafka-rdkafka (#608).
+- [Fix] Keep the shared partition count cache consistent when many threads produce with `partition_key` or call `partition_count` at once. On JRuby it lost topics and raised `NoMethodError`.
 
 ## 0.31.0 (2026-10-09)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.

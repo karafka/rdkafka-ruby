@@ -338,7 +338,7 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
 
   context "when raised at the first step of the release" do
     it "lets close finish" do
-      worker, trace = park_worker_at_line("released = false")
+      worker, trace = park_worker_at_line("Thread.handle_interrupt(DEFER_INTERRUPTS) do")
       worker.raise("interrupted")
 
       expect_close_to_finish(worker, trace)

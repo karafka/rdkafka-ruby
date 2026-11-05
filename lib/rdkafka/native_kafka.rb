@@ -94,6 +94,7 @@ module Rdkafka
       # Set in the same step as the increment, so the `ensure` undoes only an increment that
       # happened, even when `Thread#raise`, `Timeout` or `Thread#kill` interrupts this method
       counted = false
+      released = false
 
       begin
         if owned
@@ -109,7 +110,28 @@ module Rdkafka
 
         @inner.nil? ? raise(ClosedInnerError) : yield(@inner)
       ensure
-        release_operation(owned, counted)
+        # Inline, not in `#release_operation`: an extra method call costs every call
+        begin
+          Thread.handle_interrupt(DEFER_INTERRUPTS) do
+            if !counted
+              # Interrupted before the increment: nothing to undo
+            elsif owned
+              @operations_in_progress -= 1
+              counted = false
+            else
+              # Not `lock` / `unlock`: a signal trap handler still runs (and can raise) under the mask
+              @access_mutex.synchronize do
+                @operations_in_progress -= 1
+                counted = false
+                @operations_done.broadcast if @synchronizing && @operations_in_progress.zero?
+              end
+            end
+
+            released = true
+          end
+        ensure
+          release_operation(owned, counted) unless released
+        end
       end
     end
 
@@ -255,14 +277,14 @@ module Rdkafka
 
     private
 
-    # Undoes the increment of `#with_inner`
+    # Finishes the release of `#with_inner` when a signal trap handler raised during it
     #
     # Interrupts are deferred from the first step: one delivered before the decrement would skip it
     # and leave `#synchronize` (and so `#close`) waiting forever. JRuby delivers a `Thread#kill`
     # that arrived during a blocking native call at its first chance after the call, the lock below.
     #
-    # A signal trap handler still runs (and can raise) under the mask, so the `ensure` finishes an
-    # interrupted release before the error propagates.
+    # A trap handler still runs (and can raise) under the mask, so the `ensure` calls this method
+    # again until the release is done, then the error propagates.
     #
     # @param owned [Boolean] whether the caller already holds `@access_mutex`
     # @param decrement [Boolean] whether the counter still has to be decremented

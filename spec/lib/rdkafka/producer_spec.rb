@@ -872,6 +872,15 @@ RSpec.describe Rdkafka::Producer do
 
     after { described_class.partition_count_cache = original_cache }
 
+    # Ruby 3.3 has no Warning.categories, so the spec helper leaves deprecation warnings off
+    around do |example|
+      deprecated = Warning[:deprecated]
+      Warning[:deprecated] = true
+      example.run
+    ensure
+      Warning[:deprecated] = deprecated
+    end
+
     it "keeps PartitionsCountCache as a deprecated alias of PartitionCountCache" do
       expect(Warning).to receive(:warn).with(
         /constant Rdkafka::Producer::PartitionsCountCache is deprecated/,

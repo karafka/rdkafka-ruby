@@ -1,6 +1,8 @@
 {
   "bundler": {
-    "managerFilePatterns": ["/(^|/)Gemfile\\.lint$/"]
+    "managerFilePatterns": [
+      "/(^|/)Gemfile\\.lint$/"
+    ]
   },
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
@@ -100,10 +102,23 @@
     },
     {
       "description": "Keep the ubuntu:22.04 build container of the precompiled gnu libraries; a newer Ubuntu raises their glibc floor",
-      "matchDatasources": ["docker"],
-      "matchPackageNames": ["ubuntu"],
-      "matchFileNames": [".github/workflows/**"],
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "ubuntu"
+      ],
+      "matchFileNames": [
+        ".github/workflows/**"
+      ],
       "allowedVersions": "/^22\\.04$/"
+    },
+    {
+      "description": "Major updates stay manual",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "automerge": false
     }
   ],
   "labels": [
@@ -114,5 +129,13 @@
     "schedule": [
       "before 4am on the first day of the month"
     ]
-  }
+  },
+  "automerge": true,
+  "platformAutomerge": true,
+  "vulnerabilityAlerts": {
+    "labels": [
+      "security"
+    ]
+  },
+  "osvVulnerabilityAlerts": true
 }

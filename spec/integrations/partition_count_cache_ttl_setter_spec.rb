@@ -22,7 +22,7 @@ $stdout.sync = true
 TOPIC = "partitions-count-cache-ttl-#{SecureRandom.hex(6)}"
 TTL_MS = 1_000
 
-Rdkafka::Producer.partitions_count_cache = Rdkafka::Producer::PartitionsCountCache.new
+Rdkafka::Producer.partition_count_cache = Rdkafka::Producer::PartitionCountCache.new
 
 config = Rdkafka::Config.new("bootstrap.servers": "localhost:9092")
 

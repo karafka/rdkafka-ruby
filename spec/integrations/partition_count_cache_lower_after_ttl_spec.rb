@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# This integration test verifies that `PartitionsCountCache` adopts a lower partition count once
+# This integration test verifies that `PartitionCountCache` adopts a lower partition count once
 # the cached entry has expired - the situation a topic deleted and recreated with fewer partitions
 # produces.
 #
@@ -26,7 +26,7 @@ TTL_MS = 200
 HIGHER = 12
 LOWER = 4
 
-cache = Rdkafka::Producer::PartitionsCountCache.new(ttl_ms: TTL_MS)
+cache = Rdkafka::Producer::PartitionCountCache.new(ttl_ms: TTL_MS)
 topic = "partitions-count-cache-probe"
 
 # Seed the higher (original) count.

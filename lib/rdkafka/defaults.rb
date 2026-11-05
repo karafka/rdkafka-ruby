@@ -102,14 +102,14 @@ module Rdkafka
     # Cache settings (in milliseconds)
 
     # Default time-to-live for cached partition counts
-    # @see Producer::PartitionsCountCache
-    PARTITIONS_COUNT_CACHE_TTL_MS = 30_000
+    # @see Producer::PartitionCountCache
+    PARTITION_COUNT_CACHE_TTL_MS = 30_000
 
     # How long an expired partitions count is served after a refresh failed on a transient
     # (e.g. transport) error, before the next refresh attempt. Longer than one failed metadata
     # refresh (up to ~7 s with retries), so produces are not blocked most of the time
-    # @see Producer::PartitionsCountCache#get
-    PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS = 10_000
+    # @see Producer::PartitionCountCache#get
+    PARTITION_COUNT_CACHE_STALE_BACKOFF_MS = 10_000
 
     # Configuration values (not time-based)
 
@@ -121,5 +121,28 @@ module Rdkafka
     # (whose requests each consume the full timeout) still gets a few tries
     # @see Metadata#initialize
     METADATA_MIN_ATTEMPTS = 3
+
+    # Deprecated constant names and the constants that replace them
+    DEPRECATED_CONSTANTS = {
+      PARTITIONS_COUNT_CACHE_TTL_MS: :PARTITION_COUNT_CACHE_TTL_MS
+    }.freeze
+
+    private_constant :DEPRECATED_CONSTANTS
+
+    class << self
+      # Resolves deprecated constant names to the constants that replace them
+      #
+      # @param name [Symbol] missing constant name
+      # @return [Integer]
+      def const_missing(name)
+        replacement = DEPRECATED_CONSTANTS[name]
+
+        return super unless replacement
+
+        warn "DEPRECATION WARNING: Rdkafka::Defaults::#{name} is deprecated. " \
+          "Use Rdkafka::Defaults::#{replacement} instead. It will be removed in v1.0.0."
+        const_get(replacement)
+      end
+    end
   end
 end

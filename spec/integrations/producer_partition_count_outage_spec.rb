@@ -26,7 +26,7 @@ TOPIC = "partition-count-outage-#{SecureRandom.hex(6)}"
 PARTITIONS = 3
 TTL_MS = 1_000
 
-Rdkafka::Producer.partitions_count_cache = Rdkafka::Producer::PartitionsCountCache.new(
+Rdkafka::Producer.partition_count_cache = Rdkafka::Producer::PartitionCountCache.new(
   ttl_ms: TTL_MS
 )
 
@@ -66,7 +66,7 @@ rescue Rdkafka::RdkafkaError => e
   warn "FAIL: produce with partition_key raised #{e.code} after the cached count expired"
   exit(1)
 ensure
-  served = Rdkafka::Producer.partitions_count_cache.to_h[TOPIC]
+  served = Rdkafka::Producer.partition_count_cache.to_h[TOPIC]
 end
 
 if served.nil? || served[1] != PARTITIONS

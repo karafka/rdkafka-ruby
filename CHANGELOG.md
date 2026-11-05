@@ -4,6 +4,7 @@
 - **[Feature]** Add `Config#consumer_offset_commit_listener`: its `#on_offsets_committed(error, list)` gets the result of every offset commit when the consumer polls or closes, so an async commit that the broker rejects reaches Ruby instead of only a `COMMITFAIL` log line.
 - **[Feature]** Let the offset commit listener define `#on_offsets_commit_failed(error, list)`, called only for failed commits (not on success or `no_offset`). A listener with only this method does not convert the commit offsets of the other commits. Ported from karafka-rdkafka (#590).
 - **[Feature]** Add `validate_only:`, `operation_timeout_ms:` and `request_timeout_ms:` keyword options to `Admin#create_topic` and `#create_partitions`, and the two timeouts to `#delete_topic`. A `create_topic` topic config passed without braces keeps working.
+- **[Deprecation]** Rename `Producer::PartitionsCountCache`, `Producer.partitions_count_cache` / `.partitions_count_cache=` and `Defaults::PARTITIONS_COUNT_CACHE_TTL_MS` to their `partition_count` forms. The old names still work with a warning but will be removed in v1.0.0.
 - [Enhancement] Bump librdkafka to `2.16.0` for OpenSSL and libcurl security fixes. Admin requests in flight on a decommissioned broker now fail with a retryable transport error.
 - [Enhancement] Keep `partition_key` produces working during a cluster outage once the topic partition count is known, instead of raising.
 - [Enhancement] Make `Producer#produce` use about 13% less CPU per call.
@@ -18,7 +19,7 @@
 - [Maintenance] Stabilize the flaky `Consumer#seek` and `#seek_by` "works when a partition is paused" specs on loaded CI runners.
 - [Maintenance] Stabilize the flaky `producer_delivery_report_topic` integration test: wait through `unknown_topic_or_part` while its new topics propagate.
 - [Maintenance] Name positional String topic parameters `topic_name` (`Consumer#query_watermark_offsets`, `#seek_by`, `Producer#partition_count`, `TopicPartitionList#add_topic` and others). Callers are not affected.
-- [Maintenance] Name the positional String topic parameters of `Producer::PartitionsCountCache` `topic_name`. Callers are not affected. Ported from karafka-rdkafka (#594).
+- [Maintenance] Name the positional String topic parameters of `Producer::PartitionCountCache` `topic_name`. Callers are not affected. Ported from karafka-rdkafka (#594).
 - [Maintenance] Skip the bindings signature parity spec on JRuby, whose FFI does not expose function signatures.
 - [Maintenance] Match the `rd_kafka_message_destroy` pointers in the `poll_batch` and `poll_batch_nb` specs by address, so they pass on JRuby.
 - [Maintenance] Run the `client_shutdown_dlclose` integration test on JRuby on Linux.

@@ -867,6 +867,37 @@ RSpec.describe Rdkafka::Producer do
     end
   end
 
+  describe "deprecated partitions_count names" do
+    let!(:original_cache) { described_class.partition_count_cache }
+
+    after { described_class.partition_count_cache = original_cache }
+
+    it "resolves PartitionsCountCache to PartitionCountCache with a warning" do
+      expect { expect(described_class::PartitionsCountCache).to be(described_class::PartitionCountCache) }
+        .to output(/DEPRECATION WARNING: Rdkafka::Producer::PartitionsCountCache is deprecated/)
+        .to_stderr
+    end
+
+    it "returns the partition count cache from .partitions_count_cache with a warning" do
+      expect { expect(described_class.partitions_count_cache).to be(original_cache) }
+        .to output(/DEPRECATION WARNING: Rdkafka::Producer.partitions_count_cache is deprecated/)
+        .to_stderr
+    end
+
+    it "sets the partition count cache via .partitions_count_cache= with a warning" do
+      cache = described_class::PartitionCountCache.new
+
+      expect { described_class.partitions_count_cache = cache }
+        .to output(/DEPRECATION WARNING: Rdkafka::Producer.partitions_count_cache= is deprecated/)
+        .to_stderr
+      expect(described_class.partition_count_cache).to be(cache)
+    end
+
+    it "raises NameError for other missing constants" do
+      expect { described_class::PartitionsCountCacheTypo }.to raise_error(NameError)
+    end
+  end
+
   describe "#partition_count" do
     it { expect(producer.partition_count(TestTopics.example_topic)).to eq(1) }
 
@@ -884,7 +915,7 @@ RSpec.describe Rdkafka::Producer do
 
     context "when the partition count value was cached but time expired" do
       before do
-        ::Rdkafka::Producer.partitions_count_cache = Rdkafka::Producer::PartitionsCountCache.new
+        ::Rdkafka::Producer.partition_count_cache = Rdkafka::Producer::PartitionCountCache.new
         allow(::Rdkafka::Metadata).to receive(:new).and_call_original
       end
 
@@ -908,13 +939,13 @@ RSpec.describe Rdkafka::Producer do
     end
 
     context "when the cached count expired and the cluster is unreachable" do
-      let(:cache) { Rdkafka::Producer::PartitionsCountCache.new(ttl_ms: 1) }
-      let!(:original_cache) { ::Rdkafka::Producer.partitions_count_cache }
+      let(:cache) { Rdkafka::Producer::PartitionCountCache.new(ttl_ms: 1) }
+      let!(:original_cache) { ::Rdkafka::Producer.partition_count_cache }
 
-      after { ::Rdkafka::Producer.partitions_count_cache = original_cache }
+      after { ::Rdkafka::Producer.partition_count_cache = original_cache }
 
       before do
-        ::Rdkafka::Producer.partitions_count_cache = cache
+        ::Rdkafka::Producer.partition_count_cache = cache
         cache.set(TestTopics.example_topic, 3)
         sleep(0.1)
         # code -195 == transport, what an unreachable cluster reports
@@ -930,7 +961,7 @@ RSpec.describe Rdkafka::Producer do
       let(:missing_topic) { "missing-topic-for-negative-cache" }
 
       before do
-        ::Rdkafka::Producer.partitions_count_cache = Rdkafka::Producer::PartitionsCountCache.new
+        ::Rdkafka::Producer.partition_count_cache = Rdkafka::Producer::PartitionCountCache.new
         # Force the metadata lookup to report the topic as missing regardless of broker
         # auto-create behavior, so we exercise the unknown_topic_or_part path deterministically
         # (code 3 == unknown_topic_or_part).
@@ -1238,7 +1269,7 @@ RSpec.describe Rdkafka::Producer do
       rdkafka_producer_config("statistics.interval.ms": 1_000).producer
     end
 
-    let(:count_cache_hash) { described_class.partitions_count_cache.to_h }
+    let(:count_cache_hash) { described_class.partition_count_cache.to_h }
     let(:pre_statistics_ttl) { count_cache_hash.fetch(topic, [])[0] }
     let(:post_statistics_ttl) { count_cache_hash.fetch(topic, [])[0] }
 
@@ -1312,7 +1343,7 @@ RSpec.describe Rdkafka::Producer do
       rdkafka_producer_config("statistics.interval.ms": 1_000).producer
     end
 
-    let(:count_cache_hash) { described_class.partitions_count_cache.to_h }
+    let(:count_cache_hash) { described_class.partition_count_cache.to_h }
     let(:pre_statistics_ttl) { count_cache_hash.fetch(topic, [])[0] }
     let(:post_statistics_ttl) { count_cache_hash.fetch(topic, [])[0] }
 

@@ -17,7 +17,7 @@ module Rdkafka
     #
     # 2. Edge case handling
     #    If a user configures `statistics.interval.ms` much higher than the default cache TTL
-    #    ({Defaults::PARTITIONS_COUNT_CACHE_TTL_MS}ms), the cache will still function correctly.
+    #    ({Defaults::PARTITION_COUNT_CACHE_TTL_MS}ms), the cache will still function correctly.
     #    When statistics updates don't occur frequently enough, the cache entries will expire
     #    naturally, triggering a blocking refresh when needed.
     #
@@ -46,11 +46,11 @@ module Rdkafka
     # 7. Cluster outages
     #    If the refresh of an expired entry fails on a transient error (for example all brokers
     #    are unreachable), the last known count is served instead of raising, and the next refresh
-    #    is attempted after {Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS}. This lets
+    #    is attempted after {Defaults::PARTITION_COUNT_CACHE_STALE_BACKOFF_MS}. This lets
     #    `partition_key` produces keep buffering in librdkafka during an outage. Without a known
     #    count the error is raised. Only one caller refreshes an expired entry at a time; the
     #    others get the known count meanwhile.
-    class PartitionsCountCache
+    class PartitionCountCache
       include Helpers::Time
 
       # Refresh errors after which the last known count is still served
@@ -71,7 +71,7 @@ module Rdkafka
       # @param ttl [Integer, nil] DEPRECATED: Use ttl_ms instead.
       #   Time-to-live in seconds for cached values. Will be removed in v1.0.0.
       # @param ttl_ms [Integer, nil] Time-to-live in milliseconds for cached values.
-      #   Defaults to {Defaults::PARTITIONS_COUNT_CACHE_TTL_MS}.
+      #   Defaults to {Defaults::PARTITION_COUNT_CACHE_TTL_MS}.
       def initialize(ttl = :not_provided, ttl_ms: :not_provided)
         @counts = {}
         @mutex_hash = {}
@@ -80,15 +80,15 @@ module Rdkafka
 
         # Determine which TTL value to use
         if ttl != :not_provided && ttl_ms != :not_provided
-          warn "DEPRECATION WARNING: Both ttl and ttl_ms were provided to PartitionsCountCache. " \
+          warn "DEPRECATION WARNING: Both ttl and ttl_ms were provided to PartitionCountCache. " \
                "Using ttl_ms. The ttl parameter is deprecated and will be removed in v1.0.0."
           @ttl_ms = ttl_ms
         elsif ttl != :not_provided
-          warn "DEPRECATION WARNING: ttl (seconds) parameter for PartitionsCountCache is deprecated. " \
+          warn "DEPRECATION WARNING: ttl (seconds) parameter for PartitionCountCache is deprecated. " \
                "Use ttl_ms (milliseconds) instead. This parameter will be removed in v1.0.0."
           @ttl_ms = (ttl * 1000).to_i
         elsif ttl_ms == :not_provided
-          @ttl_ms = Defaults::PARTITIONS_COUNT_CACHE_TTL_MS
+          @ttl_ms = Defaults::PARTITION_COUNT_CACHE_TTL_MS
         else
           @ttl_ms = ttl_ms
         end
@@ -248,7 +248,7 @@ module Rdkafka
       def refresh(topic_name, current_info)
         expired_at = current_info[0]
         # Outlasts a failed refresh even with a TTL shorter than one metadata request
-        lease = monotonic_now_ms + Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS
+        lease = monotonic_now_ms + Defaults::PARTITION_COUNT_CACHE_STALE_BACKOFF_MS
         current_info[0] = lease
 
         begin
@@ -273,12 +273,12 @@ module Rdkafka
       end
 
       # Keeps serving an expired entry after a failed refresh and schedules the next refresh
-      # after {Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS}
+      # after {Defaults::PARTITION_COUNT_CACHE_STALE_BACKOFF_MS}
       #
       # @param current_info [Array<Integer>] cached timestamp and partition count
       # @return [Integer] last known partition count
       def serve_stale(current_info)
-        current_info[0] = monotonic_now_ms - @ttl_ms + Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS
+        current_info[0] = monotonic_now_ms - @ttl_ms + Defaults::PARTITION_COUNT_CACHE_STALE_BACKOFF_MS
 
         current_info[1]
       end

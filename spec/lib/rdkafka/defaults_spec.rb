@@ -74,8 +74,20 @@ RSpec.describe Rdkafka::Defaults do
   end
 
   describe "cache settings" do
-    it "defines PARTITIONS_COUNT_CACHE_TTL_MS as 30000" do
-      expect(described_class::PARTITIONS_COUNT_CACHE_TTL_MS).to eq(30_000)
+    it "defines PARTITION_COUNT_CACHE_TTL_MS as 30000" do
+      expect(described_class::PARTITION_COUNT_CACHE_TTL_MS).to eq(30_000)
+    end
+  end
+
+  describe "deprecated constants" do
+    it "resolves PARTITIONS_COUNT_CACHE_TTL_MS to PARTITION_COUNT_CACHE_TTL_MS with a warning" do
+      expect { expect(described_class::PARTITIONS_COUNT_CACHE_TTL_MS).to eq(30_000) }
+        .to output(/DEPRECATION WARNING: Rdkafka::Defaults::PARTITIONS_COUNT_CACHE_TTL_MS is deprecated/)
+        .to_stderr
+    end
+
+    it "raises NameError for other missing constants" do
+      expect { described_class::UNKNOWN_TIMEOUT_MS }.to raise_error(NameError)
     end
   end
 
@@ -101,7 +113,7 @@ RSpec.describe Rdkafka::Defaults do
         :METADATA_MAX_RETRIES,
         :CONSUMER_SEEK_TIMEOUT_MS,
         :CONSUMER_EVENTS_POLL_TIMEOUT_MS,
-        :PARTITIONS_COUNT_CACHE_TTL_MS
+        :PARTITION_COUNT_CACHE_TTL_MS
       )
     end
   end

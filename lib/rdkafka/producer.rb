@@ -9,23 +9,51 @@ module Rdkafka
     include Helpers::Metadata
 
     # @!visibility private
-    @@partitions_count_cache = PartitionsCountCache.new
+    @@partition_count_cache = PartitionCountCache.new
 
     # Global (process wide) partitions cache. We use it to store number of topics partitions,
     # either from the librdkafka statistics (if enabled) or via direct inline calls every now and
     # then. Since the partitions count can only grow and should be same for all consumers and
     # producers, we can use a global cache as long as we ensure that updates only move up.
     #
-    # @return [Rdkafka::Producer::PartitionsCountCache]
+    # @return [Rdkafka::Producer::PartitionCountCache]
     # @note It is critical to remember, that not all users may have statistics callbacks enabled,
     #   hence we should not make assumption that this cache is always updated from the stats.
-    def self.partitions_count_cache
-      @@partitions_count_cache
+    def self.partition_count_cache
+      @@partition_count_cache
     end
 
-    # @param partitions_count_cache [Rdkafka::Producer::PartitionsCountCache]
-    def self.partitions_count_cache=(partitions_count_cache)
-      @@partitions_count_cache = partitions_count_cache
+    # @param partition_count_cache [Rdkafka::Producer::PartitionCountCache]
+    def self.partition_count_cache=(partition_count_cache)
+      @@partition_count_cache = partition_count_cache
+    end
+
+    # @deprecated Use {.partition_count_cache} instead
+    # @return [Rdkafka::Producer::PartitionCountCache]
+    def self.partitions_count_cache
+      warn "DEPRECATION WARNING: Rdkafka::Producer.partitions_count_cache is deprecated. " \
+        "Use Rdkafka::Producer.partition_count_cache instead. It will be removed in v1.0.0."
+      partition_count_cache
+    end
+
+    # @deprecated Use {.partition_count_cache=} instead
+    # @param partition_count_cache [Rdkafka::Producer::PartitionCountCache]
+    def self.partitions_count_cache=(partition_count_cache)
+      warn "DEPRECATION WARNING: Rdkafka::Producer.partitions_count_cache= is deprecated. " \
+        "Use Rdkafka::Producer.partition_count_cache= instead. It will be removed in v1.0.0."
+      self.partition_count_cache = partition_count_cache
+    end
+
+    # Resolves the deprecated `PartitionsCountCache` constant to {PartitionCountCache}
+    #
+    # @param name [Symbol] missing constant name
+    # @return [Class]
+    def self.const_missing(name)
+      return super unless name == :PartitionsCountCache
+
+      warn "DEPRECATION WARNING: Rdkafka::Producer::PartitionsCountCache is deprecated. " \
+        "Use Rdkafka::Producer::PartitionCountCache instead. It will be removed in v1.0.0."
+      PartitionCountCache
     end
 
     # Empty hash used as a default
@@ -318,7 +346,7 @@ module Rdkafka
     def partition_count(topic_name)
       closed_producer_check(__method__)
 
-      self.class.partitions_count_cache.get(topic_name) do
+      self.class.partition_count_cache.get(topic_name) do
         topic_metadata = nil
 
         @native_kafka.with_inner do |inner|

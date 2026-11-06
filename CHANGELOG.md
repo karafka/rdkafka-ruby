@@ -2,7 +2,7 @@
 
 ## 0.32.0 (2026-11-04)
 - **[Feature]** Add `Config#consumer_offset_commit_listener`: its `#on_offsets_committed(error, list)` gets the result of every offset commit when the consumer polls or closes, so an async commit that the broker rejects reaches Ruby instead of only a `COMMITFAIL` log line. Ported from rdkafka-ruby (#1061).
-- **[Feature]** Let the offset commit listener define `#on_offsets_commit_failed(error, list)`, called only for failed commits (not on success or `no_offset`). A listener with only this method does not convert the commit offsets of the other commits.
+- **[Feature]** Let the offset commit listener define `#on_offsets_commit_failed(error, list)`, called only for failed commits (not on success or `no_offset`).
 - **[Feature]** Add `Admin#list_consumer_group_offsets` to read the committed offsets of any consumer group without joining it, with a `require_stable_offsets` option.
 - **[Feature]** Add `validate_only:`, `operation_timeout_ms:` and `request_timeout_ms:` keyword options to `Admin#create_topic` and `#create_partitions`, and the two timeouts to `#delete_topic`. A `create_topic` topic config passed without braces keeps working. Ported from rdkafka-ruby (#1092).
 - [Enhancement] Reduce object shape variations of the admin report classes to one shape per class.
@@ -10,16 +10,16 @@
 - [Enhancement] Add `Rdkafka::Config.partition_count_cache_ttl_ms=` to set how long `partition_key` produces reuse a cached partition count (default 30 seconds).
 - [Enhancement] Make `Producer#produce` use about 13% less CPU per call. Ported from rdkafka-ruby (#1064).
 - [Enhancement] Allocate fewer objects per delivered message: delivery callback reports reuse the topic String given to `produce`. Ported from rdkafka-ruby (#1066).
-- [Change] Build the precompiled `x86_64-linux-gnu` and `aarch64-linux-gnu` libraries in an Ubuntu 22.04 container on Ubuntu 24.04 runners, keeping the glibc 2.34 floor after GitHub retires its Ubuntu 22.04 runners. Ported from rdkafka-ruby (#1029).
+- [Change] Build the precompiled `x86_64-linux-gnu` and `aarch64-linux-gnu` libraries in an Ubuntu 22.04 container to keep the glibc 2.34 floor. Ported from rdkafka-ruby (#1029).
 - [Change] Depend on `mini_portile2` and `rake` only in the source gem, as only it compiles librdkafka. Apps that got `rake` only through this gem must add it to their Gemfile.
-- [Change] Remove the unused `Rdkafka::Defaults::NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS`: `close` and `ShareConsumer#close` now wait for operations in progress without polling. Ported from rdkafka-ruby (#1055).
+- [Change] Remove the unused `Rdkafka::Defaults::NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS`. Ported from rdkafka-ruby (#1055).
 - [Maintenance] Fix a use-after-free in the `client_shutdown_dlclose` integration test that made it crash intermittently after its own unmap.
 - [Maintenance] Stabilize the flaky `Consumer#seek` and `#seek_by` "works when a partition is paused" specs on loaded CI runners.
-- [Maintenance] Stop the `client_shutdown_dlclose` integration test from failing with `Errno::ESRCH` when a librdkafka thread exits while its name is read.
-- [Maintenance] Stabilize the flaky `Consumer` "long running consumption" spec, and stop its producer when it fails so its statistics do not break later specs.
+- [Maintenance] Stop the `client_shutdown_dlclose` integration test from failing with `Errno::ESRCH`.
+- [Maintenance] Stabilize the flaky `Consumer` "long running consumption" spec.
 - [Maintenance] Drop `pry` from the development bundle and stop requiring it in the spec helper.
-- [Maintenance] Stabilize the flaky `admin_describe_topics` integration test, which could describe its new topic before the topic was in the broker's metadata.
-- [Maintenance] Name positional String topic parameters `topic_name` (`Consumer#query_watermark_offsets`, `#seek_by`, `Producer#partition_count`, `TopicPartitionList#add_topic` and others). Callers are not affected. Ported from rdkafka-ruby (#1052).
+- [Maintenance] Stabilize the flaky `admin_describe_topics` integration test.
+- [Maintenance] Name positional String topic parameters `topic_name`. Callers are not affected. Ported from rdkafka-ruby (#1052).
 - [Maintenance] Name the positional String topic parameters of `Producer::PartitionsCountCache` `topic_name`. Callers are not affected.
 - [Maintenance] Cover with integration tests that coordinator errors on group offset requests do not crash the admin client or a consumer without `group.id`. Ported from rdkafka-ruby (#1044).
 - [Maintenance] Skip the bindings signature parity spec on JRuby, whose FFI does not expose function signatures. Ported from rdkafka-ruby (#1046).
@@ -27,13 +27,13 @@
 - [Maintenance] Run the `client_shutdown_dlclose` integration test on JRuby on Linux. Ported from rdkafka-ruby (#1049).
 - [Maintenance] Check the native call balance instead of RSS in the leak integration specs on JRuby. Ported from rdkafka-ruby (#1050).
 - [Maintenance] Give the `Consumer#lag` spec a 30 s list offsets wait.
-- [Maintenance] Give the share group offset reset in the `ShareConsumer` specs a 30 s wait and always close its admin, so a timeout no longer fails the stats specs that run after it.
+- [Maintenance] Give the share group offset reset in the `ShareConsumer` specs a 30 s wait and always close its admin.
 - [Maintenance] Define `Consumer.finalizer` and `Consumer.report_close_error` in a `class << self` block. Callers are not affected. Ported from rdkafka-ruby (#1068).
 - [Maintenance] Wait 30 s for the `before(:suite)` topic creates. Ported from rdkafka-ruby (#1065).
 - [Maintenance] Run the concurrent first produce checks on JRuby, now that `close` no longer hangs there after concurrent produces. Ported from rdkafka-ruby (#1083).
-- [Maintenance] Create the topics of the producer `timestamp` specs with `retention.ms: -1`, so broker retention no longer deletes their 2017-timestamped messages before the specs read them back. Ported from rdkafka-ruby (#1077).
-- [Maintenance] Time out the SSL spec step of the Ubuntu aarch64 complementary CI workflow after 25 minutes, so a hanging example fails the step and its log is kept. Ported from rdkafka-ruby (#1086).
-- [Maintenance] Fix the YARD notes of `events_poll_nb_each` and `Consumer#poll_nb_each`: they do not hold a lock while they loop, so other operations run concurrently and only `close` waits. Ported from rdkafka-ruby (#1089).
+- [Maintenance] Create the topics of the producer `timestamp` specs with `retention.ms: -1`, so broker retention no longer deletes their messages. Ported from rdkafka-ruby (#1077).
+- [Maintenance] Time out the SSL spec step of the Ubuntu aarch64 complementary CI workflow after 25 minutes. Ported from rdkafka-ruby (#1086).
+- [Maintenance] Fix the YARD notes of `events_poll_nb_each` and `Consumer#poll_nb_each`: they do not hold a lock while they loop. Ported from rdkafka-ruby (#1089).
 - [Maintenance] Stop the fake SSL servers in integration specs without `Thread#kill`. Ported from rdkafka-ruby (#1059).
 - [Fix] Stop `Consumer#store_offset` and other calls that pass partition metadata from raising `NoMethodError` on JRuby. Ported from rdkafka-ruby (#1045).
 - [Fix] Pass the error buffer size to librdkafka as `size_t` when setting config options and creating clients.

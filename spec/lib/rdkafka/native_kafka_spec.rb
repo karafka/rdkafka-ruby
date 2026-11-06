@@ -370,7 +370,7 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler rai
   after { producer.close unless producer.closed? }
 
   # Runs the block and raises from a `USR1` trap handler at each of the given matching events
-  def trapped_at(events, calls, matches)
+  def trapped_at(events, calls, matches, before_signal: nil)
     error = trapped
     previous = trap("USR1") { raise error }
     seen = 0
@@ -381,6 +381,7 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler rai
       seen += 1
       next unless calls.include?(seen)
 
+      before_signal&.call
       Process.kill("USR1", Process.pid)
       sleep(5)
     end
@@ -392,10 +393,27 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler rai
 
   # Calls `producer.queue_size` and raises from a `USR1` trap handler at each of the given calls
   # of the method that `#with_inner` makes
-  def queue_size_trapped_at(klass, method_id, event, calls)
+  def queue_size_trapped_at(klass, method_id, event, calls, before_signal: nil)
     matches = ->(tp) { tp.defined_class == klass && tp.method_id == method_id }
 
-    trapped_at([event, :"c_#{event}"], calls, matches) { producer.queue_size }
+    trapped_at([event, :"c_#{event}"], calls, matches, before_signal: before_signal) do
+      producer.queue_size
+    end
+  end
+
+  # Runs the block and raises from a `USR1` trap handler at the first run of each of the given
+  # lines of `native_kafka.rb`, in order, given as `[stripped line, occurrence]`
+  def lines_trapped(*lines, &)
+    path = described_class.instance_method(:with_inner).source_location.first
+    source = File.readlines(path).map(&:strip)
+
+    linenos = lines.map do |text, occurrence|
+      source.each_index.select { |index| source[index] == text }.fetch(occurrence) + 1
+    end
+
+    matches = ->(tp) { tp.path == path && linenos.include?(tp.lineno) }
+
+    trapped_at([:line], (1..linenos.size).to_a, matches, &)
   end
 
   def expect_close_to_finish(client = producer)
@@ -422,6 +440,23 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler rai
     end
   end
 
+  context "when it raises before the lock for the decrement while close waits" do
+    it "wakes close" do
+      closer = nil
+
+      wait_for_close = lambda do
+        closer = Thread.new { producer.close }
+        sleep(0.01) until closer.status == "sleep"
+      end
+
+      queue_size_trapped_at(Thread::Mutex, :synchronize, :call, [2], before_signal: wait_for_close)
+
+      expect(closer.join(5)).not_to be_nil
+    ensure
+      closer&.kill
+    end
+  end
+
   context "when it raises after the decrement" do
     it "lets close finish" do
       queue_size_trapped_at(Thread::Mutex, :synchronize, :return, [2])
@@ -438,22 +473,38 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler rai
     end
   end
 
-  context "when it raises after the decrement of a call that holds the lock" do
-    let(:config) { rdkafka_producer_config }
-    let(:native) { config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer) }
-    let!(:client) { described_class.new(native, run_polling_thread: false, opaque: Rdkafka::Opaque.new) }
-
-    after { client.close unless client.closed? }
-
+  context "when it raises before the decrement and again after the retried decrement" do
     it "lets close finish" do
-      path = described_class.instance_method(:with_inner).source_location.first
-      lineno = File.readlines(path).index { |line| line.strip == "released = true" } + 1
-      matches = ->(tp) { tp.path == path && tp.lineno == lineno }
+      lines_trapped(["@operations_in_progress -= 1", 1], ["released = true", 1]) do
+        producer.queue_size
+      end
 
-      # `#synchronize` calls `#with_inner` while it holds the lock
-      trapped_at([:line], [1], matches) { client.synchronize { nil } }
+      expect_close_to_finish
+    end
+  end
 
-      expect_close_to_finish(client)
+  # `Consumer#close` calls `#with_inner` while it holds the lock
+  context "when the call holds the lock" do
+    let!(:consumer) { rdkafka_consumer_config.consumer }
+
+    after { consumer.close unless consumer.closed? }
+
+    context "when it raises after the decrement" do
+      it "lets close finish" do
+        lines_trapped(["released = true", 0]) { consumer.close }
+
+        expect_close_to_finish(consumer)
+      end
+    end
+
+    context "when it raises before the decrement and again after the retried decrement" do
+      it "lets close finish" do
+        lines_trapped(["@operations_in_progress -= 1", 0], ["released = true", 1]) do
+          consumer.close
+        end
+
+        expect_close_to_finish(consumer)
+      end
     end
   end
 end

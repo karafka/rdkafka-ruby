@@ -25,12 +25,12 @@ $stdout.sync = true
 MISSING_TOPIC = "negative-partition-count-probe-#{SecureRandom.hex(6)}"
 
 # Start from a clean process-wide cache so the assertion is unambiguous.
-Rdkafka::Producer.partitions_count_cache = Rdkafka::Producer::PartitionsCountCache.new
+Rdkafka::Producer.partition_count_cache = Rdkafka::Producer::PartitionCountCache.new
 
 producer = Rdkafka::Config.new("bootstrap.servers": "localhost:9092").producer
 
 count = producer.partition_count(MISSING_TOPIC)
-cached = Rdkafka::Producer.partitions_count_cache.to_h[MISSING_TOPIC]
+cached = Rdkafka::Producer.partition_count_cache.to_h[MISSING_TOPIC]
 
 producer.close
 

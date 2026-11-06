@@ -110,7 +110,11 @@ module Rdkafka
 
         @inner.nil? ? raise(ClosedInnerError) : yield(@inner)
       ensure
-        # Inline, not in `#release_operation`: an extra method call costs every call
+        # Deferred from the first step of the `ensure`: an interrupt delivered before the decrement
+        # (even at the branches below) would skip it and leave `#synchronize` (and so `#close`)
+        # waiting forever. JRuby delivers a `Thread#kill` that arrived during a blocking native
+        # call at its first chance after the call, the lock below. Inline, not in
+        # `#release_operation`: an extra method call costs every call
         begin
           Thread.handle_interrupt(DEFER_INTERRUPTS) do
             if !counted
@@ -279,30 +283,26 @@ module Rdkafka
 
     # Finishes the release of `#with_inner` when a signal trap handler raised during it
     #
-    # Interrupts are deferred from the first step: one delivered before the decrement would skip it
-    # and leave `#synchronize` (and so `#close`) waiting forever. JRuby delivers a `Thread#kill`
-    # that arrived during a blocking native call at its first chance after the call, the lock below.
-    #
     # A trap handler still runs (and can raise) under the mask, so the `ensure` calls this method
     # again until the release is done, then the error propagates.
     #
     # @param owned [Boolean] whether the caller already holds `@access_mutex`
-    # @param decrement [Boolean] whether the counter still has to be decremented
-    def release_operation(owned, decrement)
+    # @param counted [Boolean] whether the counter still has to be decremented
+    def release_operation(owned, counted)
       released = false
 
       Thread.handle_interrupt(DEFER_INTERRUPTS) do
         if owned
-          if decrement
+          if counted
             @operations_in_progress -= 1
-            decrement = false
+            counted = false
           end
         else
           # Not `lock` / `unlock`: a raise in a trap handler would leave the lock held
           @access_mutex.synchronize do
-            if decrement
+            if counted
               @operations_in_progress -= 1
-              decrement = false
+              counted = false
             end
 
             @operations_done.broadcast if @synchronizing && @operations_in_progress.zero?
@@ -312,7 +312,7 @@ module Rdkafka
         released = true
       end
     ensure
-      release_operation(owned, decrement) unless released
+      release_operation(owned, counted) unless released
     end
   end
 end

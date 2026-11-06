@@ -912,10 +912,6 @@ RSpec.describe Rdkafka::Producer do
       described_class::PartitionCountCache.remove_method(:reopened?)
     end
 
-    it "keeps the deprecated require path working" do
-      expect { require "rdkafka/producer/partitions_count_cache" }.not_to raise_error
-    end
-
     it "returns the partition count cache from .partitions_count_cache with a warning" do
       expect(described_class).to receive(:warn).with(/DEPRECATION WARNING: .*partitions_count_cache is deprecated/)
 

@@ -38,6 +38,7 @@
 - [Maintenance] Time out the SSL spec step of the Ubuntu aarch64 complementary CI workflow after 25 minutes.
 - [Maintenance] Create the topics of the producer `timestamp` specs with `retention.ms: -1`, so broker retention no longer deletes their messages.
 - [Maintenance] Stabilize the flaky `Consumer` "long running consumption" spec, and stop its producer when it fails so its statistics do not break later specs. Ported from karafka-rdkafka (#565).
+- [Maintenance] Share the topic metadata wait (`WaitForTopic`) and the RSS sampling helpers (`rss_kb`, `settle_heap`) between integration specs instead of copying them into each one. Ported from karafka-rdkafka (#621).
 - [Fix] Create one topic handle per topic when many threads produce to a new topic at once. On JRuby this race leaked topic handles and could crash with a segfault; `produce` now raises `TopicHandleCreationError` instead of passing a missing handle to librdkafka.
 - [Fix] Stop `Consumer#store_offset` and other calls that pass partition metadata from raising `NoMethodError` on JRuby.
 - [Fix] Raise `Rdkafka::LibraryLoadError` with the glibc upgrade hint instead of `NameError` when the precompiled librdkafka needs a newer glibc.

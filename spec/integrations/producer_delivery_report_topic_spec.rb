@@ -23,6 +23,7 @@
 require "rdkafka"
 require "securerandom"
 require_relative "support/native_call_counter"
+require_relative "support/wait_for_topic"
 
 $stdout.sync = true
 
@@ -35,14 +36,6 @@ def fail!(message)
   exit(1)
 end
 
-def topic_visible?(admin, topic)
-  admin.metadata(topic).topics.first&.dig(:partitions)&.any?
-rescue Rdkafka::RdkafkaError => e
-  raise unless e.code == :unknown_topic_or_part
-
-  false
-end
-
 config = Rdkafka::Config.new("bootstrap.servers": "localhost:9092")
 admin = config.admin
 producer = config.producer
@@ -51,12 +44,7 @@ topics = Array.new(2) { "it-delivery-topic-#{SecureRandom.hex(6)}" }
 begin
   topics.each { |topic| admin.create_topic(topic, 1, 1).wait(max_wait_timeout_ms: 15_000) }
 
-  deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 15
-  until topics.all? { |topic| topic_visible?(admin, topic) }
-    fail!("topics not visible in metadata") if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
-
-    sleep(0.1)
-  end
+  topics.each { |topic| WaitForTopic.wait_for_topic(admin, topic) }
 
   callback_reports = Queue.new
   producer.delivery_callback = ->(report) { callback_reports << report }

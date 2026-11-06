@@ -4,6 +4,13 @@ module Rdkafka
   # @private
   # A wrapper around a native kafka that polls and cleanly exits
   class NativeKafka
+    # Defers every asynchronous interrupt (`Thread#raise`, `Thread#kill`) for the decrement of the
+    # operations in progress counter. Frozen and `compare_by_identity`, so MRI uses it without
+    # copying it on every call.
+    DEFER_INTERRUPTS = { Object => :never }.compare_by_identity.freeze
+
+    private_constant :DEFER_INTERRUPTS
+
     # Creates a new NativeKafka wrapper
     # @param inner [FFI::Pointer] pointer to the native Kafka handle
     # @param run_polling_thread [Boolean] whether to run a background polling thread
@@ -84,26 +91,50 @@ module Rdkafka
     # @raise [ClosedInnerError] when the inner handle is nil
     def with_inner
       owned = @access_mutex.owned?
-
-      if owned
-        @operations_in_progress += 1
-      else
-        @access_mutex.synchronize do
-          @operations_done.wait(@access_mutex) while @synchronizing
-          @operations_in_progress += 1
-        end
-      end
+      # Set in the same step as the increment, so the `ensure` undoes only an increment that
+      # happened, even when `Thread#raise`, `Timeout` or `Thread#kill` interrupts this method
+      counted = false
+      released = false
 
       begin
-        @inner.nil? ? raise(ClosedInnerError) : yield(@inner)
-      ensure
         if owned
-          @operations_in_progress -= 1
+          @operations_in_progress += 1
+          counted = true
         else
           @access_mutex.synchronize do
-            @operations_in_progress -= 1
-            @operations_done.broadcast if @synchronizing && @operations_in_progress.zero?
+            @operations_done.wait(@access_mutex) while @synchronizing
+            @operations_in_progress += 1
+            counted = true
           end
+        end
+
+        @inner.nil? ? raise(ClosedInnerError) : yield(@inner)
+      ensure
+        # Deferred from the first step of the `ensure`: an interrupt delivered before the decrement
+        # (even at the branches below) would skip it and leave `#synchronize` (and so `#close`)
+        # waiting forever. JRuby delivers a `Thread#kill` that arrived during a blocking native
+        # call at its first chance after the call, the lock below. Inline, not in
+        # `#release_operation`: an extra method call costs every call
+        begin
+          Thread.handle_interrupt(DEFER_INTERRUPTS) do
+            if !counted
+              # Interrupted before the increment: nothing to undo
+            elsif owned
+              @operations_in_progress -= 1
+              counted = false
+            else
+              # Not `lock` / `unlock`: a signal trap handler still runs (and can raise) under the mask
+              @access_mutex.synchronize do
+                @operations_in_progress -= 1
+                counted = false
+                @operations_done.broadcast if @synchronizing && @operations_in_progress.zero?
+              end
+            end
+
+            released = true
+          end
+        ensure
+          release_operation(owned, counted) unless released
         end
       end
     end
@@ -246,6 +277,42 @@ module Rdkafka
         @poll_mutex.unlock
         @poll_mutex = nil
       end
+    end
+
+    private
+
+    # Finishes the release of `#with_inner` when a signal trap handler raised during it
+    #
+    # A trap handler still runs (and can raise) under the mask, so the `ensure` calls this method
+    # again until the release is done, then the error propagates.
+    #
+    # @param owned [Boolean] whether the caller already holds `@access_mutex`
+    # @param counted [Boolean] whether the counter still has to be decremented
+    def release_operation(owned, counted)
+      released = false
+
+      Thread.handle_interrupt(DEFER_INTERRUPTS) do
+        if owned
+          if counted
+            @operations_in_progress -= 1
+            counted = false
+          end
+        else
+          # Not `lock` / `unlock`: a raise in a trap handler would leave the lock held
+          @access_mutex.synchronize do
+            if counted
+              @operations_in_progress -= 1
+              counted = false
+            end
+
+            @operations_done.broadcast if @synchronizing && @operations_in_progress.zero?
+          end
+        end
+
+        released = true
+      end
+    ensure
+      release_operation(owned, counted) unless released
     end
   end
 end

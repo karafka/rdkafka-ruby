@@ -1,6 +1,8 @@
 # Rdkafka Changelog
 
 ## 0.32.1 (Unreleased)
+- [Fix] Keep `close` from hanging forever after a thread using the client was killed (JRuby) or interrupted by `Thread#raise` or `Timeout` (all Rubies). Ported from rdkafka-ruby (#1082).
+- [Fix] Keep `close` from hanging forever after a signal `trap` handler raised while the main thread used the client. Ported from rdkafka-ruby (#1100).
 - [Enhancement] Allocate fewer objects per handle: delivery and admin handles share a fixed set of locks instead of creating their own `Mutex` and `ConditionVariable`. Ported from rdkafka-ruby (#1087).
 
 ## 0.32.0 (2026-11-04)

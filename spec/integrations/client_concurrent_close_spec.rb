@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # This integration test verifies that many threads can close one client at the same time: every
-# `close` call returns `nil`, none raises, and the client ends closed.
+# `close` call returns `nil`, none raises, and the client is closed when each `close` returns.
 #
 # An app can close one client twice at once, e.g. its own shutdown thread and the `at_exit` hook of
 # `Rdkafka::Clients.close_all`. A late closer waits for the access lock while the first one closes
@@ -13,8 +13,8 @@
 # No broker is required: closing does not need a connection.
 #
 # Exit codes:
-# - 0: every `close` returned `nil` and every client is closed
-# - 1: a `close` raised or returned something else, or a client is not closed
+# - 0: every `close` returned `nil` with its client closed
+# - 1: a `close` raised, returned something else or returned before its client was closed
 
 require "rdkafka"
 
@@ -35,7 +35,7 @@ CONFIGS.each do |type, config|
     closers = Array.new(THREADS) do
       Thread.new do
         barrier.pop
-        client.close
+        [client.close, client.closed?]
       rescue => e
         e
       end
@@ -43,8 +43,7 @@ CONFIGS.each do |type, config|
 
     THREADS.times { barrier << true }
 
-    exit(1) unless closers.map(&:value).all?(nil)
-    exit(1) unless client.closed?
+    exit(1) unless closers.map(&:value).all?([nil, true])
   end
 end
 

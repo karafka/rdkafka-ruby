@@ -268,9 +268,8 @@ module Rdkafka
         @consumer_closed = true
       end
 
-      return if close_response.nil?
-
-      self.class.report_close_error(@native_kafka, close_response)
+      # Late closers still close the native handle, also when the first closer was interrupted
+      self.class.report_close_error(@native_kafka, close_response) unless close_response.nil?
 
       @native_kafka.close
     end

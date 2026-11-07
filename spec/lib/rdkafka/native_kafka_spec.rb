@@ -519,7 +519,7 @@ RSpec.describe Rdkafka::NativeKafka, "#close from many threads" do
     admin: :rdkafka_config
   }.each do |type, config|
     context "with a #{type}" do
-      it "returns nil in every thread and leaves the client closed" do
+      it "returns nil in every thread once the client is closed" do
         20.times do
           client = send(config).public_send(type)
           barrier = Queue.new
@@ -527,14 +527,13 @@ RSpec.describe Rdkafka::NativeKafka, "#close from many threads" do
           threads = Array.new(threads_count) do
             Thread.new do
               barrier.pop
-              client.close
+              [client.close, client.closed?]
             end
           end
 
           threads_count.times { barrier << true }
 
-          expect(threads.map(&:value)).to all(be_nil)
-          expect(client).to be_closed
+          expect(threads.map(&:value)).to all(eq([nil, true]))
         ensure
           client&.close
         end

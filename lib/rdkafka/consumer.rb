@@ -28,6 +28,8 @@ module Rdkafka
       # consumer queue without capturing `self` (capturing the consumer in its own finalizer would
       # pin it and prevent it from ever being collected).
       @consumer_queue_holder = []
+      # Set under the native access lock once `rd_kafka_consumer_close` ran
+      @consumer_closed = false
 
       # Makes sure the consumer is closed (consumer queue destroyed and native client destroyed)
       # before it gets GCed by Ruby.
@@ -251,7 +253,10 @@ module Rdkafka
 
       close_response = nil
 
-      @native_kafka.synchronize do |inner|
+      # Concurrent closers wait here, only the first one closes the consumer
+      @native_kafka.synchronize_unless_closed do |inner|
+        next if @consumer_closed
+
         close_response = Rdkafka::Bindings.rd_kafka_consumer_close(inner)
 
         if @consumer_queue
@@ -259,7 +264,11 @@ module Rdkafka
           @consumer_queue = nil
           @consumer_queue_holder[0] = nil
         end
+
+        @consumer_closed = true
       end
+
+      return if close_response.nil?
 
       self.class.report_close_error(@native_kafka, close_response)
 

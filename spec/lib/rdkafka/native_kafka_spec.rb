@@ -513,44 +513,32 @@ end
 RSpec.describe Rdkafka::NativeKafka, "#close from many threads" do
   let(:threads_count) { 16 }
 
-  shared_examples "closes once without errors" do
-    it "returns nil in every thread and leaves the client closed" do
-      20.times do
-        client = build_client.call
-        barrier = Queue.new
+  {
+    consumer: :rdkafka_consumer_config,
+    producer: :rdkafka_producer_config,
+    admin: :rdkafka_config
+  }.each do |type, config|
+    context "with a #{type}" do
+      it "returns nil in every thread and leaves the client closed" do
+        20.times do
+          client = send(config).public_send(type)
+          barrier = Queue.new
 
-        threads = Array.new(threads_count) do
-          Thread.new do
-            barrier.pop
-            client.close
+          threads = Array.new(threads_count) do
+            Thread.new do
+              barrier.pop
+              client.close
+            end
           end
+
+          threads_count.times { barrier << true }
+
+          expect(threads.map(&:value)).to all(be_nil)
+          expect(client).to be_closed
+        ensure
+          client&.close
         end
-
-        threads_count.times { barrier << true }
-
-        expect(threads.map(&:value)).to all(be_nil)
-        expect(client).to be_closed
-      ensure
-        client&.close
       end
     end
-  end
-
-  context "with a consumer" do
-    let(:build_client) { -> { rdkafka_consumer_config.consumer } }
-
-    it_behaves_like "closes once without errors"
-  end
-
-  context "with a producer" do
-    let(:build_client) { -> { rdkafka_producer_config.producer } }
-
-    it_behaves_like "closes once without errors"
-  end
-
-  context "with an admin" do
-    let(:build_client) { -> { rdkafka_config.admin } }
-
-    it_behaves_like "closes once without errors"
   end
 end

@@ -253,7 +253,8 @@ module Rdkafka
 
       close_response = nil
 
-      # Concurrent closers wait here, only the first one closes the consumer
+      # The handle stays open until `NativeKafka#close`, so a late or retried closer can get here
+      # after the native consumer was already closed
       @native_kafka.synchronize_unless_closed do |inner|
         next if @consumer_closed
 
@@ -268,7 +269,6 @@ module Rdkafka
         @consumer_closed = true
       end
 
-      # Late closers still close the native handle, also when the first closer was interrupted
       self.class.report_close_error(@native_kafka, close_response) unless close_response.nil?
 
       @native_kafka.close

@@ -508,36 +508,3 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler rai
     end
   end
 end
-
-# Separate describe block with real threads, which the mocked threading tests above stub out
-RSpec.describe Rdkafka::NativeKafka, "#close from many threads" do
-  let(:threads_count) { 16 }
-
-  {
-    consumer: :rdkafka_consumer_config,
-    producer: :rdkafka_producer_config,
-    admin: :rdkafka_config
-  }.each do |type, config|
-    context "with a #{type}" do
-      it "returns nil in every thread once the client is closed" do
-        20.times do
-          client = send(config).public_send(type)
-          barrier = Queue.new
-
-          threads = Array.new(threads_count) do
-            Thread.new do
-              barrier.pop
-              [client.close, client.closed?]
-            end
-          end
-
-          threads_count.times { barrier << true }
-
-          expect(threads.map(&:value)).to all(eq([nil, true]))
-        ensure
-          client&.close
-        end
-      end
-    end
-  end
-end

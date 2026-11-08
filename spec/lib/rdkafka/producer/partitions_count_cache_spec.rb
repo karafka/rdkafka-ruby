@@ -522,6 +522,40 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
           expect(counts[shared_topic][1]).to eq(i + 1)
         end
       end
+
+      {
+        "get" => ->(cache, topic_name) { cache.get(topic_name) { -1 } },
+        "set" => ->(cache, topic_name) { cache.set(topic_name, 1) }
+      }.each do |method_name, call|
+        it "stays usable when a Timeout interrupts #{method_name} in many threads" do
+          long_ttl_cache = described_class.new(ttl_ms: 600_000)
+          topics = Array.new(100) { |i| "interrupted-#{i}" }
+          deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 1
+          errors = Queue.new
+
+          topics.each { |topic_name| long_ttl_cache.set(topic_name, 1) }
+
+          workers = Array.new(4) do
+            Thread.new do
+              while Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+                begin
+                  Timeout.timeout(0.00001) do
+                    1_000.times { |i| call.call(long_ttl_cache, topics[i % topics.size]) }
+                  end
+                rescue Timeout::Error
+                  nil
+                end
+              end
+            rescue => e
+              errors << e
+            end
+          end
+
+          expect(workers.map { |worker| worker.join(5) }).to all(be_truthy)
+          expect(errors.size).to eq(0)
+          expect(Thread.new { call.call(long_ttl_cache, topics.first) }.join(1)).to be_truthy
+        end
+      end
     end
   end
 

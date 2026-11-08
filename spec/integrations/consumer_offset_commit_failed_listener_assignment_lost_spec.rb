@@ -20,6 +20,7 @@
 
 require "rdkafka"
 require "securerandom"
+require_relative "support/wait_for_topic"
 
 $stdout.sync = true
 
@@ -75,15 +76,7 @@ admin = Rdkafka::Config.new("bootstrap.servers": BOOTSTRAP).admin
 admin.create_topic(TOPIC, 1, 1).wait
 
 # The topic must be in the metadata before we produce to it
-deadline = now + TIMEOUT
-begin
-  admin.metadata(TOPIC)
-rescue Rdkafka::RdkafkaError
-  raise if now > deadline
-
-  sleep(0.1)
-  retry
-end
+WaitForTopic.wait_for_topic(admin, TOPIC, timeout: TIMEOUT)
 
 producer = Rdkafka::Config.new("bootstrap.servers": BOOTSTRAP).producer
 producer.produce(topic: TOPIC, payload: "payload", partition: 0).wait

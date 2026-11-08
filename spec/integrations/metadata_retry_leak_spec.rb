@@ -26,6 +26,7 @@
 
 require "rdkafka"
 require_relative "support/native_call_counter"
+require_relative "support/memory"
 
 $stdout.sync = true
 
@@ -54,10 +55,6 @@ module ForceMetadataRetry
   def sleep(*) = nil
 end
 Rdkafka::Metadata.prepend(ForceMetadataRetry)
-
-def rss_kb
-  File.read("/proc/self/status")[/VmRSS:\s+(\d+)/, 1].to_i
-end
 
 measurable = File.exist?("/proc/self/status")
 

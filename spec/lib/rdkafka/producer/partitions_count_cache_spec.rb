@@ -528,6 +528,10 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
         "set" => ->(cache, topic_name) { cache.set(topic_name, 1) }
       }.each do |method_name, call|
         it "stays usable when a Timeout interrupts #{method_name} in many threads" do
+          if defined?(JRUBY_VERSION) && Gem::Version.new(JRUBY_VERSION) < Gem::Version.new("10.0.8.0")
+            skip "Mutex#synchronize can leave the lock held on an interrupt before JRuby 10.0.8.0"
+          end
+
           long_ttl_cache = described_class.new(ttl_ms: 600_000)
           topics = Array.new(100) { |i| "interrupted-#{i}" }
           deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 1

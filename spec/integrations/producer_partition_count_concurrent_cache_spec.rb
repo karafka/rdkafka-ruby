@@ -5,7 +5,7 @@
 #
 # Readers of the cache took no lock and inserts for different topics ran in parallel. On JRuby,
 # where threads run truly in parallel, the cache lost topics and `partition_count` raised
-# `NoMethodError`. Every cache access now runs under one cache-wide mutex.
+# `NoMethodError`.
 #
 # 1. 16 threads start together behind a barrier.
 # 2. Each looks up 20 topics of its own and 8 topics shared by all threads. None of them exists,
@@ -21,8 +21,6 @@
 require "rdkafka"
 require "securerandom"
 require "logger"
-
-$stdout.sync = true
 
 Rdkafka::Config.logger = Logger.new(nil)
 
@@ -59,31 +57,20 @@ THREADS.times { start << true }
 threads.each(&:join)
 
 begin
-  unless errors.empty?
-    error = errors.pop
-    warn "FAIL: partition_count raised #{error.class}: #{error.message}"
-    exit(1)
-  end
+  exit(1) unless errors.empty?
 
   counts = Rdkafka::Producer.partitions_count_cache.to_h
   expected_size = THREADS * TOPICS_PER_THREAD + SHARED_TOPICS.size
 
-  unless counts.size == expected_size
-    warn "FAIL: the cache holds #{counts.size} topics, expected #{expected_size}"
-    exit(1)
-  end
+  exit(1) unless counts.size == expected_size
 
   until results.empty?
     topic, count = results.pop
     cached = counts[topic]
 
-    next if cached && cached[1] == count
-
-    warn "FAIL: the cache holds #{cached.inspect} for #{topic}, partition_count returned #{count}"
-    exit(1)
+    exit(1) unless cached && cached[1] == count
   end
 
-  puts "PASS: #{expected_size} topics cached consistently by #{THREADS} threads"
   exit(0)
 ensure
   producer.close

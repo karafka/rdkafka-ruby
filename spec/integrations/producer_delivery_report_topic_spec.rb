@@ -23,6 +23,7 @@
 require "rdkafka"
 require "securerandom"
 require_relative "support/native_call_counter"
+require_relative "support/wait_for_topic"
 
 $stdout.sync = true
 
@@ -43,12 +44,7 @@ topics = Array.new(2) { "it-delivery-topic-#{SecureRandom.hex(6)}" }
 begin
   topics.each { |topic| admin.create_topic(topic, 1, 1).wait(max_wait_timeout_ms: 15_000) }
 
-  deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 15
-  until topics.all? { |topic| admin.metadata(topic).topics.first&.dig(:partitions)&.any? }
-    fail!("topics not visible in metadata") if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
-
-    sleep(0.1)
-  end
+  topics.each { |topic| WaitForTopic.wait_for_topic(admin, topic) }
 
   callback_reports = Queue.new
   producer.delivery_callback = ->(report) { callback_reports << report }

@@ -73,7 +73,7 @@ jobs:
     # automatically
     runs-on: ubuntu-26.04-arm
     container:
-      image: ubuntu:22.04@sha256:0a9887931b0e38af2e3487ed39e29436b0535c4f3f52e57745baaf79d1898956 # renovate: ignore
+      image: ubuntu:22.04@sha256:076e7bf82319619f28dd0aa9c02ab34b055ad37100395b4f49a2ffba04fb5e11 # renovate: ignore
     steps:
       - name: Install build dependencies
         env:
@@ -163,7 +163,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Ruby
-        uses: ruby/setup-ruby@26e5b7d197ebf60545ee9667bcbace0be11ccaec # v1.334.0
+        uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94 # v1.336.0
         with:
           ruby-version: ${{matrix.ruby}}
           bundler-cache: false
@@ -208,6 +208,7 @@ jobs:
           cd ext && bundle exec rake
           cd ..
       - name: Run all specs in SSL (compiled flow)
+        timeout-minutes: 25
         env:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           KAFKA_SSL_ENABLED: "true"
@@ -261,7 +262,7 @@ jobs:
           name: librdkafka-precompiled-ubuntu-aarch64-complementary
           path: ext/
       - name: Set up Ruby
-        uses: ruby/setup-ruby@26e5b7d197ebf60545ee9667bcbace0be11ccaec # v1.334.0
+        uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94 # v1.336.0
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: false

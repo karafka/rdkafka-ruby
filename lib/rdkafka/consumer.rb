@@ -28,6 +28,8 @@ module Rdkafka
       # consumer queue without capturing `self` (capturing the consumer in its own finalizer would
       # pin it and prevent it from ever being collected).
       @consumer_queue_holder = []
+      # Set under the native access lock once `rd_kafka_consumer_close` ran
+      @consumer_closed = false
 
       # Makes sure the consumer is closed (consumer queue destroyed and native client destroyed)
       # before it gets GCed by Ruby.
@@ -148,7 +150,7 @@ module Rdkafka
 
     # Polls for events in a non-blocking loop, yielding the count after each iteration.
     #
-    # This method processes events (stats, errors, etc.) in a single GVL/mutex session,
+    # This method processes events (stats, errors, etc.) in a single GVL session,
     # which is more efficient than repeated individual polls. It uses non-blocking polls
     # internally (no GVL release between polls).
     #
@@ -169,8 +171,9 @@ module Rdkafka
     #   consumer.events_poll_nb_each do |_count|
     #     :stop if monotonic_now >= deadline
     #   end
-    # @note This method holds the inner lock until the queue is empty or `:stop` is returned.
-    #   Other consumer operations will wait until this method returns.
+    # @note This method runs inside `with_inner` and does not hold a lock while it loops.
+    #   Other operations on the same client run concurrently. `close` waits until this
+    #   method returns.
     # @note This method is thread-safe as it uses @native_kafka.with_inner synchronization
     # @note Do NOT use this if `consumer_poll_set` was set to `true`
     def events_poll_nb_each
@@ -187,7 +190,7 @@ module Rdkafka
 
     # Polls for messages in a non-blocking loop, yielding each message to the caller.
     #
-    # This method processes messages in a single GVL/mutex session until the queue is empty
+    # This method processes messages in a single GVL session until the queue is empty
     # or the caller returns `:stop`. It handles the message pointer lifecycle internally,
     # ensuring proper cleanup via `rd_kafka_message_destroy`.
     #
@@ -214,8 +217,9 @@ module Rdkafka
     #   `events_poll_nb_each` which uses `rd_kafka_poll` for event callbacks (delivery reports,
     #   statistics, etc.). For consumers, use this method to receive messages and
     #   `events_poll_nb_each` for processing background events.
-    # @note This method holds the inner lock for the duration. Other consumer operations
-    #   will wait until this method returns.
+    # @note This method runs inside `with_inner` and does not hold a lock while it loops.
+    #   Other operations on the same client run concurrently. `close` waits until this
+    #   method returns.
     # @note Timeout/max_messages logic should be implemented by the caller
     def poll_nb_each
       closed_consumer_check(__method__)
@@ -249,7 +253,11 @@ module Rdkafka
 
       close_response = nil
 
-      @native_kafka.synchronize do |inner|
+      # The handle stays open until `NativeKafka#close`, so a late or retried closer can get here
+      # after the native consumer was already closed
+      @native_kafka.synchronize_unless_closed do |inner|
+        next if @consumer_closed
+
         close_response = Rdkafka::Bindings.rd_kafka_consumer_close(inner)
 
         if @consumer_queue
@@ -257,9 +265,11 @@ module Rdkafka
           @consumer_queue = nil
           @consumer_queue_holder[0] = nil
         end
+
+        @consumer_closed = true
       end
 
-      self.class.report_close_error(@native_kafka, close_response)
+      self.class.report_close_error(@native_kafka, close_response) unless close_response.nil?
 
       @native_kafka.close
     end

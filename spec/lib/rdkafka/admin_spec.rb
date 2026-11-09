@@ -157,6 +157,113 @@ RSpec.describe Rdkafka::Admin do
       expect(create_topic_report.error_string).to be_nil
       expect(create_topic_report.result_name).to eq(topic_name)
     end
+
+    context "when the topic config is given as a hash without braces" do
+      let(:configs) do
+        admin
+          .describe_configs([{ resource_type: 2, resource_name: topic_name }])
+          .wait(max_wait_timeout_ms: 15_000)
+          .resources
+          .first
+          .configs
+          .to_h { |config| [config.name, config.value] }
+      end
+      let(:cleanup_policy) { configs.fetch("cleanup.policy") }
+
+      it "creates the topic with that config" do
+        admin.create_topic(topic_name, 1, 1, "cleanup.policy" => "compact").wait(max_wait_timeout_ms: 15_000)
+
+        expect(cleanup_policy).to eq("compact")
+      end
+
+      it "merges it with a config given as a hash with braces" do
+        admin
+          .create_topic(topic_name, 1, 1, { "retention.ms" => "1000" }, "cleanup.policy" => "compact")
+          .wait(max_wait_timeout_ms: 15_000)
+
+        expect(cleanup_policy).to eq("compact")
+        expect(configs.fetch("retention.ms")).to eq("1000")
+      end
+
+      it "creates the topic with a Symbol keyed config together with keyword options" do
+        admin
+          .create_topic(topic_name, 1, 1, "cleanup.policy": "compact", operation_timeout_ms: 30_000)
+          .wait(max_wait_timeout_ms: 15_000)
+
+        expect(cleanup_policy).to eq("compact")
+      end
+    end
+
+    context "with validate_only" do
+      it "validates the request without creating the topic" do
+        report = admin
+          .create_topic(topic_name, topic_partition_count, topic_replication_factor, topic_config, validate_only: true)
+          .wait(max_wait_timeout_ms: 15_000)
+
+        expect(report.error_string).to be_nil
+        expect(report.result_name).to eq(topic_name)
+        expect { admin.metadata(topic_name) }.to raise_error(Rdkafka::RdkafkaError, /unknown_topic_or_part/)
+      end
+
+      it "reports an invalid topic config" do
+        handle = admin.create_topic(
+          topic_name,
+          topic_partition_count,
+          topic_replication_factor,
+          invalid_topic_config,
+          validate_only: true
+        )
+
+        expect { handle.wait(max_wait_timeout_ms: 15_000) }.to raise_error(Rdkafka::RdkafkaError, /invalid_config/)
+      end
+
+      it "reports a topic that already exists" do
+        admin.create_topic(topic_name, 1, 1).wait(max_wait_timeout_ms: 15_000)
+
+        handle = admin.create_topic(topic_name, 1, 1, validate_only: true)
+
+        expect { handle.wait(max_wait_timeout_ms: 15_000) }.to raise_error(Rdkafka::RdkafkaError, /topic_already_exists/)
+      end
+    end
+
+    context "with timeouts" do
+      it "creates a topic" do
+        report = admin
+          .create_topic(topic_name, 1, 1, operation_timeout_ms: 30_000, request_timeout_ms: 30_000)
+          .wait(max_wait_timeout_ms: 15_000)
+
+        expect(report.error_string).to be_nil
+      end
+
+      it "raises when the operation timeout is out of range" do
+        expect {
+          admin.create_topic(topic_name, 1, 1, operation_timeout_ms: 3_600_001)
+        }.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
+      end
+
+      it "raises when the request timeout is out of range" do
+        expect {
+          admin.create_topic(topic_name, 1, 1, request_timeout_ms: -1)
+        }.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
+      end
+    end
+  end
+
+  describe "admin request timeout" do
+    let(:unreachable_admin) do
+      Rdkafka::Config.new("bootstrap.servers": "127.0.0.1:65010").admin
+    end
+
+    after { unreachable_admin.close }
+
+    it "fails the request after request_timeout_ms instead of socket.timeout.ms" do
+      handle = unreachable_admin.create_topic("request-timeout-topic", 1, 1, request_timeout_ms: 1_000)
+
+      started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+      expect { handle.wait(max_wait_timeout_ms: 15_000) }.to raise_error(Rdkafka::RdkafkaError, /timed_out/)
+      expect(Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at).to be < 10
+    end
   end
 
   describe "operation-level failure handling" do
@@ -844,6 +951,29 @@ RSpec.describe Rdkafka::Admin do
           }.to raise_error RuntimeError, /oops/
         end
       end
+    end
+
+    it "deletes a topic with timeouts" do
+      admin.create_topic(topic_name, 1, 1).wait(max_wait_timeout_ms: 15_000)
+
+      delete_topic_report = admin
+        .delete_topic(topic_name, operation_timeout_ms: 30_000, request_timeout_ms: 30_000)
+        .wait(max_wait_timeout_ms: 15_000)
+
+      expect(delete_topic_report.error_string).to be_nil
+      expect(delete_topic_report.result_name).to eq(topic_name)
+    end
+
+    it "raises when the request timeout is out of range" do
+      expect {
+        admin.delete_topic(topic_name, request_timeout_ms: 3_600_001)
+      }.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
+    end
+
+    it "raises when the operation timeout is out of range" do
+      expect {
+        admin.delete_topic(topic_name, operation_timeout_ms: -2)
+      }.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
     end
 
     it "deletes a topic that was newly created" do
@@ -1790,6 +1920,32 @@ RSpec.describe Rdkafka::Admin do
         admin.create_partitions(topic_name, 10).wait
         sleep(1)
         expect(metadata[:partition_count]).to eq(10)
+      end
+
+      it "expect not to change number of partitions with validate_only" do
+        admin.create_partitions(topic_name, 10, validate_only: true).wait(max_wait_timeout_ms: 15_000)
+        sleep(1)
+        expect(metadata[:partition_count]).to eq(1)
+      end
+
+      it "expect validate_only to report an invalid request" do
+        expect {
+          admin.create_partitions(topic_name, 1, validate_only: true).wait(max_wait_timeout_ms: 15_000)
+        }.to raise_error(Rdkafka::RdkafkaError, /invalid_partitions/)
+      end
+
+      it "expect to change number of partitions with timeouts" do
+        admin
+          .create_partitions(topic_name, 10, operation_timeout_ms: 30_000, request_timeout_ms: 30_000)
+          .wait(max_wait_timeout_ms: 15_000)
+        sleep(1)
+        expect(metadata[:partition_count]).to eq(10)
+      end
+
+      it "expect to raise when the operation timeout is out of range" do
+        expect {
+          admin.create_partitions(topic_name, 10, operation_timeout_ms: -2)
+        }.to raise_error(Rdkafka::RdkafkaError, /invalid_arg/)
       end
     end
   end

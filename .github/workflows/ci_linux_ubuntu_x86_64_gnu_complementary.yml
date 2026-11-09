@@ -137,8 +137,6 @@ jobs:
 
   specs_install:
     timeout-minutes: 50
-    # JRuby is non-blocking: a failing JRuby job shows red but does not fail the workflow
-    continue-on-error: ${{ matrix.continue-on-error || false }}
     strategy:
       fail-fast: false
       matrix:
@@ -151,8 +149,6 @@ jobs:
         include:
           - ruby: '3.4'
             coverage: 'true'
-          - ruby: 'jruby-10.0'
-            continue-on-error: true
     runs-on: ubuntu-${{ matrix.ubuntu-version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

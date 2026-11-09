@@ -52,6 +52,7 @@
 - [Fix] Pass the config resource array count to librdkafka as `size_t`. Ported from karafka-rdkafka (#608).
 - [Fix] Keep `close` from hanging forever after a signal `trap` handler raised while the main thread used the client.
 - [Fix] Keep the shared partition count cache consistent when many threads produce with `partition_key` or call `partition_count` at once. On JRuby it lost topics and raised `NoMethodError`.
+- [Fix] Return `nil` from every `close` call when several threads close one consumer, producer or admin at once, instead of raising `ClosedInnerError` in the later callers.
 
 ## 0.31.0 (2026-10-09)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.

@@ -13,8 +13,7 @@
 #
 # The run starts once the first signal arrived: the sender is a new Ruby process, and JRuby boots it
 # in longer than `RUN_FOR`. JRuby runs each trap handler in its own thread and raises the error in
-# the main thread later, so one token in a queue lets only one raise be pending, and the main thread
-# takes the token back (or waits for the pending raise) before it leaves the loop.
+# the main thread later.
 #
 # No broker is required: `queue_size` reads only the local queue.
 #
@@ -37,7 +36,7 @@ producer = Rdkafka::Config.new(
 
 raised = 0
 signaled = false
-# Holds at most one token, pushed only inside the `begin` below, so no raise lands in the `rescue`
+# Holds at most one token, so no raise lands in the `rescue`
 token = Queue.new
 
 trap("USR1") do

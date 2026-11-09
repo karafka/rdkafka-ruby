@@ -51,6 +51,7 @@
 - [Fix] Pass the error buffer size to librdkafka as `size_t` when setting config options and creating clients. Ported from karafka-rdkafka (#603).
 - [Fix] Pass the config resource array count to librdkafka as `size_t`. Ported from karafka-rdkafka (#608).
 - [Fix] Keep `close` from hanging forever after a signal `trap` handler raised while the main thread used the client.
+- [Fix] Return `nil` from every `close` call when several threads close one consumer, producer or admin at once, instead of raising `ClosedInnerError` in the later callers.
 
 ## 0.31.0 (2026-10-09)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.

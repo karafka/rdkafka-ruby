@@ -53,16 +53,14 @@ module Rdkafka
         proc do
           next if native_kafka.closed?
 
-          close_response = nil
-
           native_kafka.synchronize do |inner|
             close_response = Rdkafka::Bindings.rd_kafka_consumer_close(inner)
 
             queue = queue_holder[0]
             Rdkafka::Bindings.rd_kafka_queue_destroy(queue) if queue
-          end
 
-          report_close_error(native_kafka, close_response)
+            report_close_error(native_kafka, close_response)
+          end
 
           native_kafka.close
         end
@@ -71,9 +69,9 @@ module Rdkafka
       # Reports a failed `rd_kafka_consumer_close` (e.g. of a fatally-errored consumer) through
       # {Bindings::ErrorCallback}, the same path as errors emitted by librdkafka, so it reaches
       # {Config.error_callback} in the shape the callback expects (libraries such as karafka-core
-      # replace `ErrorCallback`). It runs after the close, but before the native client is
-      # destroyed, as the callback reads the client name from it. Close runs during shutdown and
-      # from the GC finalizer, so the error is reported, never raised.
+      # replace `ErrorCallback`). It runs under the access lock of the close, so a concurrent
+      # closer cannot destroy the native client the callback reads the client name from. Close
+      # runs during shutdown and from the GC finalizer, so the error is reported, never raised.
       #
       # @private
       # @param native_kafka [NativeKafka] the wrapped native client
@@ -251,8 +249,6 @@ module Rdkafka
       return if closed?
       ObjectSpace.undefine_finalizer(self)
 
-      close_response = nil
-
       # The handle stays open until `NativeKafka#close`, so a late or retried closer can get here
       # after the native consumer was already closed
       @native_kafka.synchronize_unless_closed do |inner|
@@ -267,9 +263,9 @@ module Rdkafka
         end
 
         @consumer_closed = true
-      end
 
-      self.class.report_close_error(@native_kafka, close_response) unless close_response.nil?
+        self.class.report_close_error(@native_kafka, close_response)
+      end
 
       @native_kafka.close
     end

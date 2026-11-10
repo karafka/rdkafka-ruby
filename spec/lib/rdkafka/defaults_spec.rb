@@ -80,7 +80,8 @@ RSpec.describe Rdkafka::Defaults do
   end
 
   describe "deprecated constants" do
-    # Ruby 3.3 has no Warning.categories, so the spec helper leaves deprecation warnings off
+    # Enabled so a `deprecate_constant` warning would show; Ruby 3.3 has no Warning.categories,
+    # so the spec helper leaves deprecation warnings off
     around do |example|
       deprecated = Warning[:deprecated]
       Warning[:deprecated] = true
@@ -89,11 +90,8 @@ RSpec.describe Rdkafka::Defaults do
       Warning[:deprecated] = deprecated
     end
 
-    it "keeps PARTITIONS_COUNT_CACHE_TTL_MS as a deprecated alias of PARTITION_COUNT_CACHE_TTL_MS" do
-      expect(Warning).to receive(:warn).with(
-        /constant Rdkafka::Defaults::PARTITIONS_COUNT_CACHE_TTL_MS is deprecated/,
-        category: :deprecated
-      )
+    it "keeps PARTITIONS_COUNT_CACHE_TTL_MS as an alias of PARTITION_COUNT_CACHE_TTL_MS without a warning" do
+      expect(Warning).not_to receive(:warn)
 
       expect(described_class::PARTITIONS_COUNT_CACHE_TTL_MS).to eq(described_class::PARTITION_COUNT_CACHE_TTL_MS)
     end

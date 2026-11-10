@@ -254,6 +254,5 @@ module Rdkafka
 
     # @deprecated Use {PartitionCountCache} instead. It will be removed in v1.0.0.
     PartitionsCountCache = PartitionCountCache
-    deprecate_constant :PartitionsCountCache
   end
 end

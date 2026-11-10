@@ -872,7 +872,8 @@ RSpec.describe Rdkafka::Producer do
 
     after { described_class.partition_count_cache = original_cache }
 
-    # Ruby 3.3 has no Warning.categories, so the spec helper leaves deprecation warnings off
+    # Enabled so a `deprecate_constant` warning would show; Ruby 3.3 has no Warning.categories,
+    # so the spec helper leaves deprecation warnings off
     around do |example|
       deprecated = Warning[:deprecated]
       Warning[:deprecated] = true
@@ -881,11 +882,8 @@ RSpec.describe Rdkafka::Producer do
       Warning[:deprecated] = deprecated
     end
 
-    it "keeps PartitionsCountCache as a deprecated alias of PartitionCountCache" do
-      expect(Warning).to receive(:warn).with(
-        /constant Rdkafka::Producer::PartitionsCountCache is deprecated/,
-        category: :deprecated
-      )
+    it "keeps PartitionsCountCache as an alias of PartitionCountCache without a warning" do
+      expect(Warning).not_to receive(:warn)
 
       expect(described_class::PartitionsCountCache).to be(described_class::PartitionCountCache)
     end
@@ -897,8 +895,6 @@ RSpec.describe Rdkafka::Producer do
     end
 
     it "reopens the live cache class when PartitionsCountCache is reopened" do
-      allow(Warning).to receive(:warn)
-
       described_class.module_eval(<<~RUBY, __FILE__, __LINE__ + 1)
         class PartitionsCountCache
           def reopened?

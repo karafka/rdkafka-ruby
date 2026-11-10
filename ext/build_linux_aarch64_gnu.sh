@@ -191,7 +191,7 @@ cd "$ZLIB_DIR"
 if [ ! -f "$ZLIB_PREFIX/lib/libz.a" ]; then
     log "Configuring and building zlib for ARM64..."
     make clean 2>/dev/null || true
-    export CFLAGS="-fPIC"
+    export CFLAGS="-fPIC -O2"
     ./configure --prefix="$ZLIB_PREFIX" --static
     make -j$(get_cpu_count)
     make install

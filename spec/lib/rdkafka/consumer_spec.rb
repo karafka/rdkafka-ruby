@@ -703,6 +703,56 @@ RSpec.describe Rdkafka::Consumer do
       expect(Rdkafka::Config.logger).not_to have_received(:error)
     end
 
+    context "when another thread closes the consumer at the same time" do
+      let(:late_closer) { [] }
+
+      before do
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_consumer_close).and_wrap_original do |original, *args|
+          # Starts the late closer while the first one holds the access lock
+          if late_closer.empty?
+            late_closer << Thread.new { [consumer.close, consumer.closed?] }
+            Thread.pass until late_closer.first.status == "sleep"
+          end
+
+          original.call(*args)
+        end
+
+        # Lets the late closer finish before the first one closes the native client
+        allow(described_class).to receive(:report_close_error).and_wrap_original do |original, *args|
+          late_closer.first.join
+          original.call(*args)
+        end
+      end
+
+      it "closes the native consumer once and returns from both calls with the consumer closed" do
+        expect(consumer.close).to be_nil
+        expect(late_closer.first.value).to eq([nil, true])
+        expect(consumer.closed?).to be(true)
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_consumer_close).once
+      end
+    end
+
+    context "when the first close is interrupted after closing the native consumer" do
+      before do
+        calls = 0
+
+        allow(described_class).to receive(:report_close_error).and_wrap_original do |original, *args|
+          calls += 1
+          raise Interrupt if calls == 1
+
+          original.call(*args)
+        end
+      end
+
+      it "destroys the native client on the next close" do
+        expect { consumer.close }.to raise_error(Interrupt)
+        expect(consumer.closed?).to be(false)
+
+        expect(consumer.close).to be_nil
+        expect(consumer.closed?).to be(true)
+      end
+    end
+
     context "when there are outgoing operations in other threads" do
       it "waits and not crash" do
         times = []

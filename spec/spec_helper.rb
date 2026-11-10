@@ -53,7 +53,7 @@ RSpec.configure do |config|
     Rdkafka::Config.error_callback = nil
     Rdkafka::Config.oauthbearer_token_refresh_callback = nil
     # We need to clear it so state does not leak between specs
-    Rdkafka::Producer.partitions_count_cache.to_h.clear
+    Rdkafka::Producer.partition_count_cache.to_h.clear
   end
 
   config.before(:suite) do

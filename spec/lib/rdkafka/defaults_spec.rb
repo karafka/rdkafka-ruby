@@ -74,8 +74,32 @@ RSpec.describe Rdkafka::Defaults do
   end
 
   describe "cache settings" do
-    it "defines PARTITIONS_COUNT_CACHE_TTL_MS as 30000" do
-      expect(described_class::PARTITIONS_COUNT_CACHE_TTL_MS).to eq(30_000)
+    it "defines PARTITION_COUNT_CACHE_TTL_MS as 30000" do
+      expect(described_class::PARTITION_COUNT_CACHE_TTL_MS).to eq(30_000)
+    end
+  end
+
+  describe "deprecated constants" do
+    # Enabled so a `deprecate_constant` warning would show; Ruby 3.3 has no Warning.categories,
+    # so the spec helper leaves deprecation warnings off
+    around do |example|
+      deprecated = Warning[:deprecated]
+      Warning[:deprecated] = true
+      example.run
+    ensure
+      Warning[:deprecated] = deprecated
+    end
+
+    it "keeps PARTITIONS_COUNT_CACHE_TTL_MS as an alias of PARTITION_COUNT_CACHE_TTL_MS without a warning" do
+      expect(Warning).not_to receive(:warn)
+
+      expect(described_class::PARTITIONS_COUNT_CACHE_TTL_MS).to eq(described_class::PARTITION_COUNT_CACHE_TTL_MS)
+    end
+
+    it "keeps PARTITIONS_COUNT_CACHE_TTL_MS defined" do
+      expect(defined?(described_class::PARTITIONS_COUNT_CACHE_TTL_MS)).to eq("constant")
+      expect(described_class.const_defined?(:PARTITIONS_COUNT_CACHE_TTL_MS)).to be(true)
+      expect(described_class.constants).to include(:PARTITIONS_COUNT_CACHE_TTL_MS)
     end
   end
 
@@ -101,7 +125,7 @@ RSpec.describe Rdkafka::Defaults do
         :METADATA_MAX_RETRIES,
         :CONSUMER_SEEK_TIMEOUT_MS,
         :CONSUMER_EVENTS_POLL_TIMEOUT_MS,
-        :PARTITIONS_COUNT_CACHE_TTL_MS
+        :PARTITION_COUNT_CACHE_TTL_MS
       )
     end
   end

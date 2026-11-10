@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe Rdkafka::Producer::PartitionsCountCache do
+RSpec.describe Rdkafka::Producer::PartitionCountCache do
   let(:default_ttl_ms) { 1_000 } # Reduced from 30000 to speed up tests
   let(:custom_ttl_ms) { 500 } # Half the default TTL
   let(:cache) { described_class.new(ttl_ms: default_ttl_ms) }
@@ -273,7 +273,7 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
     end
 
     it "applies to an entry served stale after a failed refresh" do
-      stale_backoff_ms = Rdkafka::Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS
+      stale_backoff_ms = Rdkafka::Defaults::PARTITION_COUNT_CACHE_STALE_BACKOFF_MS
       now[0] += default_ttl_ms + 1
       cache.get(topic) { raise Rdkafka::RdkafkaError.new(-195) }
 
@@ -296,7 +296,7 @@ RSpec.describe Rdkafka::Producer::PartitionsCountCache do
   describe "#get when the refresh fails" do
     let(:now) { [0] }
     let(:transport_error) { Rdkafka::RdkafkaError.new(-195) }
-    let(:stale_backoff_ms) { Rdkafka::Defaults::PARTITIONS_COUNT_CACHE_STALE_BACKOFF_MS }
+    let(:stale_backoff_ms) { Rdkafka::Defaults::PARTITION_COUNT_CACHE_STALE_BACKOFF_MS }
 
     before do
       allow(cache).to receive(:monotonic_now_ms) { now[0] }

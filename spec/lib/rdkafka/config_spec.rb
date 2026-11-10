@@ -56,16 +56,16 @@ RSpec.describe Rdkafka::Config do
   end
 
   context "partition count cache ttl" do
-    let(:cache) { Rdkafka::Producer::PartitionsCountCache.new }
-    let!(:original_cache) { Rdkafka::Producer.partitions_count_cache }
+    let(:cache) { Rdkafka::Producer::PartitionCountCache.new }
+    let!(:original_cache) { Rdkafka::Producer.partition_count_cache }
 
-    before { Rdkafka::Producer.partitions_count_cache = cache }
+    before { Rdkafka::Producer.partition_count_cache = cache }
 
-    after { Rdkafka::Producer.partitions_count_cache = original_cache }
+    after { Rdkafka::Producer.partition_count_cache = original_cache }
 
     it "defaults to the cache default" do
       expect(described_class.partition_count_cache_ttl_ms)
-        .to eq(Rdkafka::Defaults::PARTITIONS_COUNT_CACHE_TTL_MS)
+        .to eq(Rdkafka::Defaults::PARTITION_COUNT_CACHE_TTL_MS)
     end
 
     it "sets the ttl of the process-wide cache and keeps cached counts" do

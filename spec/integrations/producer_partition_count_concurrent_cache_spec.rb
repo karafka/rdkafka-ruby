@@ -29,7 +29,7 @@ TOPICS_PER_THREAD = 20
 PREFIX = "partition-count-concurrent-#{SecureRandom.hex(6)}"
 SHARED_TOPICS = Array.new(8) { |i| "#{PREFIX}-shared-#{i}" }
 
-Rdkafka::Producer.partitions_count_cache = Rdkafka::Producer::PartitionsCountCache.new
+Rdkafka::Producer.partition_count_cache = Rdkafka::Producer::PartitionCountCache.new
 
 producer = Rdkafka::Config.new("bootstrap.servers": "localhost:9092").producer
 start = Queue.new
@@ -59,7 +59,7 @@ threads.each(&:join)
 begin
   exit(1) unless errors.empty?
 
-  counts = Rdkafka::Producer.partitions_count_cache.to_h
+  counts = Rdkafka::Producer.partition_count_cache.to_h
   expected_size = THREADS * TOPICS_PER_THREAD + SHARED_TOPICS.size
 
   exit(1) unless counts.size == expected_size

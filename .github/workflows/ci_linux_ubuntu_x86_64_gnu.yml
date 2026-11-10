@@ -173,33 +173,47 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          apt-get update
-          apt-get install -y --no-install-recommends \
-            build-essential \
-            gcc \
-            g++ \
-            make \
-            tar \
-            gzip \
-            wget \
-            curl \
-            file \
-            pkg-config \
-            autoconf \
-            automake \
-            libtool \
-            python3 \
-            git \
-            ca-certificates \
-            patch \
-            libsasl2-dev \
-            libssl-dev \
-            zlib1g-dev \
-            libzstd-dev \
-            bison \
-            flex \
-            perl \
-            binutils-dev
+          install_build_dependencies() {
+            apt-get update &&
+            apt-get install -y --no-install-recommends \
+              build-essential \
+              gcc \
+              g++ \
+              make \
+              tar \
+              gzip \
+              wget \
+              curl \
+              file \
+              pkg-config \
+              autoconf \
+              automake \
+              libtool \
+              python3 \
+              git \
+              ca-certificates \
+              patch \
+              libsasl2-dev \
+              libssl-dev \
+              zlib1g-dev \
+              libzstd-dev \
+              bison \
+              flex \
+              perl \
+              binutils-dev
+          }
+
+          for attempt in 1 2 3; do
+            if install_build_dependencies; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "Failed to install build dependencies after $attempt attempts."
+              exit 1
+            fi
+            echo "Build dependency installation failed; retrying with a refreshed package index."
+            sleep 10
+          done
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0

@@ -94,6 +94,7 @@ module Rdkafka
       # Set in the same step as the increment, so the `ensure` undoes only an increment that
       # happened, even when `Thread#raise`, `Timeout` or `Thread#kill` interrupts this method
       counted = false
+      released = false
 
       begin
         if owned
@@ -112,19 +113,28 @@ module Rdkafka
         # Deferred from the first step of the `ensure`: an interrupt delivered before the decrement
         # (even at the branches below) would skip it and leave `#synchronize` (and so `#close`)
         # waiting forever. JRuby delivers a `Thread#kill` that arrived during a blocking native
-        # call at its first chance after the call, the lock below.
-        Thread.handle_interrupt(DEFER_INTERRUPTS) do
-          if !counted
-            # Interrupted before the increment: nothing to undo
-          elsif owned
-            @operations_in_progress -= 1
-          else
-            # Not `lock` / `unlock`: a signal trap handler still runs (and can raise) under the mask
-            @access_mutex.synchronize do
+        # call at its first chance after the call, the lock below. Inline, not in
+        # `#release_operation`: an extra method call costs every call
+        begin
+          Thread.handle_interrupt(DEFER_INTERRUPTS) do
+            if !counted
+              # Interrupted before the increment: nothing to undo
+            elsif owned
               @operations_in_progress -= 1
-              @operations_done.broadcast if @synchronizing && @operations_in_progress.zero?
+              counted = false
+            else
+              # Not `lock` / `unlock`: a signal trap handler still runs (and can raise) under the mask
+              @access_mutex.synchronize do
+                @operations_in_progress -= 1
+                counted = false
+                @operations_done.broadcast if @synchronizing && @operations_in_progress.zero?
+              end
             end
+
+            released = true
           end
+        ensure
+          release_operation(owned, counted) unless released
         end
       end
     end
@@ -134,23 +144,16 @@ module Rdkafka
     # @yield [FFI::Pointer] the inner native Kafka handle
     # @return [Object] the result of the block
     def synchronize(&block)
-      @access_mutex.synchronize do
-        @operations_done.wait(@access_mutex) while @synchronizing
-        @synchronizing = true
+      exclusively { with_inner(&block) }
+    end
 
-        begin
-          # Wait for any commands using the inner to finish
-          # This can take a while on blocking operations like polling but is essential not to
-          # proceed with certain types of operations like resources destruction as it can cause the
-          # process to hang or crash
-          @operations_done.wait(@access_mutex) until @operations_in_progress.zero?
-
-          with_inner(&block)
-        ensure
-          @synchronizing = false
-          @operations_done.broadcast
-        end
-      end
+    # Executes a block while holding exclusive access to the native Kafka handle, unless the handle
+    # was closed, also by another thread while this one waited for the access
+    # @param block [Proc] block to execute with the native handle
+    # @yield [FFI::Pointer] the inner native Kafka handle
+    # @return [Object, nil] the result of the block or nil when the handle is closed
+    def synchronize_unless_closed(&block)
+      exclusively { with_inner(&block) unless @inner.nil? }
     end
 
     # Returns a finalizer proc for closing this native Kafka handle
@@ -238,7 +241,10 @@ module Rdkafka
     def close(object_id = nil)
       return if closed?
 
-      synchronize do
+      exclusively do
+        # Another thread closed the handle while this one waited for the access
+        return if @inner.nil?
+
         # Indicate to the outside world that we are closing
         @closing = true
 
@@ -254,11 +260,6 @@ module Rdkafka
         # Destroy the client after locking both mutexes
         @poll_mutex.lock
 
-        # This check prevents a race condition, where we would enter the close in two threads
-        # and after unlocking the primary one that hold the lock but finished, ours would be unlocked
-        # and would continue to run, trying to destroy inner twice
-        return unless @inner
-
         yield if block_given?
 
         Rdkafka::Bindings.rd_kafka_destroy(@inner)
@@ -267,6 +268,65 @@ module Rdkafka
         @poll_mutex.unlock
         @poll_mutex = nil
       end
+    end
+
+    private
+
+    # Executes a block while holding `@access_mutex`, once all operations in progress are done
+    # @yield block to execute with exclusive access
+    # @return [Object] the result of the block
+    def exclusively
+      @access_mutex.synchronize do
+        @operations_done.wait(@access_mutex) while @synchronizing
+        @synchronizing = true
+
+        begin
+          # Wait for any commands using the inner to finish
+          # This can take a while on blocking operations like polling but is essential not to
+          # proceed with certain types of operations like resources destruction as it can cause the
+          # process to hang or crash
+          @operations_done.wait(@access_mutex) until @operations_in_progress.zero?
+
+          yield
+        ensure
+          @synchronizing = false
+          @operations_done.broadcast
+        end
+      end
+    end
+
+    # Finishes the release of `#with_inner` when a signal trap handler raised during it
+    #
+    # A trap handler still runs (and can raise) under the mask, so the `ensure` calls this method
+    # again until the release is done, then the error propagates.
+    #
+    # @param owned [Boolean] whether the caller already holds `@access_mutex`
+    # @param counted [Boolean] whether the counter still has to be decremented
+    def release_operation(owned, counted)
+      released = false
+
+      Thread.handle_interrupt(DEFER_INTERRUPTS) do
+        if owned
+          if counted
+            @operations_in_progress -= 1
+            counted = false
+          end
+        else
+          # Not `lock` / `unlock`: a raise in a trap handler would leave the lock held
+          @access_mutex.synchronize do
+            if counted
+              @operations_in_progress -= 1
+              counted = false
+            end
+
+            @operations_done.broadcast if @synchronizing && @operations_in_progress.zero?
+          end
+        end
+
+        released = true
+      end
+    ensure
+      release_operation(owned, counted) unless released
     end
   end
 end

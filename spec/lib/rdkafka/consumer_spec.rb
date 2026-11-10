@@ -687,6 +687,56 @@ RSpec.describe Rdkafka::Consumer do
       expect(Rdkafka::Config.logger).not_to have_received(:error)
     end
 
+    context "when another thread closes the consumer at the same time" do
+      let(:late_closer) { [] }
+
+      before do
+        allow(Rdkafka::Bindings).to receive(:rd_kafka_consumer_close).and_wrap_original do |original, *args|
+          # Starts the late closer while the first one holds the access lock
+          if late_closer.empty?
+            late_closer << Thread.new { [consumer.close, consumer.closed?] }
+            Thread.pass until late_closer.first.status == "sleep"
+          end
+
+          original.call(*args)
+        end
+
+        # Lets the late closer finish before the first one closes the native client
+        allow(described_class).to receive(:report_close_error).and_wrap_original do |original, *args|
+          late_closer.first.join
+          original.call(*args)
+        end
+      end
+
+      it "closes the native consumer once and returns from both calls with the consumer closed" do
+        expect(consumer.close).to be_nil
+        expect(late_closer.first.value).to eq([nil, true])
+        expect(consumer.closed?).to be(true)
+        expect(Rdkafka::Bindings).to have_received(:rd_kafka_consumer_close).once
+      end
+    end
+
+    context "when the first close is interrupted after closing the native consumer" do
+      before do
+        calls = 0
+
+        allow(described_class).to receive(:report_close_error).and_wrap_original do |original, *args|
+          calls += 1
+          raise Interrupt if calls == 1
+
+          original.call(*args)
+        end
+      end
+
+      it "destroys the native client on the next close" do
+        expect { consumer.close }.to raise_error(Interrupt)
+        expect(consumer.closed?).to be(false)
+
+        expect(consumer.close).to be_nil
+        expect(consumer.closed?).to be(true)
+      end
+    end
+
     context "when there are outgoing operations in other threads" do
       it "waits and not crash" do
         times = []
@@ -2154,13 +2204,21 @@ RSpec.describe Rdkafka::Consumer do
   end
 
   describe "long running consumption" do
-    let(:consumer) { rdkafka_consumer_config.consumer }
+    # Without auto commit the manual commit always has new stored offsets, so it cannot fail with
+    # `no_offset` after the auto commit timer committed them first
+    let(:consumer) { rdkafka_consumer_config("enable.auto.commit": false).consumer }
     let(:producer) { rdkafka_producer_config.producer }
 
-    after {
+    # A failed example must not leave the producer thread running: its client would keep
+    # emitting statistics into the global callback of the specs that run after it
+    after do
+      @stop_producing = true
+      # `join` re-raises an error the producer thread died with
+      @producer_thread&.join
+    ensure
       consumer.close
       producer.close
-    }
+    end
 
     it "consumes messages continuously for 60 seconds" do
       consumer.subscribe(topic)
@@ -2170,9 +2228,9 @@ RSpec.describe Rdkafka::Consumer do
       start_time = Time.now
 
       # Producer thread - sends message every second
-      producer_thread = Thread.new do
+      @producer_thread = Thread.new do
         counter = 0
-        while Time.now - start_time < 60
+        while !@stop_producing && Time.now - start_time < 60
           producer.produce(
             topic: topic,
             payload: "payload #{counter}",
@@ -2200,10 +2258,10 @@ RSpec.describe Rdkafka::Consumer do
 
         break if Time.now >= drain_deadline
         # Once producing has stopped, a full poll timeout with no message means we are caught up.
-        break if !producer_thread.alive? && message.nil?
+        break if !@producer_thread.alive? && message.nil?
       end
 
-      producer_thread.join
+      @producer_thread.join
 
       expect(messages_consumed).to be > 50 # Should consume most messages
     end

@@ -19,6 +19,7 @@
 
 require "rdkafka"
 require "securerandom"
+require_relative "support/wait_for_topic"
 
 $stdout.sync = true
 
@@ -35,13 +36,7 @@ admin.create_topic(TOPIC, PARTITIONS, 1).wait(max_wait_timeout_ms: 15_000)
 
 # Topic creation ack does not guarantee the topic is visible yet, and warming the cache before
 # that would cache -1 for the whole TTL
-20.times do
-  break if admin.metadata(TOPIC).topics.first[:partition_count] == PARTITIONS
-
-  sleep 0.5
-rescue Rdkafka::RdkafkaError
-  sleep 0.5
-end
+WaitForTopic.wait_for_topic(admin, TOPIC, partitions: PARTITIONS)
 admin.close
 
 online = Rdkafka::Config.new("bootstrap.servers": "localhost:9092").producer

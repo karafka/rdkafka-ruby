@@ -336,10 +336,9 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
     end
   end
 
-  # MRI checks for interrupts at branches, so the `ensure` must defer them before its first one
-  context "when raised at the first branch of the ensure" do
+  context "when raised at the first step of the release" do
     it "lets close finish" do
-      worker, trace = park_worker_at_line("if !counted")
+      worker, trace = park_worker_at_line("Thread.handle_interrupt(DEFER_INTERRUPTS) do")
       worker.raise("interrupted")
 
       expect_close_to_finish(worker, trace)
@@ -352,6 +351,160 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
       worker.kill
 
       expect_close_to_finish(worker, trace)
+    end
+  end
+end
+
+# Separate describe block: trap handlers run only on the main thread, so the example itself calls
+# `#with_inner` and a TracePoint sends the signal at an exact point of it
+RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler raises" do
+  let(:producer) { rdkafka_producer_config.producer }
+  let(:trapped) { Class.new(StandardError) }
+
+  before do
+    skip "TracePoint core method events need --debug on JRuby" if defined?(JRUBY_VERSION)
+
+    producer.queue_size
+  end
+
+  after { producer.close unless producer.closed? }
+
+  # Runs the block and raises from a `USR1` trap handler at each of the given matching events
+  def trapped_at(events, calls, matches, before_signal: nil)
+    error = trapped
+    previous = trap("USR1") { raise error }
+    seen = 0
+
+    trace = TracePoint.new(*events) do |tp|
+      next unless matches.call(tp)
+
+      seen += 1
+      next unless calls.include?(seen)
+
+      before_signal&.call
+      Process.kill("USR1", Process.pid)
+      sleep(5)
+    end
+
+    expect { trace.enable { yield } }.to raise_error(error)
+  ensure
+    trap("USR1", previous)
+  end
+
+  # Calls `producer.queue_size` and raises from a `USR1` trap handler at each of the given calls
+  # of the method that `#with_inner` makes
+  def queue_size_trapped_at(klass, method_id, event, calls, before_signal: nil)
+    matches = ->(tp) { tp.defined_class == klass && tp.method_id == method_id }
+
+    trapped_at([event, :"c_#{event}"], calls, matches, before_signal: before_signal) do
+      producer.queue_size
+    end
+  end
+
+  # Runs the block and raises from a `USR1` trap handler at the first run of each of the given
+  # lines of `native_kafka.rb`, in order, given as `[stripped line, occurrence]`
+  def lines_trapped(*lines, &)
+    path = described_class.instance_method(:with_inner).source_location.first
+    source = File.readlines(path).map(&:strip)
+
+    linenos = lines.map do |text, occurrence|
+      source.each_index.select { |index| source[index] == text }.fetch(occurrence) + 1
+    end
+
+    matches = ->(tp) { tp.path == path && linenos.include?(tp.lineno) }
+
+    trapped_at([:line], (1..linenos.size).to_a, matches, &)
+  end
+
+  def expect_close_to_finish(client = producer)
+    closer = Thread.new { client.close }
+
+    expect(closer.join(5)).not_to be_nil
+  ensure
+    closer&.kill
+  end
+
+  context "when it raises before the interrupt mask of the release" do
+    it "lets close finish" do
+      queue_size_trapped_at(Thread.singleton_class, :handle_interrupt, :call, [1])
+
+      expect_close_to_finish
+    end
+  end
+
+  context "when it raises before the lock for the decrement" do
+    it "lets close finish" do
+      queue_size_trapped_at(Thread::Mutex, :synchronize, :call, [2])
+
+      expect_close_to_finish
+    end
+  end
+
+  context "when it raises before the lock for the decrement while close waits" do
+    it "wakes close" do
+      closer = nil
+
+      wait_for_close = lambda do
+        closer = Thread.new { producer.close }
+        sleep(0.01) until closer.status == "sleep"
+      end
+
+      queue_size_trapped_at(Thread::Mutex, :synchronize, :call, [2], before_signal: wait_for_close)
+
+      expect(closer.join(5)).not_to be_nil
+    ensure
+      closer&.kill
+    end
+  end
+
+  context "when it raises after the decrement" do
+    it "lets close finish" do
+      queue_size_trapped_at(Thread::Mutex, :synchronize, :return, [2])
+
+      expect_close_to_finish
+    end
+  end
+
+  context "when it raises again in the retried release" do
+    it "lets close finish" do
+      queue_size_trapped_at(Thread::Mutex, :synchronize, :call, [2, 3])
+
+      expect_close_to_finish
+    end
+  end
+
+  context "when it raises before the decrement and again after the retried decrement" do
+    it "lets close finish" do
+      lines_trapped(["@operations_in_progress -= 1", 1], ["released = true", 1]) do
+        producer.queue_size
+      end
+
+      expect_close_to_finish
+    end
+  end
+
+  # `Consumer#close` calls `#with_inner` while it holds the lock
+  context "when the call holds the lock" do
+    let!(:consumer) { rdkafka_consumer_config.consumer }
+
+    after { consumer.close unless consumer.closed? }
+
+    context "when it raises after the decrement" do
+      it "lets close finish" do
+        lines_trapped(["released = true", 0]) { consumer.close }
+
+        expect_close_to_finish(consumer)
+      end
+    end
+
+    context "when it raises before the decrement and again after the retried decrement" do
+      it "lets close finish" do
+        lines_trapped(["@operations_in_progress -= 1", 0], ["released = true", 1]) do
+          consumer.close
+        end
+
+        expect_close_to_finish(consumer)
+      end
     end
   end
 end

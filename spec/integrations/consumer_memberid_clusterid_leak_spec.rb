@@ -25,6 +25,7 @@
 require "rdkafka"
 require "securerandom"
 require_relative "support/native_call_counter"
+require_relative "support/memory"
 
 $stdout.sync = true
 
@@ -59,19 +60,7 @@ if cluster_id.nil? || cluster_id.empty?
   exit(1)
 end
 
-def rss_kb
-  File.read("/proc/self/status")[/VmRSS:\s+(\d+)/, 1].to_i
-end
-
 measurable = File.exist?("/proc/self/status")
-
-# Settle the Ruby heap before sampling RSS. `GC.compact` defragments the heap so freed pages can be
-# released, which keeps the baseline and final samples from drifting purely due to fragmentation.
-# A plain `GC.start` leaves that drift in, which is what made this spec trip on Ruby 4.0.
-def settle_heap
-  GC.start
-  GC.compact if GC.respond_to?(:compact)
-end
 
 # Warm up so the malloc arena / Ruby heap settle before we measure.
 20_000.times { consumer.cluster_id(5_000) }

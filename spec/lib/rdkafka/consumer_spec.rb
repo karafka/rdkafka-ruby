@@ -702,11 +702,16 @@ RSpec.describe Rdkafka::Consumer do
         end
 
         # Lets the late closer finish before the first one closes the native client
-        native_kafka = consumer.instance_variable_get(:@native_kafka)
-        allow(native_kafka).to receive(:synchronize_unless_closed).and_wrap_original do |original, *args, &block|
-          result = original.call(*args, &block)
-          late_closer.first.join unless Thread.current == late_closer.first
-          result
+        allow(Rdkafka::NativeKafka).to receive(:new).and_wrap_original do |new_native_kafka, *args, **kwargs|
+          native_kafka = new_native_kafka.call(*args, **kwargs)
+
+          allow(native_kafka).to receive(:synchronize_unless_closed).and_wrap_original do |original, *sargs, &block|
+            result = original.call(*sargs, &block)
+            late_closer.first&.join unless Thread.current == late_closer.first
+            result
+          end
+
+          native_kafka
         end
       end
 

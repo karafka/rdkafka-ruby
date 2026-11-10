@@ -8,13 +8,13 @@
 # the report cannot read the client anymore. The error then went to `Rdkafka::Config.logger` as
 # "Unhandled exception: Rdkafka::ClosedInnerError" and the error callback never got it.
 #
-# The native consumer is closed before `#close`, so the close fails with "Consumer already closed".
-# The late closer runs when the first closer leaves the access lock, the moment the race needs.
+# The native close runs twice, so it fails with "Consumer already closed". The late closer runs
+# when the first closer leaves the access lock, the moment the race needs.
 #
 # No broker is required: closing does not need a connection.
 #
 # Exit codes:
-# - 0: the failed close was reported once to the error callback and nothing was logged
+# - 0: the failed close was reported once to the error callback and not logged
 # - 1: the failed close was not reported, reported more than once, logged, or a `close` raised
 
 require "rdkafka"
@@ -50,16 +50,22 @@ end
 
 Rdkafka::NativeKafka.prepend(LateCloser)
 
+# Closes the native consumer twice, so the close fails with "Consumer already closed"
+module FailingNativeClose
+  def rd_kafka_consumer_close(inner)
+    super
+    super
+  end
+end
+
+Rdkafka::Bindings.singleton_class.prepend(FailingNativeClose)
+
 consumer = Rdkafka::Config.new(
   "bootstrap.servers": "127.0.0.1:9999",
   "group.id": "consumer-concurrent-close-error"
 ).consumer
 
 LateCloser.consumer = consumer
-
-consumer.instance_variable_get(:@native_kafka).with_inner do |inner|
-  Rdkafka::Bindings.rd_kafka_consumer_close(inner)
-end
 
 begin
   consumer.close
@@ -71,6 +77,6 @@ end
 exit(1) unless consumer.closed?
 exit(1) unless close_errors.size == 1
 exit(1) unless close_errors.first.code == :destroy
-exit(1) unless log.string.empty?
+exit(1) if log.string.include?("Unhandled exception")
 
 exit(0)

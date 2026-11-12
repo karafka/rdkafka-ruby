@@ -48,11 +48,11 @@ module Rdkafka
         # Since this cache is shared, having few consumers and/or producers in one process will
         # automatically improve the querying times even with low refresh times.
         (stats["topics"] || EMPTY_HASH).each do |topic_name, details|
-          partitions_count = details["partitions"].keys.count { |k| !(k == RD_KAFKA_PARTITION_UA_STR) }
+          partition_count = details["partitions"].keys.count { |k| !(k == RD_KAFKA_PARTITION_UA_STR) }
 
-          next unless partitions_count.positive?
+          next unless partition_count.positive?
 
-          Rdkafka::Producer.partitions_count_cache.set(topic_name, partitions_count)
+          Rdkafka::Producer.partition_count_cache.set(topic_name, partition_count)
         end
 
         statistics_callback.call(stats)

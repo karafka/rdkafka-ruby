@@ -259,6 +259,16 @@ RSpec.describe Rdkafka::Bindings do
         Rdkafka::Bindings::StatsCallback.call(nil, "{\"received\":1}", 13, nil)
         expect($received_stats).to eq({ "received" => 1 })
       end
+
+      it "stores topic partition counts without the deprecated cache names" do
+        topic_name = "stats-#{SecureRandom.hex(6)}"
+        json = JSON.generate("topics" => { topic_name => { "partitions" => { "0" => {}, "1" => {}, "-1" => {} } } })
+
+        expect(Rdkafka::Producer).not_to receive(:warn)
+
+        Rdkafka::Bindings::StatsCallback.call(nil, json, json.bytesize, nil)
+        expect(Rdkafka::Producer.partition_count_cache.to_h.dig(topic_name, 1)).to eq(2)
+      end
     end
 
     context "when the stats callback is cleared while it runs" do

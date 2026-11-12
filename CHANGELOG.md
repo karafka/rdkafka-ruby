@@ -4,7 +4,6 @@
 - **[Feature]** Add `Config#consumer_offset_commit_listener`: its `#on_offsets_committed(error, list)` gets the result of every offset commit when the consumer polls or closes, so an async commit that the broker rejects reaches Ruby instead of only a `COMMITFAIL` log line.
 - **[Feature]** Let the offset commit listener define `#on_offsets_commit_failed(error, list)`, called only for failed commits (not on success or `no_offset`). Ported from karafka-rdkafka (#590).
 - **[Feature]** Add `validate_only:`, `operation_timeout_ms:` and `request_timeout_ms:` keyword options to `Admin#create_topic` and `#create_partitions`, and the two timeouts to `#delete_topic`. A `create_topic` topic config passed without braces keeps working.
-- **[Deprecation]** Rename `Producer::PartitionsCountCache`, `Producer.partitions_count_cache` / `.partitions_count_cache=` and `Defaults::PARTITIONS_COUNT_CACHE_TTL_MS` to their `partition_count` forms. The old names still work but will be removed in v1.0.0. The old methods warn; the old constants are plain aliases and do not warn.
 - [Enhancement] Bump librdkafka to `2.16.0` for OpenSSL and libcurl security fixes. Admin requests in flight on a decommissioned broker now fail with a retryable transport error.
 - [Enhancement] Bump the bundled zlib to `1.4`.
 - [Enhancement] Build the bundled zlib with `-O2` in the glibc precompiled gems for faster gzip compression and decompression.
@@ -14,6 +13,7 @@
 - [Enhancement] Allocate fewer objects per delivered message: delivery callback reports reuse the topic String given to `produce`.
 - [Enhancement] Add `Rdkafka::Config.partition_count_cache_ttl_ms=` to set how long `partition_key` produces reuse a cached partition count (default 30 seconds). Ported from karafka-rdkafka (#562, #615).
 - [Enhancement] Allocate fewer objects per handle: delivery and admin handles share a fixed set of locks instead of creating their own `Mutex` and `ConditionVariable`.
+- **[Deprecation]** Rename `Producer::PartitionsCountCache`, `Producer.partitions_count_cache` / `.partitions_count_cache=` and `Defaults::PARTITIONS_COUNT_CACHE_TTL_MS` to their `partition_count` forms. The old names still work but will be removed in v1.0.0. The old methods warn; the old constants are plain aliases and do not warn.
 - [Change] Build the precompiled `x86_64-linux-gnu` and `aarch64-linux-gnu` libraries in an Ubuntu 22.04 container to keep the glibc 2.34 floor.
 - [Change] Depend on `mini_portile2` and `rake` only in the source gem, as only it compiles librdkafka. Apps that got `rake` only through this gem must add it to their Gemfile.
 - [Change] Remove the unused `Rdkafka::Defaults::NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS`.

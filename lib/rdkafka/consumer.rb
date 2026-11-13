@@ -106,7 +106,8 @@ module Rdkafka
     end
 
     # Enable IO event notifications for fiber scheduler integration
-    # When the consumer queue has messages, librdkafka will write to your FD
+    # When the consumer queue has messages or events, librdkafka will write to your FD.
+    # With `consumer_poll_set` false, use {#enable_main_queue_io_events} for main queue events.
     #
     # @param fd [Integer] file descriptor to signal (from IO.pipe or eventfd)
     # @param payload [String] data to write to fd (default: "\x01")
@@ -134,6 +135,17 @@ module Rdkafka
     #     end
     #   end
     def enable_queue_io_events(fd, payload = "\x01")
+      @native_kafka.enable_consumer_queue_io_events(fd, payload)
+    end
+
+    # Enable IO event notifications on the main queue, when `consumer_poll_set` is `false`
+    # (otherwise the main queue is forwarded to the consumer queue: use {#enable_queue_io_events})
+    #
+    # @param fd [Integer] file descriptor to signal (from IO.pipe or eventfd)
+    # @param payload [String] data to write to fd (default: "\x01")
+    # @return [nil]
+    # @raise [ClosedInnerError] when the consumer is closed
+    def enable_main_queue_io_events(fd, payload = "\x01")
       @native_kafka.enable_main_queue_io_events(fd, payload)
     end
 

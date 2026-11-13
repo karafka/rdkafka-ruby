@@ -2738,6 +2738,57 @@ RSpec.describe Rdkafka::Consumer do
       signal_w.close
     end
 
+    it "signals the fd when a message is fetched" do
+      consumer.subscribe(topic)
+      signal_r, signal_w = IO.pipe
+      consumer.enable_queue_io_events(signal_w.fileno)
+
+      producer.produce(topic: topic, payload: "io event").wait
+
+      expect(wait_for_io_event_message(consumer, signal_r)&.payload).to eq("io event")
+    ensure
+      signal_r&.close
+      signal_w&.close
+    end
+
+    context "when consumer_poll_set is false" do
+      let(:consumer) do
+        config = rdkafka_consumer_config
+        config.consumer_poll_set = false
+        config.consumer
+      end
+
+      it "signals the fd for fetched messages, not for main queue events" do
+        tpl = Rdkafka::Consumer::TopicPartitionList.new
+        tpl.add_topic(topic, [0])
+        consumer.assign(tpl)
+        signal_r, signal_w = IO.pipe
+        consumer.enable_queue_io_events(signal_w.fileno)
+        # Assigning wakes it once, for librdkafka's own op: serve that first
+        wait_for_io_event(consumer, signal_r)
+
+        # Statistics arrive every second (rdkafka_base_config), on the main queue
+        expect(IO.select([signal_r], nil, nil, 2)).to be_nil
+
+        producer.produce(topic: topic, payload: "io event", partition: 0).wait
+
+        expect(wait_for_io_event_message(consumer, signal_r)&.payload).to eq("io event")
+      ensure
+        signal_r&.close
+        signal_w&.close
+      end
+
+      it "signals the main queue fd for main queue events, such as statistics" do
+        signal_r, signal_w = IO.pipe
+        consumer.enable_main_queue_io_events(signal_w.fileno)
+
+        expect(IO.select([signal_r], nil, nil, 10)).not_to be_nil
+      ensure
+        signal_r&.close
+        signal_w&.close
+      end
+    end
+
     it "supports normal polling with IO events enabled" do
       consumer.subscribe(topic)
 
@@ -2766,6 +2817,19 @@ RSpec.describe Rdkafka::Consumer do
       signal_w.close
     end
 
+    it "signals the main queue fd for a consumer with no group, which has no consumer queue" do
+      groupless = rdkafka_config.consumer
+      signal_r, signal_w = IO.pipe
+      groupless.enable_queue_io_events(signal_w.fileno)
+
+      # Statistics arrive every second (rdkafka_base_config), on the main queue
+      expect(IO.select([signal_r], nil, nil, 10)).not_to be_nil
+    ensure
+      groupless&.close
+      signal_r&.close
+      signal_w&.close
+    end
+
     context "when consumer is closed" do
       before { consumer.close }
 
@@ -2779,6 +2843,13 @@ RSpec.describe Rdkafka::Consumer do
       it "raises ClosedInnerError when enabling background_queue_io_events" do
         signal_r, signal_w = IO.pipe
         expect { consumer.enable_background_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
+        signal_r.close
+        signal_w.close
+      end
+
+      it "raises ClosedInnerError when enabling main_queue_io_events" do
+        signal_r, signal_w = IO.pipe
+        expect { consumer.enable_main_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
         signal_r.close
         signal_w.close
       end

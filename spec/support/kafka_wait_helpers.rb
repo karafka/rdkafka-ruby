@@ -66,6 +66,39 @@ module KafkaWaitHelpers
     end
   end
 
+  # Waits for the consumer's IO event fd to signal, then reads the signal and drains the consumer
+  # queue without blocking, which lets librdkafka signal again.
+  #
+  # @param consumer [Rdkafka::Consumer] the consumer whose queue signals the fd
+  # @param signal_r [IO] the read end of the fd given to `Consumer#enable_queue_io_events`
+  # @param timeout_in_seconds [Integer] maximum seconds to wait for the signal
+  # @return [Array<Rdkafka::Consumer::Message>] the messages drained, empty if it didn't signal
+  def wait_for_io_event(consumer, signal_r, timeout_in_seconds: 1)
+    return [] unless IO.select([signal_r], nil, nil, timeout_in_seconds)
+
+    signal_r.read_nonblock(1024, exception: false)
+    messages = []
+    consumer.poll_nb_each { |message| messages << message }
+    messages
+  end
+
+  # Waits on the consumer's IO events until a message arrives: receives it only through the fd,
+  # never with a blocking poll.
+  #
+  # @param consumer [Rdkafka::Consumer] the consumer whose queue signals the fd
+  # @param signal_r [IO] the read end of the fd given to `Consumer#enable_queue_io_events`
+  # @param timeout_in_seconds [Integer] maximum seconds to wait for a message
+  # @return [Rdkafka::Consumer::Message, nil] the first message drained, or nil on timeout
+  def wait_for_io_event_message(consumer, signal_r, timeout_in_seconds: 30)
+    deadline = Time.now + timeout_in_seconds
+
+    loop do
+      message = wait_for_io_event(consumer, signal_r).first
+      return message if message
+      return nil if Time.now >= deadline
+    end
+  end
+
   # Polls until the consumer has a non-empty partition assignment. The budget is generous since
   # a rebalance on a loaded CI runner can take well over ten seconds.
   #

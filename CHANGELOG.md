@@ -4,6 +4,7 @@
 - **[Feature]** Add `Config#consumer_offset_commit_listener`: its `#on_offsets_committed(error, list)` gets the result of every offset commit when the consumer polls or closes, so an async commit that the broker rejects reaches Ruby instead of only a `COMMITFAIL` log line.
 - **[Feature]** Let the offset commit listener define `#on_offsets_commit_failed(error, list)`, called only for failed commits (not on success or `no_offset`). Ported from karafka-rdkafka (#590).
 - **[Feature]** Add `validate_only:`, `operation_timeout_ms:` and `request_timeout_ms:` keyword options to `Admin#create_topic` and `#create_partitions`, and the two timeouts to `#delete_topic`. A `create_topic` topic config passed without braces keeps working.
+- **[Feature]** Add `Consumer#enable_main_queue_io_events`, for IO events on the main queue when `consumer_poll_set` is `false`.
 - [Enhancement] Bump librdkafka to `2.16.0` for OpenSSL and libcurl security fixes. Admin requests in flight on a decommissioned broker now fail with a retryable transport error.
 - [Enhancement] Bump the bundled zlib to `1.4`.
 - [Enhancement] Build the bundled zlib with `-O2` in the glibc precompiled gems for faster gzip compression and decompression.
@@ -32,6 +33,7 @@
 - [Fix] Keep the shared partition count cache consistent when many threads produce with `partition_key` or call `partition_count` at once. On JRuby it lost topics and raised `NoMethodError`.
 - [Fix] Return `nil` from every `close` call when several threads close one consumer, producer or admin at once, instead of raising `ClosedInnerError` in the later callers.
 - [Fix] Report a failed consumer close to `Rdkafka::Config.error_callback` also when another thread closes the consumer at the same time, instead of only logging `ClosedInnerError`.
+- [Fix] Make `Consumer#enable_queue_io_events` signal on the consumer queue, where messages arrive. It signalled on the main queue, which `consumer_poll_set` (the default) forwards to the consumer queue, so it never fired. With `consumer_poll_set` set to `false`, main queue events now need `Consumer#enable_main_queue_io_events`.
 
 ## 0.31.0 (2026-10-09)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.

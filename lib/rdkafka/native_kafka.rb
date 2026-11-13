@@ -217,7 +217,7 @@ module Rdkafka
     # @param payload [String] data to write to fd when queue has data (default: "\x01")
     # @return [nil]
     # @raise [ClosedInnerError] when the handle is closed
-    # @raise [RuntimeError] when background polling thread is active, or there's no consumer group
+    # @raise [RuntimeError] when background polling thread is active
     def enable_consumer_queue_io_events(fd, payload = "\x01")
       if @run_polling_thread
         raise "Cannot enable IO events while background polling thread is active. " \
@@ -226,9 +226,9 @@ module Rdkafka
       end
 
       with_inner do |inner|
+        # A consumer with no group has no consumer queue: everything it gets lands on the main queue
         queue_ptr = Bindings.rd_kafka_queue_get_consumer(inner)
-        raise "Cannot enable consumer queue IO events without a consumer group: set group.id" if queue_ptr.null?
-
+        queue_ptr = Bindings.rd_kafka_queue_get_main(inner) if queue_ptr.null?
         Bindings.rd_kafka_queue_io_event_enable(queue_ptr, fd, payload, payload.bytesize)
         Bindings.rd_kafka_queue_destroy(queue_ptr)
       end

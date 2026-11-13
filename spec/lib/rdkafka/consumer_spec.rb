@@ -2817,11 +2817,13 @@ RSpec.describe Rdkafka::Consumer do
       signal_w.close
     end
 
-    it "raises instead of enabling IO events without a consumer group" do
+    it "signals the main queue fd for a consumer with no group, which has no consumer queue" do
       groupless = rdkafka_config.consumer
       signal_r, signal_w = IO.pipe
+      groupless.enable_queue_io_events(signal_w.fileno)
 
-      expect { groupless.enable_queue_io_events(signal_w.fileno) }.to raise_error(RuntimeError, /without a consumer group/)
+      # Statistics arrive every second (rdkafka_base_config), on the main queue
+      expect(IO.select([signal_r], nil, nil, 10)).not_to be_nil
     ensure
       groupless&.close
       signal_r&.close

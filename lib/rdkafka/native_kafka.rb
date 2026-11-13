@@ -210,6 +210,30 @@ module Rdkafka
       end
     end
 
+    # Enable IO event notifications on the consumer queue, for a consumer
+    # Librdkafka will write to your FD when the consumer queue transitions from empty to non-empty
+    #
+    # @param fd [Integer] your file descriptor (from IO.pipe or eventfd)
+    # @param payload [String] data to write to fd when queue has data (default: "\x01")
+    # @return [nil]
+    # @raise [ClosedInnerError] when the handle is closed
+    # @raise [RuntimeError] when background polling thread is active, or there's no consumer group
+    def enable_consumer_queue_io_events(fd, payload = "\x01")
+      if @run_polling_thread
+        raise "Cannot enable IO events while background polling thread is active. " \
+          "Either disable background polling by setting run_polling_thread: false, " \
+          "or use manual polling with consumer.poll() instead of the FD API."
+      end
+
+      with_inner do |inner|
+        queue_ptr = Bindings.rd_kafka_queue_get_consumer(inner)
+        raise "Cannot enable consumer queue IO events without a consumer group: set group.id" if queue_ptr.null?
+
+        Bindings.rd_kafka_queue_io_event_enable(queue_ptr, fd, payload, payload.bytesize)
+        Bindings.rd_kafka_queue_destroy(queue_ptr)
+      end
+    end
+
     # Enable IO event notifications on the background queue
     # Librdkafka will write to your FD when the background queue transitions from empty to non-empty
     #

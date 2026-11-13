@@ -2817,6 +2817,17 @@ RSpec.describe Rdkafka::Consumer do
       signal_w.close
     end
 
+    it "raises instead of enabling IO events without a consumer group" do
+      groupless = rdkafka_config.consumer
+      signal_r, signal_w = IO.pipe
+
+      expect { groupless.enable_queue_io_events(signal_w.fileno) }.to raise_error(RuntimeError, /without a consumer group/)
+    ensure
+      groupless&.close
+      signal_r&.close
+      signal_w&.close
+    end
+
     context "when consumer is closed" do
       before { consumer.close }
 

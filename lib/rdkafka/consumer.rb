@@ -135,9 +135,7 @@ module Rdkafka
     #     end
     #   end
     def enable_queue_io_events(fd, payload = "\x01")
-      @native_kafka.with_inner do |_inner|
-        Rdkafka::Bindings.rd_kafka_queue_io_event_enable(consumer_queue, fd, payload, payload.bytesize)
-      end
+      @native_kafka.enable_consumer_queue_io_events(fd, payload)
     end
 
     # Enable IO event notifications on the main queue, when `consumer_poll_set` is `false`

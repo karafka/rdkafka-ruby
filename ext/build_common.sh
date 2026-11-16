@@ -18,7 +18,7 @@ readonly OPENSSL_VERSION="3.5.9"
 readonly CYRUS_SASL_VERSION="2.1.28"
 readonly ZLIB_VERSION="1.4"
 readonly ZSTD_VERSION="1.5.7"
-readonly KRB5_VERSION="1.22.2"
+readonly KRB5_VERSION="1.22.3"
 readonly LIBRDKAFKA_VERSION="2.16.0"
 
 # SHA256 checksums for supply chain security
@@ -28,7 +28,7 @@ declare -A CHECKSUMS=(
     ["cyrus-sasl-${CYRUS_SASL_VERSION}.tar.gz"]="7ccfc6abd01ed67c1a0924b353e526f1b766b21f42d4562ee635a8ebfc5bb38c"
     ["zlib-${ZLIB_VERSION}.tar.gz"]="02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584"
     ["zstd-${ZSTD_VERSION}.tar.gz"]="eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3"
-    ["krb5-${KRB5_VERSION}.tar.gz"]="3243ffbc8ea4d4ac22ddc7dd2a1dc54c57874c40648b60ff97009763554eaf13"
+    ["krb5-${KRB5_VERSION}.tar.gz"]="fe90af8441ad9fa9b064b8e53077cefb782a96f8a68276b031dc54af1789ff0b"
     ["librdkafka-${LIBRDKAFKA_VERSION}.tar.gz"]="e6b61de61d3282879a88e4ee3d9f634a8b05bf78a9198dfc25c4820c0c9ed231"
 )
 

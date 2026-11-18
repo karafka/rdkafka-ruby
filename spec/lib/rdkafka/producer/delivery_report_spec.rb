@@ -29,6 +29,7 @@ RSpec.describe Rdkafka::Producer::DeliveryReport do
     expect(report.status).to be_nil
     expect(report.latency).to be_nil
     expect(report.broker_id).to be_nil
+    expect(report.broker_message).to be_nil
     expect(report).not_to be_persisted
     expect(report).not_to be_possibly_persisted
     expect(report).not_to be_not_persisted
@@ -58,6 +59,14 @@ RSpec.describe Rdkafka::Producer::DeliveryReport do
       expect(report).to be_possibly_persisted
       expect(report).not_to be_persisted
       expect(report).not_to be_not_persisted
+    end
+  end
+
+  context "with an error text" do
+    let(:report) { described_class.new(2, -1, topic_name, Rdkafka::Bindings::RD_KAFKA_RESP_ERR_INVALID_RECORD, nil, broker_message: "invalid record") }
+
+    it "gets it" do
+      expect(report.broker_message).to eq("invalid record")
     end
   end
 

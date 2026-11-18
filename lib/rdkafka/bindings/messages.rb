@@ -9,6 +9,7 @@ module Rdkafka
     attach_function :rd_kafka_message_latency, [:pointer], :int64
     attach_function :rd_kafka_message_broker_id, [:pointer], :int32
     attach_function :rd_kafka_message_status, [:pointer], :int
+    attach_function :rd_kafka_message_produce_errstr, [:pointer], :string
 
     # Message persistence status (rd_kafka_msg_status_t)
     RD_KAFKA_MSG_STATUS_NOT_PERSISTED = 0

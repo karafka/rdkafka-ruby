@@ -206,6 +206,7 @@
   "rd_kafka_message_destroy": "(POINTER) -> VOID",
   "rd_kafka_message_headers": "(POINTER, POINTER) -> INT32",
   "rd_kafka_message_latency": "(POINTER) -> INT64",
+  "rd_kafka_message_produce_errstr": "(POINTER) -> STRING",
   "rd_kafka_message_status": "(POINTER) -> INT32",
   "rd_kafka_message_timestamp": "(POINTER, POINTER) -> INT64",
   "rd_kafka_metadata": "(POINTER, INT32, POINTER, POINTER, INT32) -> INT32",

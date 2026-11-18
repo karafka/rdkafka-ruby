@@ -41,6 +41,20 @@ RSpec.describe Rdkafka::Producer::DeliveryHandle do
         expect(report.topic_name).to eq(handle.topic)
       end
     end
+
+    context "when not pending anymore and the delivery failed with an error text" do
+      let(:pending_handle) { false }
+      let(:response) { Rdkafka::Bindings::RD_KAFKA_RESP_ERR_INVALID_RECORD }
+
+      before { handle.broker_message = "Compacted topic cannot accept message without key" }
+
+      it "raises an error with the text" do
+        expect { handle.wait }.to raise_error(Rdkafka::RdkafkaError) { |error|
+          expect(error.code).to eq(:invalid_record)
+          expect(error.broker_message).to eq("Compacted topic cannot accept message without key")
+        }
+      end
+    end
   end
 
   describe "#create_result" do
@@ -55,6 +69,18 @@ RSpec.describe Rdkafka::Producer::DeliveryHandle do
       let(:response) { 1 }
 
       it { expect(report.error).to eq(Rdkafka::RdkafkaError.new(response)) }
+      it { expect(report.broker_message).to be_nil }
+    end
+
+    context "when the delivery callback set an error text" do
+      let(:response) { Rdkafka::Bindings::RD_KAFKA_RESP_ERR_INVALID_RECORD }
+
+      before { handle.broker_message = "Compacted topic cannot accept message without key" }
+
+      it "passes it to the report and its error" do
+        expect(report.broker_message).to eq("Compacted topic cannot accept message without key")
+        expect(report.error.broker_message).to eq("Compacted topic cannot accept message without key")
+      end
     end
 
     context "when the delivery callback set status, latency and broker id" do

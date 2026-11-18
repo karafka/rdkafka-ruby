@@ -33,12 +33,18 @@ module Rdkafka
           # For part of errors, we will not get a topic name reference and in cases like this
           # we should not return it
           topic,
-          (self[:response] != 0) ? RdkafkaError.new(self[:response]) : nil,
+          (self[:response] != 0) ? RdkafkaError.new(self[:response], broker_message: broker_message) : nil,
           label,
           status: self[:status],
           latency: self[:latency],
-          broker_id: self[:broker_id]
+          broker_id: self[:broker_id],
+          broker_message: broker_message
         )
+      end
+
+      # Raises the delivery error with the error text of the failed delivery
+      def raise_error
+        raise RdkafkaError.new(self[:response], broker_message: broker_message)
       end
     end
   end

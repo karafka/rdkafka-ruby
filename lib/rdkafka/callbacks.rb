@@ -251,6 +251,10 @@ module Rdkafka
           delivery_handle[:status] = Rdkafka::Bindings.rd_kafka_message_status(message_ptr)
           delivery_handle[:latency] = Rdkafka::Bindings.rd_kafka_message_latency(message_ptr)
           delivery_handle[:broker_id] = Rdkafka::Bindings.rd_kafka_message_broker_id(message_ptr)
+          # The text is valid only during this callback, so it is copied into a Ruby String here
+          if message[:err] != 0
+            delivery_handle.broker_message = Rdkafka::Bindings.rd_kafka_message_produce_errstr(message_ptr)
+          end
           # The topic is taken from the handle's `topic` Ruby attribute set during produce, not
           # read back from librdkafka, which spares an FFI call and a native string copy for
           # every message.
@@ -267,7 +271,8 @@ module Rdkafka
                   delivery_handle.label,
                   status: delivery_handle[:status],
                   latency: delivery_handle[:latency],
-                  broker_id: delivery_handle[:broker_id]
+                  broker_id: delivery_handle[:broker_id],
+                  broker_message: delivery_handle.broker_message
                 ),
                 delivery_handle
               )

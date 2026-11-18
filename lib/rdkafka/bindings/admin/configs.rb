@@ -16,6 +16,8 @@ module Rdkafka
     attach_function :rd_kafka_ConfigEntry_is_sensitive, [:pointer], :int
     attach_function :rd_kafka_ConfigEntry_is_synonym, [:pointer], :int
     attach_function :rd_kafka_ConfigEntry_synonyms, [:pointer, :pointer], :pointer
+    attach_function :rd_kafka_ConfigEntry_source, [:pointer], :int
+    attach_function :rd_kafka_ConfigSource_name, [:int], :string
     attach_function :rd_kafka_ConfigResource_error, [:pointer], :int
     attach_function :rd_kafka_ConfigResource_error_string, [:pointer], :string
     attach_function :rd_kafka_IncrementalAlterConfigs, [:pointer, :pointer, :size_t, :pointer, :pointer], :void, blocking: true

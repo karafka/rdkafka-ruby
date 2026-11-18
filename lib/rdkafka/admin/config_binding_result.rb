@@ -4,7 +4,8 @@ module Rdkafka
   class Admin
     # A single config binding result that represents its values extracted from C
     class ConfigBindingResult
-      attr_reader :name, :value, :read_only, :default, :sensitive, :synonym, :synonyms
+      attr_reader :name, :value, :read_only, :default, :sensitive, :synonym, :synonyms,
+        :source, :source_name
 
       # @param config_ptr [FFI::Pointer] config pointer
       def initialize(config_ptr)
@@ -14,6 +15,8 @@ module Rdkafka
         @default = Bindings.rd_kafka_ConfigEntry_is_default(config_ptr)
         @sensitive = Bindings.rd_kafka_ConfigEntry_is_sensitive(config_ptr)
         @synonym = Bindings.rd_kafka_ConfigEntry_is_synonym(config_ptr)
+        @source = Bindings.rd_kafka_ConfigEntry_source(config_ptr)
+        @source_name = Bindings.rd_kafka_ConfigSource_name(@source)
         @synonyms = []
 
         # The code below builds up the config synonyms using same config binding

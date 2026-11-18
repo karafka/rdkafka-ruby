@@ -26,7 +26,6 @@ require "securerandom"
 TOPIC = "it-describe-configs-source-#{SecureRandom.hex(6)}"
 BROKER_CONFIG = "log.cleaner.delete.retention.ms"
 
-# Sets or removes the broker override
 def alter_broker_config(admin, broker_id, op_type, value = nil)
   admin.incremental_alter_configs(
     [
@@ -78,14 +77,16 @@ begin
   broker_inherited = configs.fetch("delete.retention.ms")
   built_in = configs.fetch("compression.type")
 
-  exit(1) unless topic_override.source == 1 && topic_override.source_name == "DYNAMIC_TOPIC_CONFIG"
+  exit(1) unless topic_override.source == Rdkafka::Bindings::RD_KAFKA_CONFIG_SOURCE_DYNAMIC_TOPIC_CONFIG
+  exit(1) unless topic_override.source_name == "DYNAMIC_TOPIC_CONFIG"
   exit(1) unless topic_override.default.zero?
 
-  exit(1) unless broker_inherited.source == 2
+  exit(1) unless broker_inherited.source == Rdkafka::Bindings::RD_KAFKA_CONFIG_SOURCE_DYNAMIC_BROKER_CONFIG
   exit(1) unless broker_inherited.source_name == "DYNAMIC_BROKER_CONFIG"
   exit(1) unless broker_inherited.default.zero?
 
-  exit(1) unless built_in.source == 5 && built_in.source_name == "DEFAULT_CONFIG"
+  exit(1) unless built_in.source == Rdkafka::Bindings::RD_KAFKA_CONFIG_SOURCE_DEFAULT_CONFIG
+  exit(1) unless built_in.source_name == "DEFAULT_CONFIG"
   exit(1) unless built_in.default == 1
 
   synonyms = broker_inherited.synonyms.map { |synonym| [synonym.name, synonym.source_name] }

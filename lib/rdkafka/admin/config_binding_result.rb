@@ -4,8 +4,13 @@ module Rdkafka
   class Admin
     # A single config binding result that represents its values extracted from C
     class ConfigBindingResult
-      attr_reader :name, :value, :read_only, :default, :sensitive, :synonym, :synonyms,
-        :source, :source_name
+      attr_reader :name, :value, :read_only, :default, :sensitive, :synonym, :synonyms
+
+      # @return [Integer] where the value comes from, one of `Bindings::RD_KAFKA_CONFIG_SOURCE_*`
+      attr_reader :source
+
+      # @return [String] name of the source, e.g. `"DYNAMIC_TOPIC_CONFIG"`
+      attr_reader :source_name
 
       # @param config_ptr [FFI::Pointer] config pointer
       def initialize(config_ptr)

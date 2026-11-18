@@ -344,7 +344,7 @@ RSpec.describe Rdkafka::Admin do
       it "reports where each value comes from, also for synonyms" do
         config = resources_results.first.configs.find { |c| c.name == "compression.type" }
 
-        expect(config.source).to eq(5)
+        expect(config.source).to eq(Rdkafka::Bindings::RD_KAFKA_CONFIG_SOURCE_DEFAULT_CONFIG)
         expect(config.source_name).to eq("DEFAULT_CONFIG")
         expect(config.synonyms.map(&:source_name)).to eq(["DEFAULT_CONFIG"])
       end

@@ -16,6 +16,8 @@ module Rdkafka
     attach_function :rd_kafka_ConfigEntry_is_sensitive, [:pointer], :int
     attach_function :rd_kafka_ConfigEntry_is_synonym, [:pointer], :int
     attach_function :rd_kafka_ConfigEntry_synonyms, [:pointer, :pointer], :pointer
+    attach_function :rd_kafka_ConfigEntry_source, [:pointer], :int
+    attach_function :rd_kafka_ConfigSource_name, [:int], :string
     attach_function :rd_kafka_ConfigResource_error, [:pointer], :int
     attach_function :rd_kafka_ConfigResource_error_string, [:pointer], :string
     attach_function :rd_kafka_IncrementalAlterConfigs, [:pointer, :pointer, :size_t, :pointer, :pointer], :void, blocking: true
@@ -33,5 +35,14 @@ module Rdkafka
     RD_KAFKA_ALTER_CONFIG_OP_TYPE_DELETE = 1
     RD_KAFKA_ALTER_CONFIG_OP_TYPE_APPEND = 2
     RD_KAFKA_ALTER_CONFIG_OP_TYPE_SUBTRACT = 3
+
+    # Config value sources (rd_kafka_ConfigSource_t)
+    RD_KAFKA_CONFIG_SOURCE_UNKNOWN_CONFIG = 0
+    RD_KAFKA_CONFIG_SOURCE_DYNAMIC_TOPIC_CONFIG = 1
+    RD_KAFKA_CONFIG_SOURCE_DYNAMIC_BROKER_CONFIG = 2
+    RD_KAFKA_CONFIG_SOURCE_DYNAMIC_DEFAULT_BROKER_CONFIG = 3
+    RD_KAFKA_CONFIG_SOURCE_STATIC_BROKER_CONFIG = 4
+    RD_KAFKA_CONFIG_SOURCE_DEFAULT_CONFIG = 5
+    RD_KAFKA_CONFIG_SOURCE_GROUP_CONFIG = 8
   end
 end

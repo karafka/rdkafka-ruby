@@ -4,6 +4,7 @@
 - **[Feature]** Add `Config#consumer_offset_commit_listener`: its `#on_offsets_committed(error, list)` gets the result of every offset commit when the consumer polls or closes, so an async commit that the broker rejects reaches Ruby instead of only a `COMMITFAIL` log line.
 - **[Feature]** Let the offset commit listener define `#on_offsets_commit_failed(error, list)`, called only for failed commits (not on success or `no_offset`). Ported from karafka-rdkafka (#590).
 - **[Feature]** Add `validate_only:`, `operation_timeout_ms:` and `request_timeout_ms:` keyword options to `Admin#create_topic` and `#create_partitions`, and the two timeouts to `#delete_topic`. A `create_topic` topic config passed without braces keeps working.
+- **[Feature]** Add `#source` and `#source_name` to `describe_configs` config entries and their synonyms, telling a value set on the topic from one inherited from the broker or a built-in default.
 - [Enhancement] Bump librdkafka to `2.16.0` for OpenSSL and libcurl security fixes. Admin requests in flight on a decommissioned broker now fail with a retryable transport error.
 - [Enhancement] Bump the bundled zlib to `1.4`.
 - [Enhancement] Bump the bundled MIT Kerberos (krb5) to `1.22.3` for security fixes.

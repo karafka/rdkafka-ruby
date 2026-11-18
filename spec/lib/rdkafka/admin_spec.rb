@@ -340,6 +340,14 @@ RSpec.describe Rdkafka::Admin do
         expect(resources_results.first.configs.first.value).to eq("producer")
         expect(resources_results.first.configs.map(&:synonyms)).not_to be_empty
       end
+
+      it "reports where each value comes from, also for synonyms" do
+        config = resources_results.first.configs.find { |c| c.name == "compression.type" }
+
+        expect(config.source).to eq(Rdkafka::Bindings::RD_KAFKA_CONFIG_SOURCE_DEFAULT_CONFIG)
+        expect(config.source_name).to eq("DEFAULT_CONFIG")
+        expect(config.synonyms.map(&:source_name)).to eq(["DEFAULT_CONFIG"])
+      end
     end
 
     context "when describing config of a non-existing topic" do

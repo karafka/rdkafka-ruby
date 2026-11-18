@@ -6,6 +6,12 @@ module Rdkafka
     class ConfigBindingResult
       attr_reader :name, :value, :read_only, :default, :sensitive, :synonym, :synonyms
 
+      # @return [Integer] where the value comes from, one of `Bindings::RD_KAFKA_CONFIG_SOURCE_*`
+      attr_reader :source
+
+      # @return [String] name of the source, e.g. `"DYNAMIC_TOPIC_CONFIG"`
+      attr_reader :source_name
+
       # @param config_ptr [FFI::Pointer] config pointer
       def initialize(config_ptr)
         @name = Bindings.rd_kafka_ConfigEntry_name(config_ptr)
@@ -14,6 +20,8 @@ module Rdkafka
         @default = Bindings.rd_kafka_ConfigEntry_is_default(config_ptr)
         @sensitive = Bindings.rd_kafka_ConfigEntry_is_sensitive(config_ptr)
         @synonym = Bindings.rd_kafka_ConfigEntry_is_synonym(config_ptr)
+        @source = Bindings.rd_kafka_ConfigEntry_source(config_ptr)
+        @source_name = Bindings.rd_kafka_ConfigSource_name(@source)
         @synonyms = []
 
         # The code below builds up the config synonyms using same config binding

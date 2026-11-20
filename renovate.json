@@ -114,6 +114,13 @@
       "allowedVersions": "/^22\\.04$/"
     },
     {
+      "description": "Never automerge karafka/misc: its Gem Push action signs and pushes releases, review each bump",
+      "matchPackageNames": [
+        "karafka/misc"
+      ],
+      "automerge": false
+    },
+    {
       "description": "Major updates stay manual",
       "matchUpdateTypes": [
         "major"

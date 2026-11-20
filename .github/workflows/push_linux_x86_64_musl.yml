@@ -72,12 +72,11 @@ jobs:
           ruby-version: '4.0.10'
           bundler-cache: false
 
-      - name: Configure trusted publishing credentials
-        uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
-
-      - name: Build and push platform-specific gem (with Sigstore attestation)
+      - name: Build platform-specific gem
         env:
           RUBY_PLATFORM: 'x86_64-linux-musl'
-        run: |
-          gem build *.gemspec
-          .github/release/push_gem.sh *.gem
+        run: gem build *.gemspec
+
+      # Unlike rubygems/release-gem, this action does not push when signing fails
+      - name: Sign and push the gem (with Sigstore attestation)
+        uses: karafka/misc/.github/actions/gem-push@4b22ea7636319e13121e63fbc7ebdf5e15985960 # master

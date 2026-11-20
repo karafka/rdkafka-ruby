@@ -34,4 +34,10 @@ jobs:
           bundle install
           cd ext && bundle exec rake
 
-      - uses: rubygems/release-gem@7f9650160c1a4e7989fdc9855807bdbd421d8b6b # v1.4.1
+      - name: Configure trusted publishing credentials
+        uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
+
+      - name: Build and push the Ruby platform gem (with Sigstore attestation)
+        run: |
+          gem build *.gemspec
+          .github/release/push_gem.sh *.gem

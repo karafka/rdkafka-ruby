@@ -60,13 +60,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Vendor the attestation patch from rubygems/release-gem (no action execution)
-      - name: Vendor release-gem patch
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: rubygems/release-gem
-          ref: a25424ba2ba8b387abc8ef40807c2c85b96cbe32 # v1.1.1
-          path: .github/_release-gem
       - name: Download precompiled library
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -85,8 +78,6 @@ jobs:
       - name: Build and push platform-specific gem (with Sigstore attestation)
         env:
           RUBY_PLATFORM: 'x86_64-linux-musl'
-          # Preload the attestation patch so `gem push` generates & attaches the bundle
-          RUBYOPT: "-r${{ github.workspace }}/.github/_release-gem/rubygems-attestation-patch.rb"
         run: |
           gem build *.gemspec
-          gem push *.gem
+          .github/release/push_gem.sh *.gem

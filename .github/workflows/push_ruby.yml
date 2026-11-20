@@ -34,4 +34,9 @@ jobs:
           bundle install
           cd ext && bundle exec rake
 
-      - uses: rubygems/release-gem@7f9650160c1a4e7989fdc9855807bdbd421d8b6b # v1.4.1
+      - name: Build the Ruby platform gem
+        run: gem build *.gemspec
+
+      # Unlike rubygems/release-gem, this action does not push when signing fails
+      - name: Sign and push the gem (with Sigstore attestation)
+        uses: karafka/misc/.github/actions/gem-push@0fae3bd661f8f240f5b12039eb844ad52940a4fb # master

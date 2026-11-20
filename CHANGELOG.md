@@ -34,6 +34,9 @@
 - [Fix] Keep the shared partition count cache consistent when many threads produce with `partition_key` or call `partition_count` at once. On JRuby it lost topics and raised `NoMethodError`.
 - [Fix] Return `nil` from every `close` call when several threads close one consumer, producer or admin at once, instead of raising `ClosedInnerError` in the later callers.
 - [Fix] Report a failed consumer close to `Rdkafka::Config.error_callback` also when another thread closes the consumer at the same time, instead of only logging `ClosedInnerError`.
+- [Maintenance] Publish with Sigstore attestations again. 0.31.0 was published without them: signing failed in the release workflows (the signer does not work with json 3.x, the default of Ruby 4.0) and the attestation patch then pushed the gems unsigned.
+- [Maintenance] Sign each gem with `sigstore-cli` and push it with `gem push --attestation` (the `gem-push` action of `karafka/misc`, used by every push workflow), so a failed signing stops the release instead of publishing the gem without an attestation.
+- [Maintenance] Add the `Sigstore Check` workflow: nightly, and on pull requests that change the push workflows, it builds the gem, signs it like a release and verifies the attestation, without pushing.
 
 ## 0.31.0 (2026-10-09)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.

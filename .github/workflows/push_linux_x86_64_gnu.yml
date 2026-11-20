@@ -94,14 +94,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Vendor the attestation patch from rubygems/release-gem (no action execution)
-      - name: Vendor release-gem patch
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: rubygems/release-gem
-          ref: a25424ba2ba8b387abc8ef40807c2c85b96cbe32 # v1.1.1
-          path: .github/_release-gem
-
       - name: Download precompiled library
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -114,14 +106,11 @@ jobs:
           ruby-version: '4.0.10'
           bundler-cache: false
 
-      - name: Configure trusted publishing credentials
-        uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
-
-      - name: Build and push platform-specific gem (with Sigstore attestation)
+      - name: Build platform-specific gem
         env:
           RUBY_PLATFORM: 'x86_64-linux-gnu'
-          # Preload the attestation patch so `gem push` generates & attaches the bundle
-          RUBYOPT: "-r${{ github.workspace }}/.github/_release-gem/rubygems-attestation-patch.rb"
-        run: |
-          gem build *.gemspec
-          gem push *.gem
+        run: gem build *.gemspec
+
+      # Unlike rubygems/release-gem, this action does not push when signing fails
+      - name: Sign and push the gem (with Sigstore attestation)
+        uses: karafka/misc/.github/actions/gem-push@0fae3bd661f8f240f5b12039eb844ad52940a4fb # master

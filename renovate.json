@@ -112,13 +112,6 @@
         ".github/workflows/**"
       ],
       "allowedVersions": "/^22\\.04$/"
-    },
-    {
-      "description": "Major updates stay manual",
-      "matchUpdateTypes": [
-        "major"
-      ],
-      "automerge": false
     }
   ],
   "labels": [
@@ -130,8 +123,6 @@
       "before 4am on the first day of the month"
     ]
   },
-  "automerge": true,
-  "platformAutomerge": true,
   "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
     "labels": [

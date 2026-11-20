@@ -112,20 +112,6 @@
         ".github/workflows/**"
       ],
       "allowedVersions": "/^22\\.04$/"
-    },
-    {
-      "description": "Never automerge karafka/misc: its Gem Push action signs and pushes releases, review each bump",
-      "matchPackageNames": [
-        "karafka/misc"
-      ],
-      "automerge": false
-    },
-    {
-      "description": "Major updates stay manual",
-      "matchUpdateTypes": [
-        "major"
-      ],
-      "automerge": false
     }
   ],
   "labels": [
@@ -137,8 +123,6 @@
       "before 4am on the first day of the month"
     ]
   },
-  "automerge": true,
-  "platformAutomerge": true,
   "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
     "labels": [

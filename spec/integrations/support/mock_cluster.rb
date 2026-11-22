@@ -3,7 +3,8 @@
 require "rdkafka"
 
 # librdkafka's in-process mock cluster, for integration specs that need broker behaviour a real
-# broker does not produce on request, such as injected request errors. Needs no Kafka broker.
+# broker does not produce on request, such as injected request errors or delayed responses. Needs
+# no Kafka broker.
 #
 # Run each scenario on its own cluster: injected errors that a scenario never triggers stay
 # queued and the next request of that API on the same cluster gets them.
@@ -15,10 +16,11 @@ require "rdkafka"
 #     consumer = cluster.config("group.id": "group").consumer
 #   end
 class MockCluster
-  # Kafka protocol API keys of the requests that errors can be injected into
+  # Kafka protocol API keys of the requests that errors or delays can be injected into
   API_KEYS = {
     offset_commit: 8,
-    offset_fetch: 9
+    offset_fetch: 9,
+    create_topics: 19
   }.freeze
 
   # Kafka protocol error codes, named as in `Rdkafka::RdkafkaError#code`
@@ -38,6 +40,11 @@ class MockCluster
     attach_function :rd_kafka_mock_cluster_bootstraps, %i[pointer], :string
     attach_function :rd_kafka_mock_topic_create, %i[pointer string int int], :int
     attach_function :rd_kafka_mock_push_request_errors_array, %i[pointer int16 size_t pointer], :void
+    attach_function(
+      :rd_kafka_mock_broker_push_request_error_rtts,
+      %i[pointer int32 int16 size_t varargs],
+      :int
+    )
   end
 
   # @return [String] bootstrap servers of the cluster
@@ -59,6 +66,7 @@ class MockCluster
 
   # @param broker_count [Integer] number of mock brokers
   def initialize(broker_count: 1)
+    @broker_count = broker_count
     # librdkafka needs a client to host the mock cluster
     @host = Rdkafka::Config.new.producer
     @cluster = @host.instance_variable_get(:@native_kafka).with_inner do |inner|
@@ -93,6 +101,27 @@ class MockCluster
     Bindings.rd_kafka_mock_push_request_errors_array(
       @cluster, API_KEYS.fetch(api), codes.size, codes_ptr
     )
+  end
+
+  # Delays the responses to the next requests of the given API on every broker. A delayed
+  # response also holds back the later responses on its connection.
+  #
+  # @param api [Symbol] request API, a key of `API_KEYS`
+  # @param delay_ms [Integer] how long each response is delayed
+  # @param count [Integer] number of requests per broker to delay
+  # @raise [KeyError] when the API is unknown
+  # @raise [Rdkafka::RdkafkaError] when the delays cannot be set
+  def delay_requests(api, delay_ms, count: 1)
+    api_key = API_KEYS.fetch(api)
+    delays = Array.new(count) { [:int, 0, :int, delay_ms] }.flatten
+
+    (1..@broker_count).each do |broker_id|
+      response = Bindings.rd_kafka_mock_broker_push_request_error_rtts(
+        @cluster, broker_id, api_key, count, *delays
+      )
+
+      raise Rdkafka::RdkafkaError.new(response) unless response.zero?
+    end
   end
 
   # @param settings [Hash] extra client settings

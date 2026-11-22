@@ -7,7 +7,7 @@
 #
 # WHY COMPLEMENTARY TESTING:
 # - Precompiled binary testing is stable (rarely breaks from code changes)
-# - Edge Ruby versions (4.0-preview, JRuby) need testing but shouldn't block PRs
+# - Edge Ruby versions (4.0, JRuby) are tested here too and are blocking: any failure fails this workflow
 # - Integration specs test OS library compatibility, which changes with system updates
 # - These tests catch regressions from external changes (system libs, Ruby updates)
 # - Running every 3 days to prevent these slower tests from blocking PR velocity

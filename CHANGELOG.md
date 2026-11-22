@@ -37,7 +37,6 @@
 - [Maintenance] Publish with Sigstore attestations again. 0.31.0 was published without them: signing failed in the release workflows (the signer does not work with json 3.x, the default of Ruby 4.0) and the attestation patch then pushed the gems unsigned.
 - [Maintenance] Sign each gem with `sigstore-cli` and push it with `gem push --attestation` (the `gem-push` action of `karafka/misc`, used by every push workflow), so a failed signing stops the release instead of publishing the gem without an attestation.
 - [Maintenance] Add the `Sigstore Check` workflow: nightly, and on pull requests that change the push workflows, it builds the gem, signs it like a release and verifies the attestation, without pushing.
-- [Maintenance] Start moving the specs from RSpec to Minitest (`test/`, run with `bundle exec rake test`), set up like WaterDrop.
 
 ## 0.31.0 (2026-10-09)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.

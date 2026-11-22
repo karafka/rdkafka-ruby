@@ -81,7 +81,7 @@ describe Rdkafka::Defaults do
 
   describe "deprecated constants" do
     # Enabled so a `deprecate_constant` warning would show; Ruby 3.3 has no Warning.categories,
-    # so the spec helper leaves deprecation warnings off
+    # so the test helper leaves deprecation warnings off
     before do
       @deprecated = Warning[:deprecated]
       Warning[:deprecated] = true

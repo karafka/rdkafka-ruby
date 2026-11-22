@@ -12,9 +12,6 @@ describe Rdkafka::Consumer::Headers do
 
   describe ".from_native" do
     before do
-      # Start without cached scratch pointers so the mocked ones below get allocated and used
-      Thread.current[:rdkafka_headers_scratch] = nil
-
       headers_ptrptr = mock("headers pointer pointer")
       name_ptrptr = mock("name pointer pointer")
       value_ptrptr = mock("value pointer pointer")
@@ -60,11 +57,9 @@ describe Rdkafka::Consumer::Headers do
         .with(@headers_ptr, 3, name_ptrptr, value_ptrptr, size_ptr)
         .returns(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__NOENT)
 
-      @headers = described_class.from_native(@native_message)
+      # A new thread has no cached scratch pointers, so the mocked ones above get used
+      @headers = Thread.new { described_class.from_native(@native_message) }.value
     end
-
-    # Do not leak the mocked scratch pointers into other tests
-    after { Thread.current[:rdkafka_headers_scratch] = nil }
 
     it "equals the expected headers" do
       assert_equal(@expected_headers, @headers)

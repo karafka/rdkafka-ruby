@@ -1,7 +1,17 @@
 # frozen_string_literal: true
 
 require "bundler/gem_tasks"
+require "minitest/test_task"
 require "./lib/rdkafka"
+
+Minitest::TestTask.create(:test) do |t|
+  t.libs << "test"
+  t.libs << "lib"
+  t.test_globs = ["test/lib/**/*_test.rb"]
+  # Load test_helper before minitest/autorun so SimpleCov's at_exit hook is
+  # registered first and thus runs last (LIFO), collecting coverage AFTER tests
+  t.test_prelude = 'require "test_helper"; require "minitest/autorun"'
+end
 
 desc "Generate some message traffic"
 task :produce_messages do

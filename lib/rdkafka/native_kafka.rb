@@ -262,8 +262,11 @@ module Rdkafka
 
         yield if block_given?
 
-        Rdkafka::Bindings.rd_kafka_destroy(@inner)
+        inner = @inner
+        # Cleared before the destroy: it runs without the GVL, so an interrupt can be delivered
+        # when it returns, and a cleared handle is never used once destroyed
         @inner = nil
+        Rdkafka::Bindings.rd_kafka_destroy(inner)
         @opaque = nil
         @poll_mutex.unlock
         @poll_mutex = nil

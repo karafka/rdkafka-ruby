@@ -3,6 +3,7 @@
 plugins:
   - rubocop-capybara
   - rubocop-factory_bot
+  - rubocop-minitest
   - rubocop-performance
   - rubocop-rspec
   - rubocop-rspec_rails
@@ -12,6 +13,7 @@ inherit_gem:
   standard: config/base.yml
   standard-performance: config/base.yml
   standard-rspec: config/base.yml
+  standard-minitest: config/base.yml
 
 AllCops:
   NewCops: enable

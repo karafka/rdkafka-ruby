@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Rdkafka::Clients do
+describe Rdkafka::Clients do
   it "closes every registered client" do
     client_class = Class.new do
       attr_reader :closed
@@ -15,7 +15,7 @@ RSpec.describe Rdkafka::Clients do
 
     described_class.close_all
 
-    expect(clients).to all(be_closed)
+    assert(clients.all?(&:closed?))
   end
 
   it "continues closing clients after a failure" do
@@ -37,8 +37,10 @@ RSpec.describe Rdkafka::Clients do
     failing_client = described_class.register(client_class.new(error))
     successful_client = described_class.register(client_class.new)
 
-    expect { described_class.close_all }.to raise_error(error)
-    expect(successful_client).to be_closed
+    raised = assert_raises(RuntimeError) { described_class.close_all }
+
+    assert_same(error, raised)
+    assert_predicate(successful_client, :closed?)
 
     failing_client.error = nil
     described_class.close_all
@@ -74,19 +76,19 @@ RSpec.describe Rdkafka::Clients do
       result = reader.read
       _, status = Process.waitpid2(pid)
 
-      expect(status).to be_success
-      expect(result).to eq("false:true")
-      expect(parent_client).not_to be_closed
+      assert_predicate(status, :success?)
+      assert_equal("false:true", result)
+      refute_predicate(parent_client, :closed?)
 
       described_class.close_all
     end
 
     it "destroys live clients before native shutdown" do
-      fixture = File.expand_path("../../fixtures/client_cleanup.rb", __dir__)
+      fixture = File.expand_path("../../../spec/fixtures/client_cleanup.rb", __dir__)
       output = IO.popen([RbConfig.ruby, "-Ilib", fixture], err: [:child, :out], &:read)
       status = $?
 
-      expect(status).to be_success, output
+      assert_predicate(status, :success?, output)
     end
   end
 end

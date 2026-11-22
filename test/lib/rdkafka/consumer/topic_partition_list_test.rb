@@ -1,121 +1,150 @@
 # frozen_string_literal: true
 
-RSpec.describe Rdkafka::Consumer::TopicPartitionList do
+describe Rdkafka::Consumer::TopicPartitionList do
   it "creates a new list and add unassigned topics" do
     list = described_class.new
 
-    expect(list.count).to eq 0
-    expect(list.empty?).to be true
+    assert_equal(0, list.count)
+    assert_empty(list)
 
     list.add_topic("topic1")
     list.add_topic("topic2")
 
-    expect(list.count).to eq 2
-    expect(list.empty?).to be false
+    assert_equal(2, list.count)
+    refute_empty(list)
 
     hash = list.to_h
-    expect(hash.count).to eq 2
-    expect(hash).to eq({
-      "topic1" => nil,
-      "topic2" => nil
-    })
+
+    assert_equal(2, hash.count)
+    assert_equal(
+      {
+        "topic1" => nil,
+        "topic2" => nil
+      },
+      hash
+    )
   end
 
   it "creates a new list and add assigned topics as a range" do
     list = described_class.new
 
-    expect(list.count).to eq 0
-    expect(list.empty?).to be true
+    assert_equal(0, list.count)
+    assert_empty(list)
 
     list.add_topic("topic1", 0..2)
     list.add_topic("topic2", 0..1)
 
-    expect(list.count).to eq 5
-    expect(list.empty?).to be false
+    assert_equal(5, list.count)
+    refute_empty(list)
 
     hash = list.to_h
-    expect(hash.count).to eq 2
-    expect(hash["topic1"]).to eq([
-      Rdkafka::Consumer::Partition.new(0, nil),
-      Rdkafka::Consumer::Partition.new(1, nil),
-      Rdkafka::Consumer::Partition.new(2, nil)
-    ])
-    expect(hash["topic2"]).to eq([
-      Rdkafka::Consumer::Partition.new(0, nil),
-      Rdkafka::Consumer::Partition.new(1, nil)
-    ])
+
+    assert_equal(2, hash.count)
+    assert_equal(
+      [
+        Rdkafka::Consumer::Partition.new(0, nil),
+        Rdkafka::Consumer::Partition.new(1, nil),
+        Rdkafka::Consumer::Partition.new(2, nil)
+      ],
+      hash["topic1"]
+    )
+    assert_equal(
+      [
+        Rdkafka::Consumer::Partition.new(0, nil),
+        Rdkafka::Consumer::Partition.new(1, nil)
+      ],
+      hash["topic2"]
+    )
   end
 
   it "creates a new list and add assigned topics as an array" do
     list = described_class.new
 
-    expect(list.count).to eq 0
-    expect(list.empty?).to be true
+    assert_equal(0, list.count)
+    assert_empty(list)
 
     list.add_topic("topic1", [0, 1, 2])
     list.add_topic("topic2", [0, 1])
 
-    expect(list.count).to eq 5
-    expect(list.empty?).to be false
+    assert_equal(5, list.count)
+    refute_empty(list)
 
     hash = list.to_h
-    expect(hash.count).to eq 2
-    expect(hash["topic1"]).to eq([
-      Rdkafka::Consumer::Partition.new(0, nil),
-      Rdkafka::Consumer::Partition.new(1, nil),
-      Rdkafka::Consumer::Partition.new(2, nil)
-    ])
-    expect(hash["topic2"]).to eq([
-      Rdkafka::Consumer::Partition.new(0, nil),
-      Rdkafka::Consumer::Partition.new(1, nil)
-    ])
+
+    assert_equal(2, hash.count)
+    assert_equal(
+      [
+        Rdkafka::Consumer::Partition.new(0, nil),
+        Rdkafka::Consumer::Partition.new(1, nil),
+        Rdkafka::Consumer::Partition.new(2, nil)
+      ],
+      hash["topic1"]
+    )
+    assert_equal(
+      [
+        Rdkafka::Consumer::Partition.new(0, nil),
+        Rdkafka::Consumer::Partition.new(1, nil)
+      ],
+      hash["topic2"]
+    )
   end
 
   it "creates a new list and add assigned topics as a count" do
     list = described_class.new
 
-    expect(list.count).to eq 0
-    expect(list.empty?).to be true
+    assert_equal(0, list.count)
+    assert_empty(list)
 
     list.add_topic("topic1", 3)
     list.add_topic("topic2", 2)
 
-    expect(list.count).to eq 5
-    expect(list.empty?).to be false
+    assert_equal(5, list.count)
+    refute_empty(list)
 
     hash = list.to_h
-    expect(hash.count).to eq 2
-    expect(hash["topic1"]).to eq([
-      Rdkafka::Consumer::Partition.new(0, nil),
-      Rdkafka::Consumer::Partition.new(1, nil),
-      Rdkafka::Consumer::Partition.new(2, nil)
-    ])
-    expect(hash["topic2"]).to eq([
-      Rdkafka::Consumer::Partition.new(0, nil),
-      Rdkafka::Consumer::Partition.new(1, nil)
-    ])
+
+    assert_equal(2, hash.count)
+    assert_equal(
+      [
+        Rdkafka::Consumer::Partition.new(0, nil),
+        Rdkafka::Consumer::Partition.new(1, nil),
+        Rdkafka::Consumer::Partition.new(2, nil)
+      ],
+      hash["topic1"]
+    )
+    assert_equal(
+      [
+        Rdkafka::Consumer::Partition.new(0, nil),
+        Rdkafka::Consumer::Partition.new(1, nil)
+      ],
+      hash["topic2"]
+    )
   end
 
   it "creates a new list and add topics and partitions with an offset" do
     list = described_class.new
 
-    expect(list.count).to eq 0
-    expect(list.empty?).to be true
+    assert_equal(0, list.count)
+    assert_empty(list)
 
     list.add_topic_and_partitions_with_offsets("topic1", 0 => 5, 1 => 6, 2 => 7)
 
     hash = list.to_h
-    expect(hash.count).to eq 1
-    expect(hash["topic1"]).to eq([
-      Rdkafka::Consumer::Partition.new(0, 5),
-      Rdkafka::Consumer::Partition.new(1, 6),
-      Rdkafka::Consumer::Partition.new(2, 7)
-    ])
+
+    assert_equal(1, hash.count)
+    assert_equal(
+      [
+        Rdkafka::Consumer::Partition.new(0, 5),
+        Rdkafka::Consumer::Partition.new(1, 6),
+        Rdkafka::Consumer::Partition.new(2, 7)
+      ],
+      hash["topic1"]
+    )
   end
 
   describe "#to_s" do
-    let(:expected) do
-      if RUBY_VERSION >= "3.4.0"
+    before do
+      @expected = if RUBY_VERSION >= "3.4.0"
         "<TopicPartitionList: {\"topic1\" => [<Partition 0>, <Partition 1>]}>"
       else
         "<TopicPartitionList: {\"topic1\"=>[<Partition 0>, <Partition 1>]}>"
@@ -126,13 +155,13 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
       list = described_class.new
       list.add_topic("topic1", [0, 1])
 
-      expect(list.to_s).to eq expected
+      assert_equal(@expected, list.to_s)
     end
   end
 
   describe "#==" do
-    let(:list) do
-      described_class.new.tap do |list|
+    before do
+      @list = described_class.new.tap do |list|
         list.add_topic("topic1", [0])
       end
     end
@@ -141,11 +170,12 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
       other = described_class.new.tap do |list|
         list.add_topic("topic1", [0])
       end
-      expect(list).to eq other
+
+      assert_equal(other, @list)
     end
 
     it "does not equal another partition with different content" do
-      expect(list).not_to eq described_class.new
+      refute_equal(described_class.new, @list)
     end
   end
 
@@ -163,7 +193,7 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
         list.add_topic("topic")
       end
 
-      expect(list).to eq other
+      assert_equal(other, list)
     end
 
     it "creates a list from an existing native list with offsets" do
@@ -185,7 +215,7 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
         list.add_topic_and_partitions_with_offsets("topic", 0 => 100)
       end
 
-      expect(list).to eq other
+      assert_equal(other, list)
     end
   end
 
@@ -199,7 +229,7 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
 
       other = described_class.from_native_tpl(tpl)
 
-      expect(list).to eq other
+      assert_equal(other, list)
     end
 
     it "creates a native list with partitions" do
@@ -211,7 +241,7 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
 
       other = described_class.from_native_tpl(tpl)
 
-      expect(list).to eq other
+      assert_equal(other, list)
     end
 
     it "creates a native list with offsets" do
@@ -223,7 +253,7 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
 
       other = described_class.from_native_tpl(tpl)
 
-      expect(list).to eq other
+      assert_equal(other, list)
     end
 
     it "creates a native list with timetamp offsets if offsets are Time" do
@@ -242,22 +272,27 @@ RSpec.describe Rdkafka::Consumer::TopicPartitionList do
 
       native_list = described_class.from_native_tpl(tpl)
 
-      expect(native_list).to eq compare_list
+      assert_equal(compare_list, native_list)
     end
 
     it "destroys the native list when population fails partway" do
-      created = nil
-      allow(Rdkafka::Bindings).to receive(:rd_kafka_topic_partition_list_new).and_wrap_original do |original, *args|
-        created = original.call(*args)
-      end
-      allow(Rdkafka::Bindings).to receive(:rd_kafka_topic_partition_list_destroy).and_call_original
+      # Keep a handle on the real destroy so the native list can still be released once the
+      # stubbed call has been verified
+      real_destroy = Rdkafka::Bindings.method(:rd_kafka_topic_partition_list_destroy)
+      created = Rdkafka::Bindings.rd_kafka_topic_partition_list_new(1)
+
+      Rdkafka::Bindings.stubs(:rd_kafka_topic_partition_list_new).returns(created)
+      Rdkafka::Bindings
+        .expects(:rd_kafka_topic_partition_list_destroy)
+        .with { |tpl| tpl.address == created.address }
 
       list = described_class.new
       # A non-integer offset makes set_offset raise after the native list was already allocated.
       list.add_topic_and_partitions_with_offsets("topic", 0 => "not-an-offset")
 
-      expect { list.to_native_tpl }.to raise_error(TypeError)
-      expect(Rdkafka::Bindings).to have_received(:rd_kafka_topic_partition_list_destroy).with(created)
+      assert_raises(TypeError) { list.to_native_tpl }
+    ensure
+      real_destroy&.call(created) if created
     end
   end
 end

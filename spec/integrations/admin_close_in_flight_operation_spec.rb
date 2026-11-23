@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 # This integration test verifies that `Admin#close` fails with `destroy` the admin operations
-# whose requests are in flight, so `wait` on their handles returns at once.
+# whose requests are in flight, so a thread already blocked in `wait` on their handles, with no
+# timeout, returns at once.
 #
 # librdkafka drops the result of a request that is in flight when the client is destroyed. The
 # background event callback never ran for such an operation, so its handle stayed pending and
@@ -15,9 +16,9 @@
 # No broker is required: it uses librdkafka's mock cluster.
 #
 # Exit codes:
-# - 0: in every scenario `wait` raised `destroy` right after `close`
-# - 1: in a scenario the request was not in flight at `close`, or `wait` did not raise `destroy`
-#   right after it
+# - 0: in every scenario the blocked `wait` raised `destroy` right after `close`
+# - 1: in a scenario the request was not in flight at `close`, or the blocked `wait` did not raise
+#   `destroy` right after it
 
 require_relative "support/mock_cluster"
 
@@ -61,16 +62,21 @@ SCENARIOS.each do |api, start|
 
       exit(1) unless in_flight?(cluster, api)
 
+      waiter = Thread.new do
+        handle.wait(max_wait_timeout_ms: nil)
+        :resolved
+      rescue Rdkafka::RdkafkaError => e
+        e.code
+      end
+
+      sleep(0.01) until waiter.status == "sleep"
+
       admin.close
 
-      begin
-        handle.wait(max_wait_timeout_ms: WAIT_MS)
-        exit(1)
-      rescue Rdkafka::RdkafkaError => e
-        exit(1) unless e.code == :destroy
-      rescue Rdkafka::AbstractHandle::WaitTimeoutError
-        exit(1)
-      end
+      result = waiter.join(WAIT_MS / 1_000.0)&.value
+      waiter.kill
+
+      exit(1) unless result == :destroy
     ensure
       admin.close
     end

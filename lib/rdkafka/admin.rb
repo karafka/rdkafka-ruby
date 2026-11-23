@@ -7,6 +7,11 @@ module Rdkafka
     include Helpers::Metadata
     include Helpers::ListOffsets
 
+    # Minimum number of tracked handles at which the resolved ones are pruned
+    HANDLES_PRUNE_MIN = 64
+
+    private_constant :HANDLES_PRUNE_MIN
+
     class << self
       # Allows us to retrieve librdkafka errors with descriptions
       # Useful for debugging and building UIs, etc.
@@ -58,6 +63,9 @@ module Rdkafka
       # Handles of the operations started by this admin, failed on close when still unresolved
       @handles = []
       @handles_mutex = Mutex.new
+      # Size of `@handles` at which resolved handles are pruned, doubled from the live ones after
+      # each prune, so starting an operation stays O(1) amortized
+      @handles_prune_at = HANDLES_PRUNE_MIN
 
       # Makes sure, that native kafka gets closed before it gets GCed by Ruby
       ObjectSpace.define_finalizer(self, native_kafka.finalizer)
@@ -1618,7 +1626,11 @@ module Rdkafka
       handle.class.register(handle)
 
       @handles_mutex.synchronize do
-        @handles.select! { |tracked| AbstractHandle.registered?(tracked) }
+        if @handles.size >= @handles_prune_at
+          @handles.select! { |tracked| AbstractHandle.registered?(tracked) }
+          @handles_prune_at = [@handles.size * 2, HANDLES_PRUNE_MIN].max
+        end
+
         @handles << handle
       end
     end

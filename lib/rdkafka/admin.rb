@@ -55,6 +55,9 @@ module Rdkafka
     # @param native_kafka [NativeKafka] wrapper around the native Kafka handle
     def initialize(native_kafka)
       @native_kafka = native_kafka
+      # Handles of the operations started by this admin, failed on close when still unresolved
+      @handles = []
+      @handles_mutex = Mutex.new
 
       # Makes sure, that native kafka gets closed before it gets GCed by Ruby
       ObjectSpace.define_finalizer(self, native_kafka.finalizer)
@@ -137,6 +140,7 @@ module Rdkafka
       return if closed?
       ObjectSpace.undefine_finalizer(self)
       @native_kafka.close
+      fail_unresolved_handles
     end
 
     # Whether this admin has closed
@@ -218,7 +222,7 @@ module Rdkafka
       create_topic_handle = CreateTopicHandle.new
       create_topic_handle[:pending] = true
       create_topic_handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
-      CreateTopicHandle.register(create_topic_handle)
+      register_handle(create_topic_handle)
       admin_options_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATETOPICS)
       end
@@ -355,7 +359,7 @@ module Rdkafka
       delete_groups_handle = DeleteGroupsHandle.new
       delete_groups_handle[:pending] = true
       delete_groups_handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
-      DeleteGroupsHandle.register(delete_groups_handle)
+      register_handle(delete_groups_handle)
       admin_options_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DELETETOPICS)
       end
@@ -456,7 +460,7 @@ module Rdkafka
       handle = DeleteRecordsHandle.new
       handle[:pending] = true
       handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
-      DeleteRecordsHandle.register(handle)
+      register_handle(handle)
 
       admin_options_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DELETERECORDS)
@@ -520,7 +524,7 @@ module Rdkafka
       handle = ListConsumerGroupsHandle.new
       handle[:pending] = true
       handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
-      ListConsumerGroupsHandle.register(handle)
+      register_handle(handle)
 
       admin_options_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_AdminOptions_new(
@@ -579,7 +583,7 @@ module Rdkafka
       handle = DescribeClusterHandle.new
       handle[:pending] = true
       handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
-      DescribeClusterHandle.register(handle)
+      register_handle(handle)
 
       admin_options_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_AdminOptions_new(
@@ -652,7 +656,7 @@ module Rdkafka
       handle = DescribeTopicsHandle.new
       handle[:pending] = true
       handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
-      DescribeTopicsHandle.register(handle)
+      register_handle(handle)
 
       admin_options_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_AdminOptions_new(
@@ -741,7 +745,7 @@ module Rdkafka
       handle = DescribeConsumerGroupsHandle.new
       handle[:pending] = true
       handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
-      DescribeConsumerGroupsHandle.register(handle)
+      register_handle(handle)
 
       admin_options_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_AdminOptions_new(
@@ -809,7 +813,7 @@ module Rdkafka
       delete_topic_handle = DeleteTopicHandle.new
       delete_topic_handle[:pending] = true
       delete_topic_handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
-      DeleteTopicHandle.register(delete_topic_handle)
+      register_handle(delete_topic_handle)
       admin_options_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DELETETOPICS)
       end
@@ -895,7 +899,7 @@ module Rdkafka
         create_partitions_handle = CreatePartitionsHandle.new
         create_partitions_handle[:pending] = true
         create_partitions_handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
-        CreatePartitionsHandle.register(create_partitions_handle)
+        register_handle(create_partitions_handle)
         admin_options_ptr = Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATEPARTITIONS)
         Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, create_partitions_handle.to_ptr)
 
@@ -999,7 +1003,7 @@ module Rdkafka
       create_acl_handle = CreateAclHandle.new
       create_acl_handle[:pending] = true
       create_acl_handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
-      CreateAclHandle.register(create_acl_handle)
+      register_handle(create_acl_handle)
 
       admin_options_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_CREATEACLS)
@@ -1103,7 +1107,7 @@ module Rdkafka
       delete_acl_handle = DeleteAclHandle.new
       delete_acl_handle[:pending] = true
       delete_acl_handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
-      DeleteAclHandle.register(delete_acl_handle)
+      register_handle(delete_acl_handle)
 
       admin_options_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DELETEACLS)
@@ -1200,7 +1204,7 @@ module Rdkafka
       describe_acl_handle = DescribeAclHandle.new
       describe_acl_handle[:pending] = true
       describe_acl_handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
-      DescribeAclHandle.register(describe_acl_handle)
+      register_handle(describe_acl_handle)
 
       admin_options_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, Rdkafka::Bindings::RD_KAFKA_ADMIN_OP_DESCRIBEACLS)
@@ -1286,7 +1290,7 @@ module Rdkafka
           raise Rdkafka::Config::ConfigError.new("rd_kafka_AdminOptions_new was NULL")
         end
 
-        DescribeConfigsHandle.register(handle)
+        register_handle(handle)
         registered = true
         Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
 
@@ -1407,7 +1411,7 @@ module Rdkafka
           raise Rdkafka::Config::ConfigError.new("rd_kafka_AdminOptions_new was NULL")
         end
 
-        IncrementalAlterConfigsHandle.register(handle)
+        register_handle(handle)
         registered = true
         Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
 
@@ -1521,7 +1525,7 @@ module Rdkafka
 
       handle[:pending] = true
       handle[:response] = Rdkafka::Bindings::RD_KAFKA_PARTITION_UA
-      handle.class.register(handle)
+      register_handle(handle)
 
       admin_options_ptr = @native_kafka.with_inner do |inner|
         Rdkafka::Bindings.rd_kafka_AdminOptions_new(inner, admin_op)
@@ -1603,6 +1607,33 @@ module Rdkafka
       return if response == Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
 
       raise RdkafkaError.new(response, broker_message: error_buffer.read_string)
+    end
+
+    # Registers the handle, so the background event callback can resolve it, and tracks it, so
+    # `#close` can fail it
+    #
+    # @param handle [AbstractHandle] handle of the started operation
+    def register_handle(handle)
+      handle.class.register(handle)
+
+      @handles_mutex.synchronize do
+        @handles.select! { |tracked| AbstractHandle.registered?(tracked) }
+        @handles << handle
+      end
+    end
+
+    # Fails with `destroy` the handles that are still unresolved once the native client is
+    # destroyed. librdkafka drops the result of a request that is in flight at destroy, so
+    # without this `#wait` on such a handle never returns.
+    def fail_unresolved_handles
+      handles = @handles_mutex.synchronize { @handles.slice!(0..) }
+
+      handles.each do |handle|
+        next unless handle.class.remove(handle.to_ptr.address)
+
+        handle[:response] = Rdkafka::Bindings::RD_KAFKA_RESP_ERR__DESTROY
+        handle.unlock
+      end
     end
 
     # Checks if the admin is closed and raises an error if so

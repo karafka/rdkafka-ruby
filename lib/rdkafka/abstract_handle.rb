@@ -52,6 +52,12 @@ module Rdkafka
       def remove(address)
         REGISTRY_MUTEX.synchronize { REGISTRY.delete(address) }
       end
+
+      # @param handle [AbstractHandle] handle to check
+      # @return [Boolean] whether the handle is registered, so not resolved yet
+      def registered?(handle)
+        REGISTRY_MUTEX.synchronize { REGISTRY[handle.to_ptr.address].equal?(handle) }
+      end
     end
 
     # Operation result prepared by the background event callback. Background events are

@@ -21,6 +21,7 @@
 - [Change] Remove the unused `Rdkafka::Defaults::NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS`.
 - [Maintenance] Publish with Sigstore attestations again. 0.31.0 was published without them: signing failed in the release workflows (the signer does not work with json 3.x, the default of Ruby 4.0) and the attestation patch then pushed the gems unsigned.
 - [Maintenance] Sign each gem with `sigstore-cli` and push it with `gem push --attestation` (the `gem-push` action of `karafka/misc`, used by every push workflow), so a failed signing stops the release instead of publishing the gem without an attestation.
+- [Maintenance] Add the `Sigstore Check` workflow: nightly, and on pull requests that change the push workflows, it builds the gem, signs it like a release and verifies the attestation, without pushing.
 - [Fix] Create one topic handle per topic when many threads produce to a new topic at once. On JRuby this race leaked topic handles and could crash with a segfault; `produce` now raises `TopicHandleCreationError` instead of passing a missing handle to librdkafka.
 - [Fix] Stop `Consumer#store_offset` and other calls that pass partition metadata from raising `NoMethodError` on JRuby.
 - [Fix] Raise `Rdkafka::LibraryLoadError` with the glibc upgrade hint instead of `NameError` when the precompiled librdkafka needs a newer glibc.
@@ -37,6 +38,7 @@
 - [Fix] Return `nil` from every `close` call when several threads close one consumer, producer or admin at once, instead of raising `ClosedInnerError` in the later callers.
 - [Fix] Report a failed consumer close to `Rdkafka::Config.error_callback` also when another thread closes the consumer at the same time, instead of only logging `ClosedInnerError`.
 - [Fix] Fix `Admin#close` freezing the process when an admin operation (e.g. `create_topic`) is still pending. The pending operation now fails with `destroy`. Ported from karafka-rdkafka (#657).
+- [Fix] Fail admin operations whose request is in flight at `Admin#close` (e.g. `alter_consumer_group_offsets`) with `destroy`, instead of leaving `wait` on their handles blocked until its timeout.
 
 ## 0.31.0 (2026-10-09)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.

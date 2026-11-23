@@ -69,7 +69,15 @@ SCENARIOS.each do |api, start|
         e.code
       end
 
-      sleep(0.01) until waiter.status == "sleep"
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+
+      until waiter.status == "sleep" || !waiter.alive?
+        break if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+
+        sleep(0.01)
+      end
+
+      exit(1) unless waiter.status == "sleep"
 
       admin.close
 

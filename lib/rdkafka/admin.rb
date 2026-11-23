@@ -141,6 +141,7 @@ module Rdkafka
       ObjectSpace.undefine_finalizer(self)
       @native_kafka.close
       fail_unresolved_handles
+      nil
     end
 
     # Whether this admin has closed

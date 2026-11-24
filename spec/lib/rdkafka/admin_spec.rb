@@ -48,6 +48,110 @@ RSpec.describe Rdkafka::Admin do
     it { expect(errors[21]).to eq(code: 21, description: "Broker: Invalid required acks value", name: "INVALID_REQUIRED_ACKS") }
   end
 
+  describe "#close with unresolved operations" do
+    let(:wait_ms) { 2_000 }
+    let(:offsets) do
+      Rdkafka::Consumer::TopicPartitionList.new.tap do |list|
+        list.add_topic_and_partitions_with_offsets(topic_name, 0 => 1)
+      end
+    end
+    let(:acl) do
+      {
+        resource_type: resource_type,
+        resource_name: resource_name,
+        resource_pattern_type: resource_pattern_type,
+        principal: principal,
+        host: host,
+        operation: operation,
+        permission_type: permission_type
+      }
+    end
+
+    # The C function that submits each operation. Stubbed, the request never reaches librdkafka,
+    # so only `#close` can resolve the handle.
+    {
+      create_topic: [:rd_kafka_CreateTopics, ->(spec) { spec.admin.create_topic(spec.topic_name, 1, 1) }],
+      delete_topic: [:rd_kafka_DeleteTopics, ->(spec) { spec.admin.delete_topic(spec.topic_name) }],
+      create_partitions: [:rd_kafka_CreatePartitions, ->(spec) { spec.admin.create_partitions(spec.topic_name, 2) }],
+      delete_group: [:rd_kafka_DeleteGroups, ->(spec) { spec.admin.delete_group(spec.group_name) }],
+      delete_records: [
+        :rd_kafka_DeleteRecords,
+        ->(spec) { spec.admin.delete_records({ spec.topic_name => [{ partition: 0, offset: :end }] }) }
+      ],
+      list_consumer_groups: [:rd_kafka_ListConsumerGroups, ->(spec) { spec.admin.list_consumer_groups }],
+      describe_cluster: [:rd_kafka_DescribeCluster, ->(spec) { spec.admin.describe_cluster }],
+      describe_topics: [:rd_kafka_DescribeTopics, ->(spec) { spec.admin.describe_topics([spec.topic_name]) }],
+      describe_consumer_groups: [
+        :rd_kafka_DescribeConsumerGroups,
+        ->(spec) { spec.admin.describe_consumer_groups([spec.group_name]) }
+      ],
+      create_acl: [:rd_kafka_CreateAcls, ->(spec) { spec.admin.create_acl(**spec.acl) }],
+      delete_acl: [:rd_kafka_DeleteAcls, ->(spec) { spec.admin.delete_acl(**spec.acl) }],
+      describe_acl: [:rd_kafka_DescribeAcls, ->(spec) { spec.admin.describe_acl(**spec.acl) }],
+      describe_configs: [
+        :rd_kafka_DescribeConfigs,
+        ->(spec) { spec.admin.describe_configs([{ resource_type: 2, resource_name: spec.topic_name }]) }
+      ],
+      incremental_alter_configs: [
+        :rd_kafka_IncrementalAlterConfigs,
+        lambda do |spec|
+          spec.admin.incremental_alter_configs(
+            [{ resource_type: 2, resource_name: spec.topic_name, configs: [] }]
+          )
+        end
+      ],
+      alter_consumer_group_offsets: [
+        :rd_kafka_AlterConsumerGroupOffsets,
+        ->(spec) { spec.admin.alter_consumer_group_offsets(spec.group_name, spec.offsets) }
+      ],
+      delete_consumer_group_offsets: [
+        :rd_kafka_DeleteConsumerGroupOffsets,
+        ->(spec) { spec.admin.delete_consumer_group_offsets(spec.group_name, spec.offsets) }
+      ],
+      list_offsets: [
+        :rd_kafka_ListOffsets,
+        ->(spec) { spec.admin.list_offsets({ spec.topic_name => [{ partition: 0, offset: :latest }] }) }
+      ]
+    }.each do |name, (submit, start)|
+      context "when the #{name} request is never resolved" do
+        before { allow(Rdkafka::Bindings).to receive(submit) }
+
+        it "fails its handle with destroy" do
+          handle = start.call(self)
+          admin.close
+
+          expect { handle.wait(max_wait_timeout_ms: wait_ms) }
+            .to raise_error(Rdkafka::RdkafkaError) { |error| expect(error.code).to eq(:destroy) }
+        end
+      end
+    end
+
+    context "when an operation was resolved but not waited for" do
+      it "keeps its result" do
+        handle = admin.describe_cluster
+        deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 10
+        sleep(0.01) while handle.pending? && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+
+        admin.close
+
+        expect(handle.wait(max_wait_timeout_ms: wait_ms).nodes).not_to be_empty
+      end
+    end
+
+    context "when more operations were resolved after an unresolved one than are tracked" do
+      before { allow(Rdkafka::Bindings).to receive(:rd_kafka_CreateTopics) }
+
+      it "fails the unresolved one with destroy" do
+        handle = admin.create_topic(topic_name, 1, 1)
+        100.times { admin.describe_cluster.wait(max_wait_timeout_ms: 10_000) }
+        admin.close
+
+        expect { handle.wait(max_wait_timeout_ms: wait_ms) }
+          .to raise_error(Rdkafka::RdkafkaError) { |error| expect(error.code).to eq(:destroy) }
+      end
+    end
+  end
+
   describe "admin without auto-start" do
     let(:admin) { config.admin(native_kafka_auto_start: false) }
 

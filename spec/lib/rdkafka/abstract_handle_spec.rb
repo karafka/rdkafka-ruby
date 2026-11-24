@@ -76,6 +76,29 @@ RSpec.describe Rdkafka::AbstractHandle do
     end
   end
 
+  describe ".registered?" do
+    let(:pending_handle) { true }
+
+    it "is true only while the handle is registered" do
+      expect(described_class.registered?(handle)).to be(false)
+
+      described_class.register(handle)
+      expect(described_class.registered?(handle)).to be(true)
+
+      described_class.remove(handle.to_ptr.address)
+      expect(described_class.registered?(handle)).to be(false)
+    end
+
+    it "is false for another handle registered at the same address" do
+      other = TestHandle.new(handle.to_ptr)
+      described_class.register(other)
+
+      expect(described_class.registered?(handle)).to be(false)
+    ensure
+      described_class.remove(handle.to_ptr.address)
+    end
+  end
+
   describe "#pending?" do
     context "when true" do
       let(:pending_handle) { true }

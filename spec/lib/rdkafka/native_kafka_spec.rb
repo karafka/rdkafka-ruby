@@ -83,6 +83,22 @@ RSpec.describe Rdkafka::NativeKafka do
 
         expect(client.closed?).to be(true)
       end
+
+      context "when an interrupt is delivered as the `destroy` binding returns" do
+        before do
+          allow(Rdkafka::Bindings).to receive(:rd_kafka_destroy).and_wrap_original do |original, *args|
+            original.call(*args)
+            raise "interrupted"
+          end
+        end
+
+        it "does not hand out the destroyed native client" do
+          expect { client.close }.to raise_error("interrupted")
+
+          expect(client.closed?).to be(true)
+          expect { client.with_inner { |inner| inner } }.to raise_error(Rdkafka::ClosedInnerError)
+        end
+      end
     end
   end
 

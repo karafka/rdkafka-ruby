@@ -15,8 +15,10 @@ require "rdkafka"
 #     consumer = cluster.config("group.id": "group").consumer
 #   end
 class MockCluster
-  # Kafka protocol API keys of the requests that errors can be injected into
+  # Kafka protocol API keys of the requests that errors or delays can be injected into, or that
+  # are tracked
   API_KEYS = {
+    list_offsets: 2,
     offset_commit: 8,
     offset_fetch: 9
   }.freeze
@@ -38,6 +40,16 @@ class MockCluster
     attach_function :rd_kafka_mock_cluster_bootstraps, %i[pointer], :string
     attach_function :rd_kafka_mock_topic_create, %i[pointer string int int], :int
     attach_function :rd_kafka_mock_push_request_errors_array, %i[pointer int16 size_t pointer], :void
+    attach_function(
+      :rd_kafka_mock_broker_push_request_error_rtts,
+      %i[pointer int32 int16 size_t varargs],
+      :int
+    )
+    attach_function :rd_kafka_mock_start_request_tracking, %i[pointer], :void
+    attach_function :rd_kafka_mock_get_requests, %i[pointer pointer], :pointer
+    attach_function :rd_kafka_mock_request_api_key, %i[pointer], :int16
+    attach_function :rd_kafka_mock_request_timestamp, %i[pointer], :int64
+    attach_function :rd_kafka_mock_request_destroy_array, %i[pointer size_t], :void
   end
 
   # @return [String] bootstrap servers of the cluster
@@ -59,6 +71,7 @@ class MockCluster
 
   # @param broker_count [Integer] number of mock brokers
   def initialize(broker_count: 1)
+    @broker_count = broker_count
     # librdkafka needs a client to host the mock cluster
     @host = Rdkafka::Config.new.producer
     @cluster = @host.instance_variable_get(:@native_kafka).with_inner do |inner|
@@ -93,6 +106,52 @@ class MockCluster
     Bindings.rd_kafka_mock_push_request_errors_array(
       @cluster, API_KEYS.fetch(api), codes.size, codes_ptr
     )
+  end
+
+  # Delays the responses to the next requests of the given API on every broker. A delayed
+  # response also holds back the later responses on its connection.
+  #
+  # @param api [Symbol] request API, a key of `API_KEYS`
+  # @param delay_ms [Integer] how long each response is delayed
+  # @param count [Integer] number of requests per broker to delay
+  # @raise [KeyError] when the API is unknown
+  # @raise [Rdkafka::RdkafkaError] when the delays cannot be set
+  def delay_requests(api, delay_ms, count: 1)
+    api_key = API_KEYS.fetch(api)
+    delays = Array.new(count) { [:int, 0, :int, delay_ms] }.flatten
+
+    (1..@broker_count).each do |broker_id|
+      response = Bindings.rd_kafka_mock_broker_push_request_error_rtts(
+        @cluster, broker_id, api_key, count, *delays
+      )
+
+      raise Rdkafka::RdkafkaError.new(response) unless response.zero?
+    end
+  end
+
+  # Starts recording the requests the cluster receives, for `#request_timestamps`
+  #
+  # @return [void]
+  def start_request_tracking
+    Bindings.rd_kafka_mock_start_request_tracking(@cluster)
+  end
+
+  # @param api [Symbol] request API, a key of `API_KEYS`
+  # @return [Array<Integer>] receive times in microseconds of the tracked requests of the given
+  #   API, in the order the cluster received them
+  # @raise [KeyError] when the API is unknown
+  def request_timestamps(api)
+    api_key = API_KEYS.fetch(api)
+    count_ptr = FFI::MemoryPointer.new(:size_t)
+    requests_ptr = Bindings.rd_kafka_mock_get_requests(@cluster, count_ptr)
+    count = count_ptr.read(:size_t)
+
+    requests_ptr
+      .read_array_of_pointer(count)
+      .select { |request| Bindings.rd_kafka_mock_request_api_key(request) == api_key }
+      .map { |request| Bindings.rd_kafka_mock_request_timestamp(request) }
+  ensure
+    Bindings.rd_kafka_mock_request_destroy_array(requests_ptr, count) if requests_ptr
   end
 
   # @param settings [Hash] extra client settings

@@ -11,6 +11,6 @@ module Rdkafka
 
     attach_function :rd_kafka_new, [:kafka_type, :pointer, :pointer, :size_t], :pointer
 
-    attach_function :rd_kafka_destroy, [:pointer], :void
+    attach_function :rd_kafka_destroy, [:pointer], :void, blocking: true
   end
 end

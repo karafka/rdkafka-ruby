@@ -99,7 +99,7 @@ module Rdkafka
           Rdkafka::Bindings.rd_kafka_AdminOptions_set_isolation_level(admin_options_ptr, isolation_level)
         end
 
-        Admin::ListOffsetsHandle.register(handle)
+        register_handle(handle)
         Rdkafka::Bindings.rd_kafka_AdminOptions_set_opaque(admin_options_ptr, handle.to_ptr)
 
         begin
@@ -121,6 +121,15 @@ module Rdkafka
         end
 
         handle
+      end
+
+      private
+
+      # Registers the handle, so the background event callback can resolve it
+      #
+      # @param handle [AbstractHandle] handle of the started operation
+      def register_handle(handle)
+        handle.class.register(handle)
       end
     end
   end

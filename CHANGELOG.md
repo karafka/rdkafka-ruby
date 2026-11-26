@@ -20,7 +20,7 @@
 - [Change] Depend on `mini_portile2` and `rake` only in the source gem, as only it compiles librdkafka. Apps that got `rake` only through this gem must add it to their Gemfile.
 - [Change] Remove the unused `Rdkafka::Defaults::NATIVE_KAFKA_SYNCHRONIZE_SLEEP_INTERVAL_MS`.
 - [Maintenance] Publish with Sigstore attestations again. 0.31.0 was published without them because signing failed in the release workflows.
-- [Maintenance] Stop the release when gem signing fails, instead of publishing the gem without a Sigstore attestation.
+- [Maintenance] Stop a gem's push when its signing fails, instead of publishing that gem without a Sigstore attestation.
 - [Fix] Create one topic handle per topic when many threads produce to a new topic at once. On JRuby this race leaked topic handles and could crash with a segfault; `produce` now raises `TopicHandleCreationError` instead of passing a missing handle to librdkafka.
 - [Fix] Stop `Consumer#store_offset` and other calls that pass partition metadata from raising `NoMethodError` on JRuby.
 - [Fix] Raise `Rdkafka::LibraryLoadError` with the glibc upgrade hint instead of `NameError` when the precompiled librdkafka needs a newer glibc.

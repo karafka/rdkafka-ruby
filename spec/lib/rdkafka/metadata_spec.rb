@@ -23,6 +23,32 @@ RSpec.describe Rdkafka::Metadata do
       end
     end
 
+    context "that is longer than librdkafka accepts" do
+      let(:topic_name) { "a" * 513 }
+
+      it "raises an exception instead of crashing" do
+        expect {
+          described_class.new(native_kafka, topic_name)
+        }.to raise_error(Rdkafka::RdkafkaError) { |error| expect(error.code).to eq(:topic_exception) }
+      end
+
+      it "does not destroy the missing native topic" do
+        expect(Rdkafka::Bindings).not_to receive(:rd_kafka_topic_destroy)
+
+        expect { described_class.new(native_kafka, topic_name) }.to raise_error(Rdkafka::RdkafkaError)
+      end
+    end
+
+    context "that is at the librdkafka length limit" do
+      let(:topic_name) { "a" * 512 }
+
+      it "raises the broker error" do
+        expect {
+          described_class.new(native_kafka, topic_name)
+        }.to raise_error(Rdkafka::RdkafkaError) { |error| expect(error.code).to eq(:topic_exception) }
+      end
+    end
+
     context "that is one of our test topics" do
       let(:metadata) { described_class.new(native_kafka, topic_name) }
 

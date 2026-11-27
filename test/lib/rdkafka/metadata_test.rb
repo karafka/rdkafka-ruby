@@ -136,7 +136,6 @@ describe Rdkafka::Metadata do
       [meta_buf, topic_buf]
     end
 
-    # Replaces a Rdkafka::Defaults constant for the duration of the test (restored in `after`).
     # Warnings are silenced only around the reassignment, which Ruby reports as a redefinition.
     def stub_default(name, value)
       @original_defaults[name] = Rdkafka::Defaults.const_get(name) unless @original_defaults.key?(name)

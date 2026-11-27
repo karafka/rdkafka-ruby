@@ -7,8 +7,8 @@ describe Rdkafka::Callbacks do
       Rdkafka::Bindings.stubs(:rd_kafka_event_destroy)
     end
 
-    # Stubs a librdkafka result accessor taking a `size_t *cntp` out-parameter. The block
-    # receives the count pointer so it can write the count, like the native call does.
+    # Mocha cannot run code when a stub is called, so the count out-parameter is written inside
+    # the `with` matcher block, which must return true for the stub to match.
     def stub_count_out_param(method_name, returns)
       Rdkafka::Bindings.stubs(method_name).returns(returns).with do |_result, count_ptr|
         yield(count_ptr)
@@ -153,7 +153,6 @@ describe Rdkafka::Callbacks do
       after { Rdkafka::Admin::CreateTopicHandle.remove(@handle.to_ptr.address) }
 
       it "resolves the handle from the event error without raising or touching the empty results" do
-        # Must not index into the empty results array
         Rdkafka::Bindings.expects(:rd_kafka_topic_result_error).never
         expect_event_destroyed
 

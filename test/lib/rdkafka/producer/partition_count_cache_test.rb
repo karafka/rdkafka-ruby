@@ -14,7 +14,6 @@ describe Rdkafka::Producer::PartitionCountCache do
     @even_higher_partition_count = 15
   end
 
-  # Drives the given caches from one controlled clock
   def stub_clock(*caches)
     @now = 0
     @clocked_caches = caches
@@ -39,7 +38,7 @@ describe Rdkafka::Producer::PartitionCountCache do
 
     context "backwards compatibility with ttl (seconds)" do
       it "works with old ttl parameter (emits deprecation warning to stderr)" do
-        # Note: Deprecation warning is emitted but not tested here due to RSpec stderr capture complexity
+        # The deprecation warning goes to stderr and is not asserted here
         old_style_cache = described_class.new(1) # 1 second
 
         assert_kind_of(described_class, old_style_cache)

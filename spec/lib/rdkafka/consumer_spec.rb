@@ -292,6 +292,13 @@ RSpec.describe Rdkafka::Consumer do
       }.to raise_error Rdkafka::RdkafkaError
     end
 
+    it "raises an error when the topic name is longer than librdkafka accepts" do
+      expect(Rdkafka::Bindings).not_to receive(:rd_kafka_seek)
+      expect {
+        consumer.seek_by("a" * 513, partition, offset)
+      }.to raise_error(Rdkafka::RdkafkaError) { |error| expect(error.code).to eq(:topic_exception) }
+    end
+
     context "subscription" do
       let(:timeout) { 1000 }
 

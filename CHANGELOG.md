@@ -38,6 +38,7 @@
 - [Fix] Report a failed consumer close to `Rdkafka::Config.error_callback` also when another thread closes the consumer at the same time, instead of only logging `ClosedInnerError`.
 - [Fix] Fix `Admin#close` freezing the process when an admin operation (e.g. `create_topic`) is still pending. The pending operation now fails with `destroy`. Ported from karafka-rdkafka (#657).
 - [Fix] Fail admin operations whose request is in flight at `Admin#close` (e.g. `alter_consumer_group_offsets`) with `destroy`, instead of leaving `wait` on their handles blocked until its timeout.
+- [Fix] Raise `Rdkafka::RdkafkaError` (`topic_exception`) from `#metadata`, `Producer#partition_count` and `Consumer#seek_by` for a topic name longer than 512 characters instead of crashing the process with a segmentation fault. Ported from karafka-rdkafka (#659).
 
 ## 0.31.0 (2026-10-09)
 - **[EOL]** Drop Ruby 3.2 support; require Ruby 3.3+.

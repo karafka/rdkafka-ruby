@@ -17,7 +17,7 @@ BUILD_COMMON_SOURCED=1
 readonly OPENSSL_VERSION="3.5.9"
 readonly CYRUS_SASL_VERSION="2.1.28"
 readonly ZLIB_VERSION="1.4"
-readonly ZSTD_VERSION="1.5.7"
+readonly ZSTD_VERSION="1.6.0"
 readonly KRB5_VERSION="1.22.3"
 readonly LIBRDKAFKA_VERSION="2.16.0"
 
@@ -27,7 +27,7 @@ declare -A CHECKSUMS=(
     ["openssl-${OPENSSL_VERSION}.tar.gz"]="603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a"
     ["cyrus-sasl-${CYRUS_SASL_VERSION}.tar.gz"]="7ccfc6abd01ed67c1a0924b353e526f1b766b21f42d4562ee635a8ebfc5bb38c"
     ["zlib-${ZLIB_VERSION}.tar.gz"]="02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584"
-    ["zstd-${ZSTD_VERSION}.tar.gz"]="eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3"
+    ["zstd-${ZSTD_VERSION}.tar.gz"]="2ba599ae2a257976278e7e71e998433a387bfd18aa7b78678229fd5d84f5e9b8"
     ["krb5-${KRB5_VERSION}.tar.gz"]="fe90af8441ad9fa9b064b8e53077cefb782a96f8a68276b031dc54af1789ff0b"
     ["librdkafka-${LIBRDKAFKA_VERSION}.tar.gz"]="e6b61de61d3282879a88e4ee3d9f634a8b05bf78a9198dfc25c4820c0c9ed231"
 )

@@ -1,40 +1,46 @@
 # frozen_string_literal: true
 
-RSpec.describe Rdkafka::NativeKafka do
-  let(:client) { described_class.new(native, run_polling_thread: true, opaque: opaque) }
-
-  let(:config) { rdkafka_producer_config }
-  let(:native) { config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer) }
-  let(:closing) { false }
-  let(:thread) { double(Thread) }
-  let(:opaque) { Rdkafka::Opaque.new }
-
+describe Rdkafka::NativeKafka do
   before do
-    allow(Rdkafka::Bindings).to receive(:rd_kafka_name).and_return("producer-1")
-    allow(Thread).to receive(:new).and_return(thread)
-    allow(thread).to receive(:name=).with("rdkafka.native_kafka#producer-1")
-    allow(thread).to receive(:[]=).with(:closing, anything)
-    allow(thread).to receive(:join)
-    allow(thread).to receive(:abort_on_exception=).with(anything)
+    @opaque = Rdkafka::Opaque.new
+    @thread = mock("thread")
+
+    Rdkafka::Bindings.stubs(:rd_kafka_name).returns("producer-1")
+    Thread.stubs(:new).returns(@thread)
+    @thread.stubs(:name=).with("rdkafka.native_kafka#producer-1")
+    @thread.stubs(:[]=).with(:closing, anything)
+    @thread.stubs(:join)
+    @thread.stubs(:abort_on_exception=).with(anything)
   end
 
   after { client.close }
 
+  def native
+    @native ||= begin
+      config = rdkafka_producer_config
+      config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer)
+    end
+  end
+
+  def client
+    @client ||= described_class.new(native, run_polling_thread: true, opaque: @opaque)
+  end
+
   context "defaults" do
     it "sets the thread name" do
-      expect(thread).to receive(:name=).with("rdkafka.native_kafka#producer-1")
+      @thread.expects(:name=).with("rdkafka.native_kafka#producer-1")
 
       client
     end
 
     it "sets the thread to abort on exception" do
-      expect(thread).to receive(:abort_on_exception=).with(true)
+      @thread.expects(:abort_on_exception=).with(true)
 
       client
     end
 
     it "sets the thread `closing` flag to false" do
-      expect(thread).to receive(:[]=).with(:closing, false)
+      @thread.expects(:[]=).with(:closing, false)
 
       client
     end
@@ -42,7 +48,7 @@ RSpec.describe Rdkafka::NativeKafka do
 
   context "the polling thread" do
     it "is created" do
-      expect(Thread).to receive(:new)
+      Thread.expects(:new).returns(@thread)
 
       client
     end
@@ -50,30 +56,34 @@ RSpec.describe Rdkafka::NativeKafka do
 
   it "exposes the inner client" do
     client.with_inner do |inner|
-      expect(inner).to eq(native)
+      assert_equal(native, inner)
     end
   end
 
   context "when client was not yet closed (`nil`)" do
     it "is not closed" do
-      expect(client.closed?).to be(false)
+      refute_predicate(client, :closed?)
     end
 
     context "and attempt to close" do
       it "calls the `destroy` binding" do
-        expect(Rdkafka::Bindings).to receive(:rd_kafka_destroy).with(native).and_call_original
+        real_destroy = Rdkafka::Bindings.method(:rd_kafka_destroy)
+        client
+        Rdkafka::Bindings.expects(:rd_kafka_destroy).with(native)
 
         client.close
+      ensure
+        real_destroy&.call(native) if client.closed?
       end
 
       it "indicates to the polling thread that it is closing" do
-        expect(thread).to receive(:[]=).with(:closing, true)
+        @thread.expects(:[]=).with(:closing, true)
 
         client.close
       end
 
       it "joins the polling thread" do
-        expect(thread).to receive(:join)
+        @thread.expects(:join)
 
         client.close
       end
@@ -81,22 +91,25 @@ RSpec.describe Rdkafka::NativeKafka do
       it "closes and unassign the native client" do
         client.close
 
-        expect(client.closed?).to be(true)
+        assert_predicate(client, :closed?)
       end
 
       context "when an interrupt is delivered as the `destroy` binding returns" do
         before do
-          allow(Rdkafka::Bindings).to receive(:rd_kafka_destroy).and_wrap_original do |original, *args|
-            original.call(*args)
-            raise "interrupted"
-          end
+          @real_destroy = Rdkafka::Bindings.method(:rd_kafka_destroy)
+          client
+          Rdkafka::Bindings.stubs(:rd_kafka_destroy).raises(RuntimeError, "interrupted")
         end
 
-        it "does not hand out the destroyed native client" do
-          expect { client.close }.to raise_error("interrupted")
+        # The stub cannot call the real binding first, so the native client is destroyed here
+        after { @real_destroy.call(native) }
 
-          expect(client.closed?).to be(true)
-          expect { client.with_inner { |inner| inner } }.to raise_error(Rdkafka::ClosedInnerError)
+        it "does not hand out the destroyed native client" do
+          error = assert_raises(RuntimeError) { client.close }
+
+          assert_equal("interrupted", error.message)
+          assert_predicate(client, :closed?)
+          assert_raises(Rdkafka::ClosedInnerError) { client.with_inner { |inner| inner } }
         end
       end
     end
@@ -106,24 +119,24 @@ RSpec.describe Rdkafka::NativeKafka do
     before { client.close }
 
     it "is closed" do
-      expect(client.closed?).to be(true)
+      assert_predicate(client, :closed?)
     end
 
     context "and attempt to close again" do
       it "does not call the `destroy` binding" do
-        expect(Rdkafka::Bindings).not_to receive(:rd_kafka_destroy_flags)
+        Rdkafka::Bindings.expects(:rd_kafka_destroy_flags).never
 
         client.close
       end
 
       it "does not indicate to the polling thread that it is closing" do
-        expect(thread).not_to receive(:[]=).with(:closing, true)
+        @thread.expects(:[]=).with(:closing, true).never
 
         client.close
       end
 
       it "does not join the polling thread" do
-        expect(thread).not_to receive(:join)
+        @thread.expects(:join).never
 
         client.close
       end
@@ -131,34 +144,35 @@ RSpec.describe Rdkafka::NativeKafka do
       it "does not close and unassign the native client again" do
         client.close
 
-        expect(client.closed?).to be(true)
+        assert_predicate(client, :closed?)
       end
     end
   end
 
   it "provides a finalizer that closes the native kafka client" do
-    expect(client.closed?).to be(false)
+    refute_predicate(client, :closed?)
 
     client.finalizer.call("some-ignored-object-id")
 
-    expect(client.closed?).to be(true)
+    assert_predicate(client, :closed?)
   end
 end
 
 # Separate describe block for FD API tests to avoid interference with mocked threading tests
-RSpec.describe Rdkafka::NativeKafka, "#enable_main_queue_io_events and #enable_background_queue_io_events" do
-  let(:config) { rdkafka_producer_config }
-  let(:native) { config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer) }
-  let(:opaque) { Rdkafka::Opaque.new }
-  let(:client) { described_class.new(native, run_polling_thread: false, opaque: opaque, auto_start: false) }
+describe Rdkafka::NativeKafka, "#enable_main_queue_io_events and #enable_background_queue_io_events" do
+  before do
+    config = rdkafka_producer_config
+    native = config.send(:native_kafka, config.send(:native_config), :rd_kafka_producer)
+    @client = described_class.new(native, run_polling_thread: false, opaque: Rdkafka::Opaque.new, auto_start: false)
+  end
 
-  after { client.close unless client.closed? }
+  after { @client.close unless @client.closed? }
 
   it "allows IO events when polling thread is not active" do
     signal_r, signal_w = IO.pipe
 
-    expect { client.enable_main_queue_io_events(signal_w.fileno) }.not_to raise_error
-    expect { client.enable_background_queue_io_events(signal_w.fileno) }.not_to raise_error
+    @client.enable_main_queue_io_events(signal_w.fileno)
+    @client.enable_background_queue_io_events(signal_w.fileno)
 
     signal_r.close
     signal_w.close
@@ -168,25 +182,25 @@ RSpec.describe Rdkafka::NativeKafka, "#enable_main_queue_io_events and #enable_b
     signal_r, signal_w = IO.pipe
     payload = "custom"
 
-    expect { client.enable_main_queue_io_events(signal_w.fileno, payload) }.not_to raise_error
+    @client.enable_main_queue_io_events(signal_w.fileno, payload)
 
     signal_r.close
     signal_w.close
   end
 
   context "when client is closed" do
-    before { client.close }
+    before { @client.close }
 
     it "raises ClosedInnerError when enabling main_queue_io_events" do
       signal_r, signal_w = IO.pipe
-      expect { client.enable_main_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
+      assert_raises(Rdkafka::ClosedInnerError) { @client.enable_main_queue_io_events(signal_w.fileno) }
       signal_r.close
       signal_w.close
     end
 
     it "raises ClosedInnerError when enabling background_queue_io_events" do
       signal_r, signal_w = IO.pipe
-      expect { client.enable_background_queue_io_events(signal_w.fileno) }.to raise_error(Rdkafka::ClosedInnerError)
+      assert_raises(Rdkafka::ClosedInnerError) { @client.enable_background_queue_io_events(signal_w.fileno) }
       signal_r.close
       signal_w.close
     end
@@ -194,55 +208,57 @@ RSpec.describe Rdkafka::NativeKafka, "#enable_main_queue_io_events and #enable_b
 end
 
 # Separate describe block with real threads, which the mocked threading tests above stub out
-RSpec.describe Rdkafka::NativeKafka, "#with_inner from many threads" do
+describe Rdkafka::NativeKafka, "#with_inner from many threads" do
   context "when many threads use a producer" do
-    let(:producer) { rdkafka_producer_config.producer }
-    let(:threads_count) { 16 }
+    before do
+      @producer = rdkafka_producer_config.producer
+      @threads_count = 16
+    end
 
-    after { producer.close unless producer.closed? }
+    after { @producer.close unless @producer.closed? }
 
     it "closes once the threads are done" do
       barrier = Queue.new
       stop = false
 
-      threads = Array.new(threads_count) do
+      threads = Array.new(@threads_count) do
         Thread.new do
           barrier.pop
-          producer.queue_size until stop
+          @producer.queue_size until stop
         end
       end
 
-      threads_count.times { barrier << true }
+      @threads_count.times { barrier << true }
       sleep(2)
       stop = true
       threads.each(&:join)
 
-      closer = Thread.new { producer.close }
+      closer = Thread.new { @producer.close }
 
-      expect(closer.join(5)).not_to be_nil
+      refute_nil(closer.join(5))
     end
   end
 
   context "when operations overlap so that one is always in progress" do
-    let(:consumer) { rdkafka_consumer_config.consumer }
+    before { @consumer = rdkafka_consumer_config.consumer }
 
-    after { consumer.close unless consumer.closed? }
+    after { @consumer.close unless @consumer.closed? }
 
     it "does not start new operations while close waits" do
       threads = Array.new(2) do |i|
         Thread.new do
           sleep(0.025 * i)
 
-          loop { consumer.poll(50) }
+          loop { @consumer.poll(50) }
         rescue Rdkafka::ClosedConsumerError, Rdkafka::ClosedInnerError
           nil
         end
       end
 
       sleep(0.2)
-      closer = Thread.new { consumer.close }
+      closer = Thread.new { @consumer.close }
 
-      expect(closer.join(5)).not_to be_nil
+      refute_nil(closer.join(5))
       threads.each(&:join)
     end
   end
@@ -250,18 +266,18 @@ end
 
 # Separate describe block with real threads parked by TracePoint, to deliver an interrupt at an
 # exact point of `#with_inner`
-RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is interrupted" do
-  let(:producer) { rdkafka_producer_config.producer }
-  let(:release) { Queue.new }
-  let(:parked) { Queue.new }
-
+describe Rdkafka::NativeKafka, "#with_inner when the calling thread is interrupted" do
   before do
     skip "TracePoint core method events need --debug on JRuby" if defined?(JRUBY_VERSION)
 
-    producer.queue_size
+    @producer = rdkafka_producer_config.producer
+    @release = Queue.new
+    @parked = Queue.new
+
+    @producer.queue_size
   end
 
-  after { producer.close unless producer.closed? }
+  after { @producer.close unless @producer.nil? || @producer.closed? }
 
   # Runs `producer.queue_size` in a new thread and parks it when the given `Mutex#synchronize`
   # call that `#with_inner` makes starts (`:call`) or ends (`:return`): the first takes the lock
@@ -293,13 +309,13 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
       calls += 1
       next unless calls == call
 
-      parked << true
-      release.pop
+      @parked << true
+      @release.pop
     end
 
     worker = Thread.new do
       Thread.stop
-      producer.queue_size
+      @producer.queue_size
     rescue
       nil
     end
@@ -308,19 +324,19 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
     trace.enable
     worker.run
 
-    expect(parked.pop(timeout: 5)).to be(true)
+    assert_same(true, @parked.pop(timeout: 5))
 
     [worker, trace]
   end
 
-  def expect_close_to_finish(worker, trace)
-    release << true
+  def assert_close_finishes(worker, trace)
+    @release << true
     worker.join(5)
     trace.disable
 
-    closer = Thread.new { producer.close }
+    closer = Thread.new { @producer.close }
 
-    expect(closer.join(5)).not_to be_nil
+    refute_nil(closer.join(5))
   ensure
     closer&.kill
   end
@@ -330,7 +346,7 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
       worker, trace = park_worker(:call, 1)
       worker.raise("interrupted")
 
-      expect_close_to_finish(worker, trace)
+      assert_close_finishes(worker, trace)
     end
   end
 
@@ -339,7 +355,7 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
       worker, trace = park_worker(:return, 1)
       worker.raise("interrupted")
 
-      expect_close_to_finish(worker, trace)
+      assert_close_finishes(worker, trace)
     end
   end
 
@@ -348,7 +364,7 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
       worker, trace = park_worker(:call, 2)
       worker.raise("interrupted")
 
-      expect_close_to_finish(worker, trace)
+      assert_close_finishes(worker, trace)
     end
   end
 
@@ -357,7 +373,7 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
       worker, trace = park_worker_at_line("Thread.handle_interrupt(DEFER_INTERRUPTS) do")
       worker.raise("interrupted")
 
-      expect_close_to_finish(worker, trace)
+      assert_close_finishes(worker, trace)
     end
   end
 
@@ -366,28 +382,28 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when the calling thread is int
       worker, trace = park_worker(:call, 2)
       worker.kill
 
-      expect_close_to_finish(worker, trace)
+      assert_close_finishes(worker, trace)
     end
   end
 end
 
 # Separate describe block: trap handlers run only on the main thread, so the example itself calls
 # `#with_inner` and a TracePoint sends the signal at an exact point of it
-RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler raises" do
-  let(:producer) { rdkafka_producer_config.producer }
-  let(:trapped) { Class.new(StandardError) }
-
+describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler raises" do
   before do
     skip "TracePoint core method events need --debug on JRuby" if defined?(JRUBY_VERSION)
 
-    producer.queue_size
+    @producer = rdkafka_producer_config.producer
+    @trapped = Class.new(StandardError)
+
+    @producer.queue_size
   end
 
-  after { producer.close unless producer.closed? }
+  after { @producer.close unless @producer.nil? || @producer.closed? }
 
   # Runs the block and raises from a `USR1` trap handler at each of the given matching events
   def trapped_at(events, calls, matches, before_signal: nil)
-    error = trapped
+    error = @trapped
     previous = trap("USR1") { raise error }
     seen = 0
 
@@ -402,7 +418,7 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler rai
       sleep(5)
     end
 
-    expect { trace.enable { yield } }.to raise_error(error)
+    assert_raises(error) { trace.enable { yield } }
   ensure
     trap("USR1", previous)
   end
@@ -413,7 +429,7 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler rai
     matches = ->(tp) { tp.defined_class == klass && tp.method_id == method_id }
 
     trapped_at([event, :"c_#{event}"], calls, matches, before_signal: before_signal) do
-      producer.queue_size
+      @producer.queue_size
     end
   end
 
@@ -432,10 +448,10 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler rai
     trapped_at([:line], (1..linenos.size).to_a, matches, &)
   end
 
-  def expect_close_to_finish(client = producer)
+  def assert_close_finishes(client = @producer)
     closer = Thread.new { client.close }
 
-    expect(closer.join(5)).not_to be_nil
+    refute_nil(closer.join(5))
   ensure
     closer&.kill
   end
@@ -444,7 +460,7 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler rai
     it "lets close finish" do
       queue_size_trapped_at(Thread.singleton_class, :handle_interrupt, :call, [1])
 
-      expect_close_to_finish
+      assert_close_finishes
     end
   end
 
@@ -452,7 +468,7 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler rai
     it "lets close finish" do
       queue_size_trapped_at(Thread::Mutex, :synchronize, :call, [2])
 
-      expect_close_to_finish
+      assert_close_finishes
     end
   end
 
@@ -461,13 +477,13 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler rai
       closer = nil
 
       wait_for_close = lambda do
-        closer = Thread.new { producer.close }
+        closer = Thread.new { @producer.close }
         sleep(0.01) until closer.status == "sleep"
       end
 
       queue_size_trapped_at(Thread::Mutex, :synchronize, :call, [2], before_signal: wait_for_close)
 
-      expect(closer.join(5)).not_to be_nil
+      refute_nil(closer.join(5))
     ensure
       closer&.kill
     end
@@ -477,7 +493,7 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler rai
     it "lets close finish" do
       queue_size_trapped_at(Thread::Mutex, :synchronize, :return, [2])
 
-      expect_close_to_finish
+      assert_close_finishes
     end
   end
 
@@ -485,41 +501,41 @@ RSpec.describe Rdkafka::NativeKafka, "#with_inner when a signal trap handler rai
     it "lets close finish" do
       queue_size_trapped_at(Thread::Mutex, :synchronize, :call, [2, 3])
 
-      expect_close_to_finish
+      assert_close_finishes
     end
   end
 
   context "when it raises before the decrement and again after the retried decrement" do
     it "lets close finish" do
       lines_trapped(["@operations_in_progress -= 1", 1], ["released = true", 1]) do
-        producer.queue_size
+        @producer.queue_size
       end
 
-      expect_close_to_finish
+      assert_close_finishes
     end
   end
 
   # `Consumer#close` calls `#with_inner` while it holds the lock
   context "when the call holds the lock" do
-    let!(:consumer) { rdkafka_consumer_config.consumer }
+    before { @consumer = rdkafka_consumer_config.consumer }
 
-    after { consumer.close unless consumer.closed? }
+    after { @consumer.close unless @consumer.closed? }
 
     context "when it raises after the decrement" do
       it "lets close finish" do
-        lines_trapped(["released = true", 0]) { consumer.close }
+        lines_trapped(["released = true", 0]) { @consumer.close }
 
-        expect_close_to_finish(consumer)
+        assert_close_finishes(@consumer)
       end
     end
 
     context "when it raises before the decrement and again after the retried decrement" do
       it "lets close finish" do
         lines_trapped(["@operations_in_progress -= 1", 0], ["released = true", 1]) do
-          consumer.close
+          @consumer.close
         end
 
-        expect_close_to_finish(consumer)
+        assert_close_finishes(@consumer)
       end
     end
   end

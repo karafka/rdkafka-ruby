@@ -3,9 +3,9 @@
 # This integration test verifies that messages produced with `compression.codec=zstd` are
 # compressed with the bundled zstd and consumed back byte for byte.
 #
-# The payloads cross zstd's 64 KiB block and buffer sizes (empty, 65535, 65536, 131073 and over
-# 1 MiB) and many small ones share batches. The producer `tx_bytes` statistic proves that zstd was
-# applied: it is far below the payload size.
+# The payloads cross zstd's 64 KiB decoder buffer and 128 KiB block size (empty, 65535, 65536,
+# 131073 and over 1 MiB) and many small ones share batches. The producer `tx_bytes` statistic
+# proves that zstd was applied: it is far below the payload size.
 #
 # Uses librdkafka's mock cluster, so it needs no Kafka broker.
 #

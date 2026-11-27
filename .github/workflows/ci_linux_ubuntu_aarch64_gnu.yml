@@ -142,7 +142,7 @@ jobs:
           GITHUB_COVERAGE: ${{matrix.coverage}}
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
         run: |
-          bundle exec rspec
+          bundle exec rspec && bundle exec rake test
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings
@@ -329,7 +329,7 @@ jobs:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           RDKAFKA_PRECOMPILED: "true"
         run: |
-          bundle exec rspec
+          bundle exec rspec && bundle exec rake test
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings

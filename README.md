@@ -137,11 +137,13 @@ docker-compose up
 
 Run `bundle` and `cd ext && bundle exec rake && cd ..` to download and compile `librdkafka`.
 
-You can then run `bundle exec rspec` to run the tests. To see rdkafka debug output:
+You can then run `bundle exec rspec` and `bundle exec rake test` to run the tests. To see rdkafka debug output:
 
 ```
 DEBUG_PRODUCER=true bundle exec rspec
 DEBUG_CONSUMER=true bundle exec rspec
+DEBUG_PRODUCER=true bundle exec rake test
+DEBUG_CONSUMER=true bundle exec rake test
 ```
 
 After running the tests, you can bring the cluster down to start with a clean slate:

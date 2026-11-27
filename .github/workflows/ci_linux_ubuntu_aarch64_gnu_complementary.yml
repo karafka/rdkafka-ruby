@@ -223,7 +223,7 @@ jobs:
           RDKAFKA_EXT_PATH: ${{ github.workspace }}/ext
           KAFKA_SSL_ENABLED: "true"
         run: |
-          bundle exec rspec
+          bundle exec rspec && bundle exec rake test
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings
@@ -337,7 +337,7 @@ jobs:
           KAFKA_SSL_ENABLED: "true"
           RDKAFKA_PRECOMPILED: "true"
         run: |
-          bundle exec rspec
+          bundle exec rspec && bundle exec rake test
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings

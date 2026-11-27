@@ -1,18 +1,18 @@
 # frozen_string_literal: true
 
-RSpec.describe Rdkafka::Admin::DeleteTopicReport do
-  let(:report) {
-    described_class.new(
+describe Rdkafka::Admin::CreateTopicReport do
+  before do
+    @report = described_class.new(
       FFI::MemoryPointer.from_string("error string"),
       FFI::MemoryPointer.from_string("result name")
     )
-  }
+  end
 
   it "gets the error string" do
-    expect(report.error_string).to eq("error string")
+    assert_equal("error string", @report.error_string)
   end
 
   it "gets the result name" do
-    expect(report.result_name).to eq("result name")
+    assert_equal("result name", @report.result_name)
   end
 end

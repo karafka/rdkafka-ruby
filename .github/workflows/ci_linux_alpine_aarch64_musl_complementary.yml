@@ -168,7 +168,7 @@ jobs:
               openssl version && \
               apk list --installed | grep -E "(openssl|cyrus-sasl)" && \
               echo "=== Running SSL Specs (Compiled) ===" && \
-              bundle exec ruby -S rspec'
+              bundle exec ruby -S rspec && bundle exec ruby -S rake test'
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings
@@ -263,7 +263,7 @@ jobs:
               git config --global --add safe.directory /workspace && \
               bundle config set --local path vendor/bundle && bundle install && \
               apk list --installed | grep -E "(openssl|cyrus-sasl)" && \
-              bundle exec ruby -S rspec'
+              bundle exec ruby -S rspec && bundle exec ruby -S rake test'
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings

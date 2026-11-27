@@ -251,7 +251,7 @@ jobs:
               openssl version && \
               dpkg -l | grep -E "(libssl|openssl)" && \
               echo "=== Running SSL Specs (Compiled) ===" && \
-              bundle exec rspec'
+              bundle exec rspec && bundle exec rake test'
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings
@@ -345,7 +345,7 @@ jobs:
               openssl version && \
               dpkg -l | grep -E "(libssl|openssl)" && \
               echo "=== Running SSL Specs (Precompiled) ===" && \
-              bundle exec rspec'
+              bundle exec rspec && bundle exec rake test'
 
       - name: Verify Kafka warnings
         run: bin/verify_kafka_warnings

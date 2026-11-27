@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require_relative "../../support/bindings_signatures"
+require_relative "../../../spec/support/bindings_signatures"
 
 # Guards the public `Rdkafka::Bindings` surface defined across `bindings.rb` and
 # `lib/rdkafka/bindings/*.rb`. Adding bindings needs no change here; removing or renaming one fails.
-RSpec.describe Rdkafka::Bindings do
-  let(:expected_methods) do
+describe Rdkafka::Bindings do
+  def expected_methods
     %i[
       lib_extension partition_key_bytesize partition_key_length partition_key_size partitioner
       rd_kafka_AclBindingFilter_new rd_kafka_AclBinding_destroy rd_kafka_AclBinding_error
@@ -115,7 +115,7 @@ RSpec.describe Rdkafka::Bindings do
     ]
   end
 
-  let(:expected_constants) do
+  def expected_constants
     %i[
       ConfigResource EMPTY_HASH ErrorCallback LogCallback Message NativeError NativeErrorDesc
       OAuthbearerTokenRefreshCallback PARTITIONERS RD_KAFKA_ACL_OPERATION_ALL
@@ -171,7 +171,7 @@ RSpec.describe Rdkafka::Bindings do
     ]
   end
 
-  let(:expected_layouts) do
+  def expected_layouts
     {
       Message: { size: 72, offsets: [[:err, 0], [:rkt, 8], [:partition, 16], [:payload, 24], [:len, 32], [:key, 40], [:key_len, 48], [:offset, 56], [:_private, 64]] },
       TopicPartition: { size: 64, offsets: [[:topic, 0], [:partition, 8], [:offset, 16], [:metadata, 24], [:metadata_size, 32], [:opaque, 40], [:err, 48], [:_private, 56]] },
@@ -184,11 +184,11 @@ RSpec.describe Rdkafka::Bindings do
   end
 
   it "defines every expected method" do
-    expect(described_class.singleton_methods(false)).to include(*expected_methods)
+    assert_empty(expected_methods - described_class.singleton_methods(false))
   end
 
   it "defines every expected constant as its own constant" do
-    expect(described_class.constants(false)).to include(*expected_constants)
+    assert_empty(expected_constants - described_class.constants(false))
   end
 
   it "keeps the struct layouts" do
@@ -198,28 +198,30 @@ RSpec.describe Rdkafka::Bindings do
       [name, { size: struct.size, offsets: struct.offsets }]
     end
 
-    expect(actual).to eq(expected_layouts)
+    assert_equal(expected_layouts, actual)
   end
 
   # Catches drift from a deliberate binding, not a signature that was wrong from the start, and
   # does not cover the `blocking:` flag
-  it "keeps the signature of every snapshotted function", skip: defined?(JRUBY_VERSION) && "JRuby's FFI::Function has no param_types or return_type" do
+  it "keeps the signature of every snapshotted function" do
+    skip("JRuby's FFI::Function has no param_types or return_type") if defined?(JRUBY_VERSION)
+
     expected = JSON.parse(File.read(BindingsSignatures::FIXTURE))
 
-    expect(BindingsSignatures.dump.slice(*expected.keys)).to eq(expected)
+    assert_equal(expected, BindingsSignatures.dump.slice(*expected.keys))
   end
 
   it "keeps the callbacks as own constants so they can be replaced with remove_const/const_set" do
     %i[LogCallback StatsCallback ErrorCallback OAuthbearerTokenRefreshCallback RebalanceCallback].each do |name|
-      expect(described_class.const_defined?(name, false)).to be(true)
-      expect(described_class.const_get(name)).to be_a(FFI::Function)
+      assert(described_class.const_defined?(name, false))
+      assert_kind_of(FFI::Function, described_class.const_get(name))
     end
   end
 
   it "loads every group file from the bindings directory" do
     group_files = Dir[File.expand_path("../../../lib/rdkafka/bindings/**/*.rb", __dir__)]
 
-    expect(group_files).not_to be_empty
-    expect($LOADED_FEATURES).to include(*group_files)
+    refute_empty(group_files)
+    assert_empty(group_files - $LOADED_FEATURES)
   end
 end

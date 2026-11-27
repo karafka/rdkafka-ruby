@@ -1,16 +1,13 @@
 # frozen_string_literal: true
 
-RSpec.describe Rdkafka::AbstractHandle do
-  let(:handle) do
+describe Rdkafka::AbstractHandle do
+  def build_handle(pending_handle, response: 0, result: -1)
     TestHandle.new.tap do |handle|
       handle[:pending] = pending_handle
       handle[:response] = response
       handle[:result] = result
     end
   end
-
-  let(:response) { 0 }
-  let(:result) { -1 }
 
   context "A subclass that does not implement the required methods" do
     class BadTestHandle < Rdkafka::AbstractHandle
@@ -19,15 +16,19 @@ RSpec.describe Rdkafka::AbstractHandle do
     end
 
     it "raises an exception if operation_name is called" do
-      expect {
+      error = assert_raises(RuntimeError) do
         BadTestHandle.new.operation_name
-      }.to raise_exception(RuntimeError, /Must be implemented by subclass!/)
+      end
+
+      assert_match(/Must be implemented by subclass!/, error.message)
     end
 
     it "raises an exception if create_result is called" do
-      expect {
+      error = assert_raises(RuntimeError) do
         BadTestHandle.new.create_result
-      }.to raise_exception(RuntimeError, /Must be implemented by subclass!/)
+      end
+
+      assert_match(/Must be implemented by subclass!/, error.message)
     end
   end
 
@@ -46,13 +47,14 @@ RSpec.describe Rdkafka::AbstractHandle do
   end
 
   describe ".register and .remove" do
-    let(:pending_handle) { true }
+    before { @handle = build_handle(true) }
 
     it "registers and remove a delivery handle" do
-      described_class.register(handle)
-      removed = described_class.remove(handle.to_ptr.address)
-      expect(removed).to eq handle
-      expect(Rdkafka::AbstractHandle::REGISTRY).to be_empty
+      described_class.register(@handle)
+      removed = described_class.remove(@handle.to_ptr.address)
+
+      assert_equal(@handle, removed)
+      assert_empty(Rdkafka::AbstractHandle::REGISTRY)
     end
 
     it "registers and removes handles consistently under concurrent access" do
@@ -70,132 +72,142 @@ RSpec.describe Rdkafka::AbstractHandle do
       end.each(&:join)
 
       handles.each do |h|
-        expect(Rdkafka::AbstractHandle::REGISTRY).not_to have_key(h.to_ptr.address)
+        refute_includes(Rdkafka::AbstractHandle::REGISTRY, h.to_ptr.address)
       end
-      expect(Rdkafka::AbstractHandle::REGISTRY).to be_empty
+
+      assert_empty(Rdkafka::AbstractHandle::REGISTRY)
     end
   end
 
   describe ".registered?" do
-    let(:pending_handle) { true }
+    before { @handle = build_handle(true) }
 
     it "is true only while the handle is registered" do
-      expect(described_class.registered?(handle)).to be(false)
+      refute(described_class.registered?(@handle))
 
-      described_class.register(handle)
-      expect(described_class.registered?(handle)).to be(true)
+      described_class.register(@handle)
 
-      described_class.remove(handle.to_ptr.address)
-      expect(described_class.registered?(handle)).to be(false)
+      assert(described_class.registered?(@handle))
+
+      described_class.remove(@handle.to_ptr.address)
+
+      refute(described_class.registered?(@handle))
     end
 
     it "is false for another handle registered at the same address" do
-      other = TestHandle.new(handle.to_ptr)
+      other = TestHandle.new(@handle.to_ptr)
       described_class.register(other)
 
-      expect(described_class.registered?(handle)).to be(false)
+      refute(described_class.registered?(@handle))
     ensure
-      described_class.remove(handle.to_ptr.address)
+      described_class.remove(@handle.to_ptr.address)
     end
   end
 
   describe "#pending?" do
     context "when true" do
-      let(:pending_handle) { true }
-
       it "is true" do
-        expect(handle.pending?).to be true
+        assert_predicate(build_handle(true), :pending?)
       end
     end
 
     context "when not true" do
-      let(:pending_handle) { false }
-
       it "is false" do
-        expect(handle.pending?).to be false
+        refute_predicate(build_handle(false), :pending?)
       end
     end
   end
 
   describe "#wait" do
     context "when pending_handle true" do
-      let(:pending_handle) { true }
-
       it "waits until the timeout and then raise an error" do
-        expect {
+        handle = build_handle(true)
+
+        error = assert_raises(Rdkafka::AbstractHandle::WaitTimeoutError) do
           handle.wait(max_wait_timeout_ms: 100)
-        }.to raise_error Rdkafka::AbstractHandle::WaitTimeoutError, /test_operation/
+        end
+
+        assert_match(/test_operation/, error.message)
       end
     end
 
     context "when pending_handle false" do
-      let(:pending_handle) { false }
-
       context "without error" do
-        let(:result) { 1 }
+        before { @handle = build_handle(false, result: 1) }
 
         it "returns a result" do
-          wait_result = handle.wait
-          expect(wait_result).to eq(result)
+          wait_result = @handle.wait
+
+          assert_equal(1, wait_result)
         end
 
         it "waits without a timeout" do
-          wait_result = handle.wait(max_wait_timeout_ms: nil)
-          expect(wait_result).to eq(result)
+          wait_result = @handle.wait(max_wait_timeout_ms: nil)
+
+          assert_equal(1, wait_result)
         end
       end
 
       context "with error" do
-        let(:response) { 20 }
-
         it "raises an rdkafka error" do
-          expect {
+          handle = build_handle(false, response: 20)
+
+          assert_raises(Rdkafka::RdkafkaError) do
             handle.wait
-          }.to raise_error Rdkafka::RdkafkaError
+          end
         end
       end
 
       context "backwards compatibility with max_wait_timeout (seconds)" do
-        let(:result) { 42 }
+        before { @handle = build_handle(false, result: 42) }
 
         it "works with max_wait_timeout (emits deprecation warning to stderr)" do
-          # Note: Deprecation warning is emitted but not tested here due to RSpec stderr capture complexity
-          wait_result = handle.wait(max_wait_timeout: 5)
-          expect(wait_result).to eq(result)
+          # Note: Deprecation warning is emitted but not tested here due to stderr capture complexity
+          wait_result = @handle.wait(max_wait_timeout: 5)
+
+          assert_equal(42, wait_result)
         end
 
         it "works with max_wait_timeout set to nil (wait forever)" do
-          wait_result = handle.wait(max_wait_timeout: nil)
-          expect(wait_result).to eq(result)
+          wait_result = @handle.wait(max_wait_timeout: nil)
+
+          assert_equal(42, wait_result)
         end
 
         it "properlies convert seconds to milliseconds" do
           # Using a very short timeout to verify conversion
-          handle[:pending] = true
-          expect {
-            handle.wait(max_wait_timeout: 0.1)
-          }.to raise_error(Rdkafka::AbstractHandle::WaitTimeoutError, /100 ms/)
+          @handle[:pending] = true
+
+          error = assert_raises(Rdkafka::AbstractHandle::WaitTimeoutError) do
+            @handle.wait(max_wait_timeout: 0.1)
+          end
+
+          assert_match(/100 ms/, error.message)
         end
 
         it "uses new parameter when both are provided" do
           # When both parameters provided, max_wait_timeout_ms takes precedence
-          wait_result = handle.wait(max_wait_timeout: 1, max_wait_timeout_ms: 5000)
-          expect(wait_result).to eq(result)
+          wait_result = @handle.wait(max_wait_timeout: 1, max_wait_timeout_ms: 5000)
+
+          assert_equal(42, wait_result)
         end
 
         it "timeouts based on max_wait_timeout_ms when both are provided" do
-          handle[:pending] = true
+          @handle[:pending] = true
+
           # max_wait_timeout: 10 would be 10000ms, but max_wait_timeout_ms: 100 should take precedence
-          expect {
-            handle.wait(max_wait_timeout: 10, max_wait_timeout_ms: 100)
-          }.to raise_error(Rdkafka::AbstractHandle::WaitTimeoutError, /100 ms/)
+          error = assert_raises(Rdkafka::AbstractHandle::WaitTimeoutError) do
+            @handle.wait(max_wait_timeout: 10, max_wait_timeout_ms: 100)
+          end
+
+          assert_match(/100 ms/, error.message)
         end
       end
     end
   end
 
   describe "#unlock" do
-    let(:pending_handle) { true }
+    before { @handle = build_handle(true) }
 
     def start_waiter(handle)
       waiter = Thread.new { handle.wait(max_wait_timeout_ms: 10_000) }
@@ -229,19 +241,20 @@ RSpec.describe Rdkafka::AbstractHandle do
 
       handles.zip(waiters).each_with_index do |(test_handle, waiter), index|
         test_handle.unlock
-        expect(waiter.join(5)&.value).to eq([index, false])
+
+        assert_equal([index, false], waiter.join(5)&.value)
       end
     ensure
       waiters&.each(&:kill)
     end
 
     it "wakes every thread waiting on the same handle" do
-      handle[:result] = 7
-      waiters = Array.new(8) { start_waiter(handle) }
+      @handle[:result] = 7
+      waiters = Array.new(8) { start_waiter(@handle) }
 
-      handle.unlock
+      @handle.unlock
 
-      expect(waiters.map { |waiter| waiter.join(5)&.value }).to all(eq(7))
+      assert_equal(Array.new(8, 7), waiters.map { |waiter| waiter.join(5)&.value })
     end
   end
 end

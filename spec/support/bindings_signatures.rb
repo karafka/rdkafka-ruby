@@ -3,7 +3,7 @@
 require "json"
 
 # Snapshot of the FFI signatures attached on `Rdkafka::Bindings`, checked by
-# `spec/lib/rdkafka/bindings_parity_spec.rb`. Regenerate the fixture after a deliberate binding
+# `test/lib/rdkafka/bindings_parity_test.rb`. Regenerate the fixture after a deliberate binding
 # change:
 #
 #   bundle exec ruby -Ilib spec/support/bindings_signatures.rb

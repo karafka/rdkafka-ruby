@@ -206,12 +206,21 @@ describe Rdkafka::Config do
   context "configuration" do
     # Expects Rdkafka::Producer.new to receive the native kafka and the given partitioner. Mocha
     # cannot call through to the original constructor, so a stand-in producer is returned and the
-    # native kafka it got is closed afterwards.
+    # native kafka it got is closed afterwards. The stand-in is a plain object, not a mocha stub:
+    # `Rdkafka::Clients` keeps it registered and may call `closed?` on it in a later test.
     def expect_producer_with_partitioner(partitioner)
       Rdkafka::Producer
         .expects(:new)
         .with { |kafka, name| (@native_kafka = kafka).is_a?(Rdkafka::NativeKafka) && name == partitioner }
-        .returns(stub("producer", close: nil, closed?: true))
+        .returns(producer_stand_in)
+    end
+
+    def producer_stand_in
+      Object.new.tap do |producer|
+        def producer.close = nil
+
+        def producer.closed? = true
+      end
     end
 
     it "stores configuration" do

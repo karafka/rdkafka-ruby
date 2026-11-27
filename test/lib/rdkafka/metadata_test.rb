@@ -27,6 +27,32 @@ describe Rdkafka::Metadata do
       end
     end
 
+    context "that is longer than librdkafka accepts" do
+      it "raises an exception instead of crashing" do
+        error = assert_raises(Rdkafka::RdkafkaError) do
+          described_class.new(@native_kafka, "a" * 513)
+        end
+
+        assert_equal(:topic_exception, error.code)
+      end
+
+      it "does not destroy the missing native topic" do
+        Rdkafka::Bindings.expects(:rd_kafka_topic_destroy).never
+
+        assert_raises(Rdkafka::RdkafkaError) { described_class.new(@native_kafka, "a" * 513) }
+      end
+    end
+
+    context "that is at the librdkafka length limit" do
+      it "raises the broker error" do
+        error = assert_raises(Rdkafka::RdkafkaError) do
+          described_class.new(@native_kafka, "a" * 512)
+        end
+
+        assert_equal(:topic_exception, error.code)
+      end
+    end
+
     context "that is one of our test topics" do
       before do
         @topic_name = TestTopics.create(partitions: 25)

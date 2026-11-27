@@ -73,7 +73,14 @@ module Rdkafka
       native_topic = nil
       metadata_ptr = nil
 
-      native_topic = Rdkafka::Bindings.rd_kafka_topic_new(native_client, topic_name, nil) if topic_name
+      if topic_name
+        native_topic = Rdkafka::Bindings.rd_kafka_topic_new(native_client, topic_name, nil)
+
+        # librdkafka returns NULL for an invalid topic name (e.g. longer than 512 chars)
+        if native_topic.null?
+          raise Rdkafka::RdkafkaError.new(Rdkafka::Bindings::RD_KAFKA_RESP_ERR_TOPIC_EXCEPTION)
+        end
+      end
 
       ptr = FFI::MemoryPointer.new(:pointer)
 
@@ -93,7 +100,7 @@ module Rdkafka
 
       metadata_from_native(metadata_ptr)
     ensure
-      Rdkafka::Bindings.rd_kafka_topic_destroy(native_topic) if native_topic
+      Rdkafka::Bindings.rd_kafka_topic_destroy(native_topic) if native_topic && !native_topic.null?
       Rdkafka::Bindings.rd_kafka_metadata_destroy(metadata_ptr) if metadata_ptr && !metadata_ptr.null?
     end
 

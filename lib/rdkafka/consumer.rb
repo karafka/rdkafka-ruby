@@ -727,6 +727,11 @@ module Rdkafka
           nil
         )
       end
+
+      if native_topic.null?
+        raise Rdkafka::RdkafkaError.new(Rdkafka::Bindings::RD_KAFKA_RESP_ERR_TOPIC_EXCEPTION)
+      end
+
       response = Rdkafka::Bindings.rd_kafka_seek(
         native_topic,
         partition,

@@ -4,7 +4,8 @@
 module ErrorCodeHelpers
   extend self
 
-  # librdkafka error codes by the name `Rdkafka::RdkafkaError#code` reports for them
+  # librdkafka error codes by the name `Rdkafka::RdkafkaError#code` reports for them. Code 0 has no
+  # name in `Admin.describe_errors`: use `Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR` for it.
   CODES = Rdkafka::Admin.describe_errors.each_value.with_object({}) do |error, codes|
     next if error[:name].empty?
 

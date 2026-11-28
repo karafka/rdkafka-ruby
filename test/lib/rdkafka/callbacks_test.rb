@@ -71,7 +71,7 @@ describe Rdkafka::Callbacks do
         end
         Rdkafka::Bindings.stubs(
           rd_kafka_event_error: Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR,
-          rd_kafka_topic_result_error: 0,
+          rd_kafka_topic_result_error: Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR,
           rd_kafka_topic_result_error_string: FFI::MemoryPointer.from_string("broker error message"),
           rd_kafka_topic_result_name: FFI::MemoryPointer.from_string("example-topic")
         )
@@ -145,7 +145,7 @@ describe Rdkafka::Callbacks do
           rd_kafka_event_error: @timed_out_code,
           rd_kafka_event_error_string: FFI::MemoryPointer.from_string("Local: Timed out"),
           # Spied so we can assert the empty results array is never indexed
-          rd_kafka_topic_result_error: 0
+          rd_kafka_topic_result_error: Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR
         )
       end
 
@@ -189,7 +189,7 @@ describe Rdkafka::Callbacks do
         end
         Rdkafka::Bindings.stubs(
           rd_kafka_event_error: Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR,
-          rd_kafka_topic_result_error: 0,
+          rd_kafka_topic_result_error: Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR,
           rd_kafka_topic_result_error_string: FFI::Pointer::NULL,
           rd_kafka_topic_result_name: FFI::MemoryPointer.from_string("deleted-topic")
         )
@@ -225,7 +225,7 @@ describe Rdkafka::Callbacks do
         end
         Rdkafka::Bindings.stubs(
           rd_kafka_event_error: Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR,
-          rd_kafka_topic_result_error: 0,
+          rd_kafka_topic_result_error: Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR,
           rd_kafka_topic_result_error_string: FFI::Pointer::NULL,
           rd_kafka_topic_result_name: FFI::MemoryPointer.from_string("partitioned-topic")
         )
@@ -408,13 +408,13 @@ describe Rdkafka::Callbacks do
     context "when handling a describe configs result event whose parsing raises" do
       before do
         @handle = Rdkafka::Admin::DescribeConfigsHandle.new
-        @parse_error = Rdkafka::RdkafkaError.new(error_code(:offset_out_of_range))
+        @parse_error = Rdkafka::RdkafkaError.new(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__STATE)
 
         @handle[:pending] = true
         Rdkafka::Admin::DescribeConfigsHandle.register(@handle)
 
         stub_event(Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBECONFIGS_RESULT, @handle.to_ptr)
-        Rdkafka::Bindings.stubs(:rd_kafka_event_error).with(@event_ptr).returns(0)
+        Rdkafka::Bindings.stubs(:rd_kafka_event_error).with(@event_ptr).returns(Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR)
         Rdkafka::Bindings.stubs(:rd_kafka_event_error_string).with(@event_ptr)
           .returns(FFI::MemoryPointer.from_string(""))
         Rdkafka::Bindings.stubs(:rd_kafka_event_DescribeConfigs_result).with(@event_ptr)
@@ -497,13 +497,13 @@ describe Rdkafka::Callbacks do
     context "when handling a list offsets result event whose parsing raises" do
       before do
         @handle = Rdkafka::Admin::ListOffsetsHandle.new
-        @parse_error = Rdkafka::RdkafkaError.new(error_code(:offset_out_of_range))
+        @parse_error = Rdkafka::RdkafkaError.new(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__STATE)
 
         @handle[:pending] = true
         Rdkafka::Admin::ListOffsetsHandle.register(@handle)
 
         stub_event(Rdkafka::Bindings::RD_KAFKA_EVENT_LISTOFFSETS_RESULT, @handle.to_ptr)
-        Rdkafka::Bindings.stubs(:rd_kafka_event_error).with(@event_ptr).returns(0)
+        Rdkafka::Bindings.stubs(:rd_kafka_event_error).with(@event_ptr).returns(Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR)
         Rdkafka::Bindings.stubs(:rd_kafka_event_error_string).with(@event_ptr)
           .returns(FFI::MemoryPointer.from_string(""))
         Rdkafka::Bindings.stubs(:rd_kafka_event_ListOffsets_result).with(@event_ptr)

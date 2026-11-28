@@ -179,7 +179,7 @@ describe Rdkafka::Metadata do
       Rdkafka::Bindings.stubs(:rd_kafka_metadata).with do |_client, _flag, _topic, ptr, _timeout|
         ptr.write_pointer(structs[fetch])
         fetch += 1
-      end.returns(0)
+      end.returns(Rdkafka::Bindings::RD_KAFKA_RESP_ERR_NO_ERROR)
 
       described_class.new(@native_kafka, @topic_name, 10)
 

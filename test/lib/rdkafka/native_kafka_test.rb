@@ -124,7 +124,7 @@ describe Rdkafka::NativeKafka do
 
     context "and attempt to close again" do
       it "does not call the `destroy` binding" do
-        Rdkafka::Bindings.expects(:rd_kafka_destroy_flags).never
+        Rdkafka::Bindings.expects(:rd_kafka_destroy).never
 
         client.close
       end
@@ -145,6 +145,25 @@ describe Rdkafka::NativeKafka do
         client.close
 
         assert_predicate(client, :closed?)
+      end
+    end
+  end
+
+  context "when the handle was inherited across fork" do
+    before do
+      client
+      child_pid = Process.pid + 1
+      Process.stubs(:pid).returns(child_pid)
+    end
+
+    context "and attempt to close" do
+      it "does not call the `destroy` binding" do
+        Rdkafka::Bindings.expects(:rd_kafka_destroy).never
+
+        client.close
+      ensure
+        Process.unstub(:pid)
+        Rdkafka::Bindings.unstub(:rd_kafka_destroy)
       end
     end
   end

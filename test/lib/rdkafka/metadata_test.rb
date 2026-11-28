@@ -105,7 +105,7 @@ describe Rdkafka::Metadata do
 
   context "when a non-zero error code is returned" do
     before do
-      Rdkafka::Bindings.stubs(:rd_kafka_metadata).returns(-165)
+      Rdkafka::Bindings.stubs(:rd_kafka_metadata).returns(error_code(:unsupported_feature))
     end
 
     it "creating the instance raises an exception" do
@@ -168,9 +168,9 @@ describe Rdkafka::Metadata do
     end
 
     it "destroys every attempt's native topic handle and metadata struct, not just the last" do
-      # leader_not_available (code 5) is retried and surfaces from the parse step, which only runs
-      # after rd_kafka_metadata has already allocated the struct.
-      err_meta, _err_topic = build_metadata_with_topic_error(5)
+      # leader_not_available is retried and surfaces from the parse step, which only runs after
+      # rd_kafka_metadata has already allocated the struct.
+      err_meta, _err_topic = build_metadata_with_topic_error(error_code(:leader_not_available))
       ok_meta = FFI::MemoryPointer.new(Rdkafka::Metadata::Metadata.size) # zeroed => empty success
 
       # First two attempts return the erroring struct, the third succeeds.
@@ -189,8 +189,8 @@ describe Rdkafka::Metadata do
     end
 
     it "does not destroy a metadata struct when the fetch itself fails before allocating one" do
-      # timed_out (code -185) is retried, but the fetch never succeeds so no struct is allocated.
-      Rdkafka::Bindings.stubs(:rd_kafka_metadata).returns(-185)
+      # timed_out is retried, but the fetch never succeeds so no struct is allocated.
+      Rdkafka::Bindings.stubs(:rd_kafka_metadata).returns(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__TIMED_OUT)
 
       error = assert_raises(Rdkafka::RdkafkaError) do
         described_class.new(@native_kafka, @topic_name, 10)
@@ -204,7 +204,7 @@ describe Rdkafka::Metadata do
       timeouts = []
       Rdkafka::Bindings.stubs(:rd_kafka_metadata).with do |_client, _flag, _topic, _ptr, timeout|
         timeouts << timeout
-      end.returns(-185) # timed_out => retried until MAX_RETRIES
+      end.returns(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__TIMED_OUT) # timed_out => retried until MAX_RETRIES
 
       assert_raises(Rdkafka::RdkafkaError) { described_class.new(@native_kafka, @topic_name, 2_000) }
 
@@ -218,7 +218,7 @@ describe Rdkafka::Metadata do
       stub_default(:METADATA_RETRY_BACKOFF_BASE_MS, 100)
       stub_default(:METADATA_RETRY_BACKOFF_MAX_MS, 30)
       stub_default(:METADATA_MAX_RETRIES, 5)
-      Rdkafka::Bindings.stubs(:rd_kafka_metadata).returns(-185)
+      Rdkafka::Bindings.stubs(:rd_kafka_metadata).returns(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__TIMED_OUT)
 
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       assert_raises(Rdkafka::RdkafkaError) { described_class.new(@native_kafka, @topic_name, 10) }
@@ -232,7 +232,7 @@ describe Rdkafka::Metadata do
     it "stops after the minimum attempts once the retry budget is exhausted" do
       stub_default(:METADATA_RETRY_BUDGET_MS, 0)
       calls = 0
-      Rdkafka::Bindings.stubs(:rd_kafka_metadata).with { calls += 1 }.returns(-185) # timed_out => retryable, never succeeds
+      Rdkafka::Bindings.stubs(:rd_kafka_metadata).with { calls += 1 }.returns(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__TIMED_OUT) # timed_out => retryable, never succeeds
 
       assert_raises(Rdkafka::RdkafkaError) { described_class.new(@native_kafka, @topic_name, 10) }
 

@@ -129,8 +129,7 @@ describe Rdkafka::Callbacks do
       # must resolve the handle from the event error and never index into the empty array.
       before do
         @handle = Rdkafka::Admin::CreateTopicHandle.new
-        # RD_KAFKA_RESP_ERR__TIMED_OUT
-        @timed_out_code = -185
+        @timed_out_code = Rdkafka::Bindings::RD_KAFKA_RESP_ERR__TIMED_OUT
 
         @handle[:pending] = true
         Rdkafka::Admin::CreateTopicHandle.register(@handle)
@@ -361,7 +360,7 @@ describe Rdkafka::Callbacks do
 
       context "and a single ACL deletion reports an error" do
         def result_error
-          -185
+          Rdkafka::Bindings::RD_KAFKA_RESP_ERR__TIMED_OUT
         end
 
         it "resolves the handle with the error and an empty DeleteAclReport" do
@@ -370,7 +369,7 @@ describe Rdkafka::Callbacks do
           described_class.call(nil, @event_ptr, nil)
 
           refute_predicate(@handle, :pending?)
-          assert_equal(-185, @handle[:response])
+          assert_equal(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__TIMED_OUT, @handle[:response])
           assert_kind_of(Rdkafka::Admin::DeleteAclReport, @handle.result)
           assert_empty(@handle.result.deleted_acls)
         end
@@ -386,7 +385,7 @@ describe Rdkafka::Callbacks do
 
         stub_event(Rdkafka::Bindings::RD_KAFKA_EVENT_DESCRIBEACLS_RESULT, @handle.to_ptr)
         Rdkafka::Bindings.stubs(
-          rd_kafka_event_error: -195,
+          rd_kafka_event_error: error_code(:transport),
           rd_kafka_event_error_string: FFI::MemoryPointer.from_string("Local: Broker transport failure")
         )
       end
@@ -399,7 +398,7 @@ describe Rdkafka::Callbacks do
         described_class.call(nil, @event_ptr, nil)
 
         refute_predicate(@handle, :pending?)
-        assert_equal(-195, @handle[:response])
+        assert_equal(error_code(:transport), @handle[:response])
         assert_equal("Local: Broker transport failure", @handle.broker_message)
         assert_kind_of(Rdkafka::Admin::DescribeAclReport, @handle.result)
         assert_empty(@handle.result.acls)
@@ -409,7 +408,7 @@ describe Rdkafka::Callbacks do
     context "when handling a describe configs result event whose parsing raises" do
       before do
         @handle = Rdkafka::Admin::DescribeConfigsHandle.new
-        @parse_error = Rdkafka::RdkafkaError.new(1)
+        @parse_error = Rdkafka::RdkafkaError.new(error_code(:offset_out_of_range))
 
         @handle[:pending] = true
         Rdkafka::Admin::DescribeConfigsHandle.register(@handle)
@@ -448,7 +447,7 @@ describe Rdkafka::Callbacks do
 
         stub_event(Rdkafka::Bindings::RD_KAFKA_EVENT_INCREMENTALALTERCONFIGS_RESULT, @handle.to_ptr)
         Rdkafka::Bindings.stubs(
-          rd_kafka_event_error: -185,
+          rd_kafka_event_error: Rdkafka::Bindings::RD_KAFKA_RESP_ERR__TIMED_OUT,
           rd_kafka_event_error_string: FFI::MemoryPointer.from_string("Local: Timed out")
         )
       end
@@ -461,7 +460,7 @@ describe Rdkafka::Callbacks do
         described_class.call(nil, @event_ptr, nil)
 
         refute_predicate(@handle, :pending?)
-        assert_equal(-185, @handle[:response])
+        assert_equal(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__TIMED_OUT, @handle[:response])
         assert_kind_of(Rdkafka::Admin::IncrementalAlterConfigsReport, @handle.result)
         assert_empty(@handle.result.resources)
       end
@@ -476,7 +475,7 @@ describe Rdkafka::Callbacks do
 
         stub_event(Rdkafka::Bindings::RD_KAFKA_EVENT_LISTOFFSETS_RESULT, @handle.to_ptr)
         Rdkafka::Bindings.stubs(
-          rd_kafka_event_error: -185,
+          rd_kafka_event_error: Rdkafka::Bindings::RD_KAFKA_RESP_ERR__TIMED_OUT,
           rd_kafka_event_error_string: FFI::MemoryPointer.from_string("Local: Timed out")
         )
       end
@@ -489,7 +488,7 @@ describe Rdkafka::Callbacks do
         described_class.call(nil, @event_ptr, nil)
 
         refute_predicate(@handle, :pending?)
-        assert_equal(-185, @handle[:response])
+        assert_equal(Rdkafka::Bindings::RD_KAFKA_RESP_ERR__TIMED_OUT, @handle[:response])
         assert_kind_of(Rdkafka::Admin::ListOffsetsReport, @handle.result)
         assert_empty(@handle.result.offsets)
       end
@@ -498,7 +497,7 @@ describe Rdkafka::Callbacks do
     context "when handling a list offsets result event whose parsing raises" do
       before do
         @handle = Rdkafka::Admin::ListOffsetsHandle.new
-        @parse_error = Rdkafka::RdkafkaError.new(1)
+        @parse_error = Rdkafka::RdkafkaError.new(error_code(:offset_out_of_range))
 
         @handle[:pending] = true
         Rdkafka::Admin::ListOffsetsHandle.register(@handle)

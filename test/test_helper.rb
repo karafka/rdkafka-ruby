@@ -39,6 +39,7 @@ require_relative "../spec/support/kafka_wait_helpers"
 require_relative "../spec/support/native_client_helpers"
 require_relative "../spec/support/admin_topic_auto_wait"
 require_relative "../spec/support/test_topics"
+require_relative "../spec/support/error_code_helpers"
 
 admin = KafkaConfigHelpers.rdkafka_config.admin
 {
@@ -58,6 +59,7 @@ class Minitest::Spec
   include KafkaConfigHelpers
   include KafkaWaitHelpers
   include NativeClientHelpers
+  include ErrorCodeHelpers
 
   class << self
     alias_method :context, :describe

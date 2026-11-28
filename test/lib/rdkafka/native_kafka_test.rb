@@ -158,12 +158,12 @@ describe Rdkafka::NativeKafka do
 
     context "and attempt to close" do
       it "does not call the `destroy` binding" do
+        real_destroy = Rdkafka::Bindings.method(:rd_kafka_destroy)
         Rdkafka::Bindings.expects(:rd_kafka_destroy).never
 
         client.close
       ensure
-        Process.unstub(:pid)
-        Rdkafka::Bindings.unstub(:rd_kafka_destroy)
+        real_destroy&.call(native)
       end
     end
   end

@@ -296,7 +296,7 @@ describe Rdkafka::Producer::PartitionCountCache do
     it "applies to an entry served stale after a failed refresh" do
       stale_backoff_ms = Rdkafka::Defaults::PARTITION_COUNT_CACHE_STALE_BACKOFF_MS
       tick(@default_ttl_ms + 1)
-      @cache.get(@topic) { raise Rdkafka::RdkafkaError.new(-195) }
+      @cache.get(@topic) { raise Rdkafka::RdkafkaError.new(error_code(:transport)) }
 
       @cache.ttl_ms = @default_ttl_ms * 2
       tick(stale_backoff_ms + @default_ttl_ms)
@@ -318,21 +318,16 @@ describe Rdkafka::Producer::PartitionCountCache do
 
   describe "#get when the refresh fails" do
     before do
-      @transport_error = Rdkafka::RdkafkaError.new(-195)
+      @transport_error = Rdkafka::RdkafkaError.new(error_code(:transport))
       @stale_backoff_ms = Rdkafka::Defaults::PARTITION_COUNT_CACHE_STALE_BACKOFF_MS
       stub_clock(@cache)
       @cache.get(@topic) { @partition_count }
       tick(@default_ttl_ms + 1)
     end
 
-    {
-      transport: -195,
-      timed_out: -185,
-      all_brokers_down: -187,
-      resolve: -193
-    }.each do |code_name, code|
+    %i[transport timed_out all_brokers_down resolve].each do |code_name|
       it "serves the last known count on #{code_name}" do
-        error = Rdkafka::RdkafkaError.new(code)
+        error = Rdkafka::RdkafkaError.new(error_code(code_name))
 
         assert_equal(code_name, error.code)
         assert_equal(@partition_count, @cache.get(@topic) { raise error })
@@ -369,7 +364,7 @@ describe Rdkafka::Producer::PartitionCountCache do
     end
 
     it "refreshes again on the next call after a non-transient error" do
-      error = Rdkafka::RdkafkaError.new(29) # topic_authorization_failed
+      error = Rdkafka::RdkafkaError.new(error_code(:topic_authorization_failed))
 
       raised = assert_raises(Rdkafka::RdkafkaError) { @cache.get(@topic) { raise error } }
 
@@ -417,7 +412,7 @@ describe Rdkafka::Producer::PartitionCountCache do
     end
 
     it "raises on a non-transient error" do
-      error = Rdkafka::RdkafkaError.new(29) # topic_authorization_failed
+      error = Rdkafka::RdkafkaError.new(error_code(:topic_authorization_failed))
 
       raised = assert_raises(Rdkafka::RdkafkaError) { @cache.get(@topic) { raise error } }
 
